@@ -4,68 +4,59 @@ import { createClient } from "@supabase/supabase-js";
 type Body = {
   targetUserId: string;
   hotelId: string;
-  areaIds: string[]; // <- importante (evita any)
+  areaIds?: string[];      // las áreas que quieres asignar
+  removeAll?: boolean;     // opcional: borrar todas antes de insertar
 };
 
-function adminSupabase() {
+function getAdminClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const serviceRole = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
   if (!url) throw new Error("Missing env NEXT_PUBLIC_SUPABASE_URL");
-  if (!serviceKey) throw new Error("Missing env SUPABASE_SERVICE_ROLE_KEY");
+  if (!serviceRole) throw new Error("Missing env SUPABASE_SERVICE_ROLE_KEY");
 
-  return createClient(url, serviceKey, {
+  return createClient(url, serviceRole, {
     auth: { persistSession: false },
   });
 }
 
-function isBody(x: unknown): x is Body {
-  if (!x || typeof x !== "object") return false;
-  const b = x as any;
-  return (
-    typeof b.targetUserId === "string" &&
-    typeof b.hotelId === "string" &&
-    Array.isArray(b.areaIds) &&
-    b.areaIds.every((v: unknown) => typeof v === "string")
-  );
-}
-
-/**
- * POST: Reemplaza las áreas habilitadas para un usuario auditor en un hotel.
- * Body:
- *  - targetUserId: string
- *  - hotelId: string
- *  - areaIds: string[] (puede ser [])
- */
 export async function POST(req: Request) {
   try {
-    const supabase = adminSupabase();
+    const admin = getAdminClient();
 
-    const json = await req.json().catch(() => null);
-    if (!isBody(json)) {
-      return NextResponse.json(
-        { error: "Invalid body. Expected { targetUserId, hotelId, areaIds[] }" },
-        { status: 400 }
-      );
+    const body = (await req.json()) as Body;
+
+    const targetUserId = body?.targetUserId?.trim();
+    const hotelId = body?.hotelId?.trim();
+
+    // IMPORTANTE: aquí forzamos el tipo a string[]
+    const areaIds: string[] = Array.isArray(body?.areaIds)
+      ? body.areaIds.filter((x): x is string => typeof x === "string" && x.trim().length > 0)
+      : [];
+
+    const removeAll = Boolean(body?.removeAll);
+
+    if (!targetUserId) {
+      return NextResponse.json({ error: "targetUserId requerido" }, { status: 400 });
+    }
+    if (!hotelId) {
+      return NextResponse.json({ error: "hotelId requerido" }, { status: 400 });
     }
 
-    const { targetUserId, hotelId, areaIds } = json;
+    // Si quieres limpiar todo primero
+    if (removeAll) {
+      const { error: delErr } = await admin
+        .from("user_area_access")
+        .delete()
+        .eq("user_id", targetUserId)
+        .eq("hotel_id", hotelId);
 
-    // 1) Borramos lo anterior
-    const { error: delErr } = await supabase
-      .from("user_area_access")
-      .delete()
-      .eq("user_id", targetUserId)
-      .eq("hotel_id", hotelId);
-
-    if (delErr) {
-      return NextResponse.json(
-        { error: `Delete failed: ${delErr.message}` },
-        { status: 500 }
-      );
+      if (delErr) {
+        return NextResponse.json({ error: delErr.message }, { status: 400 });
+      }
     }
 
-    // 2) Insertamos lo nuevo (si hay)
+    // Insertamos los nuevos (si hay)
     if (areaIds.length > 0) {
       const rows = areaIds.map((area_id: string) => ({
         user_id: targetUserId,
@@ -73,23 +64,15 @@ export async function POST(req: Request) {
         hotel_id: hotelId,
       }));
 
-      const { error: insErr } = await supabase
-        .from("user_area_access")
-        .insert(rows);
-
+      const { error: insErr } = await admin.from("user_area_access").insert(rows);
       if (insErr) {
-        return NextResponse.json(
-          { error: `Insert failed: ${insErr.message}` },
-          { status: 500 }
-        );
+        return NextResponse.json({ error: insErr.message }, { status: 400 });
       }
     }
 
-    return NextResponse.json({ ok: true }, { status: 200 });
-  } catch (e: any) {
-    return NextResponse.json(
-      { error: e?.message ?? "Unknown error" },
-      { status: 500 }
-    );
+    return NextResponse.json({ ok: true });
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : "Error inesperado.";
+    return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
