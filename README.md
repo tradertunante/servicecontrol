@@ -37,3 +37,6 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/deploym
 npm i @supabase/supabase-js
 NEXT_PUBLIC_SUPABASE_URL=TU_SUPABASE_URL
 NEXT_PUBLIC_SUPABASE_ANON_KEY=TU_SUPABASE_ANON_KEY
+
+
+
