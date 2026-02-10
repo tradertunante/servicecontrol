@@ -62,7 +62,7 @@ export default function BuilderHomePage() {
         // Templates (constructor)
         const { data: tData, error: tErr } = await supabase
           .from("audit_templates")
-          .select("id,name,active,area_id,created_at,areas(id,name,type)")
+          .select("id,name,active,area_id,created_at")
           .eq("hotel_id", p.hotel_id)
           .order("created_at", { ascending: false })
           .limit(200);
