@@ -702,8 +702,8 @@ export default function AreaPage() {
               {dashboard.worst?.avg_score !== null ? (
                 <>
                   <div style={{ fontWeight: 900 }}>{dashboard.worst?.section_name}</div>
-                  <div style={{ marginTop: 6, fontSize: 28, fontWeight: 950, color: scoreColor(dashboard.worst.avg_score) }}>
-                    {dashboard.worst.avg_score!.toFixed(2)}%
+                  <div style={{ marginTop: 6, fontSize: 28, fontWeight: 950, color: scoreColor(dashboard.worst?.avg_score ?? null) }}>
+                    {dashboard.worst?.avg_score?.toFixed(2)}%
                   </div>
                 </>
               ) : (
@@ -716,8 +716,8 @@ export default function AreaPage() {
               {dashboard.best?.avg_score !== null ? (
                 <>
                   <div style={{ fontWeight: 900 }}>{dashboard.best?.section_name}</div>
-                  <div style={{ marginTop: 6, fontSize: 28, fontWeight: 950, color: scoreColor(dashboard.best.avg_score) }}>
-                    {dashboard.best.avg_score!.toFixed(2)}%
+                  <div style={{ marginTop: 6, fontSize: 28, fontWeight: 950, color: scoreColor(dashboard.best?.avg_score ?? null) }}>
+                    {dashboard.best?.avg_score?.toFixed(2)}%
                   </div>
                 </>
               ) : (
