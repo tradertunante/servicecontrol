@@ -696,7 +696,7 @@ export default function AreaPage() {
                 <div style={{ opacity: 0.8 }}>No hay auditorías enviadas todavía.</div>
               )}
             </div>
-
+            // deploy: fix dashboard worst null
             {/* ✅ FIX: worst puede ser null */}
             <div style={card}>
               <div style={{ fontWeight: 950, marginBottom: 6 }}>Sección más débil</div>
