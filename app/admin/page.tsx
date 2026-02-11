@@ -157,9 +157,7 @@ export default function AdminPage() {
           }}
         >
           <div style={{ fontSize: 18, fontWeight: 900 }}>Dashboard</div>
-          <div style={{ marginTop: 6, opacity: 0.75, fontSize: 14 }}>
-            Volver al dashboard general.
-          </div>
+          <div style={{ marginTop: 6, opacity: 0.75, fontSize: 14 }}>Volver al dashboard general.</div>
         </button>
 
         <button
@@ -175,9 +173,7 @@ export default function AdminPage() {
           }}
         >
           <div style={{ fontSize: 18, fontWeight: 900 }}>Áreas</div>
-          <div style={{ marginTop: 6, opacity: 0.75, fontSize: 14 }}>
-            Crear/editar áreas del hotel.
-          </div>
+          <div style={{ marginTop: 6, opacity: 0.75, fontSize: 14 }}>Crear/editar áreas del hotel.</div>
         </button>
 
         <button
@@ -193,28 +189,10 @@ export default function AdminPage() {
           }}
         >
           <div style={{ fontSize: 18, fontWeight: 900 }}>Usuarios</div>
-          <div style={{ marginTop: 6, opacity: 0.75, fontSize: 14 }}>
-            Gestionar usuarios del hotel.
-          </div>
+          <div style={{ marginTop: 6, opacity: 0.75, fontSize: 14 }}>Gestionar usuarios del hotel.</div>
         </button>
 
-        <button
-          onClick={() => router.push("/templates")}
-          style={{
-            textAlign: "left",
-            padding: 18,
-            borderRadius: 16,
-            border: "1px solid rgba(0,0,0,0.12)",
-            background: "#fff",
-            boxShadow: "0 6px 24px rgba(0,0,0,0.06)",
-            cursor: "pointer",
-          }}
-        >
-          <div style={{ fontSize: 18, fontWeight: 900 }}>Plantillas</div>
-          <div style={{ marginTop: 6, opacity: 0.75, fontSize: 14 }}>
-            Gestionar plantillas de auditoría.
-          </div>
-        </button>
+        {/* ❌ Plantillas eliminado a propósito (no tiene sentido en el MVP ahora mismo) */}
       </div>
     </main>
   );
