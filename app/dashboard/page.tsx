@@ -4,51 +4,41 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { requireRoleOrRedirect } from "@/lib/auth/RequireRole";
-import { normalizeRole, canRunAudits } from "@/lib/auth/permissions";
 
-// ----------------------
-// Types
-// ----------------------
 type Role = "admin" | "manager" | "auditor";
 
 type Profile = {
   id: string;
-  full_name: string | null;
+  full_name?: string | null;
   role: Role;
   hotel_id: string | null;
+  active?: boolean | null;
 };
 
-type Area = {
+type AreaRow = {
   id: string;
   name: string;
   type: string | null;
   hotel_id: string | null;
+};
+
+type AuditTemplate = {
+  id: string;
+  name: string;
   active?: boolean | null;
+  area_id: string;
 };
 
 type AuditRunRow = {
   id: string;
   status: string | null;
   score: number | null;
-  notes: string | null;
   executed_at: string | null;
-  executed_by: string | null;
   audit_template_id: string;
   area_id: string;
 };
 
-type AuditTemplateRow = { id: string; name: string };
-type DashboardCard = {
-  area: Area;
-
-  // “submitted con score” si existe, sino fallback a lo que haya
-  lastRun: AuditRunRow | null;
-
-  avgScoreLast4: number | null;
-  trendValues: number[]; // últimos 12 scores (0..100)
-};
-
-function fmtDate(iso: string | null) {
+function fmtDateTime(iso: string | null) {
   if (!iso) return "—";
   const d = new Date(iso);
   return d.toLocaleString("es-ES", {
@@ -101,14 +91,7 @@ function Sparkline({ values }: { values: number[] }) {
 
   return (
     <div style={{ width: w, height: h, overflow: "hidden" }}>
-      <svg
-        width={w}
-        height={h}
-        viewBox={`0 0 ${w} ${h}`}
-        role="img"
-        aria-label="tendencia"
-        style={{ display: "block" }}
-      >
+      <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} role="img" aria-label="tendencia" style={{ display: "block" }}>
         <path
           d={d}
           fill="none"
@@ -123,23 +106,34 @@ function Sparkline({ values }: { values: number[] }) {
   );
 }
 
+type TemplateDash = {
+  template_id: string;
+  template_name: string;
+  lastRun: AuditRunRow | null;
+  avgLast4: number | null;
+  trend: number[];
+};
+
+type AreaDash = {
+  area: AreaRow;
+  templates: AuditTemplate[];
+  dashByTemplate: Record<string, TemplateDash>;
+};
+
 export default function DashboardPage() {
   const router = useRouter();
 
   const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const [profile, setProfile] = useState<Profile | null>(null);
-
-  const [areas, setAreas] = useState<Area[]>([]);
-  const [templateNameById, setTemplateNameById] = useState<Record<string, string>>({});
-  const [cards, setCards] = useState<DashboardCard[]>([]);
-
+  const [areas, setAreas] = useState<AreaRow[]>([]);
   const [q, setQ] = useState("");
 
-  // ----------------------
-  // Load
-  // ----------------------
+  // datos “enriquecidos” para mostrar por área -> por plantilla
+  const [areaDash, setAreaDash] = useState<Record<string, AreaDash>>({});
+
   useEffect(() => {
     (async () => {
       setLoading(true);
@@ -149,171 +143,190 @@ export default function DashboardPage() {
         const p = await requireRoleOrRedirect(router, ["admin", "manager", "auditor"], "/login");
         if (!p) return;
 
-        const role = normalizeRole(p.role) as Role;
-        const prof: Profile = {
-          id: p.id,
-          full_name: p.full_name ?? null,
-          role,
-          hotel_id: p.hotel_id ?? null,
-        };
-        setProfile(prof);
+        setProfile(p);
 
-        // auditor -> va a su pantalla principal
-        if (role === "auditor") {
-          router.replace("/audits");
-          return;
-        }
-
-        if (!canRunAudits(role)) {
-          setError("No tienes permisos para acceder a esta sección.");
-          setLoading(false);
-          return;
-        }
-
-        if (!prof.hotel_id) {
+        if (!p?.hotel_id) {
           setAreas([]);
-          setCards([]);
           setLoading(false);
           return;
         }
 
-        // 1) Áreas del hotel
-        const { data: aData, error: aErr } = await supabase
+        // 1) Cargar áreas según rol (admin/manager: todas; auditor: asignadas)
+        if (p.role === "admin" || p.role === "manager") {
+          const { data, error: aErr } = await supabase
+            .from("areas")
+            .select("id,name,type,hotel_id")
+            .eq("hotel_id", p.hotel_id)
+            .order("name", { ascending: true });
+
+          if (aErr) throw aErr;
+          setAreas((data ?? []) as AreaRow[]);
+          setLoading(false);
+          return;
+        }
+
+        // auditor
+        const { data: accessData, error: accessErr } = await supabase
+          .from("user_area_access")
+          .select("area_id")
+          .eq("user_id", p.id)
+          .eq("hotel_id", p.hotel_id);
+
+        if (accessErr) throw accessErr;
+
+        const allowedIds = (accessData ?? []).map((r: any) => r.area_id).filter(Boolean);
+
+        if (allowedIds.length === 0) {
+          setAreas([]);
+          setLoading(false);
+          return;
+        }
+
+        const { data: areasData, error: areasErr } = await supabase
           .from("areas")
-          .select("id,name,type,hotel_id,active")
-          .eq("hotel_id", prof.hotel_id)
+          .select("id,name,type,hotel_id")
+          .eq("hotel_id", p.hotel_id)
+          .in("id", allowedIds)
           .order("name", { ascending: true });
 
-        if (aErr) throw aErr;
+        if (areasErr) throw areasErr;
 
-        const aList = ((aData ?? []) as Area[]).filter((a) => a.active !== false);
-        setAreas(aList);
-
-        const areaIds = aList.map((a) => a.id);
-        if (areaIds.length === 0) {
-          setCards([]);
-          setLoading(false);
-          return;
-        }
-
-        // 2) Runs de todas las áreas (batch)
-        // Igual que en área: traemos hasta 80 por área aprox.
-        // Para simplificar: pedimos un “pool” grande y agrupamos en memoria.
-        const MAX_POOL = Math.min(2000, areaIds.length * 120);
-
-        const { data: runData, error: runErr } = await supabase
-          .from("audit_runs")
-          .select("id,status,score,notes,executed_at,executed_by,audit_template_id,area_id")
-          .in("area_id", areaIds)
-          .order("executed_at", { ascending: false })
-          .limit(MAX_POOL);
-
-        if (runErr) throw runErr;
-
-        const allRuns = (runData ?? []) as AuditRunRow[];
-
-        // 3) Nombres de templates (para “última auditoría”)
-        const templateIds = Array.from(new Set(allRuns.map((r) => r.audit_template_id).filter(Boolean)));
-        if (templateIds.length) {
-          const { data: tData, error: tErr } = await supabase
-            .from("audit_templates")
-            .select("id,name")
-            .in("id", templateIds);
-
-          if (tErr) throw tErr;
-
-          const map: Record<string, string> = {};
-          for (const row of (tData ?? []) as AuditTemplateRow[]) map[row.id] = row.name;
-          setTemplateNameById(map);
-        } else {
-          setTemplateNameById({});
-        }
-
-        // 4) Construir cards con la MISMA lógica que dashboard por área
-        // - submitted con score + executed_at
-        // - si no hay submitted, fallback a allRuns del área
-        const grouped: Record<string, AuditRunRow[]> = {};
-        for (const r of allRuns) {
-          if (!grouped[r.area_id]) grouped[r.area_id] = [];
-          grouped[r.area_id].push(r);
-        }
-
-        const WINDOW = 4;
-
-        const cardList: DashboardCard[] = aList.map((area) => {
-          const areaRuns = grouped[area.id] ?? [];
-
-          const submitted = areaRuns
-            .filter((r) => (r.status ?? "").toLowerCase() === "submitted")
-            .filter((r) => typeof r.score === "number" && r.executed_at);
-
-          const sortedSubmitted = [...submitted].sort((a, b) => {
-            const ta = a.executed_at ? new Date(a.executed_at).getTime() : 0;
-            const tb = b.executed_at ? new Date(b.executed_at).getTime() : 0;
-            return tb - ta;
-          });
-
-          const fallbackSortedAll = [...areaRuns].sort((a, b) => {
-            const ta = a.executed_at ? new Date(a.executed_at).getTime() : 0;
-            const tb = b.executed_at ? new Date(b.executed_at).getTime() : 0;
-            return tb - ta;
-          });
-
-          const finalRuns = sortedSubmitted.length ? sortedSubmitted : fallbackSortedAll;
-          const lastRun = finalRuns[0] ?? null;
-
-          // promedio últimas 4 (solo si hay score)
-          const scored = finalRuns.filter((r) => typeof r.score === "number" && r.executed_at);
-          const last4 = scored.slice(0, WINDOW);
-          const avgScoreLast4 =
-            last4.length === 0
-              ? null
-              : Math.round((last4.reduce((sum, r) => sum + (Number(r.score) || 0), 0) / last4.length) * 100) / 100;
-
-          // tendencia últimos 12 (solo score)
-          const trendRuns = scored.slice(0, 12).reverse();
-          const trendValues = trendRuns
-            .map((r) => Number(r.score))
-            .filter((n) => Number.isFinite(n))
-            .map((n) => clamp(n, 0, 100));
-
-          return {
-            area,
-            lastRun,
-            avgScoreLast4,
-            trendValues,
-          };
-        });
-
-        setCards(cardList);
+        setAreas((areasData ?? []) as AreaRow[]);
         setLoading(false);
       } catch (e: any) {
+        setError(e?.message ?? "No se pudo cargar el dashboard.");
         setLoading(false);
-        setError(e?.message ?? "Error cargando dashboard.");
       }
     })();
   }, [router]);
 
-  const filteredCards = useMemo(() => {
-    const s = q.trim().toLowerCase();
-    if (!s) return cards;
-    return cards.filter((c) => {
-      const hay = `${c.area.name ?? ""} ${c.area.type ?? ""}`.toLowerCase();
-      return hay.includes(s);
-    });
-  }, [cards, q]);
+  // 2) Cuando cambian áreas: cargar plantillas + runs por plantilla (SIN mezclar)
+  useEffect(() => {
+    (async () => {
+      if (!profile?.hotel_id) return;
+      if (areas.length === 0) return;
 
-  async function handleLogout() {
+      setBusy(true);
+      try {
+        const areaIds = areas.map((a) => a.id);
+
+        // 2.1) plantillas activas por área
+        const { data: tplData, error: tplErr } = await supabase
+          .from("audit_templates")
+          .select("id,name,active,area_id")
+          .in("area_id", areaIds)
+          .order("name", { ascending: true });
+
+        if (tplErr) throw tplErr;
+
+        const templates = (tplData ?? [])
+          .filter((t: any) => t.active !== false)
+          .map((t: any) => ({ id: t.id, name: t.name, active: t.active, area_id: t.area_id })) as AuditTemplate[];
+
+        // agrupar por área
+        const templatesByArea: Record<string, AuditTemplate[]> = {};
+        for (const t of templates) {
+          if (!templatesByArea[t.area_id]) templatesByArea[t.area_id] = [];
+          templatesByArea[t.area_id].push(t);
+        }
+
+        // 2.2) runs submitted con score para esas plantillas (cargamos un pool y luego agregamos)
+        const tplIds = templates.map((t) => t.id);
+        let runsPool: AuditRunRow[] = [];
+
+        if (tplIds.length) {
+          // traemos las últimas 1200 por seguridad (normalmente será mucho menos)
+          const { data: runData, error: runErr } = await supabase
+            .from("audit_runs")
+            .select("id,status,score,executed_at,audit_template_id,area_id")
+            .in("audit_template_id", tplIds)
+            .order("executed_at", { ascending: false })
+            .limit(1200);
+
+          if (runErr) throw runErr;
+
+          runsPool = (runData ?? []) as AuditRunRow[];
+        }
+
+        // 2.3) construir dashboard por plantilla
+        const next: Record<string, AreaDash> = {};
+
+        for (const a of areas) {
+          const tpls = templatesByArea[a.id] ?? [];
+          const dashByTemplate: Record<string, TemplateDash> = {};
+
+          for (const t of tpls) {
+            const runs = runsPool
+              .filter((r) => r.audit_template_id === t.id)
+              .filter((r) => (r.status ?? "").toLowerCase() === "submitted")
+              .filter((r) => typeof r.score === "number" && r.executed_at);
+
+            const sorted = [...runs].sort((x, y) => {
+              const tx = x.executed_at ? new Date(x.executed_at).getTime() : 0;
+              const ty = y.executed_at ? new Date(y.executed_at).getTime() : 0;
+              return ty - tx;
+            });
+
+            const lastRun = sorted[0] ?? null;
+
+            const last4 = sorted.slice(0, 4);
+            const avgLast4 =
+              last4.length === 0
+                ? null
+                : Math.round((last4.reduce((sum, r) => sum + (Number(r.score) || 0), 0) / last4.length) * 100) / 100;
+
+            const trendRuns = sorted.slice(0, 12).reverse();
+            const trend = trendRuns
+              .map((r) => Number(r.score))
+              .filter((n) => Number.isFinite(n))
+              .map((n) => clamp(n, 0, 100));
+
+            dashByTemplate[t.id] = {
+              template_id: t.id,
+              template_name: t.name,
+              lastRun,
+              avgLast4,
+              trend,
+            };
+          }
+
+          next[a.id] = {
+            area: a,
+            templates: tpls,
+            dashByTemplate,
+          };
+        }
+
+        setAreaDash(next);
+      } catch (e: any) {
+        setError(e?.message ?? "Error cargando datos del dashboard.");
+      } finally {
+        setBusy(false);
+      }
+    })();
+  }, [areas, profile?.hotel_id]);
+
+  async function logout() {
     await supabase.auth.signOut();
     router.replace("/login");
   }
 
-  const cardStyle: React.CSSProperties = {
+  const filteredAreas = useMemo(() => {
+    const s = q.trim().toLowerCase();
+    if (!s) return areas;
+
+    return areas.filter((a) => {
+      const hay = `${a.name ?? ""} ${a.type ?? ""} ${a.id ?? ""}`.toLowerCase();
+      return hay.includes(s);
+    });
+  }, [areas, q]);
+
+  const card: React.CSSProperties = {
     borderRadius: 18,
     border: "1px solid rgba(0,0,0,0.08)",
-    background: "rgba(255,255,255,0.85)",
+    background: "rgba(255,255,255,0.75)",
     padding: 18,
-    boxShadow: "0 6px 24px rgba(0,0,0,0.06)",
+    boxShadow: "0 10px 30px rgba(0,0,0,0.06)",
   };
 
   const btnBlack: React.CSSProperties = {
@@ -325,23 +338,25 @@ export default function DashboardPage() {
     fontWeight: 900,
     cursor: "pointer",
     height: 42,
+    whiteSpace: "nowrap",
   };
 
   const btnWhite: React.CSSProperties = {
     padding: "10px 14px",
     borderRadius: 12,
-    border: "1px solid rgba(0,0,0,0.18)",
+    border: "1px solid rgba(0,0,0,0.2)",
     background: "#fff",
     color: "#000",
     fontWeight: 900,
     cursor: "pointer",
     height: 42,
+    whiteSpace: "nowrap",
   };
 
   if (loading) {
     return (
       <main style={{ padding: 24 }}>
-        <h1 style={{ fontSize: 40, fontWeight: 950, marginBottom: 6 }}>Dashboard general</h1>
+        <h1 style={{ fontSize: 56, marginBottom: 6 }}>Dashboard general</h1>
         <div style={{ opacity: 0.8 }}>Cargando…</div>
       </main>
     );
@@ -350,40 +365,39 @@ export default function DashboardPage() {
   if (error) {
     return (
       <main style={{ padding: 24 }}>
-        <h1 style={{ fontSize: 40, fontWeight: 950, marginBottom: 6 }}>Dashboard general</h1>
+        <h1 style={{ fontSize: 56, marginBottom: 6 }}>Dashboard general</h1>
         <div style={{ color: "crimson", fontWeight: 900 }}>{error}</div>
+        <button onClick={logout} style={{ ...btnWhite, marginTop: 14 }}>
+          Salir
+        </button>
       </main>
     );
   }
 
-  const role = profile?.role ?? "manager";
-  const areasCount = areas.length;
-
   return (
     <main style={{ padding: 24 }}>
-      {/* header */}
       <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
         <div>
-          <h1 style={{ fontSize: 40, fontWeight: 950, marginBottom: 6 }}>Dashboard general</h1>
-          <div style={{ opacity: 0.8 }}>
-            Hola, {profile?.full_name ?? "—"}. Rol: <b>{role}</b> · Áreas: <b>{areasCount}</b>
+          <h1 style={{ fontSize: 56, marginBottom: 6 }}>Dashboard general</h1>
+          <div style={{ opacity: 0.85 }}>
+            Hola{profile?.full_name ? `, ${profile.full_name}` : ""}. Rol: <strong>{profile?.role}</strong> · Áreas:{" "}
+            <strong>{areas.length}</strong>
           </div>
         </div>
 
         <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-          {role === "admin" ? (
-            <button style={btnBlack} onClick={() => router.push("/admin")}>
+          {profile?.role === "admin" ? (
+            <button onClick={() => router.push("/admin")} style={btnBlack}>
               Admin
             </button>
           ) : null}
-          <button style={btnWhite} onClick={handleLogout}>
+          <button onClick={logout} style={btnWhite}>
             Salir
           </button>
         </div>
       </div>
 
-      {/* search */}
-      <div style={{ marginTop: 16 }}>
+      <div style={{ marginTop: 14, display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
         <input
           value={q}
           onChange={(e) => setQ(e.target.value)}
@@ -391,96 +405,144 @@ export default function DashboardPage() {
           style={{
             width: "100%",
             padding: "12px 14px",
-            borderRadius: 12,
-            border: "1px solid rgba(0,0,0,0.18)",
+            borderRadius: 14,
+            border: "1px solid rgba(0,0,0,0.2)",
             outline: "none",
             fontWeight: 800,
-            background: "#fff",
           }}
         />
       </div>
 
-      {/* cards */}
-      <div
-        style={{
-          marginTop: 16,
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
-          gap: 14,
-        }}
-      >
-        {filteredCards.map((c) => {
-          const r = c.lastRun;
-          const lastScore = typeof r?.score === "number" ? Number(r.score) : null;
-          const lastTplName = r ? templateNameById[r.audit_template_id] ?? r.audit_template_id : "—";
+      {busy ? <div style={{ marginTop: 12, opacity: 0.7 }}>Actualizando métricas…</div> : null}
+
+      <div style={{ marginTop: 14, display: "grid", gap: 14 }}>
+        {filteredAreas.map((a) => {
+          const ad = areaDash[a.id];
+          const templates = ad?.templates ?? [];
 
           return (
-            <div key={c.area.id} style={cardStyle}>
-              <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
+            <div key={a.id} style={card}>
+              <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
                 <div>
-                  <div style={{ fontSize: 18, fontWeight: 950 }}>{c.area.name}</div>
-                  <div style={{ opacity: 0.75, marginTop: 6, fontSize: 13 }}>{c.area.type ?? "—"}</div>
-
-                  <div style={{ marginTop: 12, fontSize: 13, opacity: 0.9 }}>
-                    <div style={{ opacity: 0.7 }}>Última auditoría:</div>
-                    <div style={{ fontWeight: 900 }}>
-                      {lastTplName} · {fmtDate(r?.executed_at ?? null)}
-                    </div>
-
-                    <div style={{ marginTop: 8, opacity: 0.7 }}>Estado:</div>
-                    <div style={{ fontWeight: 900 }}>{r?.status ?? "—"}</div>
+                  <div style={{ fontSize: 20, fontWeight: 950 }}>{a.name}</div>
+                  <div style={{ opacity: 0.8, marginTop: 6 }}>
+                    {a.type ? <span style={{ fontWeight: 900 }}>{a.type}</span> : null}
                   </div>
                 </div>
 
-                <div style={{ textAlign: "right" }}>
-                  <div style={{ fontSize: 12, opacity: 0.6 }}>Último score</div>
-                  <div style={{ marginTop: 4, fontSize: 28, fontWeight: 950, color: scoreColor(lastScore) }}>
-                    {lastScore === null ? "—" : `${lastScore.toFixed(2)}%`}
-                  </div>
+                <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+                  <button onClick={() => router.push(`/areas/${a.id}?tab=history`)} style={btnWhite}>
+                    Historial
+                  </button>
 
-                  <div style={{ marginTop: 10, opacity: 0.85 }}>
-                    <div style={{ fontSize: 12, opacity: 0.6 }}>Promedio últimas 4</div>
-                    <div style={{ fontWeight: 950, color: scoreColor(c.avgScoreLast4) }}>
-                      {c.avgScoreLast4 === null ? "—" : `${c.avgScoreLast4.toFixed(2)}%`}
-                    </div>
-                  </div>
+                  <button onClick={() => router.push(`/areas/${a.id}?tab=dashboard`)} style={btnWhite}>
+                    Ver dashboard
+                  </button>
 
-                  <div style={{ marginTop: 10, display: "inline-flex", color: scoreColor(c.avgScoreLast4) }}>
-                    <Sparkline values={c.trendValues} />
-                  </div>
+                  {/* ✅ Cambio solicitado: no “Iniciar auditoría” aquí */}
+                  <button onClick={() => router.push(`/areas/${a.id}?tab=templates`)} style={btnBlack}>
+                    Auditorías disponibles
+                  </button>
                 </div>
               </div>
 
-              <div style={{ marginTop: 14, display: "flex", gap: 10, flexWrap: "wrap" }}>
-                <button
-                  style={btnBlack}
-                  onClick={() => router.push(`/areas/${c.area.id}/start`)}
-                >
-                  Iniciar auditoría
-                </button>
+              <div style={{ marginTop: 14 }}>
+                <div style={{ fontWeight: 950, marginBottom: 10 }}>Métricas por auditoría (plantilla)</div>
 
-                <button
-                  style={btnWhite}
-                  onClick={() => router.push(`/areas/${c.area.id}?tab=history`)}
-                >
-                  Historial
-                </button>
+                {templates.length === 0 ? (
+                  <div style={{ opacity: 0.75 }}>No hay plantillas activas en esta área.</div>
+                ) : (
+                  <div style={{ overflowX: "auto" }}>
+                    <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                      <thead>
+                        <tr style={{ textAlign: "left" }}>
+                          <th style={{ padding: "10px 8px", borderBottom: "1px solid rgba(0,0,0,0.15)" }}>
+                            Auditoría
+                          </th>
+                          <th style={{ padding: "10px 8px", borderBottom: "1px solid rgba(0,0,0,0.15)" }}>
+                            Última auditoría
+                          </th>
+                          <th style={{ padding: "10px 8px", borderBottom: "1px solid rgba(0,0,0,0.15)" }}>
+                            Último score
+                          </th>
+                          <th style={{ padding: "10px 8px", borderBottom: "1px solid rgba(0,0,0,0.15)" }}>
+                            Promedio últimas 4
+                          </th>
+                          <th style={{ padding: "10px 8px", borderBottom: "1px solid rgba(0,0,0,0.15)" }}>
+                            Tendencia
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {templates.map((t) => {
+                          const d = ad?.dashByTemplate?.[t.id];
+                          const last = d?.lastRun ?? null;
 
-                <button
-                  style={btnWhite}
-                  onClick={() => router.push(`/areas/${c.area.id}?tab=dashboard`)}
-                >
-                  Ver dashboard
-                </button>
+                          const lastScore = last?.score ?? null;
+                          const avg = d?.avgLast4 ?? null;
+
+                          return (
+                            <tr key={t.id}>
+                              <td style={{ padding: "10px 8px", borderBottom: "1px solid rgba(0,0,0,0.08)" }}>
+                                <div style={{ fontWeight: 950 }}>{t.name}</div>
+                                <div style={{ opacity: 0.6, fontSize: 12 }}>ID: {t.id}</div>
+                              </td>
+
+                              <td style={{ padding: "10px 8px", borderBottom: "1px solid rgba(0,0,0,0.08)" }}>
+                                {last ? fmtDateTime(last.executed_at) : "—"}
+                              </td>
+
+                              <td
+                                style={{
+                                  padding: "10px 8px",
+                                  borderBottom: "1px solid rgba(0,0,0,0.08)",
+                                  fontWeight: 950,
+                                  color: scoreColor(lastScore),
+                                }}
+                              >
+                                {lastScore === null ? "—" : `${Number(lastScore).toFixed(2)}%`}
+                              </td>
+
+                              <td
+                                style={{
+                                  padding: "10px 8px",
+                                  borderBottom: "1px solid rgba(0,0,0,0.08)",
+                                  fontWeight: 950,
+                                  color: scoreColor(avg),
+                                }}
+                              >
+                                {avg === null ? "—" : `${Number(avg).toFixed(2)}%`}
+                              </td>
+
+                              <td style={{ padding: "10px 8px", borderBottom: "1px solid rgba(0,0,0,0.08)" }}>
+                                <span style={{ color: scoreColor(avg), display: "inline-flex" }}>
+                                  <Sparkline values={d?.trend ?? []} />
+                                </span>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+
+                    <div style={{ marginTop: 10, opacity: 0.7, fontSize: 12.5 }}>
+                      * Aquí no se mezclan plantillas: cada fila es una auditoría distinta (Arrival, Occupied, etc.).
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           );
         })}
-      </div>
 
-      {filteredCards.length === 0 ? (
-        <div style={{ marginTop: 16, opacity: 0.8 }}>No hay áreas para mostrar.</div>
-      ) : null}
+        {filteredAreas.length === 0 ? (
+          <div style={card}>
+            {profile?.role === "auditor"
+              ? "No tienes áreas asignadas. Pide a un admin que te habilite accesos."
+              : "No hay áreas para mostrar."}
+          </div>
+        ) : null}
+      </div>
     </main>
   );
 }
