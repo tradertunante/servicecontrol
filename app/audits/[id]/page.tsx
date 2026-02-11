@@ -34,14 +34,16 @@ type SectionRow = {
   created_at: string | null;
 };
 
+type RequirementType = "never" | "if_fail" | "always";
+
 type QuestionRow = {
   id: string;
   audit_section_id: string;
   text: string;
   weight: number | null;
-  require_photo: boolean;
-  require_comment: boolean;
-  require_signature: boolean;
+  photo_requirement: RequirementType;
+  comment_requirement: RequirementType;
+  signature_requirement: RequirementType;
   active: boolean;
   order: number | null;
   created_at: string | null;
@@ -49,11 +51,14 @@ type QuestionRow = {
   classification?: string | null;
 };
 
+type AnswerValue = "FAIL" | "NA";
+
 type AnswerRow = {
   id: string;
   audit_run_id: string;
   question_id: string;
-  answer: "FAIL" | "NA";
+  answer: AnswerValue | null;
+  result: AnswerValue | null;
   comment: string | null;
   photo_path: string | null;
 };
@@ -81,6 +86,11 @@ function scoreColor(score: number | null): string {
   return "#000";
 }
 
+function toRequirement(v: any): RequirementType {
+  if (v === "if_fail" || v === "always") return v;
+  return "never";
+}
+
 export default function AuditRunPage() {
   const router = useRouter();
   const params = useParams<{ id: string }>();
@@ -88,6 +98,7 @@ export default function AuditRunPage() {
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -99,9 +110,6 @@ export default function AuditRunPage() {
   const [questions, setQuestions] = useState<QuestionRow[]>([]);
   const [answersByQ, setAnswersByQ] = useState<Record<string, AnswerRow>>({});
 
-  // -----------------------
-  // Load
-  // -----------------------
   useEffect(() => {
     if (!runId) return;
 
@@ -120,7 +128,6 @@ export default function AuditRunPage() {
           return;
         }
 
-        // 1) Run (IMPORTANTE: NO pedimos name aquí)
         const { data: rData, error: rErr } = await supabase
           .from("audit_runs")
           .select("id,status,score,notes,executed_at,executed_by,audit_template_id,area_id")
@@ -131,7 +138,6 @@ export default function AuditRunPage() {
         const r = rData as AuditRunRow;
         setRun(r);
 
-        // 2) Template + Area
         const [{ data: tData, error: tErr }, { data: aData, error: aErr }] = await Promise.all([
           supabase.from("audit_templates").select("id,name").eq("id", r.audit_template_id).single(),
           supabase.from("areas").select("id,name,type").eq("id", r.area_id).single(),
@@ -143,7 +149,6 @@ export default function AuditRunPage() {
         setTemplate(tData as TemplateRow);
         setArea(aData as AreaRow);
 
-        // 3) Sections
         const { data: sData, error: sErr } = await supabase
           .from("audit_sections")
           .select("id,name,active,created_at")
@@ -156,13 +161,12 @@ export default function AuditRunPage() {
         const secs = (sData ?? []) as SectionRow[];
         setSections(secs);
 
-        // 4) Questions (solo activas)
         const secIds = secs.map((s) => s.id);
         if (secIds.length) {
           const { data: qData, error: qErr } = await supabase
             .from("audit_questions")
             .select(
-              "id,audit_section_id,text,weight,require_photo,require_comment,require_signature,active,order,created_at,tag,classification"
+              "id,audit_section_id,text,weight,photo_requirement,comment_requirement,signature_requirement,active,order,created_at,tag,classification"
             )
             .in("audit_section_id", secIds)
             .eq("active", true)
@@ -172,15 +176,22 @@ export default function AuditRunPage() {
             .order("id", { ascending: true });
 
           if (qErr) throw qErr;
-          setQuestions((qData ?? []) as QuestionRow[]);
+          
+          const qList = (qData ?? []).map((q: any) => ({
+            ...q,
+            photo_requirement: toRequirement(q.photo_requirement),
+            comment_requirement: toRequirement(q.comment_requirement),
+            signature_requirement: toRequirement(q.signature_requirement),
+          }));
+          
+          setQuestions(qList as QuestionRow[]);
         } else {
           setQuestions([]);
         }
 
-        // 5) Answers (solo excepciones FAIL/NA)
         const { data: ansData, error: ansErr } = await supabase
           .from("audit_answers")
-          .select("id,audit_run_id,question_id,answer,comment,photo_path")
+          .select("id,audit_run_id,question_id,answer,result,comment,photo_path")
           .eq("audit_run_id", runId);
 
         if (ansErr) throw ansErr;
@@ -188,7 +199,16 @@ export default function AuditRunPage() {
         const map: Record<string, AnswerRow> = {};
         for (const row of (ansData ?? []) as any[]) {
           if (!row?.question_id) continue;
-          map[row.question_id] = row as AnswerRow;
+
+          map[row.question_id] = {
+            id: row.id,
+            audit_run_id: row.audit_run_id,
+            question_id: row.question_id,
+            answer: (row.answer ?? null) as AnswerValue | null,
+            result: (row.result ?? null) as AnswerValue | null,
+            comment: row.comment ?? null,
+            photo_path: row.photo_path ?? null,
+          };
         }
         setAnswersByQ(map);
 
@@ -200,9 +220,6 @@ export default function AuditRunPage() {
     })();
   }, [runId, router]);
 
-  // -----------------------
-  // Derived stats
-  // -----------------------
   const totals = useMemo(() => {
     const total = questions.length;
     let fail = 0;
@@ -211,11 +228,14 @@ export default function AuditRunPage() {
     for (const q of questions) {
       const a = answersByQ[q.id];
       if (!a) continue;
-      if (a.answer === "FAIL") fail += 1;
-      if (a.answer === "NA") na += 1;
+
+      const val = (a.answer ?? a.result) as AnswerValue | null;
+      if (!val) continue;
+
+      if (val === "FAIL") fail += 1;
+      if (val === "NA") na += 1;
     }
 
-    // PASS implícito = preguntas sin fila en audit_answers
     const denom = Math.max(0, total - na);
     const pass = Math.max(0, denom - fail);
     const score = denom === 0 ? null : Math.round((pass / denom) * 100 * 100) / 100;
@@ -232,20 +252,23 @@ export default function AuditRunPage() {
     return bySection;
   }, [questions]);
 
-  // -----------------------
-  // Save helpers
-  // -----------------------
-  async function setAnswer(questionId: string, next: "FAIL" | "NA" | null) {
+  async function setAnswer(questionId: string, next: AnswerValue | null) {
     if (!runId) return;
 
     setSaving(true);
     setError(null);
 
     try {
-      // next=null => PASS implícito => borramos fila si existe
       if (next === null) {
         const current = answersByQ[questionId];
         if (current?.id) {
+          // Si había foto, eliminarla de Storage
+          if (current.photo_path) {
+            const parts = current.photo_path.split("/");
+            const fileName = parts[parts.length - 1];
+            await supabase.storage.from("audit-photos").remove([fileName]);
+          }
+
           const { error: delErr } = await supabase.from("audit_answers").delete().eq("id", current.id);
           if (delErr) throw delErr;
 
@@ -257,13 +280,13 @@ export default function AuditRunPage() {
         return;
       }
 
-      // Upsert (excepción)
       const current = answersByQ[questionId];
 
       const payload = {
         audit_run_id: runId,
         question_id: questionId,
-        answer: next as "FAIL" | "NA", // nunca null
+        answer: next,
+        result: next,
         comment: current?.comment ?? null,
         photo_path: current?.photo_path ?? null,
       };
@@ -271,7 +294,7 @@ export default function AuditRunPage() {
       const { data, error: upErr } = await supabase
         .from("audit_answers")
         .upsert(payload, { onConflict: "audit_run_id,question_id" })
-        .select("id,audit_run_id,question_id,answer,comment,photo_path")
+        .select("id,audit_run_id,question_id,answer,result,comment,photo_path")
         .single();
 
       if (upErr || !data) throw upErr ?? new Error("No se pudo guardar.");
@@ -290,13 +313,13 @@ export default function AuditRunPage() {
 
     try {
       const current = answersByQ[questionId];
-      // Solo guardamos comentarios en excepciones (FAIL/NA). Si no hay excepción, no hacemos nada.
       if (!current?.id) {
         setSaving(false);
         return;
       }
 
       const { error: upErr } = await supabase.from("audit_answers").update({ comment }).eq("id", current.id);
+
       if (upErr) throw upErr;
 
       setAnswersByQ({ ...answersByQ, [questionId]: { ...current, comment } });
@@ -307,48 +330,114 @@ export default function AuditRunPage() {
     }
   }
 
-  async function setPhotoPath(questionId: string, photo_path: string | null) {
+  async function uploadPhoto(questionId: string, file: File) {
+    if (!runId) return;
+
+    const current = answersByQ[questionId];
+    if (!current?.id) {
+      setError("Primero marca FAIL o NA para esta pregunta.");
+      return;
+    }
+
+    setUploading(true);
+    setError(null);
+
+    try {
+      // Generar nombre único
+      const timestamp = Date.now();
+      const extension = file.name.split(".").pop();
+      const fileName = `${runId}_${questionId}_${timestamp}.${extension}`;
+
+      // Subir a Storage
+      const { data: uploadData, error: uploadErr } = await supabase.storage
+        .from("audit-photos")
+        .upload(fileName, file, {
+          cacheControl: "3600",
+          upsert: false,
+        });
+
+      if (uploadErr) throw uploadErr;
+
+      // Obtener URL pública
+      const { data: urlData } = supabase.storage.from("audit-photos").getPublicUrl(fileName);
+
+      const publicUrl = urlData.publicUrl;
+
+      // Guardar en DB
+      const { error: upErr } = await supabase
+        .from("audit_answers")
+        .update({ photo_path: publicUrl })
+        .eq("id", current.id);
+
+      if (upErr) throw upErr;
+
+      setAnswersByQ({ ...answersByQ, [questionId]: { ...current, photo_path: publicUrl } });
+      setUploading(false);
+    } catch (e: any) {
+      setUploading(false);
+      setError(e?.message ?? "No se pudo subir la foto.");
+    }
+  }
+
+  async function deletePhoto(questionId: string) {
+    const current = answersByQ[questionId];
+    if (!current?.photo_path) return;
+
+    const ok = confirm("¿Eliminar esta foto?");
+    if (!ok) return;
+
     setSaving(true);
     setError(null);
 
     try {
-      const current = answersByQ[questionId];
-      if (!current?.id) {
-        setSaving(false);
-        return;
-      }
+      // Extraer nombre del archivo de la URL
+      const parts = current.photo_path.split("/");
+      const fileName = parts[parts.length - 1];
 
-      const { error: upErr } = await supabase.from("audit_answers").update({ photo_path }).eq("id", current.id);
+      // Eliminar de Storage
+      const { error: delErr } = await supabase.storage.from("audit-photos").remove([fileName]);
+      if (delErr) console.warn("Error eliminando de Storage:", delErr);
+
+      // Actualizar DB
+      const { error: upErr } = await supabase
+        .from("audit_answers")
+        .update({ photo_path: null })
+        .eq("id", current.id);
+
       if (upErr) throw upErr;
 
-      setAnswersByQ({ ...answersByQ, [questionId]: { ...current, photo_path } });
+      setAnswersByQ({ ...answersByQ, [questionId]: { ...current, photo_path: null } });
       setSaving(false);
     } catch (e: any) {
       setSaving(false);
-      setError(e?.message ?? "No se pudo guardar la foto.");
+      setError(e?.message ?? "No se pudo eliminar la foto.");
     }
   }
 
-  // -----------------------
-  // Submit
-  // -----------------------
   async function submitRun() {
     if (!run) return;
 
-    // Validación: si exige comentario/foto y está en FAIL, bloquea
+    // Validación condicional
     for (const q of questions) {
       const a = answersByQ[q.id];
       if (!a) continue;
 
-      if (a.answer === "FAIL") {
-        if (q.require_comment && !(a.comment ?? "").trim()) {
-          setError(`Falta comentario en: "${q.text}"`);
-          return;
-        }
-        if (q.require_photo && !(a.photo_path ?? "").trim()) {
-          setError(`Falta foto en: "${q.text}"`);
-          return;
-        }
+      const val = (a.answer ?? a.result) as AnswerValue | null;
+      if (!val) continue;
+
+      // Determinar si aplica el requirement
+      const shouldCheckComment =
+        q.comment_requirement === "always" || (q.comment_requirement === "if_fail" && val === "FAIL");
+      const shouldCheckPhoto =
+        q.photo_requirement === "always" || (q.photo_requirement === "if_fail" && val === "FAIL");
+
+      if (shouldCheckComment && !(a.comment ?? "").trim()) {
+        setError(`Falta comentario en: "${q.text}"`);
+        return;
+      }
+      if (shouldCheckPhoto && !(a.photo_path ?? "").trim()) {
+        setError(`Falta foto en: "${q.text}"`);
+        return;
       }
     }
 
@@ -378,9 +467,14 @@ export default function AuditRunPage() {
     }
   }
 
-  // -----------------------
-  // UI
-  // -----------------------
+  // Determinar si mostrar campo según requirement
+  function shouldShowField(requirement: RequirementType, isFail: boolean): boolean {
+    if (requirement === "never") return false;
+    if (requirement === "always") return true;
+    if (requirement === "if_fail") return isFail;
+    return false;
+  }
+
   const card: React.CSSProperties = {
     borderRadius: 18,
     border: "1px solid rgba(0,0,0,0.08)",
@@ -479,7 +573,6 @@ export default function AuditRunPage() {
         </div>
       </div>
 
-      {/* LISTADO por secciones */}
       <div style={{ marginTop: 18, display: "grid", gap: 14 }}>
         {sections.map((s) => {
           const qs = grouped[s.id] ?? [];
@@ -492,10 +585,17 @@ export default function AuditRunPage() {
               <div style={{ display: "grid", gap: 12 }}>
                 {qs.map((q) => {
                   const a = answersByQ[q.id];
-                  const selected = a?.answer ?? null; // null => PASS implícito (sin fila)
+                  const selected = (a?.answer ?? a?.result) ?? null;
 
                   const isFail = selected === "FAIL";
                   const isNA = selected === "NA";
+
+                  const showComment = shouldShowField(q.comment_requirement, isFail);
+                  const showPhoto = shouldShowField(q.photo_requirement, isFail);
+
+                  const requireComment =
+                    q.comment_requirement === "always" || (q.comment_requirement === "if_fail" && isFail);
+                  const requirePhoto = q.photo_requirement === "always" || (q.photo_requirement === "if_fail" && isFail);
 
                   return (
                     <div
@@ -509,7 +609,6 @@ export default function AuditRunPage() {
                     >
                       <div style={{ fontWeight: 950, marginBottom: 10 }}>{q.text}</div>
 
-                      {/* SOLO FAIL / NA */}
                       <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
                         <button
                           onClick={() => setAnswer(q.id, isFail ? null : "FAIL")}
@@ -537,55 +636,93 @@ export default function AuditRunPage() {
                           NA
                         </button>
 
-                        {/* Indicadores de reglas */}
-                        {q.require_comment ? <span style={pill}>Comentario</span> : null}
-                        {q.require_photo ? <span style={pill}>Foto</span> : null}
+                        {q.comment_requirement !== "never" && <span style={pill}>Comentario</span>}
+                        {q.photo_requirement !== "never" && <span style={pill}>Foto</span>}
                       </div>
 
-                      {/* Detalle: solo si existe excepción */}
-                      {a ? (
+                      {/* Solo mostrar campos si hay excepción */}
+                      {a && (showComment || showPhoto) ? (
                         <div style={{ marginTop: 12, display: "grid", gap: 10 }}>
-                          <div>
-                            <div style={{ fontWeight: 900, marginBottom: 6 }}>
-                              Comentario{q.require_comment && isFail ? " (obligatorio en FAIL)" : ""}
+                          {showComment && (
+                            <div>
+                              <div style={{ fontWeight: 900, marginBottom: 6 }}>
+                                Comentario{requireComment ? " (obligatorio)" : ""}
+                              </div>
+                              <textarea
+                                value={a.comment ?? ""}
+                                onChange={(e) => setComment(q.id, e.target.value)}
+                                placeholder="Escribe comentario…"
+                                style={{
+                                  width: "100%",
+                                  minHeight: 70,
+                                  padding: 12,
+                                  borderRadius: 12,
+                                  border: "1px solid rgba(0,0,0,0.18)",
+                                  outline: "none",
+                                  fontWeight: 700,
+                                }}
+                              />
                             </div>
-                            <textarea
-                              value={a.comment ?? ""}
-                              onChange={(e) => setComment(q.id, e.target.value)}
-                              placeholder="Escribe comentario…"
-                              style={{
-                                width: "100%",
-                                minHeight: 70,
-                                padding: 12,
-                                borderRadius: 12,
-                                border: "1px solid rgba(0,0,0,0.18)",
-                                outline: "none",
-                                fontWeight: 700,
-                              }}
-                            />
-                          </div>
+                          )}
 
-                          <div>
-                            <div style={{ fontWeight: 900, marginBottom: 6 }}>
-                              Foto (ruta){q.require_photo && isFail ? " (obligatoria en FAIL)" : ""}
+                          {showPhoto && (
+                            <div>
+                              <div style={{ fontWeight: 900, marginBottom: 6 }}>
+                                Foto{requirePhoto ? " (obligatoria)" : ""}
+                              </div>
+
+                              {a.photo_path ? (
+                                <div>
+                                  <img
+                                    src={a.photo_path}
+                                    alt="Foto de evidencia"
+                                    style={{
+                                      maxWidth: "100%",
+                                      maxHeight: 300,
+                                      borderRadius: 12,
+                                      border: "1px solid rgba(0,0,0,0.12)",
+                                      marginBottom: 10,
+                                    }}
+                                  />
+                                  <button
+                                    onClick={() => deletePhoto(q.id)}
+                                    disabled={saving}
+                                    style={{
+                                      ...btnGhost,
+                                      background: "#fff",
+                                      borderColor: "#c62828",
+                                      color: "#c62828",
+                                    }}
+                                  >
+                                    Eliminar foto
+                                  </button>
+                                </div>
+                              ) : (
+                                <div>
+                                  <input
+                                    type="file"
+                                    accept="image/*"
+                                    id={`photo-${q.id}`}
+                                    style={{ display: "none" }}
+                                    onChange={(e) => {
+                                      const file = e.target.files?.[0];
+                                      if (file) uploadPhoto(q.id, file);
+                                    }}
+                                  />
+                                  <button
+                                    onClick={() => document.getElementById(`photo-${q.id}`)?.click()}
+                                    disabled={uploading || saving}
+                                    style={{
+                                      ...btnGhost,
+                                      opacity: uploading || saving ? 0.7 : 1,
+                                    }}
+                                  >
+                                    {uploading ? "Subiendo..." : "📷 Upload"}
+                                  </button>
+                                </div>
+                              )}
                             </div>
-                            <input
-                              value={a.photo_path ?? ""}
-                              onChange={(e) => setPhotoPath(q.id, e.target.value || null)}
-                              placeholder='Ej: "bucket/path.jpg" o URL'
-                              style={{
-                                width: "100%",
-                                padding: 12,
-                                borderRadius: 12,
-                                border: "1px solid rgba(0,0,0,0.18)",
-                                outline: "none",
-                                fontWeight: 700,
-                              }}
-                            />
-                            <div style={{ marginTop: 6, opacity: 0.65, fontSize: 12 }}>
-                              (De momento guardamos una ruta/URL. Luego metemos subida real a Storage.)
-                            </div>
-                          </div>
+                          )}
                         </div>
                       ) : null}
                     </div>

@@ -161,7 +161,7 @@ export default function AdminPage() {
         </button>
 
         <button
-          onClick={() => router.push("/areas")}
+          onClick={() => router.push("/builder")}
           style={{
             textAlign: "left",
             padding: 18,
@@ -172,8 +172,8 @@ export default function AdminPage() {
             cursor: "pointer",
           }}
         >
-          <div style={{ fontSize: 18, fontWeight: 900 }}>Áreas</div>
-          <div style={{ marginTop: 6, opacity: 0.75, fontSize: 14 }}>Crear/editar áreas del hotel.</div>
+          <div style={{ fontSize: 18, fontWeight: 900 }}>Builder</div>
+          <div style={{ marginTop: 6, opacity: 0.75, fontSize: 14 }}>Crear y editar auditorías.</div>
         </button>
 
         <button
@@ -191,8 +191,6 @@ export default function AdminPage() {
           <div style={{ fontSize: 18, fontWeight: 900 }}>Usuarios</div>
           <div style={{ marginTop: 6, opacity: 0.75, fontSize: 14 }}>Gestionar usuarios del hotel.</div>
         </button>
-
-        {/* ❌ Plantillas eliminado a propósito (no tiene sentido en el MVP ahora mismo) */}
       </div>
     </main>
   );
