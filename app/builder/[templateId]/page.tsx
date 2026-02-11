@@ -28,6 +28,8 @@ type SectionRow = {
   created_at: string | null;
 };
 
+type RequirementType = "never" | "if_fail" | "always";
+
 type QuestionRow = {
   id: string;
   audit_section_id: string;
@@ -35,23 +37,23 @@ type QuestionRow = {
   tag: string | null;
   order: number | null;
   active: boolean;
-  require_comment: boolean;
-  require_photo: boolean;
-  require_signature: boolean;
+  comment_requirement: RequirementType;
+  photo_requirement: RequirementType;
+  signature_requirement: RequirementType;
   created_at: string | null;
 };
 
 type UiRow = {
   questionId: string;
   sectionId: string;
-  classification: string; // section.name
+  classification: string;
   tag: string;
   standard: string;
-  require_comment: boolean;
-  require_photo: boolean;
-  require_signature: boolean;
+  comment_requirement: RequirementType;
+  photo_requirement: RequirementType;
+  signature_requirement: RequirementType;
   active: boolean;
-  order: number; // always numeric in UI
+  order: number;
 };
 
 function toBool(v: any): boolean {
@@ -65,6 +67,11 @@ function safeStr(v: any): string {
 function normalizeOrder(n: number | null | undefined, fallback: number) {
   const x = Number(n);
   return Number.isFinite(x) && x > 0 ? x : fallback;
+}
+
+function toRequirement(v: any): RequirementType {
+  if (v === "if_fail" || v === "always") return v;
+  return "never";
 }
 
 export default function BuilderTemplatePage() {
@@ -85,16 +92,13 @@ export default function BuilderTemplatePage() {
   const [rows, setRows] = useState<UiRow[]>([]);
 
   // Quick rules
-  const [quickComment, setQuickComment] = useState(false);
-  const [quickPhoto, setQuickPhoto] = useState(false);
-  const [quickSignature, setQuickSignature] = useState(false);
+  const [quickComment, setQuickComment] = useState<RequirementType>("never");
+  const [quickPhoto, setQuickPhoto] = useState<RequirementType>("never");
+  const [quickSignature, setQuickSignature] = useState<RequirementType>("never");
 
   // Rename
   const [nameDraft, setNameDraft] = useState("");
 
-  // -----------------------
-  // Load
-  // -----------------------
   useEffect(() => {
     if (!templateId) return;
 
@@ -104,7 +108,6 @@ export default function BuilderTemplatePage() {
       setInfo(null);
 
       try {
-        // Template
         const { data: tData, error: tErr } = await supabase
           .from("audit_templates")
           .select("id,name,active,area_id,created_at")
@@ -116,7 +119,6 @@ export default function BuilderTemplatePage() {
         setTemplate(tpl);
         setNameDraft(tpl.name ?? "");
 
-        // Area (si existe)
         if (tpl.area_id) {
           const { data: aData, error: aErr } = await supabase
             .from("areas")
@@ -128,7 +130,6 @@ export default function BuilderTemplatePage() {
           setArea(null);
         }
 
-        // Sections
         const { data: sData, error: sErr } = await supabase
           .from("audit_sections")
           .select("id,audit_template_id,name,active,created_at")
@@ -140,14 +141,13 @@ export default function BuilderTemplatePage() {
         const secs = (sData ?? []) as SectionRow[];
         setSections(secs);
 
-        // Questions for those sections
         const secIds = secs.map((s) => s.id);
         let qList: QuestionRow[] = [];
         if (secIds.length) {
           const { data: qData, error: qErr } = await supabase
             .from("audit_questions")
             .select(
-              "id,audit_section_id,text,tag,order,active,require_comment,require_photo,require_signature,created_at"
+              "id,audit_section_id,text,tag,order,active,comment_requirement,photo_requirement,signature_requirement,created_at"
             )
             .in("audit_section_id", secIds)
             .order("order", { ascending: true })
@@ -159,7 +159,6 @@ export default function BuilderTemplatePage() {
         }
         setQuestions(qList);
 
-        // Build UI rows (with stable per-section order fallback)
         const secNameById = new Map<string, string>();
         for (const s of secs) secNameById.set(s.id, s.name ?? "Sin sección");
 
@@ -176,15 +175,14 @@ export default function BuilderTemplatePage() {
             classification: secNameById.get(q.audit_section_id) ?? "Sin sección",
             tag: safeStr(q.tag),
             standard: safeStr(q.text),
-            require_comment: toBool(q.require_comment),
-            require_photo: toBool(q.require_photo),
-            require_signature: toBool(q.require_signature),
+            comment_requirement: toRequirement(q.comment_requirement),
+            photo_requirement: toRequirement(q.photo_requirement),
+            signature_requirement: toRequirement(q.signature_requirement),
             active: toBool(q.active),
             order,
           };
         });
 
-        // Sort: sections by created_at/id as loaded, then order inside
         const sectionIndex = new Map<string, number>();
         secs.forEach((s, idx) => sectionIndex.set(s.id, idx));
 
@@ -197,7 +195,6 @@ export default function BuilderTemplatePage() {
         });
 
         setRows(ui);
-
         setLoading(false);
       } catch (e: any) {
         setLoading(false);
@@ -208,9 +205,6 @@ export default function BuilderTemplatePage() {
 
   const totalCount = rows.length;
 
-  // -----------------------
-  // Helpers: persist row fields
-  // -----------------------
   async function updateQuestion(questionId: string, patch: Partial<QuestionRow>) {
     setSaving(true);
     setError(null);
@@ -220,7 +214,6 @@ export default function BuilderTemplatePage() {
       const { error: upErr } = await supabase.from("audit_questions").update(patch).eq("id", questionId);
       if (upErr) throw upErr;
 
-      // update local rows
       setRows((prev) =>
         prev.map((r) => {
           if (r.questionId !== questionId) return r;
@@ -229,9 +222,9 @@ export default function BuilderTemplatePage() {
 
           if (patch.text !== undefined) next.standard = safeStr(patch.text);
           if (patch.tag !== undefined) next.tag = safeStr(patch.tag);
-          if (patch.require_comment !== undefined) next.require_comment = toBool(patch.require_comment);
-          if (patch.require_photo !== undefined) next.require_photo = toBool(patch.require_photo);
-          if (patch.require_signature !== undefined) next.require_signature = toBool(patch.require_signature);
+          if (patch.comment_requirement !== undefined) next.comment_requirement = toRequirement(patch.comment_requirement);
+          if (patch.photo_requirement !== undefined) next.photo_requirement = toRequirement(patch.photo_requirement);
+          if (patch.signature_requirement !== undefined) next.signature_requirement = toRequirement(patch.signature_requirement);
           if (patch.active !== undefined) next.active = toBool(patch.active);
           if (patch.order !== undefined) next.order = normalizeOrder(patch.order, next.order);
 
@@ -247,9 +240,6 @@ export default function BuilderTemplatePage() {
     }
   }
 
-  // -----------------------
-  // Rename template
-  // -----------------------
   async function saveTemplateName() {
     if (!templateId) return;
     const nextName = nameDraft.trim();
@@ -271,9 +261,6 @@ export default function BuilderTemplatePage() {
     }
   }
 
-  // -----------------------
-  // Toggle template active
-  // -----------------------
   async function toggleTemplateActive() {
     if (!templateId || !template) return;
 
@@ -294,12 +281,9 @@ export default function BuilderTemplatePage() {
     }
   }
 
-  // -----------------------
-  // Quick rules apply to ALL questions
-  // -----------------------
   async function applyQuickRules(kind: "comment" | "photo" | "signature") {
     const val = kind === "comment" ? quickComment : kind === "photo" ? quickPhoto : quickSignature;
-    const ok = confirm(`¿Aplicar "${kind}" = ${val ? "Sí" : "No"} a TODAS las preguntas?`);
+    const ok = confirm(`¿Aplicar "${kind}" = "${val}" a TODAS las preguntas?`);
     if (!ok) return;
 
     setSaving(true);
@@ -309,10 +293,10 @@ export default function BuilderTemplatePage() {
     try {
       const patch =
         kind === "comment"
-          ? { require_comment: val }
+          ? { comment_requirement: val }
           : kind === "photo"
-          ? { require_photo: val }
-          : { require_signature: val };
+          ? { photo_requirement: val }
+          : { signature_requirement: val };
 
       const ids = rows.map((r) => r.questionId);
       if (ids.length) {
@@ -322,9 +306,9 @@ export default function BuilderTemplatePage() {
         setRows((prev) =>
           prev.map((r) => ({
             ...r,
-            ...(kind === "comment" ? { require_comment: val } : {}),
-            ...(kind === "photo" ? { require_photo: val } : {}),
-            ...(kind === "signature" ? { require_signature: val } : {}),
+            ...(kind === "comment" ? { comment_requirement: val } : {}),
+            ...(kind === "photo" ? { photo_requirement: val } : {}),
+            ...(kind === "signature" ? { signature_requirement: val } : {}),
           }))
         );
       }
@@ -337,9 +321,6 @@ export default function BuilderTemplatePage() {
     }
   }
 
-  // -----------------------
-  // Delete one question
-  // -----------------------
   async function deleteQuestion(questionId: string) {
     const ok = confirm("¿Borrar esta pregunta?");
     if (!ok) return;
@@ -361,9 +342,6 @@ export default function BuilderTemplatePage() {
     }
   }
 
-  // -----------------------
-  // Delete all (sections + questions)
-  // -----------------------
   async function deleteAllFromTemplate() {
     if (!templateId) return;
 
@@ -402,9 +380,6 @@ export default function BuilderTemplatePage() {
     }
   }
 
-  // -----------------------
-  // Reorder (↑ / ↓) within same section
-  // -----------------------
   const sectionIndex = useMemo(() => {
     const map = new Map<string, number>();
     sections.forEach((s, idx) => map.set(s.id, idx));
@@ -437,7 +412,6 @@ export default function BuilderTemplatePage() {
 
     const target = sameSection[targetIdx];
 
-    // Swap orders
     const aOrder = current.order;
     const bOrder = target.order;
 
@@ -452,7 +426,6 @@ export default function BuilderTemplatePage() {
       const { error: e2 } = await supabase.from("audit_questions").update({ order: aOrder }).eq("id", target.questionId);
       if (e2) throw e2;
 
-      // Update local state
       setRows((prev) => {
         const swapped = prev.map((r) => {
           if (r.questionId === current.questionId) return { ...r, order: bOrder };
@@ -470,9 +443,6 @@ export default function BuilderTemplatePage() {
     }
   }
 
-  // -----------------------
-  // UI
-  // -----------------------
   const card: React.CSSProperties = {
     borderRadius: 18,
     border: "1px solid rgba(0,0,0,0.08)",
@@ -537,10 +507,7 @@ export default function BuilderTemplatePage() {
             Volver
           </button>
 
-          <button
-            onClick={() => router.push(`/builder/${templateId}/import`)}
-            style={btnWhite}
-          >
+          <button onClick={() => router.push(`/builder/${templateId}/import`)} style={btnWhite}>
             Importar Excel
           </button>
 
@@ -553,7 +520,6 @@ export default function BuilderTemplatePage() {
       {error ? <div style={{ marginTop: 12, color: "crimson", fontWeight: 950 }}>{error}</div> : null}
       {info ? <div style={{ marginTop: 12, color: "green", fontWeight: 950 }}>{info}</div> : null}
 
-      {/* Datos auditoría */}
       <div style={{ ...card, marginTop: 16 }}>
         <div style={{ fontWeight: 950, marginBottom: 10 }}>Datos de la auditoría</div>
 
@@ -582,47 +548,111 @@ export default function BuilderTemplatePage() {
 
         <div style={{ marginTop: 12, opacity: 0.85, fontWeight: 900 }}>
           Área: {area?.name ?? "—"} {area?.type ? `· ${area.type}` : ""}{" "}
-          <span style={{ marginLeft: 10, padding: "6px 10px", borderRadius: 999, background: "rgba(0,0,0,0.06)", border: "1px solid rgba(0,0,0,0.12)", fontWeight: 950 }}>
+          <span
+            style={{
+              marginLeft: 10,
+              padding: "6px 10px",
+              borderRadius: 999,
+              background: "rgba(0,0,0,0.06)",
+              border: "1px solid rgba(0,0,0,0.12)",
+              fontWeight: 950,
+            }}
+          >
             {template?.active === false ? "INACTIVA" : "ACTIVA"}
           </span>
         </div>
 
         <div style={{ marginTop: 6, opacity: 0.7, fontSize: 13 }}>
-          Creada: {template?.created_at ? new Date(template.created_at).toLocaleDateString("es-ES", { year: "numeric", month: "short", day: "2-digit" }) : "—"}
+          Creada:{" "}
+          {template?.created_at
+            ? new Date(template.created_at).toLocaleDateString("es-ES", { year: "numeric", month: "short", day: "2-digit" })
+            : "—"}
         </div>
       </div>
 
       {/* Reglas rápidas */}
-      <div style={{ ...card, marginTop: 14, display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
+      <div
+        style={{
+          ...card,
+          marginTop: 14,
+          display: "flex",
+          justifyContent: "space-between",
+          gap: 12,
+          flexWrap: "wrap",
+          alignItems: "center",
+        }}
+      >
         <div>
           <div style={{ fontWeight: 950, marginBottom: 4 }}>Reglas rápidas</div>
-          <div style={{ opacity: 0.75, fontSize: 13 }}>Aplica checkboxes a TODAS las preguntas de esta auditoría.</div>
+          <div style={{ opacity: 0.75, fontSize: 13 }}>Aplica requisitos a TODAS las preguntas de esta auditoría.</div>
         </div>
 
         <div style={{ display: "flex", gap: 14, flexWrap: "wrap", alignItems: "center" }}>
-          <label style={{ display: "flex", alignItems: "center", gap: 8, fontWeight: 900 }}>
-            <input type="checkbox" checked={quickComment} onChange={(e) => setQuickComment(e.target.checked)} />
-            Exigir comentario
-          </label>
-          <button style={smallBtn} onClick={() => applyQuickRules("comment")} disabled={saving}>
-            Aplicar
-          </button>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <label style={{ fontWeight: 900 }}>Comentario:</label>
+            <select
+              value={quickComment}
+              onChange={(e) => setQuickComment(e.target.value as RequirementType)}
+              style={{
+                padding: "8px 10px",
+                borderRadius: 10,
+                border: "1px solid rgba(0,0,0,0.18)",
+                fontWeight: 900,
+                outline: "none",
+              }}
+            >
+              <option value="never">Nunca</option>
+              <option value="if_fail">Si es FAIL</option>
+              <option value="always">Siempre</option>
+            </select>
+            <button style={smallBtn} onClick={() => applyQuickRules("comment")} disabled={saving}>
+              Aplicar
+            </button>
+          </div>
 
-          <label style={{ display: "flex", alignItems: "center", gap: 8, fontWeight: 900 }}>
-            <input type="checkbox" checked={quickPhoto} onChange={(e) => setQuickPhoto(e.target.checked)} />
-            Exigir foto
-          </label>
-          <button style={smallBtn} onClick={() => applyQuickRules("photo")} disabled={saving}>
-            Aplicar
-          </button>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <label style={{ fontWeight: 900 }}>Foto:</label>
+            <select
+              value={quickPhoto}
+              onChange={(e) => setQuickPhoto(e.target.value as RequirementType)}
+              style={{
+                padding: "8px 10px",
+                borderRadius: 10,
+                border: "1px solid rgba(0,0,0,0.18)",
+                fontWeight: 900,
+                outline: "none",
+              }}
+            >
+              <option value="never">Nunca</option>
+              <option value="if_fail">Si es FAIL</option>
+              <option value="always">Siempre</option>
+            </select>
+            <button style={smallBtn} onClick={() => applyQuickRules("photo")} disabled={saving}>
+              Aplicar
+            </button>
+          </div>
 
-          <label style={{ display: "flex", alignItems: "center", gap: 8, fontWeight: 900 }}>
-            <input type="checkbox" checked={quickSignature} onChange={(e) => setQuickSignature(e.target.checked)} />
-            Exigir firma
-          </label>
-          <button style={smallBtn} onClick={() => applyQuickRules("signature")} disabled={saving}>
-            Aplicar
-          </button>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <label style={{ fontWeight: 900 }}>Firma:</label>
+            <select
+              value={quickSignature}
+              onChange={(e) => setQuickSignature(e.target.value as RequirementType)}
+              style={{
+                padding: "8px 10px",
+                borderRadius: 10,
+                border: "1px solid rgba(0,0,0,0.18)",
+                fontWeight: 900,
+                outline: "none",
+              }}
+            >
+              <option value="never">Nunca</option>
+              <option value="if_fail">Si es FAIL</option>
+              <option value="always">Siempre</option>
+            </select>
+            <button style={smallBtn} onClick={() => applyQuickRules("signature")} disabled={saving}>
+              Aplicar
+            </button>
+          </div>
 
           <div style={{ fontWeight: 900, opacity: 0.9, marginLeft: 10 }}>Total: {totalCount}</div>
         </div>
@@ -633,35 +663,44 @@ export default function BuilderTemplatePage() {
         <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
           <div>
             <div style={{ fontWeight: 950, fontSize: 18 }}>Preguntas (tabla)</div>
-            <div style={{ opacity: 0.75, fontSize: 13 }}>
-              STANDARD — TAG — CLASSIFICATION — Comentario — Foto — Firma
-            </div>
+            <div style={{ opacity: 0.75, fontSize: 13 }}>STANDARD — TAG — CLASSIFICATION — Comentario — Foto — Firma</div>
           </div>
 
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-            <span style={{ padding: "8px 12px", borderRadius: 999, border: "1px solid rgba(0,0,0,0.12)", background: "rgba(0,0,0,0.06)", fontWeight: 900 }}>
+            <span
+              style={{
+                padding: "8px 12px",
+                borderRadius: 999,
+                border: "1px solid rgba(0,0,0,0.12)",
+                background: "rgba(0,0,0,0.06)",
+                fontWeight: 900,
+              }}
+            >
               Edición inline (se guarda al salir)
             </span>
 
-            <button onClick={deleteAllFromTemplate} style={{ ...btnWhite, borderColor: "rgba(200,0,0,0.35)" }} disabled={saving}>
+            <button
+              onClick={deleteAllFromTemplate}
+              style={{ ...btnWhite, borderColor: "rgba(200,0,0,0.35)" }}
+              disabled={saving}
+            >
               Borrar todas
             </button>
           </div>
         </div>
 
         <div style={{ marginTop: 14, overflowX: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 1200 }}>
-            {/* 👇 esto fuerza que STANDARD sea MUCHO más ancho SIEMPRE */}
+          <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 1400 }}>
             <colgroup>
-              <col style={{ width: 90 }} />   {/* Orden */}
-              <col style={{ width: 260 }} />  {/* Classification */}
-              <col style={{ width: 240 }} />  {/* Tag */}
-              <col style={{ width: 760 }} />  {/* Standard (ancho) */}
-              <col style={{ width: 110 }} />  {/* Comentario */}
-              <col style={{ width: 80 }} />   {/* Foto */}
-              <col style={{ width: 80 }} />   {/* Firma */}
-              <col style={{ width: 80 }} />   {/* Activa */}
-              <col style={{ width: 90 }} />   {/* Borrar */}
+              <col style={{ width: 90 }} />
+              <col style={{ width: 260 }} />
+              <col style={{ width: 240 }} />
+              <col style={{ width: 660 }} />
+              <col style={{ width: 140 }} />
+              <col style={{ width: 140 }} />
+              <col style={{ width: 140 }} />
+              <col style={{ width: 80 }} />
+              <col style={{ width: 90 }} />
             </colgroup>
 
             <thead>
@@ -679,16 +718,16 @@ export default function BuilderTemplatePage() {
             </thead>
 
             <tbody>
-              {rows.map((r, idx) => {
-                // compute up/down disabled within section
-                const sameSection = rows.filter((x) => x.sectionId === r.sectionId).sort((a, b) => a.order - b.order || a.questionId.localeCompare(b.questionId));
+              {rows.map((r) => {
+                const sameSection = rows
+                  .filter((x) => x.sectionId === r.sectionId)
+                  .sort((a, b) => a.order - b.order || a.questionId.localeCompare(b.questionId));
                 const pos = sameSection.findIndex((x) => x.questionId === r.questionId);
                 const canUp = pos > 0;
                 const canDown = pos !== -1 && pos < sameSection.length - 1;
 
                 return (
                   <tr key={r.questionId} style={{ borderTop: "1px solid rgba(0,0,0,0.06)" }}>
-                    {/* Orden controls */}
                     <td style={{ padding: "10px 8px", verticalAlign: "top" }}>
                       <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
                         <button
@@ -727,17 +766,11 @@ export default function BuilderTemplatePage() {
                           ↓
                         </button>
                       </div>
-                      <div style={{ marginTop: 6, opacity: 0.7, fontSize: 12, fontWeight: 900 }}>
-                        {r.order}
-                      </div>
+                      <div style={{ marginTop: 6, opacity: 0.7, fontSize: 12, fontWeight: 900 }}>{r.order}</div>
                     </td>
 
-                    {/* CLASSIFICATION */}
-                    <td style={{ padding: "10px 8px", verticalAlign: "top", fontWeight: 950 }}>
-                      {r.classification}
-                    </td>
+                    <td style={{ padding: "10px 8px", verticalAlign: "top", fontWeight: 950 }}>{r.classification}</td>
 
-                    {/* TAG */}
                     <td style={{ padding: "10px 8px", verticalAlign: "top" }}>
                       <input
                         value={r.tag}
@@ -760,7 +793,6 @@ export default function BuilderTemplatePage() {
                       />
                     </td>
 
-                    {/* STANDARD (wide) */}
                     <td style={{ padding: "10px 8px", verticalAlign: "top" }}>
                       <textarea
                         value={r.standard}
@@ -784,52 +816,84 @@ export default function BuilderTemplatePage() {
                       />
                     </td>
 
-                    {/* Comentario */}
-                    <td style={{ padding: "10px 8px", verticalAlign: "top", textAlign: "center" }}>
-                      <input
-                        type="checkbox"
-                        checked={r.require_comment}
+                    <td style={{ padding: "10px 8px", verticalAlign: "top" }}>
+                      <select
+                        value={r.comment_requirement}
                         onChange={(e) => {
-                          const v = e.target.checked;
+                          const v = e.target.value as RequirementType;
                           setRows((prev) =>
-                            prev.map((x) => (x.questionId === r.questionId ? { ...x, require_comment: v } : x))
+                            prev.map((x) => (x.questionId === r.questionId ? { ...x, comment_requirement: v } : x))
                           );
-                          updateQuestion(r.questionId, { require_comment: v });
+                          updateQuestion(r.questionId, { comment_requirement: v });
                         }}
-                      />
+                        style={{
+                          width: "100%",
+                          padding: "10px 12px",
+                          borderRadius: 14,
+                          border: "1px solid rgba(0,0,0,0.18)",
+                          outline: "none",
+                          fontWeight: 900,
+                          background: "#fff",
+                        }}
+                      >
+                        <option value="never">Nunca</option>
+                        <option value="if_fail">Si es FAIL</option>
+                        <option value="always">Siempre</option>
+                      </select>
                     </td>
 
-                    {/* Foto */}
-                    <td style={{ padding: "10px 8px", verticalAlign: "top", textAlign: "center" }}>
-                      <input
-                        type="checkbox"
-                        checked={r.require_photo}
+                    <td style={{ padding: "10px 8px", verticalAlign: "top" }}>
+                      <select
+                        value={r.photo_requirement}
                         onChange={(e) => {
-                          const v = e.target.checked;
+                          const v = e.target.value as RequirementType;
                           setRows((prev) =>
-                            prev.map((x) => (x.questionId === r.questionId ? { ...x, require_photo: v } : x))
+                            prev.map((x) => (x.questionId === r.questionId ? { ...x, photo_requirement: v } : x))
                           );
-                          updateQuestion(r.questionId, { require_photo: v });
+                          updateQuestion(r.questionId, { photo_requirement: v });
                         }}
-                      />
+                        style={{
+                          width: "100%",
+                          padding: "10px 12px",
+                          borderRadius: 14,
+                          border: "1px solid rgba(0,0,0,0.18)",
+                          outline: "none",
+                          fontWeight: 900,
+                          background: "#fff",
+                        }}
+                      >
+                        <option value="never">Nunca</option>
+                        <option value="if_fail">Si es FAIL</option>
+                        <option value="always">Siempre</option>
+                      </select>
                     </td>
 
-                    {/* Firma */}
-                    <td style={{ padding: "10px 8px", verticalAlign: "top", textAlign: "center" }}>
-                      <input
-                        type="checkbox"
-                        checked={r.require_signature}
+                    <td style={{ padding: "10px 8px", verticalAlign: "top" }}>
+                      <select
+                        value={r.signature_requirement}
                         onChange={(e) => {
-                          const v = e.target.checked;
+                          const v = e.target.value as RequirementType;
                           setRows((prev) =>
-                            prev.map((x) => (x.questionId === r.questionId ? { ...x, require_signature: v } : x))
+                            prev.map((x) => (x.questionId === r.questionId ? { ...x, signature_requirement: v } : x))
                           );
-                          updateQuestion(r.questionId, { require_signature: v });
+                          updateQuestion(r.questionId, { signature_requirement: v });
                         }}
-                      />
+                        style={{
+                          width: "100%",
+                          padding: "10px 12px",
+                          borderRadius: 14,
+                          border: "1px solid rgba(0,0,0,0.18)",
+                          outline: "none",
+                          fontWeight: 900,
+                          background: "#fff",
+                        }}
+                      >
+                        <option value="never">Nunca</option>
+                        <option value="if_fail">Si es FAIL</option>
+                        <option value="always">Siempre</option>
+                      </select>
                     </td>
 
-                    {/* Activa */}
                     <td style={{ padding: "10px 8px", verticalAlign: "top", textAlign: "center" }}>
                       <input
                         type="checkbox"
@@ -842,7 +906,6 @@ export default function BuilderTemplatePage() {
                       />
                     </td>
 
-                    {/* Borrar */}
                     <td style={{ padding: "10px 8px", verticalAlign: "top", textAlign: "center" }}>
                       <button
                         onClick={() => deleteQuestion(r.questionId)}

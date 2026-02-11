@@ -699,18 +699,11 @@ export default function AreaPage() {
 
             <div style={card}>
               <div style={{ fontWeight: 950, marginBottom: 6 }}>Sección más débil</div>
-              {dashboard.worst && dashboard.worst.avg_score !== null ? (
+              {dashboard.worst?.avg_score !== null ? (
                 <>
-                  <div style={{ fontWeight: 900 }}>{dashboard.worst.section_name}</div>
-                  <div
-                    style={{
-                      marginTop: 6,
-                      fontSize: 28,
-                      fontWeight: 950,
-                      color: scoreColor(dashboard.worst.avg_score),
-                    }}
-                  >
-                    {dashboard.worst.avg_score.toFixed(2)}%
+                  <div style={{ fontWeight: 900 }}>{dashboard.worst?.section_name}</div>
+                  <div style={{ marginTop: 6, fontSize: 28, fontWeight: 950, color: scoreColor(dashboard.worst?.avg_score ?? null) }}>
+                    {dashboard.worst?.avg_score?.toFixed(2)}%
                   </div>
                 </>
               ) : (
@@ -720,18 +713,11 @@ export default function AreaPage() {
 
             <div style={card}>
               <div style={{ fontWeight: 950, marginBottom: 6 }}>Sección más fuerte</div>
-              {dashboard.best && dashboard.best.avg_score !== null ? (
+              {dashboard.best?.avg_score !== null ? (
                 <>
-                  <div style={{ fontWeight: 900 }}>{dashboard.best.section_name}</div>
-                  <div
-                    style={{
-                      marginTop: 6,
-                      fontSize: 28,
-                      fontWeight: 950,
-                      color: scoreColor(dashboard.best.avg_score),
-                    }}
-                  >
-                    {dashboard.best.avg_score.toFixed(2)}%
+                  <div style={{ fontWeight: 900 }}>{dashboard.best?.section_name}</div>
+                  <div style={{ marginTop: 6, fontSize: 28, fontWeight: 950, color: scoreColor(dashboard.best?.avg_score ?? null) }}>
+                    {dashboard.best?.avg_score?.toFixed(2)}%
                   </div>
                 </>
               ) : (
@@ -754,9 +740,7 @@ export default function AreaPage() {
                   <thead>
                     <tr style={{ textAlign: "left" }}>
                       <th style={{ padding: "10px 8px", borderBottom: "1px solid rgba(0,0,0,0.15)" }}>Sección</th>
-                      <th style={{ padding: "10px 8px", borderBottom: "1px solid rgba(0,0,0,0.15)" }}>
-                        Score promedio
-                      </th>
+                      <th style={{ padding: "10px 8px", borderBottom: "1px solid rgba(0,0,0,0.15)" }}>Score promedio</th>
                       <th style={{ padding: "10px 8px", borderBottom: "1px solid rgba(0,0,0,0.15)" }}>FAIL prom.</th>
                       <th style={{ padding: "10px 8px", borderBottom: "1px solid rgba(0,0,0,0.15)" }}>NA prom.</th>
                     </tr>
@@ -777,24 +761,10 @@ export default function AreaPage() {
                         >
                           {s.avg_score === null ? "—" : `${s.avg_score.toFixed(2)}%`}
                         </td>
-                        <td
-                          style={{
-                            padding: "10px 8px",
-                            borderBottom: "1px solid rgba(0,0,0,0.08)",
-                            fontWeight: 900,
-                            color: "#000",
-                          }}
-                        >
+                        <td style={{ padding: "10px 8px", borderBottom: "1px solid rgba(0,0,0,0.08)", fontWeight: 900, color: "#000" }}>
                           {Number(s.avg_fail).toFixed(2)}
                         </td>
-                        <td
-                          style={{
-                            padding: "10px 8px",
-                            borderBottom: "1px solid rgba(0,0,0,0.08)",
-                            fontWeight: 900,
-                            color: "#000",
-                          }}
-                        >
+                        <td style={{ padding: "10px 8px", borderBottom: "1px solid rgba(0,0,0,0.08)", fontWeight: 900, color: "#000" }}>
                           {Number(s.avg_na).toFixed(2)}
                         </td>
                       </tr>
@@ -869,49 +839,22 @@ export default function AreaPage() {
                           <th style={{ padding: "10px 8px", borderBottom: "1px solid rgba(0,0,0,0.15)" }}>Total</th>
                           <th style={{ padding: "10px 8px", borderBottom: "1px solid rgba(0,0,0,0.15)" }}>FAIL</th>
                           <th style={{ padding: "10px 8px", borderBottom: "1px solid rgba(0,0,0,0.15)" }}>NA</th>
-                          <th style={{ padding: "10px 8px", borderBottom: "1px solid rgba(0,0,0,0.15)" }}>
-                            Score sección
-                          </th>
+                          <th style={{ padding: "10px 8px", borderBottom: "1px solid rgba(0,0,0,0.15)" }}>Score sección</th>
                         </tr>
                       </thead>
 
                       <tbody>
                         {item.sections.map((s) => (
                           <tr key={s.section_id}>
-                            <td style={{ padding: "10px 8px", borderBottom: "1px solid rgba(0,0,0,0.08)" }}>
-                              {s.section_name}
-                            </td>
-                            <td style={{ padding: "10px 8px", borderBottom: "1px solid rgba(0,0,0,0.08)" }}>
-                              {s.total_questions}
-                            </td>
-                            <td
-                              style={{
-                                padding: "10px 8px",
-                                borderBottom: "1px solid rgba(0,0,0,0.08)",
-                                fontWeight: 900,
-                                color: "#000",
-                              }}
-                            >
+                            <td style={{ padding: "10px 8px", borderBottom: "1px solid rgba(0,0,0,0.08)" }}>{s.section_name}</td>
+                            <td style={{ padding: "10px 8px", borderBottom: "1px solid rgba(0,0,0,0.08)" }}>{s.total_questions}</td>
+                            <td style={{ padding: "10px 8px", borderBottom: "1px solid rgba(0,0,0,0.08)", fontWeight: 900, color: "#000" }}>
                               {s.fail_count}
                             </td>
-                            <td
-                              style={{
-                                padding: "10px 8px",
-                                borderBottom: "1px solid rgba(0,0,0,0.08)",
-                                fontWeight: 900,
-                                color: "#000",
-                              }}
-                            >
+                            <td style={{ padding: "10px 8px", borderBottom: "1px solid rgba(0,0,0,0.08)", fontWeight: 900, color: "#000" }}>
                               {s.na_count}
                             </td>
-                            <td
-                              style={{
-                                padding: "10px 8px",
-                                borderBottom: "1px solid rgba(0,0,0,0.08)",
-                                fontWeight: 900,
-                                color: scoreColor(s.score),
-                              }}
-                            >
+                            <td style={{ padding: "10px 8px", borderBottom: "1px solid rgba(0,0,0,0.08)", fontWeight: 900, color: scoreColor(s.score) }}>
                               {s.score === null ? "—" : `${s.score.toFixed(2)}%`}
                             </td>
                           </tr>
