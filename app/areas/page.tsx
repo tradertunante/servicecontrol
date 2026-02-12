@@ -49,13 +49,12 @@ export default function AreasPage() {
 
         // ✅ ADMIN/MANAGER: ven todas las áreas del hotel
         if (p.role === "admin" || p.role === "manager") {
-          let query = supabase
+          const { data, error: aErr } = await supabase
             .from("areas")
             .select("id,name,type,hotel_id,created_at")
             .eq("hotel_id", p.hotel_id)
             .order("name", { ascending: true });
 
-          const { data, error: aErr } = await query;
           if (aErr) throw aErr;
 
           setAreas((data ?? []) as AreaRow[]);
@@ -65,7 +64,6 @@ export default function AreasPage() {
 
         // ✅ AUDITOR: solo áreas asignadas en user_area_access
         if (p.role === "auditor") {
-          // 1) traer ids de áreas permitidas
           const { data: accessData, error: accessErr } = await supabase
             .from("user_area_access")
             .select("area_id")
@@ -76,14 +74,12 @@ export default function AreasPage() {
 
           const allowedIds = (accessData ?? []).map((r: any) => r.area_id).filter(Boolean);
 
-          // Modo seguro: si no tiene áreas asignadas, no ve nada
           if (allowedIds.length === 0) {
             setAreas([]);
             setLoading(false);
             return;
           }
 
-          // 2) cargar solo esas áreas
           const { data: areasData, error: areasErr } = await supabase
             .from("areas")
             .select("id,name,type,hotel_id,created_at")
@@ -164,9 +160,7 @@ export default function AreasPage() {
       <div style={{ opacity: 0.85, marginBottom: 18 }}>
         Rol: <strong>{profile?.role ?? "—"}</strong>
         {profile?.role === "auditor" ? (
-          <span style={{ marginLeft: 10, opacity: 0.8 }}>
-            · Solo ves áreas asignadas
-          </span>
+          <span style={{ marginLeft: 10, opacity: 0.8 }}>· Solo ves áreas asignadas</span>
         ) : null}
       </div>
 
@@ -205,7 +199,8 @@ export default function AreasPage() {
               </div>
 
               <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-                <button onClick={() => router.push(`/areas/${a.id}?tab=history`)} style={btn}>
+                {/* ✅ Entrar ahora lleva a Templates */}
+                <button onClick={() => router.push(`/areas/${a.id}?tab=templates`)} style={btn}>
                   Entrar
                 </button>
               </div>
