@@ -1,29 +1,41 @@
+// app/builder/new/page.tsx
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
-import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { requireRoleOrRedirect } from "@/lib/auth/RequireRole";
+import HotelHeader from "@/app/components/HotelHeader";
+import BackButton from "@/app/components/BackButton";
 
-type AreaRow = {
+type Profile = {
   id: string;
-  name: string;
-  type: string | null;
+  hotel_id: string | null;
 };
 
-export default function BuilderNewTemplatePage() {
+type Area = {
+  id: string;
+  name: string;
+};
+
+export default function NewTemplatePage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
 
-  const [profile, setProfile] = useState<any>(null);
-  const [areas, setAreas] = useState<AreaRow[]>([]);
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [areas, setAreas] = useState<Area[]>([]);
 
-  const [name, setName] = useState("");
-  const [areaId, setAreaId] = useState<string>("");
+  const [templateName, setTemplateName] = useState("");
+  const [selectedAreaId, setSelectedAreaId] = useState<string>("");
+
+  const selectedAreaExists = useMemo(() => {
+    return !!selectedAreaId && areas.some((a) => a.id === selectedAreaId);
+  }, [areas, selectedAreaId]);
 
   useEffect(() => {
     (async () => {
@@ -31,75 +43,99 @@ export default function BuilderNewTemplatePage() {
       setError(null);
 
       try {
-        const p = await requireRoleOrRedirect(router, ["admin", "manager"], "/areas");
+        const p = await requireRoleOrRedirect(router, ["admin"], "/dashboard");
         if (!p) return;
+
         setProfile(p);
 
-        const { data, error } = await supabase
+        if (!p.hotel_id) {
+          setAreas([]);
+          setError("No tienes un hotel asignado.");
+          setLoading(false);
+          return;
+        }
+
+        // Cargar áreas
+        const { data: areasData, error: areasErr } = await supabase
           .from("areas")
-          .select("id,name,type")
+          .select("id, name")
           .eq("hotel_id", p.hotel_id)
           .order("name", { ascending: true });
 
-        if (error) throw error;
+        if (areasErr) throw areasErr;
 
-        const list = (data ?? []) as AreaRow[];
-        setAreas(list);
+        const areasList = (areasData ?? []) as Area[];
+        setAreas(areasList);
 
-        // default: primera área si existe
-        if (list.length && !areaId) setAreaId(list[0].id);
+        // Si viene area_id en query params, pre-seleccionar
+        const areaIdParam = searchParams?.get("area_id");
+        if (areaIdParam && areasList.some((a) => a.id === areaIdParam)) {
+          setSelectedAreaId(areaIdParam);
+        } else if (areasList.length > 0) {
+          setSelectedAreaId(areasList[0].id);
+        } else {
+          setSelectedAreaId("");
+        }
 
         setLoading(false);
       } catch (e: any) {
+        setError(e?.message ?? "Error al cargar datos.");
         setLoading(false);
-        setError(e?.message ?? "Error cargando áreas.");
       }
     })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [router]);
-
-  const areaLabelById = useMemo(() => {
-    const m: Record<string, string> = {};
-    for (const a of areas) m[a.id] = a.type ? `${a.name} · ${a.type}` : a.name;
-    return m;
-  }, [areas]);
+  }, [router, searchParams]);
 
   async function handleCreate() {
-    if (!profile) return;
+    setError(null);
+    setSuccess(null);
 
-    const trimmed = name.trim();
-    if (!trimmed) {
-      setError("Escribe un nombre para la auditoría.");
+    if (!profile?.hotel_id) {
+      setError("No tienes un hotel asignado.");
       return;
     }
-    if (!areaId) {
+
+    if (!selectedAreaId) {
       setError("Selecciona un área.");
       return;
     }
 
+    // Seguridad: evita que alguien fuerce un area_id que no pertenece al hotel cargado
+    if (!areas.some((a) => a.id === selectedAreaId)) {
+      setError("Área no válida para tu hotel.");
+      return;
+    }
+
+    if (!templateName.trim()) {
+      setError("El nombre de la auditoría no puede estar vacío.");
+      return;
+    }
+
     setSaving(true);
-    setError(null);
 
     try {
-      // NOTA: esto asume que audit_templates tiene hotel_id.
-      // Si no lo tiene, dímelo y lo ajusto.
-      const { data, error } = await supabase
+      // ✅ Crear la plantilla incluyendo hotel_id (NOT NULL)
+      const payload = {
+        name: templateName.trim(),
+        area_id: selectedAreaId,
+        hotel_id: profile.hotel_id,
+        active: true,
+      };
+
+      const { data: newTemplate, error: createErr } = await supabase
         .from("audit_templates")
-        .insert({
-          hotel_id: profile.hotel_id,
-          area_id: areaId,
-          name: trimmed,
-          active: true,
-        })
+        .insert(payload)
         .select("id")
         .single();
 
-      if (error || !data) throw error ?? new Error("No se pudo crear la auditoría.");
+      if (createErr) throw createErr;
 
-      router.push(`/builder/${data.id}`);
+      setSuccess("¡Auditoría creada! Redirigiendo al editor...");
+
+      setTimeout(() => {
+        router.push(`/builder/${newTemplate.id}`);
+      }, 700);
     } catch (e: any) {
       setError(e?.message ?? "No se pudo crear la auditoría.");
-    } finally {
       setSaving(false);
     }
   }
@@ -108,145 +144,131 @@ export default function BuilderNewTemplatePage() {
     borderRadius: 18,
     border: "1px solid rgba(0,0,0,0.08)",
     background: "rgba(255,255,255,0.85)",
-    padding: 18,
+    padding: 20,
+    boxShadow: "0 10px 30px rgba(0,0,0,0.06)",
   };
 
-  const btnPrimary: React.CSSProperties = {
+  // (mantengo tu estilo, aunque el botón negro no te gusta, esto es builder/editor no dashboard)
+  const btn: React.CSSProperties = {
     padding: "12px 16px",
     borderRadius: 12,
     border: "1px solid rgba(0,0,0,0.2)",
     background: "#000",
     color: "#fff",
-    fontWeight: 950,
-    cursor: saving ? "not-allowed" : "pointer",
-    opacity: saving ? 0.7 : 1,
-    height: 44,
-  };
-
-  const btnGhost: React.CSSProperties = {
-    padding: "12px 16px",
-    borderRadius: 12,
-    border: "1px solid rgba(0,0,0,0.2)",
-    background: "#fff",
-    color: "#000",
     fontWeight: 900,
     cursor: "pointer",
-    textDecoration: "none",
-    display: "inline-flex",
-    alignItems: "center",
-    justifyContent: "center",
-    height: 44,
+    fontSize: 14,
   };
 
   if (loading) {
     return (
-      <main style={{ padding: 24 }}>
-        <h1 style={{ fontSize: 48, marginBottom: 8 }}>Nueva auditoría</h1>
-        <p>Cargando…</p>
+      <main style={{ padding: 24, paddingTop: 80 }}>
+        <HotelHeader />
+        <BackButton fallback="/builder" />
+        <div style={{ opacity: 0.8 }}>Cargando…</div>
       </main>
     );
   }
 
-  if (error) {
+  if (error && !areas.length) {
     return (
-      <main style={{ padding: 24 }}>
-        <h1 style={{ fontSize: 48, marginBottom: 8 }}>Nueva auditoría</h1>
-        <p style={{ color: "crimson", fontWeight: 900 }}>{error}</p>
-
-        <div style={{ marginTop: 16 }}>
-          <Link href="/builder" style={btnGhost}>
-            Volver al constructor
-          </Link>
-        </div>
+      <main style={{ padding: 24, paddingTop: 80 }}>
+        <HotelHeader />
+        <BackButton fallback="/builder" />
+        <div style={{ color: "crimson", fontWeight: 900 }}>{error}</div>
       </main>
     );
   }
+
+  const disabled = saving || !templateName.trim() || !selectedAreaId || !selectedAreaExists;
 
   return (
-    <main style={{ padding: 24}}>
-      <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
-        <div>
-          <h1 style={{ fontSize: 48, marginBottom: 6 }}>Nueva auditoría</h1>
-          <div style={{ opacity: 0.85 }}>
-            Rol: <strong>{profile?.role}</strong>
-          </div>
-        </div>
+    <main style={{ padding: 24, paddingTop: 80 }}>
+      <HotelHeader />
+      <BackButton fallback="/builder" />
 
-        <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-          <Link href="/builder" style={btnGhost}>
-            Volver
-          </Link>
-        </div>
+      <div style={{ marginBottom: 20 }}>
+        <div style={{ opacity: 0.7, fontSize: 14 }}>Crea una nueva plantilla de auditoría</div>
       </div>
 
-      <div style={{ marginTop: 16, ...card }}>
-        <div style={{ fontWeight: 950, fontSize: 18, marginBottom: 12 }}>Datos básicos</div>
+      {error && <div style={{ marginBottom: 12, color: "crimson", fontWeight: 950 }}>{error}</div>}
+      {success && <div style={{ marginBottom: 12, color: "green", fontWeight: 950 }}>{success}</div>}
 
-        <div style={{ display: "grid", gap: 14 }}>
+      <div style={card}>
+        <div style={{ fontSize: 20, fontWeight: 950, marginBottom: 16 }}>Nueva Auditoría</div>
+
+        <div style={{ display: "grid", gap: 16 }}>
+          {/* Nombre */}
           <div>
-            <div style={{ fontWeight: 900, marginBottom: 8 }}>Nombre de la auditoría</div>
+            <label style={{ fontWeight: 900, marginBottom: 8, display: "block" }}>Nombre de la auditoría</label>
             <input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder='Ej: "Guest Room Standards"'
+              type="text"
+              value={templateName}
+              onChange={(e) => setTemplateName(e.target.value)}
+              placeholder="Ej: Auditoría Diaria Housekeeping"
               style={{
                 width: "100%",
-                padding: "12px 12px",
+                padding: "12px 14px",
                 borderRadius: 14,
                 border: "1px solid rgba(0,0,0,0.18)",
-                fontWeight: 800,
                 outline: "none",
+                fontWeight: 900,
+                fontSize: 16,
               }}
             />
-            <div style={{ marginTop: 6, fontSize: 12.5, opacity: 0.75 }}>
-              Consejo: usa un nombre corto y específico (luego puedes duplicar y versionar).
-            </div>
           </div>
 
+          {/* Área */}
           <div>
-            <div style={{ fontWeight: 900, marginBottom: 8 }}>Área</div>
+            <label style={{ fontWeight: 900, marginBottom: 8, display: "block" }}>Área</label>
             <select
-              value={areaId}
-              onChange={(e) => setAreaId(e.target.value)}
+              value={selectedAreaId}
+              onChange={(e) => setSelectedAreaId(e.target.value)}
               style={{
                 width: "100%",
-                padding: "12px 12px",
+                padding: "12px 14px",
                 borderRadius: 14,
                 border: "1px solid rgba(0,0,0,0.18)",
-                fontWeight: 900,
                 outline: "none",
-                background: "#fff",
+                fontWeight: 900,
+                fontSize: 16,
+                cursor: "pointer",
               }}
             >
-              {areas.map((a) => (
-                <option key={a.id} value={a.id}>
-                  {areaLabelById[a.id] ?? a.name}
+              {areas.map((area) => (
+                <option key={area.id} value={area.id}>
+                  {area.name}
                 </option>
               ))}
             </select>
-
-            {areas.length === 0 ? (
-              <div style={{ marginTop: 10, color: "crimson", fontWeight: 900 }}>
-                No tienes áreas creadas. Crea un área antes de crear auditorías.
-              </div>
-            ) : null}
           </div>
 
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-            <button onClick={handleCreate} disabled={saving || areas.length === 0} style={btnPrimary}>
-              {saving ? "Creando…" : "Crear auditoría"}
+          {/* Botón crear */}
+          <div style={{ marginTop: 8 }}>
+            <button
+              onClick={handleCreate}
+              disabled={disabled}
+              style={{
+                ...btn,
+                opacity: disabled ? 0.5 : 1,
+                cursor: disabled ? "not-allowed" : "pointer",
+              }}
+            >
+              {saving ? "Creando..." : "Crear Auditoría"}
             </button>
-
-            <Link href="/builder" style={btnGhost}>
-              Cancelar
-            </Link>
           </div>
+        </div>
+      </div>
 
-          <div style={{ fontSize: 13, opacity: 0.7 }}>
-            Al crearla, irás al editor para añadir secciones y preguntas.
-          </div>
+      <div style={{ ...card, marginTop: 14, background: "rgba(255, 243, 205, 0.5)" }}>
+        <div style={{ fontWeight: 950, fontSize: 14, marginBottom: 8 }}>💡 Siguiente paso</div>
+        <div style={{ opacity: 0.85, fontSize: 13, lineHeight: 1.6 }}>
+          Después de crear la auditoría, serás redirigido al editor donde podrás agregar las preguntas y configurar los requisitos de foto,
+          comentarios y firma.
         </div>
       </div>
     </main>
   );
 }
+
+

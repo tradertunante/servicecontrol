@@ -1,9 +1,11 @@
+// app/admin/page.tsx
 "use client";
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { normalizeRole, type Role } from "@/lib/auth/permissions";
+import HotelHeader from "@/app/components/HotelHeader";
 
 type Profile = {
   id: string;
@@ -81,7 +83,8 @@ export default function AdminPage() {
 
   if (loading) {
     return (
-      <main style={{ padding: 24 }}>
+      <main style={{ padding: 24, paddingTop: 80 }}>
+        <HotelHeader />
         <h1 style={{ fontSize: 28, fontWeight: 900 }}>Admin</h1>
         <p style={{ marginTop: 8, opacity: 0.7 }}>Cargando...</p>
       </main>
@@ -90,7 +93,8 @@ export default function AdminPage() {
 
   if (error) {
     return (
-      <main style={{ padding: 24 }}>
+      <main style={{ padding: 24, paddingTop: 80 }}>
+        <HotelHeader />
         <h1 style={{ fontSize: 28, fontWeight: 900 }}>Admin</h1>
         <p style={{ marginTop: 12, color: "crimson" }}>{error}</p>
         <button
@@ -112,7 +116,9 @@ export default function AdminPage() {
   }
 
   return (
-    <main style={{ padding: 24 }}>
+    <main style={{ padding: 24, paddingTop: 80 }}>
+      <HotelHeader />
+      
       <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
         <div>
           <h1 style={{ fontSize: 30, fontWeight: 950, margin: 0 }}>Admin</h1>
@@ -190,6 +196,22 @@ export default function AdminPage() {
         >
           <div style={{ fontSize: 18, fontWeight: 900 }}>Usuarios</div>
           <div style={{ marginTop: 6, opacity: 0.75, fontSize: 14 }}>Gestionar usuarios del hotel.</div>
+        </button>
+
+        <button
+          onClick={() => router.push("/admin/hotel")}
+          style={{
+            textAlign: "left",
+            padding: 18,
+            borderRadius: 16,
+            border: "1px solid rgba(0,0,0,0.12)",
+            background: "#fff",
+            boxShadow: "0 6px 24px rgba(0,0,0,0.06)",
+            cursor: "pointer",
+          }}
+        >
+          <div style={{ fontSize: 18, fontWeight: 900 }}>Info del Hotel</div>
+          <div style={{ marginTop: 6, opacity: 0.75, fontSize: 14 }}>Editar nombre y datos del hotel.</div>
         </button>
       </div>
     </main>
