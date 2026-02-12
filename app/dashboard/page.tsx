@@ -61,6 +61,48 @@ function clamp(n: number, a: number, b: number) {
   return Math.max(a, Math.min(b, n));
 }
 
+type AvgStat = { avg: number | null; count: number };
+
+function avgLastDaysWithCount(runs: AuditRunRow[], days: number): AvgStat {
+  const sinceMs = Date.now() - days * 24 * 60 * 60 * 1000;
+
+  const vals = runs
+    .filter((r) => r.executed_at)
+    .filter((r) => {
+      const t = r.executed_at ? new Date(r.executed_at).getTime() : 0;
+      return t >= sinceMs;
+    })
+    .map((r) => Number(r.score))
+    .filter((n) => Number.isFinite(n));
+
+  if (vals.length === 0) return { avg: null, count: 0 };
+
+  const avg = vals.reduce((s, n) => s + n, 0) / vals.length;
+  return { avg: Math.round(avg * 100) / 100, count: vals.length };
+}
+
+// Promedio estrictamente del mes actual (ej: febrero => solo febrero)
+function avgCurrentMonthWithCount(runs: AuditRunRow[]): AvgStat {
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = now.getMonth(); // 0-11
+
+  const vals = runs
+    .filter((r) => r.executed_at)
+    .filter((r) => {
+      const d = r.executed_at ? new Date(r.executed_at) : null;
+      if (!d) return false;
+      return d.getFullYear() === y && d.getMonth() === m;
+    })
+    .map((r) => Number(r.score))
+    .filter((n) => Number.isFinite(n));
+
+  if (vals.length === 0) return { avg: null, count: 0 };
+
+  const avg = vals.reduce((s, n) => s + n, 0) / vals.length;
+  return { avg: Math.round(avg * 100) / 100, count: vals.length };
+}
+
 // Sparkline SVG (línea)
 function Sparkline({ values }: { values: number[] }) {
   const w = 120;
@@ -91,7 +133,14 @@ function Sparkline({ values }: { values: number[] }) {
 
   return (
     <div style={{ width: w, height: h, overflow: "hidden" }}>
-      <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} role="img" aria-label="tendencia" style={{ display: "block" }}>
+      <svg
+        width={w}
+        height={h}
+        viewBox={`0 0 ${w} ${h}`}
+        role="img"
+        aria-label="tendencia"
+        style={{ display: "block" }}
+      >
         <path
           d={d}
           fill="none"
@@ -110,7 +159,13 @@ type TemplateDash = {
   template_id: string;
   template_name: string;
   lastRun: AuditRunRow | null;
-  avgLast4: number | null;
+
+  avgWeek: number | null;
+  weekCount: number;
+
+  avgMonth: number | null;
+  monthCount: number;
+
   trend: number[];
 };
 
@@ -131,7 +186,6 @@ export default function DashboardPage() {
   const [areas, setAreas] = useState<AreaRow[]>([]);
   const [q, setQ] = useState("");
 
-  // datos “enriquecidos” para mostrar por área -> por plantilla
   const [areaDash, setAreaDash] = useState<Record<string, AreaDash>>({});
 
   useEffect(() => {
@@ -235,7 +289,6 @@ export default function DashboardPage() {
         let runsPool: AuditRunRow[] = [];
 
         if (tplIds.length) {
-          // traemos las últimas 1200 por seguridad (normalmente será mucho menos)
           const { data: runData, error: runErr } = await supabase
             .from("audit_runs")
             .select("id,status,score,executed_at,audit_template_id,area_id")
@@ -248,7 +301,6 @@ export default function DashboardPage() {
           runsPool = (runData ?? []) as AuditRunRow[];
         }
 
-        // 2.3) construir dashboard por plantilla
         const next: Record<string, AreaDash> = {};
 
         for (const a of areas) {
@@ -269,11 +321,8 @@ export default function DashboardPage() {
 
             const lastRun = sorted[0] ?? null;
 
-            const last4 = sorted.slice(0, 4);
-            const avgLast4 =
-              last4.length === 0
-                ? null
-                : Math.round((last4.reduce((sum, r) => sum + (Number(r.score) || 0), 0) / last4.length) * 100) / 100;
+            const wk = avgLastDaysWithCount(sorted, 7);
+            const mo = avgCurrentMonthWithCount(sorted);
 
             const trendRuns = sorted.slice(0, 12).reverse();
             const trend = trendRuns
@@ -285,7 +334,13 @@ export default function DashboardPage() {
               template_id: t.id,
               template_name: t.name,
               lastRun,
-              avgLast4,
+
+              avgWeek: wk.avg,
+              weekCount: wk.count,
+
+              avgMonth: mo.avg,
+              monthCount: mo.count,
+
               trend,
             };
           }
@@ -306,19 +361,10 @@ export default function DashboardPage() {
     })();
   }, [areas, profile?.hotel_id]);
 
-  async function logout() {
-    await supabase.auth.signOut();
-    router.replace("/login");
-  }
-
   const filteredAreas = useMemo(() => {
     const s = q.trim().toLowerCase();
     if (!s) return areas;
-
-    return areas.filter((a) => {
-      const hay = `${a.name ?? ""} ${a.type ?? ""} ${a.id ?? ""}`.toLowerCase();
-      return hay.includes(s);
-    });
+    return areas.filter((a) => `${a.name ?? ""}`.toLowerCase().includes(s));
   }, [areas, q]);
 
   const card: React.CSSProperties = {
@@ -329,19 +375,8 @@ export default function DashboardPage() {
     boxShadow: "0 10px 30px rgba(0,0,0,0.06)",
   };
 
-  const btnBlack: React.CSSProperties = {
-    padding: "10px 14px",
-    borderRadius: 12,
-    border: "1px solid rgba(0,0,0,0.2)",
-    background: "#000",
-    color: "#fff",
-    fontWeight: 900,
-    cursor: "pointer",
-    height: 42,
-    whiteSpace: "nowrap",
-  };
-
-  const btnWhite: React.CSSProperties = {
+  // ✅ Botones superiores: TODOS como “Auditorías disponibles” (blancos)
+  const btnTop: React.CSSProperties = {
     padding: "10px 14px",
     borderRadius: 12,
     border: "1px solid rgba(0,0,0,0.2)",
@@ -352,6 +387,9 @@ export default function DashboardPage() {
     height: 42,
     whiteSpace: "nowrap",
   };
+
+  // Mantengo por si lo usas en otros sitios
+  const btnWhite: React.CSSProperties = btnTop;
 
   if (loading) {
     return (
@@ -367,9 +405,14 @@ export default function DashboardPage() {
       <main style={{ padding: 24 }}>
         <h1 style={{ fontSize: 56, marginBottom: 6 }}>Dashboard general</h1>
         <div style={{ color: "crimson", fontWeight: 900 }}>{error}</div>
-        <button onClick={logout} style={{ ...btnWhite, marginTop: 14 }}>
-          Salir
-        </button>
+        <div style={{ display: "flex", gap: 10, marginTop: 14, flexWrap: "wrap" }}>
+          <button onClick={() => window.location.reload()} style={btnTop}>
+            Reintentar
+          </button>
+          <button onClick={() => router.push("/profile")} style={btnTop}>
+            Perfil
+          </button>
+        </div>
       </main>
     );
   }
@@ -385,14 +428,20 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+        <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
           {profile?.role === "admin" ? (
-            <button onClick={() => router.push("/admin")} style={btnBlack}>
+            <button onClick={() => router.push("/admin")} style={btnTop}>
               Admin
             </button>
           ) : null}
-          <button onClick={logout} style={btnWhite}>
-            Salir
+
+          {/* ✅ Renombrar y llevar a la ventana de auditorías disponibles */}
+          <button onClick={() => router.push("/areas")} style={btnTop}>
+            Auditar
+          </button>
+
+          <button onClick={() => router.push("/profile")} style={btnTop}>
+            Perfil
           </button>
         </div>
       </div>
@@ -424,31 +473,17 @@ export default function DashboardPage() {
             <div key={a.id} style={card}>
               <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
                 <div>
-                  <div style={{ fontSize: 20, fontWeight: 950 }}>{a.name}</div>
-                  <div style={{ opacity: 0.8, marginTop: 6 }}>
-                    {a.type ? <span style={{ fontWeight: 900 }}>{a.type}</span> : null}
-                  </div>
+                  <div style={{ fontSize: 26, fontWeight: 1000, letterSpacing: -0.2 }}>{a.name}</div>
                 </div>
 
                 <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
-                  <button onClick={() => router.push(`/areas/${a.id}?tab=history`)} style={btnWhite}>
-                    Historial
-                  </button>
-
                   <button onClick={() => router.push(`/areas/${a.id}?tab=dashboard`)} style={btnWhite}>
                     Ver dashboard
-                  </button>
-
-                  {/* ✅ Cambio solicitado: no “Iniciar auditoría” aquí */}
-                  <button onClick={() => router.push(`/areas/${a.id}?tab=templates`)} style={btnBlack}>
-                    Auditorías disponibles
                   </button>
                 </div>
               </div>
 
               <div style={{ marginTop: 14 }}>
-                <div style={{ fontWeight: 950, marginBottom: 10 }}>Métricas por auditoría (plantilla)</div>
-
                 {templates.length === 0 ? (
                   <div style={{ opacity: 0.75 }}>No hay plantillas activas en esta área.</div>
                 ) : (
@@ -463,29 +498,34 @@ export default function DashboardPage() {
                             Última auditoría
                           </th>
                           <th style={{ padding: "10px 8px", borderBottom: "1px solid rgba(0,0,0,0.15)" }}>
-                            Último score
+                            Promedio 7 días
                           </th>
                           <th style={{ padding: "10px 8px", borderBottom: "1px solid rgba(0,0,0,0.15)" }}>
-                            Promedio últimas 4
+                            Promedio del mes
                           </th>
                           <th style={{ padding: "10px 8px", borderBottom: "1px solid rgba(0,0,0,0.15)" }}>
                             Tendencia
                           </th>
                         </tr>
                       </thead>
+
                       <tbody>
                         {templates.map((t) => {
                           const d = ad?.dashByTemplate?.[t.id];
                           const last = d?.lastRun ?? null;
 
-                          const lastScore = last?.score ?? null;
-                          const avg = d?.avgLast4 ?? null;
+                          const week = d?.avgWeek ?? null;
+                          const weekCount = d?.weekCount ?? 0;
+
+                          const month = d?.avgMonth ?? null;
+                          const monthCount = d?.monthCount ?? 0;
+
+                          const trendColorBase = month ?? week;
 
                           return (
                             <tr key={t.id}>
                               <td style={{ padding: "10px 8px", borderBottom: "1px solid rgba(0,0,0,0.08)" }}>
                                 <div style={{ fontWeight: 950 }}>{t.name}</div>
-                                <div style={{ opacity: 0.6, fontSize: 12 }}>ID: {t.id}</div>
                               </td>
 
                               <td style={{ padding: "10px 8px", borderBottom: "1px solid rgba(0,0,0,0.08)" }}>
@@ -497,10 +537,10 @@ export default function DashboardPage() {
                                   padding: "10px 8px",
                                   borderBottom: "1px solid rgba(0,0,0,0.08)",
                                   fontWeight: 950,
-                                  color: scoreColor(lastScore),
+                                  color: scoreColor(week),
                                 }}
                               >
-                                {lastScore === null ? "—" : `${Number(lastScore).toFixed(2)}%`}
+                                {week === null ? "—" : `${Number(week).toFixed(2)}% (${weekCount})`}
                               </td>
 
                               <td
@@ -508,14 +548,14 @@ export default function DashboardPage() {
                                   padding: "10px 8px",
                                   borderBottom: "1px solid rgba(0,0,0,0.08)",
                                   fontWeight: 950,
-                                  color: scoreColor(avg),
+                                  color: scoreColor(month),
                                 }}
                               >
-                                {avg === null ? "—" : `${Number(avg).toFixed(2)}%`}
+                                {month === null ? "—" : `${Number(month).toFixed(2)}% (${monthCount})`}
                               </td>
 
                               <td style={{ padding: "10px 8px", borderBottom: "1px solid rgba(0,0,0,0.08)" }}>
-                                <span style={{ color: scoreColor(avg), display: "inline-flex" }}>
+                                <span style={{ color: scoreColor(trendColorBase), display: "inline-flex" }}>
                                   <Sparkline values={d?.trend ?? []} />
                                 </span>
                               </td>
@@ -524,10 +564,6 @@ export default function DashboardPage() {
                         })}
                       </tbody>
                     </table>
-
-                    <div style={{ marginTop: 10, opacity: 0.7, fontSize: 12.5 }}>
-                      * Aquí no se mezclan plantillas: cada fila es una auditoría distinta (Arrival, Occupied, etc.).
-                    </div>
                   </div>
                 )}
               </div>
