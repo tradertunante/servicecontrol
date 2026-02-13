@@ -31,6 +31,7 @@ type AuditRunRow = {
   score: number | null;
   executed_at: string | null;
   area_id: string;
+  audit_template_id: string; // ✅ necesario para promedios por auditoría (template)
 };
 
 type ScoreAgg = { avg: number | null; count: number };
@@ -43,19 +44,18 @@ type AreaScore = {
 };
 
 type TrendPoint = {
-  key: string; // e.g. "Feb"
+  key: string; // "Ene"
   monthIndex: number;
   year: number;
   avg: number | null;
   count: number;
 };
 
-type WorstRun = {
-  id: string;
-  area_id: string;
-  area_name: string;
-  score: number;
-  executed_at: string | null;
+type WorstAudit = {
+  id: string; // audit_template_id
+  name: string; // nombre template
+  avg: number; // promedio
+  count: number; // # ejecuciones
 };
 
 function getMonthScore(runs: AuditRunRow[], year: number, month: number): ScoreAgg {
@@ -124,18 +124,6 @@ function formatMonthKey(d: Date) {
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
-function formatDateTime(iso: string | null) {
-  if (!iso) return "—";
-  const d = new Date(iso);
-  return d.toLocaleString("es-ES", {
-    year: "numeric",
-    month: "short",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
-
 export default function DashboardPage() {
   const router = useRouter();
 
@@ -154,7 +142,7 @@ export default function DashboardPage() {
 
   const [top3Areas, setTop3Areas] = useState<AreaScore[]>([]);
   const [worst3Areas, setWorst3Areas] = useState<AreaScore[]>([]);
-  const [worst3Runs, setWorst3Runs] = useState<WorstRun[]>([]);
+  const [worst3Audits, setWorst3Audits] = useState<WorstAudit[]>([]);
 
   useEffect(() => {
     (async () => {
@@ -172,6 +160,9 @@ export default function DashboardPage() {
           return;
         }
 
+        // -----------------------
+        // Áreas (según rol)
+        // -----------------------
         let areasList: AreaRow[] = [];
         if (p.role === "admin" || p.role === "manager") {
           const { data, error: aErr } = await supabase
@@ -214,12 +205,15 @@ export default function DashboardPage() {
           return;
         }
 
+        // -----------------------
+        // Runs últimos 12 meses
+        // -----------------------
         const oneYearAgo = new Date();
         oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
 
         const { data: runsData, error: runsErr } = await supabase
           .from("audit_runs")
-          .select("id,status,score,executed_at,area_id")
+          .select("id,status,score,executed_at,area_id,audit_template_id")
           .in("area_id", areaIds)
           .eq("status", "submitted")
           .gte("executed_at", oneYearAgo.toISOString())
@@ -230,6 +224,9 @@ export default function DashboardPage() {
         const runsList = (runsData ?? []) as AuditRunRow[];
         setRuns(runsList);
 
+        // -----------------------
+        // KPIs globales
+        // -----------------------
         const now = new Date();
         const currentYear = now.getFullYear();
         const currentMonth = now.getMonth();
@@ -239,7 +236,9 @@ export default function DashboardPage() {
         setQuarterScore(getQuarterScore(runsList, currentYear, currentQuarter));
         setYearScore(getYearScore(runsList, currentYear));
 
-        // Heatmap (12 meses)
+        // -----------------------
+        // Heatmap 12 meses
+        // -----------------------
         const heatData: any[] = [];
         for (const area of areasList) {
           const areaRuns = runsList.filter((r) => r.area_id === area.id);
@@ -251,8 +250,8 @@ export default function DashboardPage() {
             const y = d.getFullYear();
             const m = d.getMonth();
 
-            const score = getMonthScore(areaRuns, y, m);
-            months.push({ value: score.avg, count: score.count });
+            const s = getMonthScore(areaRuns, y, m);
+            months.push({ value: s.avg, count: s.count });
           }
 
           heatData.push({
@@ -262,16 +261,13 @@ export default function DashboardPage() {
         }
         setHeatMapData(heatData);
 
-        // Area scores año actual
+        // -----------------------
+        // Scores por área (año actual)
+        // -----------------------
         const areaScores: AreaScore[] = areasList.map((area) => {
           const areaRuns = runsList.filter((r) => r.area_id === area.id);
-          const score = getYearScore(areaRuns, currentYear);
-          return {
-            id: area.id,
-            name: area.name,
-            score: score.avg ?? 0,
-            count: score.count,
-          };
+          const s = getYearScore(areaRuns, currentYear);
+          return { id: area.id, name: area.name, score: s.avg ?? 0, count: s.count };
         });
 
         const withData = areaScores.filter((a) => a.count > 0);
@@ -279,21 +275,46 @@ export default function DashboardPage() {
         setTop3Areas([...withData].sort((a, b) => b.score - a.score).slice(0, 3));
         setWorst3Areas([...withData].sort((a, b) => a.score - b.score).slice(0, 3));
 
-        // Top 3 auditorías peores (runs individuales)
-        const areaNameById = new Map(areasList.map((a) => [a.id, a.name] as const));
-        const worstRuns: WorstRun[] = [...runsList]
-          .filter((r) => r.score !== null && Number.isFinite(Number(r.score)))
-          .map((r) => ({
-            id: r.id,
-            area_id: r.area_id,
-            area_name: areaNameById.get(r.area_id) ?? "Área",
-            score: Number(r.score),
-            executed_at: r.executed_at,
+        // -----------------------
+        // Top 3 auditorías peores por PROMEDIO (template)
+        // -----------------------
+        const templateIds = Array.from(new Set(runsList.map((r) => r.audit_template_id).filter(Boolean)));
+
+        const templateNameById = new Map<string, string>();
+        if (templateIds.length > 0) {
+          const { data: templatesData, error: tErr } = await supabase
+            .from("audit_templates")
+            .select("id,name")
+            .in("id", templateIds);
+
+          if (tErr) throw tErr;
+
+          (templatesData ?? []).forEach((t: any) => templateNameById.set(t.id, t.name));
+        }
+
+        const templateAgg = new Map<string, { sum: number; count: number }>();
+
+        for (const r of runsList) {
+          const score = Number(r.score);
+          if (!Number.isFinite(score) || score < 0 || score > 100) continue;
+
+          const key = r.audit_template_id;
+          const prev = templateAgg.get(key) ?? { sum: 0, count: 0 };
+          templateAgg.set(key, { sum: prev.sum + score, count: prev.count + 1 });
+        }
+
+        const worstAudits: WorstAudit[] = Array.from(templateAgg.entries())
+          .map(([id, v]) => ({
+            id,
+            name: templateNameById.get(id) ?? "Auditoría",
+            avg: v.count > 0 ? v.sum / v.count : 0,
+            count: v.count,
           }))
-          .sort((a, b) => a.score - b.score)
+          .filter((a) => a.count > 0)
+          .sort((a, b) => a.avg - b.avg)
           .slice(0, 3);
 
-        setWorst3Runs(worstRuns);
+        setWorst3Audits(worstAudits);
 
         setLoading(false);
       } catch (e: any) {
@@ -327,15 +348,22 @@ export default function DashboardPage() {
     router.push(`/areas/${areaId}/history`);
   };
 
+  // 👉 ajusta esta ruta si tu "detalle de auditoría" es otra página
+  const goAuditTemplateDetail = (templateId: string) => {
+    router.push(`/builder/templates/${templateId}`);
+  };
+
   const build3MonthTrend = (areaId: string): TrendPoint[] => {
     const areaRuns = runs.filter((r) => r.area_id === areaId);
     const points: TrendPoint[] = [];
+
     for (let i = 2; i >= 0; i--) {
       const d = new Date();
       d.setMonth(d.getMonth() - i);
       const year = d.getFullYear();
       const monthIndex = d.getMonth();
       const s = getMonthScore(areaRuns, year, monthIndex);
+
       points.push({
         key: formatMonthKey(d),
         monthIndex,
@@ -344,6 +372,7 @@ export default function DashboardPage() {
         count: s.count,
       });
     }
+
     return points;
   };
 
@@ -466,7 +495,12 @@ export default function DashboardPage() {
         </div>
 
         <div style={card}>
-          <GaugeChart value={quarterScore.avg ?? 0} label={`Q${getCurrentQuarter()} ${now.getFullYear()}`} count={quarterScore.count} size={180} />
+          <GaugeChart
+            value={quarterScore.avg ?? 0}
+            label={`Q${getCurrentQuarter()} ${now.getFullYear()}`}
+            count={quarterScore.count}
+            size={180}
+          />
         </div>
 
         <div style={card}>
@@ -494,45 +528,35 @@ export default function DashboardPage() {
             gap: 16,
           }}
         >
-          {/* Top 3 mejores */}
           <div style={card}>
             <div style={{ fontSize: 18, fontWeight: 950, marginBottom: 16 }}>
               Top 3 Áreas con mejor performance ({now.getFullYear()})
             </div>
             <div style={{ display: "grid", gap: 12 }}>
-              {top3Areas.length > 0 ? (
-                top3Areas.map((a, idx) => renderAreaRow(a, idx, "best"))
-              ) : (
-                <div style={{ opacity: 0.7 }}>No hay datos suficientes.</div>
-              )}
+              {top3Areas.length > 0 ? top3Areas.map((a, idx) => renderAreaRow(a, idx, "best")) : <div style={{ opacity: 0.7 }}>No hay datos suficientes.</div>}
             </div>
           </div>
 
-          {/* Top 3 peores */}
           <div style={card}>
             <div style={{ fontSize: 18, fontWeight: 950, marginBottom: 16 }}>
               Top 3 Áreas con peor performance ({now.getFullYear()})
             </div>
             <div style={{ display: "grid", gap: 12 }}>
-              {worst3Areas.length > 0 ? (
-                worst3Areas.map((a, idx) => renderAreaRow(a, idx, "worst"))
-              ) : (
-                <div style={{ opacity: 0.7 }}>No hay datos suficientes.</div>
-              )}
+              {worst3Areas.length > 0 ? worst3Areas.map((a, idx) => renderAreaRow(a, idx, "worst")) : <div style={{ opacity: 0.7 }}>No hay datos suficientes.</div>}
             </div>
           </div>
         </div>
       )}
 
-      {/* Top 3 auditorías peores */}
-      {worst3Runs.length > 0 && (
+      {/* Top 3 auditorías peores por PROMEDIO */}
+      {worst3Audits.length > 0 && (
         <div style={{ ...card, marginTop: 16 }}>
-          <div style={{ fontSize: 18, fontWeight: 950, marginBottom: 16 }}>Top 3 auditorías con peor resultado</div>
+          <div style={{ fontSize: 18, fontWeight: 950, marginBottom: 16 }}>Top 3 auditorías con peor resultado (promedio)</div>
 
           <div style={{ display: "grid", gap: 12 }}>
-            {worst3Runs.map((r, idx) => (
+            {worst3Audits.map((a, idx) => (
               <div
-                key={r.id}
+                key={a.id}
                 style={{
                   display: "flex",
                   justifyContent: "space-between",
@@ -548,17 +572,17 @@ export default function DashboardPage() {
                   <span style={{ fontSize: 22 }}>{idx === 0 ? "🚨" : "⚠️"}</span>
                   <div style={{ minWidth: 0 }}>
                     <div style={{ fontWeight: 950, fontSize: 16, overflow: "hidden", textOverflow: "ellipsis" }}>
-                      {r.area_name}
+                      {a.name}
                     </div>
                     <div style={{ marginTop: 4, fontSize: 12, opacity: 0.75 }}>
-                      Ejecutada: <strong>{formatDateTime(r.executed_at)}</strong>
+                      {a.count} ejecución{a.count === 1 ? "" : "es"} · promedio del periodo
                     </div>
                   </div>
                 </div>
 
                 <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                  <span style={{ fontWeight: 950, fontSize: 20, color: scoreColor(r.score) }}>{r.score.toFixed(1)}%</span>
-                  <button onClick={() => goAreaDetail(r.area_id)} style={miniBtn}>
+                  <span style={{ fontWeight: 950, fontSize: 20, color: scoreColor(a.avg) }}>{a.avg.toFixed(1)}%</span>
+                  <button onClick={() => goAuditTemplateDetail(a.id)} style={miniBtn}>
                     Ver detalle
                   </button>
                 </div>

@@ -41,6 +41,7 @@ export default function HotelHeader() {
   const [hotelName, setHotelName] = useState<string | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isHoveringHotel, setIsHoveringHotel] = useState(false);
 
   // Debug: ver qué pathname se está detectando
   useEffect(() => {
@@ -121,19 +122,30 @@ export default function HotelHeader() {
         gap: 16,
       }}
     >
-      {/* Nombre del hotel + página actual */}
+      {/* ✅ Nombre del hotel CLICKABLE + página actual */}
       <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-        <div
+        <button
+          onClick={() => router.push("/dashboard")}
+          onMouseEnter={() => setIsHoveringHotel(true)}
+          onMouseLeave={() => setIsHoveringHotel(false)}
           style={{
             fontSize: 14,
             fontWeight: 950,
-            opacity: 0.8,
+            opacity: isHoveringHotel ? 1 : 0.8,
             letterSpacing: "0.3px",
             whiteSpace: "nowrap",
+            background: "none",
+            border: "none",
+            cursor: "pointer",
+            padding: "4px 8px",
+            borderRadius: 8,
+            transition: "all 0.2s ease",
+            color: isHoveringHotel ? "#000" : "inherit",
+            textDecoration: isHoveringHotel ? "underline" : "none",
           }}
         >
           {hotelName}
-        </div>
+        </button>
 
         {pageTitle && (
           <>
