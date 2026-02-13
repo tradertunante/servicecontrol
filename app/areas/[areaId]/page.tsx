@@ -111,26 +111,24 @@ function Sparkline({ values }: { values: number[] }) {
 
   return (
     <div style={{ width: w, height: h, overflow: "hidden" }}>
-      <svg
-        width={w}
-        height={h}
-        viewBox={`0 0 ${w} ${h}`}
-        role="img"
-        aria-label="tendencia"
-        style={{ display: "block" }}
-      >
-        <path
-          d={d}
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinejoin="round"
-          strokeLinecap="round"
-        />
+      <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} role="img" aria-label="tendencia" style={{ display: "block" }}>
+        <path d={d} fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
         <circle cx={pts[pts.length - 1].x} cy={pts[pts.length - 1].y} r="2.5" fill="currentColor" />
       </svg>
     </div>
   );
+}
+
+function monthLabel(monthIndex: number) {
+  const d = new Date(2020, monthIndex, 1);
+  const s = d.toLocaleDateString("es-ES", { month: "long" }).replace(".", "");
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+function monthStartEndISO(year: number, monthIndex: number) {
+  const start = new Date(year, monthIndex, 1, 0, 0, 0, 0);
+  const end = new Date(year, monthIndex + 1, 1, 0, 0, 0, 0); // exclusive
+  return { start: start.toISOString(), end: end.toISOString() };
 }
 
 export default function AreaPage() {
@@ -138,7 +136,8 @@ export default function AreaPage() {
   const params = useParams<{ areaId: string }>();
   const searchParams = useSearchParams();
 
-  const tab = (searchParams.get("tab") ?? "history") as "history" | "templates" | "dashboard";
+  // ✅ DEFAULT: dashboard
+  const tab = (searchParams.get("tab") ?? "dashboard") as "history" | "templates" | "dashboard";
   const areaId = params?.areaId;
 
   const [loading, setLoading] = useState(true);
@@ -151,20 +150,38 @@ export default function AreaPage() {
   // Templates
   const [templates, setTemplates] = useState<AuditTemplate[]>([]);
 
-  // History / Data
+  // History / Data (para tu histórico general actual)
   const [runs, setRuns] = useState<AuditRunRow[]>([]);
   const [templateNameById, setTemplateNameById] = useState<Record<string, string>>({});
   const [executorNameById, setExecutorNameById] = useState<Record<string, string>>({});
   const [totalsByTemplate, setTotalsByTemplate] = useState<Record<string, Record<string, SectionTotal>>>({});
-  const [exceptionsByRun, setExceptionsByRun] = useState<
-    Record<string, Record<string, { fail: number; na: number }>>
-  >({});
+  const [exceptionsByRun, setExceptionsByRun] = useState<Record<string, Record<string, { fail: number; na: number }>>>({});
 
   // ✅ filtro de dashboard por plantilla
   const [templateFilter, setTemplateFilter] = useState<string>("ALL");
 
+  // ✅ Historial (nuevo) con filtros en cascada
+  const now = new Date();
+  const [histTemplateId, setHistTemplateId] = useState<string>("");
+  const [histYear, setHistYear] = useState<number>(now.getFullYear());
+  const [histMonth, setHistMonth] = useState<number>(now.getMonth());
+
+  const [histLoading, setHistLoading] = useState(false);
+  const [histError, setHistError] = useState<string | null>(null);
+  const [histRuns, setHistRuns] = useState<AuditRunRow[]>([]);
+
+  // ✅ Si entran sin tab, forzar dashboard
+  useEffect(() => {
+    if (!areaId) return;
+    const t = searchParams.get("tab");
+    if (!t) {
+      router.replace(`/areas/${areaId}?tab=dashboard`);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [areaId]);
+
   // ----------------------
-  // Load all data
+  // Load all data (como tenías)
   // ----------------------
   useEffect(() => {
     if (!areaId) return;
@@ -194,7 +211,7 @@ export default function AreaPage() {
         if (areaErr || !areaData) throw areaErr ?? new Error("Área no encontrada");
         setArea(areaData as Area);
 
-        // 2) Templates del área (SIN tabla puente)
+        // 2) Templates del área
         const { data: tData, error: tErr } = await supabase
           .from("audit_templates")
           .select("id,name,active,area_id")
@@ -203,10 +220,15 @@ export default function AreaPage() {
 
         if (tErr) throw tErr;
 
-        const onlyActive = (tData ?? []).filter((t: any) => t.active !== false);
-        setTemplates(onlyActive as AuditTemplate[]);
+        const onlyActive = (tData ?? []).filter((t: any) => t.active !== false) as AuditTemplate[];
+        setTemplates(onlyActive);
 
-        // 3) Runs (últimos 80)
+        // ✅ default del filtro de historial: el primero
+        if (!histTemplateId && onlyActive.length > 0) {
+          setHistTemplateId(onlyActive[0].id);
+        }
+
+        // 3) Runs (últimos 80) para dashboard / cálculos
         const { data: runData, error: runErr } = await supabase
           .from("audit_runs")
           .select("id,status,score,notes,executed_at,executed_by,audit_template_id,area_id")
@@ -227,11 +249,7 @@ export default function AreaPage() {
 
         // 4) Nombres templates
         if (templateIds.length) {
-          const { data: tplData, error: tplErr } = await supabase
-            .from("audit_templates")
-            .select("id,name")
-            .in("id", templateIds);
-
+          const { data: tplData, error: tplErr } = await supabase.from("audit_templates").select("id,name").in("id", templateIds);
           if (tplErr) throw tplErr;
 
           const map: Record<string, string> = {};
@@ -241,11 +259,7 @@ export default function AreaPage() {
 
         // 5) Nombres ejecutores
         if (executorIds.length) {
-          const { data: pData, error: pErr } = await supabase
-            .from("profiles")
-            .select("id,full_name")
-            .in("id", executorIds);
-
+          const { data: pData, error: pErr } = await supabase.from("profiles").select("id,full_name").in("id", executorIds);
           if (!pErr && pData) {
             const map: Record<string, string> = {};
             for (const row of pData as any[]) map[row.id] = row.full_name ?? row.id;
@@ -284,22 +298,16 @@ export default function AreaPage() {
             if (!tplId || !secId) continue;
 
             if (!totals[tplId]) totals[tplId] = {};
-            if (!totals[tplId][secId]) {
-              totals[tplId][secId] = { section_id: secId, section_name: secName, total_questions: 0 };
-            }
+            if (!totals[tplId][secId]) totals[tplId][secId] = { section_id: secId, section_name: secName, total_questions: 0 };
             totals[tplId][secId].total_questions += 1;
           }
 
           setTotalsByTemplate(totals);
         }
 
-        // 7) Excepciones FAIL/NA por run (sin embeds)
+        // 7) Excepciones FAIL/NA por run
         if (runIds.length) {
-          const { data: aData, error: aErr } = await supabase
-            .from("audit_answers")
-            .select("audit_run_id,question_id,result")
-            .in("audit_run_id", runIds);
-
+          const { data: aData, error: aErr } = await supabase.from("audit_answers").select("audit_run_id,question_id,result").in("audit_run_id", runIds);
           if (aErr) throw aErr;
 
           const answers = (aData ?? []) as Array<{ audit_run_id: string; question_id: string; result: string | null }>;
@@ -310,13 +318,7 @@ export default function AreaPage() {
           if (questionIds.length) {
             const { data: q2Data, error: q2Err } = await supabase
               .from("audit_questions")
-              .select(
-                `
-                id,
-                audit_section_id,
-                audit_sections ( id )
-              `
-              )
+              .select(`id, audit_section_id, audit_sections ( id )`)
               .in("id", questionIds);
 
             if (q2Err) throw q2Err;
@@ -350,10 +352,11 @@ export default function AreaPage() {
         setError(e?.message ?? "Error cargando área.");
       }
     })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [areaId, router]);
 
   // ----------------------
-  // Start run
+  // Start run (igual)
   // ----------------------
   async function handleStart(templateId: string) {
     if (!profile || !areaId) return;
@@ -369,7 +372,7 @@ export default function AreaPage() {
 
       if (userErr || !user) throw userErr ?? new Error("No hay sesión activa.");
 
-      const now = new Date().toISOString();
+      const nowIso = new Date().toISOString();
 
       const { data, error } = await supabase
         .from("audit_runs")
@@ -380,7 +383,7 @@ export default function AreaPage() {
           status: "draft",
           score: null,
           notes: null,
-          executed_at: now,
+          executed_at: nowIso,
           executed_by: user.id,
         })
         .select("id")
@@ -397,7 +400,41 @@ export default function AreaPage() {
   }
 
   // ----------------------
-  // History aggregation (para Historial)
+  // ✅ Nuevo: buscar historial por (template + year + month)
+  // ----------------------
+  async function handleSearchHistory() {
+    if (!areaId || !histTemplateId) return;
+
+    setHistLoading(true);
+    setHistError(null);
+
+    try {
+      const { start, end } = monthStartEndISO(histYear, histMonth);
+
+      const { data, error: rErr } = await supabase
+        .from("audit_runs")
+        .select("id,status,score,notes,executed_at,executed_by,audit_template_id,area_id")
+        .eq("area_id", areaId)
+        .eq("status", "submitted")
+        .eq("audit_template_id", histTemplateId)
+        .gte("executed_at", start)
+        .lt("executed_at", end)
+        .order("executed_at", { ascending: false });
+
+      if (rErr) throw rErr;
+
+      setHistRuns((data ?? []) as AuditRunRow[]);
+    } catch (e: any) {
+      setHistError(e?.message ?? "No se pudo buscar el historial.");
+      setHistRuns([]);
+    } finally {
+      setHistLoading(false);
+    }
+  }
+
+  // ----------------------
+  // History aggregation (para tu vista antigua "historial completo" si lo quisieras)
+  // (lo dejamos porque lo usabas; ahora el historial nuevo usa histRuns)
   // ----------------------
   const aggregatedHistory: RunAgg[] = useMemo(() => {
     return runs.map((r) => {
@@ -436,7 +473,8 @@ export default function AreaPage() {
   }, [runs, templateNameById, executorNameById, totalsByTemplate, exceptionsByRun]);
 
   // ----------------------
-  // Dashboard aggregation (filtra por plantilla)
+  // Dashboard aggregation (tu dashboard actual)
+  // ✅ MODIFICADO: Agrupar por NOMBRE de sección (análisis transversal)
   // ----------------------
   const dashboard = useMemo(() => {
     const WINDOW = 4;
@@ -468,7 +506,7 @@ export default function AreaPage() {
       .filter((n) => Number.isFinite(n))
       .map((n) => clamp(n, 0, 100));
 
-    // Ranking secciones (sobre lastN)
+    // ✅ CAMBIO: Ranking secciones AGRUPADO POR NOMBRE (análisis transversal)
     const sectionStats: Record<
       string,
       { name: string; scores: number[]; totalFail: number; totalNa: number; totalQuestions: number }
@@ -488,9 +526,12 @@ export default function AreaPage() {
         const pass = Math.max(0, denom - fail);
         const score = denom === 0 ? null : (pass / denom) * 100;
 
-        if (!sectionStats[secId]) {
-          sectionStats[secId] = {
-            name: t?.section_name ?? "Sin sección",
+        // ✅ CLAVE: Agrupar por NOMBRE en lugar de por ID
+        const sectionName = t?.section_name ?? "Sin sección";
+
+        if (!sectionStats[sectionName]) {
+          sectionStats[sectionName] = {
+            name: sectionName,
             scores: [],
             totalFail: 0,
             totalNa: 0,
@@ -498,17 +539,17 @@ export default function AreaPage() {
           };
         }
 
-        if (score !== null) sectionStats[secId].scores.push(score);
-        sectionStats[secId].totalFail += fail;
-        sectionStats[secId].totalNa += na;
-        sectionStats[secId].totalQuestions += totalQ;
+        if (score !== null) sectionStats[sectionName].scores.push(score);
+        sectionStats[sectionName].totalFail += fail;
+        sectionStats[sectionName].totalNa += na;
+        sectionStats[sectionName].totalQuestions += totalQ;
       }
     }
 
     const denomRuns = Math.max(1, lastN.length);
 
     const sectionRanking = Object.entries(sectionStats)
-      .map(([secId, s]) => {
+      .map(([sectionName, s]) => {
         const avg =
           s.scores.length === 0
             ? null
@@ -517,7 +558,12 @@ export default function AreaPage() {
         const avgFail = Math.round((s.totalFail / denomRuns) * 100) / 100;
         const avgNa = Math.round((s.totalNa / denomRuns) * 100) / 100;
 
-        return { section_id: secId, section_name: s.name, avg_score: avg, avg_fail: avgFail, avg_na: avgNa };
+        return { 
+          section_name: sectionName, 
+          avg_score: avg, 
+          avg_fail: avgFail, 
+          avg_na: avgNa 
+        };
       })
       .sort((a, b) => {
         const av = a.avg_score ?? 9999;
@@ -539,7 +585,9 @@ export default function AreaPage() {
       filterLabel:
         templateFilter === "ALL"
           ? "General (todas)"
-          : templateNameById[templateFilter] ?? templates.find((t) => t.id === templateFilter)?.name ?? "Plantilla",
+          : templateNameById[templateFilter] ??
+            templates.find((t) => t.id === templateFilter)?.name ??
+            "Plantilla",
     };
   }, [runs, totalsByTemplate, exceptionsByRun, templateFilter, templateNameById, templates]);
 
@@ -561,6 +609,36 @@ export default function AreaPage() {
     border: "1px solid rgba(0,0,0,0.08)",
     background: "rgba(255,255,255,0.75)",
     padding: 18,
+  };
+
+  const inputStyle: React.CSSProperties = {
+    padding: "10px 12px",
+    borderRadius: 12,
+    border: "1px solid rgba(0,0,0,0.20)",
+    background: "#fff",
+    fontWeight: 900,
+  };
+
+  const primaryBtn: React.CSSProperties = {
+    padding: "10px 14px",
+    borderRadius: 12,
+    border: "1px solid rgba(0,0,0,0.2)",
+    background: "#000",
+    color: "#fff",
+    fontWeight: 900,
+    cursor: "pointer",
+    whiteSpace: "nowrap",
+  };
+
+  const ghostBtn: React.CSSProperties = {
+    padding: "10px 14px",
+    borderRadius: 12,
+    border: "1px solid rgba(0,0,0,0.2)",
+    background: "#fff",
+    color: "#000",
+    fontWeight: 900,
+    cursor: "pointer",
+    whiteSpace: "nowrap",
   };
 
   if (loading) {
@@ -594,20 +672,21 @@ export default function AreaPage() {
         Rol: <strong>{profile?.role}</strong>
       </div>
 
+      {/* ✅ Orden tabs: Dashboard primero */}
       <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 18 }}>
+        <button style={tabBtn(tab === "dashboard")} onClick={() => router.push(`/areas/${areaId}?tab=dashboard`)}>
+          Dashboard
+        </button>
         <button style={tabBtn(tab === "history")} onClick={() => router.push(`/areas/${areaId}?tab=history`)}>
           Historial
         </button>
         <button style={tabBtn(tab === "templates")} onClick={() => router.push(`/areas/${areaId}?tab=templates`)}>
           Auditorías disponibles
         </button>
-        <button style={tabBtn(tab === "dashboard")} onClick={() => router.push(`/areas/${areaId}?tab=dashboard`)}>
-          Dashboard
-        </button>
       </div>
 
       {/* ---------------------- */}
-      {/* DASHBOARD */}
+      {/* DASHBOARD (tu contenido intacto) */}
       {/* ---------------------- */}
       {tab === "dashboard" ? (
         <div style={{ display: "grid", gap: 14 }}>
@@ -726,10 +805,13 @@ export default function AreaPage() {
             </div>
           </div>
 
-          {/* ranking */}
+          {/* ranking - ✅ AHORA SIN DUPLICADOS */}
           <div style={card}>
             <div style={{ fontWeight: 950, marginBottom: 10 }}>
               Ranking de secciones (promedio últimas {dashboard.windowSize || 0})
+              <div style={{ fontSize: 13, fontWeight: 400, opacity: 0.75, marginTop: 4 }}>
+                ✅ Análisis transversal - agregado por nombre de sección en todas las plantillas
+              </div>
             </div>
 
             {dashboard.sectionRanking.length === 0 ? (
@@ -746,19 +828,10 @@ export default function AreaPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {dashboard.sectionRanking.map((s) => (
-                      <tr key={s.section_id}>
-                        <td style={{ padding: "10px 8px", borderBottom: "1px solid rgba(0,0,0,0.08)" }}>
-                          {s.section_name}
-                        </td>
-                        <td
-                          style={{
-                            padding: "10px 8px",
-                            borderBottom: "1px solid rgba(0,0,0,0.08)",
-                            fontWeight: 950,
-                            color: scoreColor(s.avg_score),
-                          }}
-                        >
+                    {dashboard.sectionRanking.map((s, idx) => (
+                      <tr key={`${s.section_name}-${idx}`}>
+                        <td style={{ padding: "10px 8px", borderBottom: "1px solid rgba(0,0,0,0.08)" }}>{s.section_name}</td>
+                        <td style={{ padding: "10px 8px", borderBottom: "1px solid rgba(0,0,0,0.08)", fontWeight: 950, color: scoreColor(s.avg_score) }}>
                           {s.avg_score === null ? "—" : `${s.avg_score.toFixed(2)}%`}
                         </td>
                         <td style={{ padding: "10px 8px", borderBottom: "1px solid rgba(0,0,0,0.08)", fontWeight: 900, color: "#000" }}>
@@ -782,111 +855,130 @@ export default function AreaPage() {
       ) : null}
 
       {/* ---------------------- */}
-      {/* HISTORY */}
+      {/* HISTORIAL (nuevo con filtros) */}
       {/* ---------------------- */}
       {tab === "history" ? (
         <div style={{ display: "grid", gap: 14 }}>
-          {aggregatedHistory.length === 0 ? <div style={card}>No hay auditorías registradas todavía.</div> : null}
+          <div style={card}>
+            <div style={{ fontSize: 20, fontWeight: 950, marginBottom: 12 }}>Historial</div>
 
-          {aggregatedHistory.map((item) => {
-            const r = item.run;
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+                gap: 12,
+                alignItems: "end",
+              }}
+            >
+              <div>
+                <div style={{ fontSize: 12, fontWeight: 950, opacity: 0.75, marginBottom: 6 }}>Tipo de auditoría</div>
+                <select value={histTemplateId} onChange={(e) => setHistTemplateId(e.target.value)} style={inputStyle}>
+                  {templates.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.name}
+                    </option>
+                  ))}
+                  {templates.length === 0 ? <option value="">No hay auditorías</option> : null}
+                </select>
+              </div>
 
-            return (
-              <div key={r.id} style={card}>
-                <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
-                  <div>
-                    <div style={{ fontSize: 18, fontWeight: 950 }}>{item.templateName}</div>
-                    <div style={{ opacity: 0.85, marginTop: 4 }}>
-                      <strong>Fecha:</strong> {fmtDate(r.executed_at)} {" · "}
-                      <strong>Ejecutada por:</strong> {item.executedByName ?? "—"} {" · "}
-                      <strong>Score:</strong>{" "}
-                      <span style={{ fontWeight: 950, color: scoreColor(r.score) }}>
-                        {r.score === null ? "—" : `${Number(r.score).toFixed(2)}%`}
-                      </span>
-                    </div>
-                    {r.notes ? (
-                      <div style={{ marginTop: 8, opacity: 0.9 }}>
-                        <strong>Notas:</strong> {r.notes}
-                      </div>
-                    ) : null}
-                  </div>
+              <div>
+                <div style={{ fontSize: 12, fontWeight: 950, opacity: 0.75, marginBottom: 6 }}>Año</div>
+                <select value={histYear} onChange={(e) => setHistYear(Number(e.target.value))} style={inputStyle}>
+                  {Array.from({ length: 6 }, (_, i) => now.getFullYear() - i).map((y) => (
+                    <option key={y} value={y}>
+                      {y}
+                    </option>
+                  ))}
+                </select>
+              </div>
 
-                  <button
-                    onClick={() => router.push(`/audits/${r.id}`)}
+              <div>
+                <div style={{ fontSize: 12, fontWeight: 950, opacity: 0.75, marginBottom: 6 }}>Mes</div>
+                <select value={histMonth} onChange={(e) => setHistMonth(Number(e.target.value))} style={inputStyle}>
+                  {Array.from({ length: 12 }, (_, m) => (
+                    <option key={m} value={m}>
+                      {monthLabel(m)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                <button onClick={handleSearchHistory} style={primaryBtn} disabled={!histTemplateId || histLoading}>
+                  {histLoading ? "Buscando…" : "Buscar"}
+                </button>
+                <button
+                  onClick={() => {
+                    setHistRuns([]);
+                    setHistError(null);
+                  }}
+                  style={ghostBtn}
+                  disabled={histLoading}
+                >
+                  Limpiar
+                </button>
+              </div>
+            </div>
+
+            {histError ? (
+              <div style={{ marginTop: 12, color: "crimson", fontWeight: 900 }}>{histError}</div>
+            ) : null}
+          </div>
+
+          <div style={card}>
+            <div style={{ fontWeight: 950, marginBottom: 10 }}>Resultados</div>
+
+            {histRuns.length === 0 ? (
+              <div style={{ opacity: 0.8 }}>
+                No hay auditorías para ese periodo. Selecciona filtros y pulsa <strong>Buscar</strong>.
+              </div>
+            ) : (
+              <div style={{ display: "grid", gap: 12 }}>
+                {histRuns.map((r) => (
+                  <div
+                    key={r.id}
                     style={{
-                      padding: "10px 14px",
-                      borderRadius: 12,
-                      border: "1px solid rgba(0,0,0,0.2)",
-                      background: "#000",
-                      color: "#fff",
-                      fontWeight: 900,
-                      cursor: "pointer",
-                      height: 44,
+                      border: "1px solid rgba(0,0,0,0.10)",
+                      borderRadius: 14,
+                      padding: 14,
+                      background: "rgba(0,0,0,0.02)",
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      gap: 12,
+                      flexWrap: "wrap",
                     }}
                   >
-                    Ver auditoría
-                  </button>
-                </div>
+                    <div style={{ minWidth: 260 }}>
+                      <div style={{ fontWeight: 950 }}>{fmtDate(r.executed_at)}</div>
+                      <div style={{ marginTop: 4, fontSize: 13, opacity: 0.75 }}>
+                        Score:{" "}
+                        <span style={{ fontWeight: 950, color: scoreColor(r.score) }}>
+                          {r.score === null ? "—" : `${Number(r.score).toFixed(2)}%`}
+                        </span>
+                      </div>
+                    </div>
 
-                <div style={{ marginTop: 14 }}>
-                  <div style={{ fontWeight: 900, marginBottom: 8 }}>Desglose por secciones</div>
-
-                  <div style={{ overflowX: "auto" }}>
-                    <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                      <thead>
-                        <tr style={{ textAlign: "left" }}>
-                          <th style={{ padding: "10px 8px", borderBottom: "1px solid rgba(0,0,0,0.15)" }}>Sección</th>
-                          <th style={{ padding: "10px 8px", borderBottom: "1px solid rgba(0,0,0,0.15)" }}>Total</th>
-                          <th style={{ padding: "10px 8px", borderBottom: "1px solid rgba(0,0,0,0.15)" }}>FAIL</th>
-                          <th style={{ padding: "10px 8px", borderBottom: "1px solid rgba(0,0,0,0.15)" }}>NA</th>
-                          <th style={{ padding: "10px 8px", borderBottom: "1px solid rgba(0,0,0,0.15)" }}>Score sección</th>
-                        </tr>
-                      </thead>
-
-                      <tbody>
-                        {item.sections.map((s) => (
-                          <tr key={s.section_id}>
-                            <td style={{ padding: "10px 8px", borderBottom: "1px solid rgba(0,0,0,0.08)" }}>{s.section_name}</td>
-                            <td style={{ padding: "10px 8px", borderBottom: "1px solid rgba(0,0,0,0.08)" }}>{s.total_questions}</td>
-                            <td style={{ padding: "10px 8px", borderBottom: "1px solid rgba(0,0,0,0.08)", fontWeight: 900, color: "#000" }}>
-                              {s.fail_count}
-                            </td>
-                            <td style={{ padding: "10px 8px", borderBottom: "1px solid rgba(0,0,0,0.08)", fontWeight: 900, color: "#000" }}>
-                              {s.na_count}
-                            </td>
-                            <td style={{ padding: "10px 8px", borderBottom: "1px solid rgba(0,0,0,0.08)", fontWeight: 900, color: scoreColor(s.score) }}>
-                              {s.score === null ? "—" : `${s.score.toFixed(2)}%`}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                    <button onClick={() => router.push(`/audits/${r.id}`)} style={primaryBtn}>
+                      Ver auditoría
+                    </button>
                   </div>
-
-                  <div style={{ marginTop: 10, opacity: 0.75, fontSize: 13 }}>
-                    * Score sección = (PASS / (Total - NA)). PASS es implícito salvo excepciones FAIL/NA.
-                  </div>
-                </div>
+                ))}
               </div>
-            );
-          })}
+            )}
+          </div>
         </div>
       ) : null}
 
       {/* ---------------------- */}
-      {/* TEMPLATES */}
+      {/* AUDITORÍAS DISPONIBLES (intacto) */}
       {/* ---------------------- */}
       {tab === "templates" ? (
         <>
           <h2 style={{ fontSize: 24, marginBottom: 12 }}>Auditorías disponibles</h2>
 
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
-              gap: 16,
-            }}
-          >
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 16 }}>
             {templates.map((t) => (
               <div
                 key={t.id}
@@ -924,9 +1016,7 @@ export default function AreaPage() {
             ))}
           </div>
 
-          {templates.length === 0 ? (
-            <p style={{ marginTop: 16, opacity: 0.85 }}>No hay auditorías asignadas a esta área todavía.</p>
-          ) : null}
+          {templates.length === 0 ? <p style={{ marginTop: 16, opacity: 0.85 }}>No hay auditorías asignadas a esta área todavía.</p> : null}
         </>
       ) : null}
     </main>
