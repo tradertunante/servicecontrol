@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { requireRoleOrRedirect } from "@/lib/auth/RequireRole";
@@ -33,7 +33,32 @@ type AuditRunRow = {
   area_id: string;
 };
 
-function getMonthScore(runs: AuditRunRow[], year: number, month: number) {
+type ScoreAgg = { avg: number | null; count: number };
+
+type AreaScore = {
+  id: string;
+  name: string;
+  score: number;
+  count: number;
+};
+
+type TrendPoint = {
+  key: string; // e.g. "Feb"
+  monthIndex: number;
+  year: number;
+  avg: number | null;
+  count: number;
+};
+
+type WorstRun = {
+  id: string;
+  area_id: string;
+  area_name: string;
+  score: number;
+  executed_at: string | null;
+};
+
+function getMonthScore(runs: AuditRunRow[], year: number, month: number): ScoreAgg {
   const vals = runs
     .filter((r) => r.executed_at)
     .filter((r) => {
@@ -48,7 +73,7 @@ function getMonthScore(runs: AuditRunRow[], year: number, month: number) {
   return { avg: Math.round(avg * 100) / 100, count: vals.length };
 }
 
-function getQuarterScore(runs: AuditRunRow[], year: number, quarter: number) {
+function getQuarterScore(runs: AuditRunRow[], year: number, quarter: number): ScoreAgg {
   const startMonth = (quarter - 1) * 3;
   const endMonth = startMonth + 2;
 
@@ -67,7 +92,7 @@ function getQuarterScore(runs: AuditRunRow[], year: number, quarter: number) {
   return { avg: Math.round(avg * 100) / 100, count: vals.length };
 }
 
-function getYearScore(runs: AuditRunRow[], year: number) {
+function getYearScore(runs: AuditRunRow[], year: number): ScoreAgg {
   const vals = runs
     .filter((r) => r.executed_at)
     .filter((r) => new Date(r.executed_at!).getFullYear() === year)
@@ -84,6 +109,33 @@ function getCurrentQuarter(): number {
   return Math.floor(month / 3) + 1;
 }
 
+function scoreColor(score: number) {
+  // rojo <60, naranja 60-80, negro 80-100
+  if (score < 60) return "#c62828";
+  if (score < 80) return "#ef6c00";
+  return "#111";
+}
+
+function formatMonthKey(d: Date) {
+  const s = d
+    .toLocaleDateString("es-ES", { month: "short" })
+    .replace(".", "")
+    .slice(0, 3);
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+function formatDateTime(iso: string | null) {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  return d.toLocaleString("es-ES", {
+    year: "numeric",
+    month: "short",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
 export default function DashboardPage() {
   const router = useRouter();
 
@@ -94,12 +146,15 @@ export default function DashboardPage() {
   const [areas, setAreas] = useState<AreaRow[]>([]);
   const [runs, setRuns] = useState<AuditRunRow[]>([]);
 
-  const [monthScore, setMonthScore] = useState<{ avg: number | null; count: number }>({ avg: null, count: 0 });
-  const [quarterScore, setQuarterScore] = useState<{ avg: number | null; count: number }>({ avg: null, count: 0 });
-  const [yearScore, setYearScore] = useState<{ avg: number | null; count: number }>({ avg: null, count: 0 });
+  const [monthScore, setMonthScore] = useState<ScoreAgg>({ avg: null, count: 0 });
+  const [quarterScore, setQuarterScore] = useState<ScoreAgg>({ avg: null, count: 0 });
+  const [yearScore, setYearScore] = useState<ScoreAgg>({ avg: null, count: 0 });
 
   const [heatMapData, setHeatMapData] = useState<any[]>([]);
-  const [top3Areas, setTop3Areas] = useState<{ name: string; score: number; count: number }[]>([]);
+
+  const [top3Areas, setTop3Areas] = useState<AreaScore[]>([]);
+  const [worst3Areas, setWorst3Areas] = useState<AreaScore[]>([]);
+  const [worst3Runs, setWorst3Runs] = useState<WorstRun[]>([]);
 
   useEffect(() => {
     (async () => {
@@ -180,26 +235,12 @@ export default function DashboardPage() {
         const currentMonth = now.getMonth();
         const currentQuarter = getCurrentQuarter();
 
-        const month = getMonthScore(runsList, currentYear, currentMonth);
-        const quarter = getQuarterScore(runsList, currentYear, currentQuarter);
-        const year = getYearScore(runsList, currentYear);
+        setMonthScore(getMonthScore(runsList, currentYear, currentMonth));
+        setQuarterScore(getQuarterScore(runsList, currentYear, currentQuarter));
+        setYearScore(getYearScore(runsList, currentYear));
 
-        setMonthScore(month);
-        setQuarterScore(quarter);
-        setYearScore(year);
-
-        const monthLabels: string[] = [];
+        // Heatmap (12 meses)
         const heatData: any[] = [];
-
-        for (let i = 11; i >= 0; i--) {
-          const d = new Date();
-          d.setMonth(d.getMonth() - i);
-          monthLabels.push(
-            d.toLocaleDateString("es-ES", { month: "short" }).charAt(0).toUpperCase() +
-              d.toLocaleDateString("es-ES", { month: "short" }).slice(1, 3)
-          );
-        }
-
         for (const area of areasList) {
           const areaRuns = runsList.filter((r) => r.area_id === area.id);
           const months: any[] = [];
@@ -219,25 +260,40 @@ export default function DashboardPage() {
             months,
           });
         }
-
         setHeatMapData(heatData);
 
-        const areaScores = areasList.map((area) => {
+        // Area scores año actual
+        const areaScores: AreaScore[] = areasList.map((area) => {
           const areaRuns = runsList.filter((r) => r.area_id === area.id);
           const score = getYearScore(areaRuns, currentYear);
           return {
+            id: area.id,
             name: area.name,
             score: score.avg ?? 0,
             count: score.count,
           };
         });
 
-        const top3 = areaScores
-          .filter((a) => a.count > 0)
-          .sort((a, b) => b.score - a.score)
+        const withData = areaScores.filter((a) => a.count > 0);
+
+        setTop3Areas([...withData].sort((a, b) => b.score - a.score).slice(0, 3));
+        setWorst3Areas([...withData].sort((a, b) => a.score - b.score).slice(0, 3));
+
+        // Top 3 auditorías peores (runs individuales)
+        const areaNameById = new Map(areasList.map((a) => [a.id, a.name] as const));
+        const worstRuns: WorstRun[] = [...runsList]
+          .filter((r) => r.score !== null && Number.isFinite(Number(r.score)))
+          .map((r) => ({
+            id: r.id,
+            area_id: r.area_id,
+            area_name: areaNameById.get(r.area_id) ?? "Área",
+            score: Number(r.score),
+            executed_at: r.executed_at,
+          }))
+          .sort((a, b) => a.score - b.score)
           .slice(0, 3);
 
-        setTop3Areas(top3);
+        setWorst3Runs(worstRuns);
 
         setLoading(false);
       } catch (e: any) {
@@ -254,6 +310,55 @@ export default function DashboardPage() {
     padding: 20,
     boxShadow: "0 10px 30px rgba(0,0,0,0.06)",
   };
+
+  const miniBtn: React.CSSProperties = {
+    padding: "8px 10px",
+    borderRadius: 10,
+    border: "1px solid rgba(0,0,0,0.12)",
+    background: "#fff",
+    cursor: "pointer",
+    fontWeight: 900,
+    fontSize: 12,
+    boxShadow: "0 4px 14px rgba(0,0,0,0.06)",
+    whiteSpace: "nowrap",
+  };
+
+  const goAreaDetail = (areaId: string) => {
+    router.push(`/areas/${areaId}/history`);
+  };
+
+  const build3MonthTrend = (areaId: string): TrendPoint[] => {
+    const areaRuns = runs.filter((r) => r.area_id === areaId);
+    const points: TrendPoint[] = [];
+    for (let i = 2; i >= 0; i--) {
+      const d = new Date();
+      d.setMonth(d.getMonth() - i);
+      const year = d.getFullYear();
+      const monthIndex = d.getMonth();
+      const s = getMonthScore(areaRuns, year, monthIndex);
+      points.push({
+        key: formatMonthKey(d),
+        monthIndex,
+        year,
+        avg: s.avg,
+        count: s.count,
+      });
+    }
+    return points;
+  };
+
+  const monthLabels = useMemo(() => {
+    const labels: string[] = [];
+    for (let i = 11; i >= 0; i--) {
+      const d = new Date();
+      d.setMonth(d.getMonth() - i);
+      labels.push(
+        d.toLocaleDateString("es-ES", { month: "short" }).charAt(0).toUpperCase() +
+          d.toLocaleDateString("es-ES", { month: "short" }).slice(1, 3)
+      );
+    }
+    return labels;
+  }, []);
 
   if (loading) {
     return (
@@ -276,11 +381,67 @@ export default function DashboardPage() {
   const now = new Date();
   const monthName = now.toLocaleDateString("es-ES", { month: "long", year: "numeric" });
 
+  const renderAreaRow = (area: AreaScore, idx: number, kind: "best" | "worst") => {
+    const badge = kind === "best" ? (idx === 0 ? "🥇" : idx === 1 ? "🥈" : "🥉") : "⚠️";
+    const color = scoreColor(area.score);
+    const trend = build3MonthTrend(area.id);
+
+    return (
+      <div
+        key={area.id}
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          padding: "14px 16px",
+          borderRadius: 12,
+          background: "rgba(0,0,0,0.02)",
+          border: "1px solid rgba(0,0,0,0.08)",
+          gap: 12,
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "flex-start", gap: 12, minWidth: 0 }}>
+          <span style={{ fontSize: 22, lineHeight: "22px" }}>{badge}</span>
+
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontWeight: 950, fontSize: 16, overflow: "hidden", textOverflow: "ellipsis" }}>
+              {area.name}
+            </div>
+
+            {/* Tendencia 3 meses */}
+            <div style={{ marginTop: 6, display: "flex", flexWrap: "wrap", gap: 10, opacity: 0.85 }}>
+              <span style={{ fontSize: 12, fontWeight: 900 }}>Tendencia 3 meses:</span>
+              <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                {trend.map((t) => (
+                  <span key={`${t.key}-${t.year}-${t.monthIndex}`} style={{ fontSize: 12 }}>
+                    <strong>{t.key}</strong>{" "}
+                    <span style={{ color: t.avg === null ? "#666" : scoreColor(t.avg ?? 0), fontWeight: 950 }}>
+                      {t.avg === null ? "—" : `${(t.avg ?? 0).toFixed(1)}%`}
+                    </span>{" "}
+                    <span style={{ opacity: 0.65 }}>({t.count})</span>
+                  </span>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <span style={{ fontSize: 13, opacity: 0.7 }}>({area.count} auditorías)</span>
+          <span style={{ fontWeight: 950, fontSize: 20, color }}>{area.score.toFixed(1)}%</span>
+          <button onClick={() => goAreaDetail(area.id)} style={miniBtn}>
+            Ver detalle
+          </button>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <main style={{ padding: 24, paddingTop: 80 }}>
       <HotelHeader />
 
-      {/* Info del usuario - MÁS PEQUEÑA */}
+      {/* Info del usuario */}
       <div style={{ opacity: 0.7, fontSize: 14, marginBottom: 20 }}>
         Hola{profile?.full_name ? `, ${profile.full_name}` : ""}. Rol: <strong>{profile?.role}</strong> · Áreas:{" "}
         <strong>{areas.length}</strong>
@@ -305,85 +466,104 @@ export default function DashboardPage() {
         </div>
 
         <div style={card}>
-          <GaugeChart
-            value={quarterScore.avg ?? 0}
-            label={`Q${getCurrentQuarter()} ${now.getFullYear()}`}
-            count={quarterScore.count}
-            size={180}
-          />
+          <GaugeChart value={quarterScore.avg ?? 0} label={`Q${getCurrentQuarter()} ${now.getFullYear()}`} count={quarterScore.count} size={180} />
         </div>
 
         <div style={card}>
-          <GaugeChart
-            value={yearScore.avg ?? 0}
-            label={`Año ${now.getFullYear()}`}
-            count={yearScore.count}
-            size={180}
-          />
+          <GaugeChart value={yearScore.avg ?? 0} label={`Año ${now.getFullYear()}`} count={yearScore.count} size={180} />
         </div>
       </div>
 
       {/* Mapa de calor */}
       <div style={{ ...card, marginTop: 16 }}>
-        <div style={{ fontSize: 18, fontWeight: 950, marginBottom: 16 }}>
-          Performance por área (últimos 12 meses)
-        </div>
+        <div style={{ fontSize: 18, fontWeight: 950, marginBottom: 16 }}>Performance por área (últimos 12 meses)</div>
         {heatMapData.length > 0 ? (
-          <HeatMap
-            data={heatMapData}
-            monthLabels={(() => {
-              const labels: string[] = [];
-              for (let i = 11; i >= 0; i--) {
-                const d = new Date();
-                d.setMonth(d.getMonth() - i);
-                labels.push(
-                  d.toLocaleDateString("es-ES", { month: "short" }).charAt(0).toUpperCase() +
-                    d.toLocaleDateString("es-ES", { month: "short" }).slice(1, 3)
-                );
-              }
-              return labels;
-            })()}
-          />
+          <HeatMap data={heatMapData} monthLabels={monthLabels} />
         ) : (
           <div style={{ opacity: 0.7 }}>No hay datos suficientes para mostrar el mapa de calor.</div>
         )}
       </div>
 
-      {/* Top 3 Áreas */}
-      {top3Areas.length > 0 && (
-        <div style={{ ...card, marginTop: 16 }}>
-          <div style={{ fontSize: 18, fontWeight: 950, marginBottom: 16 }}>
-            Top 3 Áreas con mejor performance ({now.getFullYear()})
+      {/* Mejores vs Peores */}
+      {(top3Areas.length > 0 || worst3Areas.length > 0) && (
+        <div
+          style={{
+            marginTop: 16,
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
+            gap: 16,
+          }}
+        >
+          {/* Top 3 mejores */}
+          <div style={card}>
+            <div style={{ fontSize: 18, fontWeight: 950, marginBottom: 16 }}>
+              Top 3 Áreas con mejor performance ({now.getFullYear()})
+            </div>
+            <div style={{ display: "grid", gap: 12 }}>
+              {top3Areas.length > 0 ? (
+                top3Areas.map((a, idx) => renderAreaRow(a, idx, "best"))
+              ) : (
+                <div style={{ opacity: 0.7 }}>No hay datos suficientes.</div>
+              )}
+            </div>
           </div>
-          <div style={{ display: "grid", gap: 12 }}>
-            {top3Areas.map((area, idx) => {
-              const medal = idx === 0 ? "🥇" : idx === 1 ? "🥈" : "🥉";
-              const color = area.score >= 80 ? "#2e7d32" : area.score >= 60 ? "#ef6c00" : "#c62828";
 
-              return (
-                <div
-                  key={area.name}
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    padding: "14px 16px",
-                    borderRadius: 12,
-                    background: "rgba(0,0,0,0.02)",
-                    border: "1px solid rgba(0,0,0,0.08)",
-                  }}
-                >
-                  <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                    <span style={{ fontSize: 24 }}>{medal}</span>
-                    <span style={{ fontWeight: 950, fontSize: 16 }}>{area.name}</span>
-                  </div>
-                  <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                    <span style={{ fontSize: 13, opacity: 0.7 }}>({area.count} auditorías)</span>
-                    <span style={{ fontWeight: 950, fontSize: 20, color }}>{area.score.toFixed(1)}%</span>
+          {/* Top 3 peores */}
+          <div style={card}>
+            <div style={{ fontSize: 18, fontWeight: 950, marginBottom: 16 }}>
+              Top 3 Áreas con peor performance ({now.getFullYear()})
+            </div>
+            <div style={{ display: "grid", gap: 12 }}>
+              {worst3Areas.length > 0 ? (
+                worst3Areas.map((a, idx) => renderAreaRow(a, idx, "worst"))
+              ) : (
+                <div style={{ opacity: 0.7 }}>No hay datos suficientes.</div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Top 3 auditorías peores */}
+      {worst3Runs.length > 0 && (
+        <div style={{ ...card, marginTop: 16 }}>
+          <div style={{ fontSize: 18, fontWeight: 950, marginBottom: 16 }}>Top 3 auditorías con peor resultado</div>
+
+          <div style={{ display: "grid", gap: 12 }}>
+            {worst3Runs.map((r, idx) => (
+              <div
+                key={r.id}
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  padding: "14px 16px",
+                  borderRadius: 12,
+                  background: "rgba(0,0,0,0.02)",
+                  border: "1px solid rgba(0,0,0,0.08)",
+                  gap: 12,
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
+                  <span style={{ fontSize: 22 }}>{idx === 0 ? "🚨" : "⚠️"}</span>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontWeight: 950, fontSize: 16, overflow: "hidden", textOverflow: "ellipsis" }}>
+                      {r.area_name}
+                    </div>
+                    <div style={{ marginTop: 4, fontSize: 12, opacity: 0.75 }}>
+                      Ejecutada: <strong>{formatDateTime(r.executed_at)}</strong>
+                    </div>
                   </div>
                 </div>
-              );
-            })}
+
+                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                  <span style={{ fontWeight: 950, fontSize: 20, color: scoreColor(r.score) }}>{r.score.toFixed(1)}%</span>
+                  <button onClick={() => goAreaDetail(r.area_id)} style={miniBtn}>
+                    Ver detalle
+                  </button>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       )}
