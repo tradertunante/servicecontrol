@@ -8,7 +8,7 @@ import HotelHeader from "@/app/components/HotelHeader";
 import GaugeChart from "@/app/components/GaugeChart";
 import HeatMap from "@/app/components/HeatMap";
 
-type Role = "admin" | "manager" | "auditor";
+type Role = "admin" | "manager" | "auditor" | "superadmin";
 
 type Profile = {
   id: string;
@@ -31,7 +31,7 @@ type AuditRunRow = {
   score: number | null;
   executed_at: string | null;
   area_id: string;
-  audit_template_id: string; // ✅ necesario para promedios por auditoría (template)
+  audit_template_id: string;
 };
 
 type ScoreAgg = { avg: number | null; count: number };
@@ -44,7 +44,7 @@ type AreaScore = {
 };
 
 type TrendPoint = {
-  key: string; // "Ene"
+  key: string;
   monthIndex: number;
   year: number;
   avg: number | null;
@@ -52,10 +52,10 @@ type TrendPoint = {
 };
 
 type WorstAudit = {
-  id: string; // audit_template_id
-  name: string; // nombre template
-  avg: number; // promedio
-  count: number; // # ejecuciones
+  id: string;
+  name: string;
+  avg: number;
+  count: number;
 };
 
 function getMonthScore(runs: AuditRunRow[], year: number, month: number): ScoreAgg {
@@ -110,7 +110,6 @@ function getCurrentQuarter(): number {
 }
 
 function scoreColor(score: number) {
-  // rojo <60, naranja 60-80, negro 80-100
   if (score < 60) return "#c62828";
   if (score < 80) return "#ef6c00";
   return "#111";
@@ -150,21 +149,31 @@ export default function DashboardPage() {
       setError(null);
 
       try {
-        const p = await requireRoleOrRedirect(router, ["admin", "manager", "auditor"], "/login");
+        // ✅ ACEPTA SUPERADMIN para que no te mande a /login y se cree el bucle
+        const p = (await requireRoleOrRedirect(
+          router,
+          ["admin", "manager", "auditor", "superadmin"],
+          "/login"
+        )) as Profile | null;
+
         if (!p) return;
 
         setProfile(p);
 
-        if (!p?.hotel_id) {
+        if (!p.hotel_id) {
+          setError("Tu usuario no tiene hotel asignado.");
           setLoading(false);
           return;
         }
+
+        // 🔐 Treat superadmin like admin for data access inside the hotel
+        const isAdminLike = p.role === "admin" || p.role === "manager" || p.role === "superadmin";
 
         // -----------------------
         // Áreas (según rol)
         // -----------------------
         let areasList: AreaRow[] = [];
-        if (p.role === "admin" || p.role === "manager") {
+        if (isAdminLike) {
           const { data, error: aErr } = await supabase
             .from("areas")
             .select("id,name,type,hotel_id")
@@ -348,7 +357,6 @@ export default function DashboardPage() {
     router.push(`/areas/${areaId}/history`);
   };
 
-  // 👉 ajusta esta ruta si tu "detalle de auditoría" es otra página
   const goAuditTemplateDetail = (templateId: string) => {
     router.push(`/builder/templates/${templateId}`);
   };
@@ -437,7 +445,6 @@ export default function DashboardPage() {
               {area.name}
             </div>
 
-            {/* Tendencia 3 meses */}
             <div style={{ marginTop: 6, display: "flex", flexWrap: "wrap", gap: 10, opacity: 0.85 }}>
               <span style={{ fontSize: 12, fontWeight: 900 }}>Tendencia 3 meses:</span>
               <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
@@ -470,16 +477,13 @@ export default function DashboardPage() {
     <main style={{ padding: 24, paddingTop: 80 }}>
       <HotelHeader />
 
-      {/* Info del usuario */}
       <div style={{ opacity: 0.7, fontSize: 14, marginBottom: 20 }}>
         Hola{profile?.full_name ? `, ${profile.full_name}` : ""}. Rol: <strong>{profile?.role}</strong> · Áreas:{" "}
         <strong>{areas.length}</strong>
       </div>
 
-      {/* Gauges */}
       <div
         style={{
-          marginTop: 0,
           display: "grid",
           gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
           gap: 16,
@@ -508,7 +512,6 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Mapa de calor */}
       <div style={{ ...card, marginTop: 16 }}>
         <div style={{ fontSize: 18, fontWeight: 950, marginBottom: 16 }}>Performance por área (últimos 12 meses)</div>
         {heatMapData.length > 0 ? (
@@ -518,7 +521,6 @@ export default function DashboardPage() {
         )}
       </div>
 
-      {/* Mejores vs Peores */}
       {(top3Areas.length > 0 || worst3Areas.length > 0) && (
         <div
           style={{
@@ -533,7 +535,11 @@ export default function DashboardPage() {
               Top 3 Áreas con mejor performance ({now.getFullYear()})
             </div>
             <div style={{ display: "grid", gap: 12 }}>
-              {top3Areas.length > 0 ? top3Areas.map((a, idx) => renderAreaRow(a, idx, "best")) : <div style={{ opacity: 0.7 }}>No hay datos suficientes.</div>}
+              {top3Areas.length > 0 ? (
+                top3Areas.map((a, idx) => renderAreaRow(a, idx, "best"))
+              ) : (
+                <div style={{ opacity: 0.7 }}>No hay datos suficientes.</div>
+              )}
             </div>
           </div>
 
@@ -542,16 +548,21 @@ export default function DashboardPage() {
               Top 3 Áreas con peor performance ({now.getFullYear()})
             </div>
             <div style={{ display: "grid", gap: 12 }}>
-              {worst3Areas.length > 0 ? worst3Areas.map((a, idx) => renderAreaRow(a, idx, "worst")) : <div style={{ opacity: 0.7 }}>No hay datos suficientes.</div>}
+              {worst3Areas.length > 0 ? (
+                worst3Areas.map((a, idx) => renderAreaRow(a, idx, "worst"))
+              ) : (
+                <div style={{ opacity: 0.7 }}>No hay datos suficientes.</div>
+              )}
             </div>
           </div>
         </div>
       )}
 
-      {/* Top 3 auditorías peores por PROMEDIO */}
       {worst3Audits.length > 0 && (
         <div style={{ ...card, marginTop: 16 }}>
-          <div style={{ fontSize: 18, fontWeight: 950, marginBottom: 16 }}>Top 3 auditorías con peor resultado (promedio)</div>
+          <div style={{ fontSize: 18, fontWeight: 950, marginBottom: 16 }}>
+            Top 3 auditorías con peor resultado (promedio)
+          </div>
 
           <div style={{ display: "grid", gap: 12 }}>
             {worst3Audits.map((a, idx) => (
@@ -592,7 +603,6 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* Acceso rápido */}
       <div
         style={{
           marginTop: 16,
@@ -617,7 +627,7 @@ export default function DashboardPage() {
           <div style={{ marginTop: 4, opacity: 0.7, fontSize: 13 }}>Explorar auditorías por área</div>
         </button>
 
-        {profile?.role === "admin" && (
+        {profile?.role === "admin" || profile?.role === "superadmin" ? (
           <button
             onClick={() => router.push("/builder")}
             style={{
@@ -633,7 +643,7 @@ export default function DashboardPage() {
             <div style={{ fontSize: 16, fontWeight: 900 }}>Builder</div>
             <div style={{ marginTop: 4, opacity: 0.7, fontSize: 13 }}>Crear y editar auditorías</div>
           </button>
-        )}
+        ) : null}
       </div>
     </main>
   );
