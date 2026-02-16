@@ -11,6 +11,7 @@ type Profile = {
   full_name: string | null;
   role: Role;
   hotel_id: string | null;
+  active?: boolean | null;
 };
 
 export default function HomePage() {
@@ -26,24 +27,38 @@ export default function HomePage() {
       setLoading(true);
       setError("");
 
-      const { data: authData, error: authErr } = await supabase.auth.getUser();
+      // ✅ Usa getSession (más fiable) en vez de getUser
+      const { data: sessionData, error: sessionErr } =
+        await supabase.auth.getSession();
       if (!alive) return;
 
-      if (authErr || !authData?.user) {
+      const user = sessionData?.session?.user;
+
+      if (sessionErr || !user) {
         router.replace("/login");
         return;
       }
 
+      // Cargar perfil
       const { data: prof, error: profErr } = await supabase
         .from("profiles")
-        .select("id, full_name, role, hotel_id, active")
-        .eq("id", authData.user.id)
+        .select("id, full_name, role, hotel_id, active, email")
+        .eq("id", user.id)
         .maybeSingle();
 
       if (!alive) return;
 
-      if (profErr || !prof) {
-        setError("No se pudo cargar el perfil.");
+      if (profErr) {
+        setError(`No se pudo cargar el perfil: ${profErr.message}`);
+        setLoading(false);
+        return;
+      }
+
+      if (!prof) {
+        setError(
+          "No se encontró tu perfil en la tabla profiles. " +
+            "Hay que crearlo (registro/onboarding) o revisar el flujo de alta."
+        );
         setLoading(false);
         return;
       }
@@ -54,6 +69,7 @@ export default function HomePage() {
         return;
       }
 
+      // Normaliza role por si viene raro (aunque ahora redirigimos siempre)
       const role = normalizeRole(prof.role);
 
       const profile: Profile = {
@@ -61,15 +77,18 @@ export default function HomePage() {
         full_name: prof.full_name ?? null,
         role,
         hotel_id: prof.hotel_id ?? null,
+        active: prof.active ?? null,
       };
 
-      // Redirección principal por rol
-      if (profile.role === "auditor") {
-        router.replace("/audits");
-      } else {
-        // admin / manager
-        router.replace("/dashboard");
+      // Guarda hotel actual si existe
+      if (profile.hotel_id) {
+        try {
+          localStorage.setItem("currentHotelId", profile.hotel_id);
+        } catch {}
       }
+
+      // ✅ Por ahora todo el mundo va a dashboard
+      router.replace("/dashboard");
     }
 
     load();
@@ -92,7 +111,10 @@ export default function HomePage() {
     return (
       <main style={{ padding: 24 }}>
         <h1 style={{ fontSize: 28, fontWeight: 800 }}>ServiceControl</h1>
-        <p style={{ color: "crimson", marginTop: 12 }}>{error}</p>
+        <p style={{ color: "crimson", marginTop: 12, whiteSpace: "pre-wrap" }}>
+          {error}
+        </p>
+
         <button
           onClick={async () => {
             await supabase.auth.signOut();
@@ -114,7 +136,6 @@ export default function HomePage() {
     );
   }
 
-  // Normalmente nunca se ve, porque siempre redirigimos
   return (
     <main style={{ padding: 24 }}>
       <h1 style={{ fontSize: 28, fontWeight: 800 }}>ServiceControl</h1>
