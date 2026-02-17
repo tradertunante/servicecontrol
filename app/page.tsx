@@ -74,12 +74,13 @@ export default function HomePage() {
         active: prof.active ?? null,
       };
 
-      // ✅ Rutas por rol
+      // ✅ Rutas por rol (CORRECTAS)
       if (profile.role === "superadmin") {
-        router.replace("/select-hotel");
+        router.replace("/superadmin/hotels");
         return;
       }
 
+      // NOTA: Si quieres que auditor también vaya al dashboard, cambia esto a /dashboard
       if (profile.role === "auditor") {
         router.replace("/audits");
         return;
@@ -93,7 +94,7 @@ export default function HomePage() {
     return () => {
       alive = false;
     };
-  }, [router]);
+  }, [router,]);
 
   if (loading) {
     return (

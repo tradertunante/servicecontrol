@@ -1,6 +1,6 @@
 // lib/auth/permissions.ts
 
-export type Role = "admin" | "manager" | "auditor";
+export type Role = "superadmin" | "admin" | "manager" | "auditor";
 
 /**
  * ✅ La usa app/page.tsx
@@ -9,6 +9,7 @@ export type Role = "admin" | "manager" | "auditor";
 export function normalizeRole(role: any): Role {
   const r = (role ?? "").toString().toLowerCase().trim();
 
+  if (r === "superadmin") return "superadmin";
   if (r === "admin") return "admin";
   if (r === "manager") return "manager";
   if (r === "auditor") return "auditor";
@@ -25,7 +26,7 @@ function norm(role: Role | string | null | undefined): string {
  */
 export function canStartAudits(role: Role | string | null | undefined): boolean {
   const r = norm(role);
-  return r === "admin" || r === "manager" || r === "auditor";
+  return r === "superadmin" || r === "admin" || r === "manager" || r === "auditor";
 }
 
 /**
@@ -39,15 +40,16 @@ export function canRunAudits(role: Role | string | null | undefined): boolean {
  * Crear/editar áreas
  */
 export function canManageAreas(role: Role | string | null | undefined): boolean {
-  return norm(role) === "admin";
+  const r = norm(role);
+  return r === "superadmin" || r === "admin";
 }
 
 /**
- * ✅ Gestionar usuarios (tu error actual)
- * Normalmente solo admin.
+ * ✅ Gestionar usuarios
  */
 export function canManageUsers(role: Role | string | null | undefined): boolean {
-  return norm(role) === "admin";
+  const r = norm(role);
+  return r === "superadmin" || r === "admin";
 }
 
 /**
@@ -55,14 +57,15 @@ export function canManageUsers(role: Role | string | null | undefined): boolean 
  */
 export function canSubmitAudit(role: Role | string | null | undefined): boolean {
   const r = norm(role);
-  return r === "admin" || r === "auditor";
+  return r === "superadmin" || r === "admin" || r === "auditor";
 }
 
 /**
  * Admin setup (templates/preguntas/secciones)
  */
 export function canManageSetup(role: Role | string | null | undefined): boolean {
-  return norm(role) === "admin";
+  const r = norm(role);
+  return r === "superadmin" || r === "admin";
 }
 
 /**
