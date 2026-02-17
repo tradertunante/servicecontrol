@@ -1,72 +1,49 @@
 // lib/auth/RequireRole.ts
-"use client";
-
-import type { AppRouterInstance } from "next/dist/shared/lib/app-router-context.shared-runtime";
 import { supabase } from "@/lib/supabaseClient";
+import type { AppRouterInstance } from "next/dist/shared/lib/app-router-context.shared-runtime";
 
-export type Role = "admin" | "manager" | "auditor";
+export type Role = "superadmin" | "admin" | "manager" | "auditor";
 
 export type Profile = {
   id: string;
-  hotel_id: string;
+  email: string;
+  full_name: string | null;
   role: Role;
-  active: boolean;
-  full_name?: string | null;
+  hotel_id: string | null;
+  active: boolean | null;
 };
 
-function normalizeAllowed(allowed?: Role | Role[] | readonly Role[] | Set<Role>): Role[] {
-  if (!allowed) return [];
-  if (Array.isArray(allowed)) return [...allowed];
-  if (allowed instanceof Set) return Array.from(allowed);
-  if (typeof allowed === "string") return [allowed];
-  return [];
-}
-
-/**
- * Client guard:
- * - Obtiene user + profile
- * - Si falla → router.replace(redirectTo) y devuelve null
- * - Si allowed se pasa y no incluye el rol → router.replace(...) y null
- * - Si ok → devuelve Profile
- */
 export async function requireRoleOrRedirect(
   router: AppRouterInstance,
-  allowed?: Role | Role[] | readonly Role[] | Set<Role>,
-  redirectTo: string = "/areas"
+  allowedRoles: Role[],
+  redirectTo = "/login"
 ): Promise<Profile | null> {
-  const {
-    data: { user },
-    error: userErr,
-  } = await supabase.auth.getUser();
-
-  if (userErr || !user) {
+  const { data: userData, error: userErr } = await supabase.auth.getUser();
+  if (userErr || !userData?.user) {
     router.replace(redirectTo);
     return null;
   }
 
-  const { data, error } = await supabase
+  const uid = userData.user.id;
+
+  const { data: profile, error: pErr } = await supabase
     .from("profiles")
-    .select("id, hotel_id, role, active, full_name")
-    .eq("id", user.id)
-    .single();
+    .select("id,email,full_name,role,hotel_id,active")
+    .eq("id", uid)
+    .maybeSingle();
 
-  if (error || !data) {
+  if (pErr) throw new Error(`No se pudo cargar el perfil (profiles): ${pErr.message}`);
+  if (!profile) throw new Error(`No existe perfil para uid=${uid}`);
+
+  if (profile.active === false) {
     router.replace(redirectTo);
     return null;
   }
 
-  if (data.active === false) {
+  if (!allowedRoles.includes(profile.role)) {
     router.replace(redirectTo);
     return null;
   }
 
-  const profile = data as Profile;
-
-  const allowedArr = normalizeAllowed(allowed);
-  if (allowedArr.length > 0 && !allowedArr.includes(profile.role)) {
-    router.replace(redirectTo);
-    return null;
-  }
-
-  return profile;
+  return profile as Profile;
 }

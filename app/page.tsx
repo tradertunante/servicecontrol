@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-
 import { supabase } from "@/lib/supabaseClient";
+
 import { normalizeRole, type Role } from "@/lib/auth/permissions";
 
 type Profile = {
@@ -16,7 +16,6 @@ type Profile = {
 
 export default function HomePage() {
   const router = useRouter();
-
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>("");
 
@@ -27,38 +26,34 @@ export default function HomePage() {
       setLoading(true);
       setError("");
 
-      // ✅ Usa getSession (más fiable) en vez de getUser
-      const { data: sessionData, error: sessionErr } =
-        await supabase.auth.getSession();
+      // ✅ 1) Session local (evita bucle por timing/red)
+      const { data: sessData } = await supabase.auth.getSession();
       if (!alive) return;
 
-      const user = sessionData?.session?.user;
-
-      if (sessionErr || !user) {
+      if (!sessData.session) {
         router.replace("/login");
         return;
       }
 
-      // Cargar perfil
+      // ✅ 2) Ya hay sesión: ahora sí user + profile
+      const { data: authData, error: authErr } = await supabase.auth.getUser();
+      if (!alive) return;
+
+      if (authErr || !authData?.user) {
+        router.replace("/login");
+        return;
+      }
+
       const { data: prof, error: profErr } = await supabase
         .from("profiles")
-        .select("id, full_name, role, hotel_id, active, email")
-        .eq("id", user.id)
+        .select("id, full_name, role, hotel_id, active")
+        .eq("id", authData.user.id)
         .maybeSingle();
 
       if (!alive) return;
 
-      if (profErr) {
-        setError(`No se pudo cargar el perfil: ${profErr.message}`);
-        setLoading(false);
-        return;
-      }
-
-      if (!prof) {
-        setError(
-          "No se encontró tu perfil en la tabla profiles. " +
-            "Hay que crearlo (registro/onboarding) o revisar el flujo de alta."
-        );
+      if (profErr || !prof) {
+        setError("No se pudo cargar el perfil (profiles).");
         setLoading(false);
         return;
       }
@@ -69,7 +64,6 @@ export default function HomePage() {
         return;
       }
 
-      // Normaliza role por si viene raro (aunque ahora redirigimos siempre)
       const role = normalizeRole(prof.role);
 
       const profile: Profile = {
@@ -80,14 +74,17 @@ export default function HomePage() {
         active: prof.active ?? null,
       };
 
-      // Guarda hotel actual si existe
-      if (profile.hotel_id) {
-        try {
-          localStorage.setItem("currentHotelId", profile.hotel_id);
-        } catch {}
+      // ✅ Rutas por rol
+      if (profile.role === "superadmin") {
+        router.replace("/select-hotel");
+        return;
       }
 
-      // ✅ Por ahora todo el mundo va a dashboard
+      if (profile.role === "auditor") {
+        router.replace("/audits");
+        return;
+      }
+
       router.replace("/dashboard");
     }
 
@@ -101,8 +98,8 @@ export default function HomePage() {
   if (loading) {
     return (
       <main style={{ padding: 24 }}>
-        <h1 style={{ fontSize: 28, fontWeight: 800 }}>ServiceControl</h1>
-        <p style={{ opacity: 0.7, marginTop: 8 }}>Cargando...</p>
+        <h1 style={{ fontSize: 28, fontWeight: 900 }}>ServiceControl</h1>
+        <p style={{ opacity: 0.7, marginTop: 8 }}>Cargando…</p>
       </main>
     );
   }
@@ -110,11 +107,8 @@ export default function HomePage() {
   if (error) {
     return (
       <main style={{ padding: 24 }}>
-        <h1 style={{ fontSize: 28, fontWeight: 800 }}>ServiceControl</h1>
-        <p style={{ color: "crimson", marginTop: 12, whiteSpace: "pre-wrap" }}>
-          {error}
-        </p>
-
+        <h1 style={{ fontSize: 28, fontWeight: 900 }}>ServiceControl</h1>
+        <p style={{ color: "crimson", marginTop: 12 }}>{error}</p>
         <button
           onClick={async () => {
             await supabase.auth.signOut();
@@ -126,7 +120,7 @@ export default function HomePage() {
             borderRadius: 12,
             border: "1px solid rgba(0,0,0,0.15)",
             background: "#fff",
-            fontWeight: 800,
+            fontWeight: 900,
             cursor: "pointer",
           }}
         >
@@ -138,8 +132,8 @@ export default function HomePage() {
 
   return (
     <main style={{ padding: 24 }}>
-      <h1 style={{ fontSize: 28, fontWeight: 800 }}>ServiceControl</h1>
-      <p style={{ opacity: 0.7, marginTop: 8 }}>Redirigiendo...</p>
+      <h1 style={{ fontSize: 28, fontWeight: 900 }}>ServiceControl</h1>
+      <p style={{ opacity: 0.7, marginTop: 8 }}>Redirigiendo…</p>
     </main>
   );
 }

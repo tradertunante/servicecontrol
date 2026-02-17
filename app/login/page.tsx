@@ -4,6 +4,12 @@ import { useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { useRouter } from "next/navigation";
 
+type Profile = {
+  role: "superadmin" | "admin" | "manager" | "auditor";
+  hotel_id: string | null;
+  active: boolean;
+};
+
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -16,50 +22,88 @@ export default function LoginPage() {
     setLoading(true);
     setError(null);
 
-    const { error: signInError } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    try {
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
 
-    if (signInError) {
-      setError(signInError.message);
+      if (signInError) {
+        setError(signInError.message);
+        return;
+      }
+
+      // ✅ Espera a que la sesión esté disponible
+      const { data: sessData, error: sessErr } = await supabase.auth.getSession();
+      const session = sessData?.session;
+
+      if (sessErr || !session) {
+        setError(
+          "Login OK, pero no se pudo leer la sesión. Recarga la página e inténtalo otra vez."
+        );
+        return;
+      }
+
+      // ✅ Lee el perfil para decidir ruta
+      const { data: profile, error: profErr } = await supabase
+        .from("profiles")
+        .select("role, hotel_id, active")
+        .eq("id", session.user.id)
+        .single<Profile>();
+
+      if (profErr || !profile) {
+        // Fallback seguro (evita quedarte bloqueada)
+        router.replace("/dashboard");
+        return;
+      }
+
+      if (!profile.active) {
+        setError("Tu usuario está inactivo. Contacta con un administrador.");
+        await supabase.auth.signOut();
+        return;
+      }
+
+      if (profile.role === "superadmin") {
+        router.replace("/superadmin/hotels");
+        return;
+      }
+
+      router.replace("/dashboard");
+    } catch (err: any) {
+      setError(err?.message ?? "Error inesperado al iniciar sesión.");
+    } finally {
       setLoading(false);
-      return;
     }
-
-    router.replace("/dashboard");
-    router.refresh();
   };
 
   return (
     <div
       style={{
         minHeight: "100vh",
-        display: "grid",
-        placeItems: "center",
-        background: "linear-gradient(180deg, #f6f7f8 0%, #ffffff 100%)",
-        padding: 24,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        backgroundColor: "#f5f5f5",
+        padding: "24px",
       }}
     >
       <div
         style={{
-          width: "100%",
-          maxWidth: 420,
-          background: "#fff",
-          borderRadius: 14,
-          border: "1px solid rgba(0,0,0,0.08)",
-          boxShadow: "0 18px 50px rgba(0,0,0,0.08)",
-          padding: 28,
+          backgroundColor: "white",
+          padding: "22px",
+          borderRadius: "10px",
+          boxShadow: "0 2px 10px rgba(0,0,0,0.10)",
+          width: "min(420px, 100%)",
         }}
       >
-        <div style={{ marginBottom: 18 }}>
-          <div style={{ fontSize: 26, fontWeight: 900, letterSpacing: -0.3 }}>ServiceControl</div>
-          <div style={{ marginTop: 6, opacity: 0.65, fontSize: 14 }}>Inicia sesión en tu cuenta</div>
-        </div>
+        <h1 style={{ fontSize: "22px", fontWeight: "800", marginBottom: "6px" }}>
+          ServiceControl
+        </h1>
+        <p style={{ opacity: 0.7, marginBottom: "18px" }}>Inicia sesión en tu cuenta</p>
 
         <form onSubmit={handleLogin}>
-          <div style={{ marginBottom: 12 }}>
-            <label style={{ display: "block", marginBottom: 6, fontSize: 13, fontWeight: 800, opacity: 0.8 }}>
+          <div style={{ marginBottom: "12px" }}>
+            <label style={{ display: "block", marginBottom: "4px", fontSize: "14px" }}>
               Email
             </label>
             <input
@@ -67,20 +111,18 @@ export default function LoginPage() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
-              autoComplete="email"
               style={{
                 width: "100%",
-                padding: "12px 12px",
-                border: "1px solid rgba(0,0,0,0.14)",
-                borderRadius: 10,
-                fontSize: 14,
-                outline: "none",
+                padding: "10px 12px",
+                border: "1px solid #ddd",
+                borderRadius: "8px",
+                fontSize: "14px",
               }}
             />
           </div>
 
-          <div style={{ marginBottom: 14 }}>
-            <label style={{ display: "block", marginBottom: 6, fontSize: 13, fontWeight: 800, opacity: 0.8 }}>
+          <div style={{ marginBottom: "12px" }}>
+            <label style={{ display: "block", marginBottom: "4px", fontSize: "14px" }}>
               Contraseña
             </label>
             <input
@@ -88,14 +130,12 @@ export default function LoginPage() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
-              autoComplete="current-password"
               style={{
                 width: "100%",
-                padding: "12px 12px",
-                border: "1px solid rgba(0,0,0,0.14)",
-                borderRadius: 10,
-                fontSize: 14,
-                outline: "none",
+                padding: "10px 12px",
+                border: "1px solid #ddd",
+                borderRadius: "8px",
+                fontSize: "14px",
               }}
             />
           </div>
@@ -103,14 +143,12 @@ export default function LoginPage() {
           {error && (
             <div
               style={{
-                padding: 12,
-                backgroundColor: "#fff1f1",
-                border: "1px solid rgba(180, 0, 0, 0.25)",
-                borderRadius: 10,
-                marginBottom: 14,
-                fontSize: 13,
-                fontWeight: 700,
-                color: "#8b0000",
+                padding: "10px",
+                backgroundColor: "#fee",
+                border: "1px solid #fcc",
+                borderRadius: "8px",
+                marginBottom: "12px",
+                fontSize: "14px",
                 whiteSpace: "pre-wrap",
               }}
             >
@@ -123,29 +161,20 @@ export default function LoginPage() {
             disabled={loading}
             style={{
               width: "100%",
-              padding: "12px 14px",
-              backgroundColor: loading ? "#bdbdbd" : "#000",
+              padding: "12px",
+              backgroundColor: loading ? "#ccc" : "#000",
               color: "white",
               border: "none",
-              borderRadius: 12,
-              fontSize: 14,
-              fontWeight: 900,
+              borderRadius: "10px",
+              fontSize: "14px",
+              fontWeight: "800",
               cursor: loading ? "not-allowed" : "pointer",
             }}
           >
             {loading ? "Iniciando sesión..." : "Iniciar sesión"}
           </button>
         </form>
-
-        <div style={{ marginTop: 16, fontSize: 13, textAlign: "center", opacity: 0.85 }}>
-          ¿No tienes cuenta?{" "}
-          <a href="/register" style={{ color: "#000", fontWeight: 900, textDecoration: "none" }}>
-            Regístrate
-          </a>
-        </div>
       </div>
     </div>
   );
 }
-
-
