@@ -18,6 +18,12 @@ type Profile = {
   active?: boolean | null;
 };
 
+type HotelRow = {
+  id: string;
+  name: string;
+  created_at?: string | null;
+};
+
 type AreaRow = {
   id: string;
   name: string;
@@ -123,6 +129,8 @@ function formatMonthKey(d: Date) {
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
+const SUPERADMIN_SELECTED_HOTEL_KEY = "sc_superadmin_selected_hotel_id";
+
 export default function DashboardPage() {
   const router = useRouter();
 
@@ -130,6 +138,11 @@ export default function DashboardPage() {
   const [error, setError] = useState<string | null>(null);
 
   const [profile, setProfile] = useState<Profile | null>(null);
+
+  // Hotel selector para superadmin
+  const [hotels, setHotels] = useState<HotelRow[]>([]);
+  const [selectedHotelId, setSelectedHotelId] = useState<string | null>(null);
+
   const [areas, setAreas] = useState<AreaRow[]>([]);
   const [runs, setRuns] = useState<AuditRunRow[]>([]);
 
@@ -143,51 +156,139 @@ export default function DashboardPage() {
   const [worst3Areas, setWorst3Areas] = useState<AreaScore[]>([]);
   const [worst3Audits, setWorst3Audits] = useState<WorstAudit[]>([]);
 
+  // --- Styles ---
+  const card: React.CSSProperties = {
+    borderRadius: 18,
+    border: "1px solid rgba(0,0,0,0.08)",
+    background: "rgba(255,255,255,0.85)",
+    padding: 20,
+    boxShadow: "0 10px 30px rgba(0,0,0,0.06)",
+  };
+
+  const miniBtn: React.CSSProperties = {
+    padding: "8px 10px",
+    borderRadius: 10,
+    border: "1px solid rgba(0,0,0,0.12)",
+    background: "#fff",
+    cursor: "pointer",
+    fontWeight: 900,
+    fontSize: 12,
+    boxShadow: "0 4px 14px rgba(0,0,0,0.06)",
+    whiteSpace: "nowrap",
+  };
+
+  const primaryBtn: React.CSSProperties = {
+    padding: "12px 14px",
+    borderRadius: 12,
+    border: "1px solid rgba(0,0,0,0.12)",
+    background: "#000",
+    color: "#fff",
+    cursor: "pointer",
+    fontWeight: 950,
+    fontSize: 13,
+  };
+
+  const ghostBtn: React.CSSProperties = {
+    padding: "10px 12px",
+    borderRadius: 12,
+    border: "1px solid rgba(0,0,0,0.12)",
+    background: "#fff",
+    cursor: "pointer",
+    fontWeight: 950,
+    fontSize: 13,
+  };
+
+  const goAreaDetail = (areaId: string) => router.push(`/areas/${areaId}/history`);
+  const goAuditTemplateDetail = (templateId: string) => router.push(`/builder/templates/${templateId}`);
+
+  // Carga perfil + (si superadmin) hoteles + hotel seleccionado
   useEffect(() => {
     (async () => {
       setLoading(true);
       setError(null);
 
       try {
-        // ✅ ACEPTA SUPERADMIN para que no te mande a /login y se cree el bucle
-        const p = (await requireRoleOrRedirect(
-          router,
-          ["admin", "manager", "auditor", "superadmin"],
-          "/login"
-        )) as Profile | null;
+        const p = (await requireRoleOrRedirect(router, ["admin", "manager", "auditor", "superadmin"], "/login")) as
+          | Profile
+          | null;
 
         if (!p) return;
-
         setProfile(p);
 
+        // ✅ superadmin: NO obligamos hotel_id; abrimos selector
+        if (p.role === "superadmin") {
+          const stored = typeof window !== "undefined" ? localStorage.getItem(SUPERADMIN_SELECTED_HOTEL_KEY) : null;
+          setSelectedHotelId(stored || null);
+
+          const { data: hData, error: hErr } = await supabase
+            .from("hotels")
+            .select("id,name,created_at")
+            .order("created_at", { ascending: false });
+
+          if (hErr) throw hErr;
+
+          setHotels((hData ?? []) as HotelRow[]);
+          setLoading(false);
+          return;
+        }
+
+        // Roles normales: hotel_id obligatorio
         if (!p.hotel_id) {
           setError("Tu usuario no tiene hotel asignado.");
           setLoading(false);
           return;
         }
 
-        // 🔐 Treat superadmin like admin for data access inside the hotel
-        const isAdminLike = p.role === "admin" || p.role === "manager" || p.role === "superadmin";
+        // para roles normales usamos su hotel_id
+        setSelectedHotelId(p.hotel_id);
+        setLoading(false);
+      } catch (e: any) {
+        setError(e?.message ?? "No se pudo cargar el dashboard.");
+        setLoading(false);
+      }
+    })();
+  }, [router]);
+
+  // Carga data del hotel seleccionado (para superadmin y para roles normales)
+  useEffect(() => {
+    (async () => {
+      if (!profile) return;
+
+      // Si superadmin y aún no seleccionó hotel -> no cargamos data
+      if (profile.role === "superadmin" && !selectedHotelId) return;
+
+      // Si no superadmin, selectedHotelId ya será su hotel_id
+      if (!selectedHotelId) return;
+
+      setLoading(true);
+      setError(null);
+
+      try {
+        const hotelIdToUse = selectedHotelId;
+
+        const isAdminLike = profile.role === "admin" || profile.role === "manager" || profile.role === "superadmin";
 
         // -----------------------
         // Áreas (según rol)
         // -----------------------
         let areasList: AreaRow[] = [];
+
         if (isAdminLike) {
           const { data, error: aErr } = await supabase
             .from("areas")
             .select("id,name,type,hotel_id")
-            .eq("hotel_id", p.hotel_id)
+            .eq("hotel_id", hotelIdToUse)
             .order("name", { ascending: true });
 
           if (aErr) throw aErr;
           areasList = (data ?? []) as AreaRow[];
         } else {
+          // auditor: solo accesos permitidos
           const { data: accessData, error: accessErr } = await supabase
             .from("user_area_access")
             .select("area_id")
-            .eq("user_id", p.id)
-            .eq("hotel_id", p.hotel_id);
+            .eq("user_id", profile.id)
+            .eq("hotel_id", hotelIdToUse);
 
           if (accessErr) throw accessErr;
 
@@ -197,7 +298,7 @@ export default function DashboardPage() {
             const { data: areasData, error: areasErr } = await supabase
               .from("areas")
               .select("id,name,type,hotel_id")
-              .eq("hotel_id", p.hotel_id)
+              .eq("hotel_id", hotelIdToUse)
               .in("id", allowedIds)
               .order("name", { ascending: true });
 
@@ -210,6 +311,15 @@ export default function DashboardPage() {
 
         const areaIds = areasList.map((a) => a.id);
         if (areaIds.length === 0) {
+          // resetea KPIs si no hay áreas
+          setRuns([]);
+          setMonthScore({ avg: null, count: 0 });
+          setQuarterScore({ avg: null, count: 0 });
+          setYearScore({ avg: null, count: 0 });
+          setHeatMapData([]);
+          setTop3Areas([]);
+          setWorst3Areas([]);
+          setWorst3Audits([]);
           setLoading(false);
           return;
         }
@@ -263,10 +373,7 @@ export default function DashboardPage() {
             months.push({ value: s.avg, count: s.count });
           }
 
-          heatData.push({
-            areaName: area.name,
-            months,
-          });
+          heatData.push({ areaName: area.name, months });
         }
         setHeatMapData(heatData);
 
@@ -331,35 +438,7 @@ export default function DashboardPage() {
         setLoading(false);
       }
     })();
-  }, [router]);
-
-  const card: React.CSSProperties = {
-    borderRadius: 18,
-    border: "1px solid rgba(0,0,0,0.08)",
-    background: "rgba(255,255,255,0.85)",
-    padding: 20,
-    boxShadow: "0 10px 30px rgba(0,0,0,0.06)",
-  };
-
-  const miniBtn: React.CSSProperties = {
-    padding: "8px 10px",
-    borderRadius: 10,
-    border: "1px solid rgba(0,0,0,0.12)",
-    background: "#fff",
-    cursor: "pointer",
-    fontWeight: 900,
-    fontSize: 12,
-    boxShadow: "0 4px 14px rgba(0,0,0,0.06)",
-    whiteSpace: "nowrap",
-  };
-
-  const goAreaDetail = (areaId: string) => {
-    router.push(`/areas/${areaId}/history`);
-  };
-
-  const goAuditTemplateDetail = (templateId: string) => {
-    router.push(`/builder/templates/${templateId}`);
-  };
+  }, [profile, selectedHotelId]);
 
   const build3MonthTrend = (areaId: string): TrendPoint[] => {
     const areaRuns = runs.filter((r) => r.area_id === areaId);
@@ -397,27 +476,7 @@ export default function DashboardPage() {
     return labels;
   }, []);
 
-  if (loading) {
-    return (
-      <main style={{ padding: 24, paddingTop: 80 }}>
-        <HotelHeader />
-        <div style={{ opacity: 0.8 }}>Cargando…</div>
-      </main>
-    );
-  }
-
-  if (error) {
-    return (
-      <main style={{ padding: 24, paddingTop: 80 }}>
-        <HotelHeader />
-        <div style={{ color: "crimson", fontWeight: 900 }}>{error}</div>
-      </main>
-    );
-  }
-
-  const now = new Date();
-  const monthName = now.toLocaleDateString("es-ES", { month: "long", year: "numeric" });
-
+  // --- UI helpers ---
   const renderAreaRow = (area: AreaScore, idx: number, kind: "best" | "worst") => {
     const badge = kind === "best" ? (idx === 0 ? "🥇" : idx === 1 ? "🥈" : "🥉") : "⚠️";
     const color = scoreColor(area.score);
@@ -473,15 +532,113 @@ export default function DashboardPage() {
     );
   };
 
+  // --- Render states ---
+  if (loading) {
+    return (
+      <main style={{ padding: 24, paddingTop: 80 }}>
+        <HotelHeader />
+        <div style={{ opacity: 0.8 }}>Cargando…</div>
+      </main>
+    );
+  }
+
+  if (error) {
+    return (
+      <main style={{ padding: 24, paddingTop: 80 }}>
+        <HotelHeader />
+        <div style={{ color: "crimson", fontWeight: 900 }}>{error}</div>
+      </main>
+    );
+  }
+
+  // --- Superadmin: selector ---
+  if (profile?.role === "superadmin" && !selectedHotelId) {
+    return (
+      <main style={{ padding: 24, paddingTop: 80 }}>
+        <HotelHeader />
+
+        <div style={{ ...card, maxWidth: 860, margin: "0 auto" }}>
+          <div style={{ fontSize: 22, fontWeight: 950 }}>Elige un hotel</div>
+          <div style={{ marginTop: 8, opacity: 0.7 }}>
+            Como superadmin, primero selecciona el hotel con el que quieres trabajar.
+          </div>
+
+          <div style={{ marginTop: 16, display: "grid", gap: 10 }}>
+            {hotels.length === 0 ? (
+              <div style={{ opacity: 0.7 }}>No hay hoteles creados todavía.</div>
+            ) : (
+              hotels.map((h) => (
+                <button
+                  key={h.id}
+                  onClick={() => {
+                    localStorage.setItem(SUPERADMIN_SELECTED_HOTEL_KEY, h.id);
+                    setSelectedHotelId(h.id);
+                  }}
+                  style={{
+                    ...ghostBtn,
+                    textAlign: "left",
+                    padding: 14,
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                  }}
+                >
+                  <div style={{ fontWeight: 950 }}>{h.name}</div>
+                  <div style={{ opacity: 0.7, fontWeight: 900 }}>Entrar →</div>
+                </button>
+              ))
+            )}
+          </div>
+        </div>
+      </main>
+    );
+  }
+
+  const now = new Date();
+  const monthName = now.toLocaleDateString("es-ES", { month: "long", year: "numeric" });
+
+  const selectedHotelName =
+    profile?.role === "superadmin"
+      ? hotels.find((h) => h.id === selectedHotelId)?.name ?? "Hotel"
+      : "Hotel";
+
   return (
     <main style={{ padding: 24, paddingTop: 80 }}>
       <HotelHeader />
 
-      <div style={{ opacity: 0.7, fontSize: 14, marginBottom: 20 }}>
-        Hola{profile?.full_name ? `, ${profile.full_name}` : ""}. Rol: <strong>{profile?.role}</strong> · Áreas:{" "}
-        <strong>{areas.length}</strong>
+      {/* Barra superior informativa */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, marginBottom: 18 }}>
+        <div style={{ opacity: 0.7, fontSize: 14 }}>
+          Hola{profile?.full_name ? `, ${profile.full_name}` : ""}. Rol: <strong>{profile?.role}</strong> · Áreas:{" "}
+          <strong>{areas.length}</strong>
+          {profile?.role === "superadmin" ? (
+            <>
+              {" "}
+              · Hotel seleccionado: <strong>{selectedHotelName}</strong>
+            </>
+          ) : null}
+        </div>
+
+        {profile?.role === "superadmin" ? (
+          <button
+            style={ghostBtn}
+            onClick={() => {
+              localStorage.removeItem(SUPERADMIN_SELECTED_HOTEL_KEY);
+              setSelectedHotelId(null);
+              setAreas([]);
+              setRuns([]);
+              setHeatMapData([]);
+              setTop3Areas([]);
+              setWorst3Areas([]);
+              setWorst3Audits([]);
+            }}
+          >
+            Cambiar hotel
+          </button>
+        ) : null}
       </div>
 
+      {/* Gauges */}
       <div
         style={{
           display: "grid",
@@ -512,6 +669,7 @@ export default function DashboardPage() {
         </div>
       </div>
 
+      {/* Heatmap */}
       <div style={{ ...card, marginTop: 16 }}>
         <div style={{ fontSize: 18, fontWeight: 950, marginBottom: 16 }}>Performance por área (últimos 12 meses)</div>
         {heatMapData.length > 0 ? (
@@ -521,6 +679,7 @@ export default function DashboardPage() {
         )}
       </div>
 
+      {/* Mejores vs Peores */}
       {(top3Areas.length > 0 || worst3Areas.length > 0) && (
         <div
           style={{
@@ -535,11 +694,7 @@ export default function DashboardPage() {
               Top 3 Áreas con mejor performance ({now.getFullYear()})
             </div>
             <div style={{ display: "grid", gap: 12 }}>
-              {top3Areas.length > 0 ? (
-                top3Areas.map((a, idx) => renderAreaRow(a, idx, "best"))
-              ) : (
-                <div style={{ opacity: 0.7 }}>No hay datos suficientes.</div>
-              )}
+              {top3Areas.length > 0 ? top3Areas.map((a, idx) => renderAreaRow(a, idx, "best")) : <div style={{ opacity: 0.7 }}>No hay datos suficientes.</div>}
             </div>
           </div>
 
@@ -548,16 +703,13 @@ export default function DashboardPage() {
               Top 3 Áreas con peor performance ({now.getFullYear()})
             </div>
             <div style={{ display: "grid", gap: 12 }}>
-              {worst3Areas.length > 0 ? (
-                worst3Areas.map((a, idx) => renderAreaRow(a, idx, "worst"))
-              ) : (
-                <div style={{ opacity: 0.7 }}>No hay datos suficientes.</div>
-              )}
+              {worst3Areas.length > 0 ? worst3Areas.map((a, idx) => renderAreaRow(a, idx, "worst")) : <div style={{ opacity: 0.7 }}>No hay datos suficientes.</div>}
             </div>
           </div>
         </div>
       )}
 
+      {/* Top 3 auditorías peores */}
       {worst3Audits.length > 0 && (
         <div style={{ ...card, marginTop: 16 }}>
           <div style={{ fontSize: 18, fontWeight: 950, marginBottom: 16 }}>
@@ -603,6 +755,7 @@ export default function DashboardPage() {
         </div>
       )}
 
+      {/* Acceso rápido */}
       <div
         style={{
           marginTop: 16,
