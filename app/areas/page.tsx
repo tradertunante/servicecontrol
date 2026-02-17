@@ -1,7 +1,6 @@
-// app/areas/page.tsx
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { requireRoleOrRedirect } from "@/lib/auth/RequireRole";
@@ -22,6 +21,8 @@ type Area = {
   created_at: string;
 };
 
+const SUPERADMIN_SELECTED_HOTEL_KEY = "sc_superadmin_selected_hotel_id";
+
 export default function AreasPage() {
   const router = useRouter();
 
@@ -31,16 +32,18 @@ export default function AreasPage() {
   const [success, setSuccess] = useState<string | null>(null);
 
   const [profile, setProfile] = useState<Profile | null>(null);
+  const [hotelIdToUse, setHotelIdToUse] = useState<string | null>(null);
+
   const [areas, setAreas] = useState<Area[]>([]);
   const [q, setQ] = useState("");
 
-  // Estado del formulario de nueva área
   const [showForm, setShowForm] = useState(false);
   const [newAreaName, setNewAreaName] = useState("");
   const [newAreaType, setNewAreaType] = useState("");
 
   useEffect(() => {
     loadAreas();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [router]);
 
   async function loadAreas() {
@@ -48,21 +51,33 @@ export default function AreasPage() {
     setError(null);
 
     try {
-      const p = await requireRoleOrRedirect(router, ["admin", "manager"], "/dashboard");
+      const p = (await requireRoleOrRedirect(router, ["admin", "manager", "superadmin"], "/login")) as Profile | null;
       if (!p) return;
 
       setProfile(p);
 
-      if (!p.hotel_id) {
-        setError("No tienes un hotel asignado.");
+      let hid: string | null = p.hotel_id;
+
+      if (p.role === "superadmin") {
+        hid = typeof window !== "undefined" ? localStorage.getItem(SUPERADMIN_SELECTED_HOTEL_KEY) : null;
+        if (!hid) {
+          router.replace("/dashboard");
+          return;
+        }
+      }
+
+      if (!hid) {
+        setError("No tienes un hotel asignado o seleccionado.");
         setLoading(false);
         return;
       }
 
+      setHotelIdToUse(hid);
+
       const { data: areasData, error: areasErr } = await supabase
         .from("areas")
         .select("id, name, type, created_at")
-        .eq("hotel_id", p.hotel_id)
+        .eq("hotel_id", hid)
         .order("name", { ascending: true });
 
       if (areasErr) throw areasErr;
@@ -80,9 +95,8 @@ export default function AreasPage() {
       setError("El nombre del área no puede estar vacío.");
       return;
     }
-
-    if (!profile?.hotel_id) {
-      setError("No tienes un hotel asignado.");
+    if (!hotelIdToUse) {
+      setError("No hay hotel seleccionado.");
       return;
     }
 
@@ -94,7 +108,7 @@ export default function AreasPage() {
       const { error: insertErr } = await supabase.from("areas").insert({
         name: newAreaName.trim(),
         type: newAreaType.trim() || null,
-        hotel_id: profile.hotel_id,
+        hotel_id: hotelIdToUse,
       });
 
       if (insertErr) throw insertErr;
@@ -104,7 +118,6 @@ export default function AreasPage() {
       setNewAreaType("");
       setShowForm(false);
 
-      // Recargar áreas
       await loadAreas();
 
       setTimeout(() => setSuccess(null), 3000);
@@ -115,15 +128,17 @@ export default function AreasPage() {
     }
   }
 
-  const filteredAreas = areas.filter((a) => {
+  const filteredAreas = useMemo(() => {
     const search = q.toLowerCase().trim();
-    if (!search) return true;
-    return (
-      a.name.toLowerCase().includes(search) ||
-      a.type?.toLowerCase().includes(search) ||
-      a.id.toLowerCase().includes(search)
-    );
-  });
+    if (!search) return areas;
+    return areas.filter((a) => {
+      return (
+        a.name.toLowerCase().includes(search) ||
+        a.type?.toLowerCase().includes(search) ||
+        a.id.toLowerCase().includes(search)
+      );
+    });
+  }, [areas, q]);
 
   const card: React.CSSProperties = {
     borderRadius: 18,
@@ -179,7 +194,6 @@ export default function AreasPage() {
       {error && <div style={{ marginBottom: 12, color: "crimson", fontWeight: 950 }}>{error}</div>}
       {success && <div style={{ marginBottom: 12, color: "green", fontWeight: 950 }}>{success}</div>}
 
-      {/* Header con búsqueda y botón */}
       <div
         style={{
           display: "flex",
@@ -202,6 +216,8 @@ export default function AreasPage() {
             border: "1px solid rgba(0,0,0,0.2)",
             outline: "none",
             fontWeight: 800,
+            background: "#fff",
+            color: "#111",
           }}
         />
 
@@ -213,16 +229,13 @@ export default function AreasPage() {
         </div>
       </div>
 
-      {/* Formulario de nueva área */}
       {showForm && (
         <div style={{ ...card, marginBottom: 16 }}>
           <div style={{ fontSize: 18, fontWeight: 950, marginBottom: 16 }}>Crear Nueva Área</div>
 
           <div style={{ display: "grid", gap: 14 }}>
             <div>
-              <label style={{ fontWeight: 900, marginBottom: 8, display: "block" }}>
-                Nombre del área *
-              </label>
+              <label style={{ fontWeight: 900, marginBottom: 8, display: "block" }}>Nombre del área *</label>
               <input
                 type="text"
                 value={newAreaName}
@@ -230,21 +243,20 @@ export default function AreasPage() {
                 placeholder="Ej: Housekeeping, Restaurante, Spa..."
                 style={{
                   width: "100%",
-                  maxWidth: 500,
                   padding: "12px 14px",
                   borderRadius: 14,
                   border: "1px solid rgba(0,0,0,0.18)",
                   outline: "none",
                   fontWeight: 900,
                   fontSize: 16,
+                  background: "#fff",
+                  color: "#111",
                 }}
               />
             </div>
 
             <div>
-              <label style={{ fontWeight: 900, marginBottom: 8, display: "block" }}>
-                Tipo (opcional)
-              </label>
+              <label style={{ fontWeight: 900, marginBottom: 8, display: "block" }}>Tipo (opcional)</label>
               <input
                 type="text"
                 value={newAreaType}
@@ -252,13 +264,14 @@ export default function AreasPage() {
                 placeholder="Ej: Operaciones, F&B, Mantenimiento..."
                 style={{
                   width: "100%",
-                  maxWidth: 500,
                   padding: "12px 14px",
                   borderRadius: 14,
                   border: "1px solid rgba(0,0,0,0.18)",
                   outline: "none",
                   fontWeight: 900,
                   fontSize: 16,
+                  background: "#fff",
+                  color: "#111",
                 }}
               />
             </div>
@@ -284,40 +297,21 @@ export default function AreasPage() {
         </div>
       )}
 
-      {/* Lista de áreas */}
       <div style={{ display: "grid", gap: 14 }}>
         {filteredAreas.map((area) => (
           <div key={area.id} style={card}>
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "flex-start",
-                gap: 16,
-              }}
-            >
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16 }}>
               <div style={{ flex: 1 }}>
                 <div style={{ fontSize: 20, fontWeight: 950, marginBottom: 4 }}>{area.name}</div>
-                {area.type && (
-                  <div style={{ opacity: 0.7, fontWeight: 900, fontSize: 14, marginBottom: 8 }}>
-                    {area.type} · Creada:{" "}
-                    {new Date(area.created_at).toLocaleDateString("es-ES", {
-                      day: "2-digit",
-                      month: "short",
-                      year: "numeric",
-                    })}
-                  </div>
-                )}
-                <div
-                  style={{
-                    opacity: 0.5,
-                    fontSize: 12,
-                    fontFamily: "monospace",
-                    marginTop: 4,
-                  }}
-                >
-                  ID: {area.id}
+                <div style={{ opacity: 0.7, fontWeight: 900, fontSize: 14, marginBottom: 8 }}>
+                  {area.type ?? "—"} · Creada:{" "}
+                  {new Date(area.created_at).toLocaleDateString("es-ES", {
+                    day: "2-digit",
+                    month: "short",
+                    year: "numeric",
+                  })}
                 </div>
+                <div style={{ opacity: 0.5, fontSize: 12, fontFamily: "monospace", marginTop: 4 }}>ID: {area.id}</div>
               </div>
 
               <button onClick={() => router.push(`/areas/${area.id}`)} style={btn}>
