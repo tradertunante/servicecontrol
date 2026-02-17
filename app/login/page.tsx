@@ -1,155 +1,138 @@
 "use client";
 
 import { useState } from "react";
-import { supabase } from "@/lib/supabaseClient";
 import { useRouter } from "next/navigation";
-
-type Profile = {
-  role: "superadmin" | "admin" | "manager" | "auditor";
-  hotel_id: string | null;
-  active: boolean;
-};
+import { supabase } from "@/lib/supabaseClient";
 
 export default function LoginPage() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const router = useRouter();
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string>("");
+
+  async function waitForSession(maxMs = 1500) {
+    const start = Date.now();
+    while (Date.now() - start < maxMs) {
+      const { data } = await supabase.auth.getSession();
+      if (data.session) return data.session;
+      await new Promise((r) => setTimeout(r, 120));
+    }
+    return null;
+  }
+
+  const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    setError(null);
+    setError("");
 
     try {
-      const { error: signInError } = await supabase.auth.signInWithPassword({
-        email,
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: email.trim(),
         password,
       });
 
-      if (signInError) {
-        setError(signInError.message);
-        return;
-      }
+      if (error) throw error;
 
-      // ✅ Espera a que la sesión esté disponible
-      const { data: sessData, error: sessErr } = await supabase.auth.getSession();
-      const session = sessData?.session;
+      // ✅ si por timing la session aún no está, esperamos un poquito
+      const session = data.session ?? (await waitForSession());
+      if (!session) throw new Error("No se pudo establecer la sesión. Intenta de nuevo.");
 
-      if (sessErr || !session) {
-        setError(
-          "Login OK, pero no se pudo leer la sesión. Recarga la página e inténtalo otra vez."
-        );
-        return;
-      }
-
-      // ✅ Lee el perfil para decidir ruta
-      const { data: profile, error: profErr } = await supabase
-        .from("profiles")
-        .select("role, hotel_id, active")
-        .eq("id", session.user.id)
-        .single<Profile>();
-
-      if (profErr || !profile) {
-        // Fallback seguro (evita quedarte bloqueada)
-        router.replace("/dashboard");
-        return;
-      }
-
-      if (!profile.active) {
-        setError("Tu usuario está inactivo. Contacta con un administrador.");
-        await supabase.auth.signOut();
-        return;
-      }
-
-      if (profile.role === "superadmin") {
-        router.replace("/superadmin/hotels");
-        return;
-      }
-
-      router.replace("/dashboard");
-    } catch (err: any) {
-      setError(err?.message ?? "Error inesperado al iniciar sesión.");
+      // ✅ La home (app/page.tsx) redirige según rol
+      router.replace("/");
+      router.refresh();
+    } catch (e: any) {
+      setError(e?.message ?? "No se pudo iniciar sesión.");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div
+    <main
       style={{
         minHeight: "100vh",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        backgroundColor: "#f5f5f5",
-        padding: "24px",
+        display: "grid",
+        placeItems: "center",
+        padding: 24,
       }}
     >
-      <div
-        style={{
-          backgroundColor: "white",
-          padding: "22px",
-          borderRadius: "10px",
-          boxShadow: "0 2px 10px rgba(0,0,0,0.10)",
-          width: "min(420px, 100%)",
-        }}
-      >
-        <h1 style={{ fontSize: "22px", fontWeight: "800", marginBottom: "6px" }}>
+      <div style={{ width: "100%", maxWidth: 520 }}>
+        <h1 style={{ fontSize: 34, fontWeight: 950, marginBottom: 10 }}>
           ServiceControl
         </h1>
-        <p style={{ opacity: 0.7, marginBottom: "18px" }}>Inicia sesión en tu cuenta</p>
+        <p style={{ opacity: 0.75, marginBottom: 18 }}>
+          Inicia sesión para continuar
+        </p>
 
-        <form onSubmit={handleLogin}>
-          <div style={{ marginBottom: "12px" }}>
-            <label style={{ display: "block", marginBottom: "4px", fontSize: "14px" }}>
-              Email
-            </label>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              style={{
-                width: "100%",
-                padding: "10px 12px",
-                border: "1px solid #ddd",
-                borderRadius: "8px",
-                fontSize: "14px",
-              }}
-            />
-          </div>
+        <form
+          onSubmit={onSubmit}
+          style={{
+            width: "100%",
+            background: "#fff",
+            borderRadius: 18,
+            padding: 18,
+            border: "1px solid rgba(0,0,0,0.12)",
+            boxShadow: "0 10px 40px rgba(0,0,0,0.18)",
+          }}
+        >
+          <label style={{ display: "block", fontWeight: 900, marginBottom: 6, color: "#111" }}>
+            Email
+          </label>
+          <input
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            type="email"
+            autoComplete="email"
+            placeholder="tu@email.com"
+            style={{
+              width: "100%",
+              height: 46,
+              borderRadius: 12,
+              border: "1px solid rgba(0,0,0,0.18)",
+              padding: "0 12px",
+              outline: "none",
+              background: "#fff",
+              color: "#111",
+            }}
+          />
 
-          <div style={{ marginBottom: "12px" }}>
-            <label style={{ display: "block", marginBottom: "4px", fontSize: "14px" }}>
-              Contraseña
-            </label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              style={{
-                width: "100%",
-                padding: "10px 12px",
-                border: "1px solid #ddd",
-                borderRadius: "8px",
-                fontSize: "14px",
-              }}
-            />
-          </div>
+          <div style={{ height: 14 }} />
 
-          {error && (
+          <label style={{ display: "block", fontWeight: 900, marginBottom: 6, color: "#111" }}>
+            Contraseña
+          </label>
+          <input
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            type="password"
+            autoComplete="current-password"
+            placeholder="••••••••"
+            style={{
+              width: "100%",
+              height: 46,
+              borderRadius: 12,
+              border: "1px solid rgba(0,0,0,0.18)",
+              padding: "0 12px",
+              outline: "none",
+              background: "#fff",
+              color: "#111",
+            }}
+          />
+
+          {!!error && (
             <div
               style={{
-                padding: "10px",
-                backgroundColor: "#fee",
+                marginTop: 12,
+                padding: 10,
+                borderRadius: 12,
+                background: "#fee",
                 border: "1px solid #fcc",
-                borderRadius: "8px",
-                marginBottom: "12px",
-                fontSize: "14px",
+                color: "#7a0b0b",
                 whiteSpace: "pre-wrap",
+                fontWeight: 700,
               }}
             >
               {error}
@@ -160,21 +143,27 @@ export default function LoginPage() {
             type="submit"
             disabled={loading}
             style={{
+              marginTop: 14,
               width: "100%",
-              padding: "12px",
-              backgroundColor: loading ? "#ccc" : "#000",
-              color: "white",
-              border: "none",
-              borderRadius: "10px",
-              fontSize: "14px",
-              fontWeight: "800",
+              height: 48,
+              borderRadius: 14,
+              border: "1px solid rgba(0,0,0,0.2)",
+              background: loading ? "#222" : "#000",
+              color: "#fff",
+              fontWeight: 950,
               cursor: loading ? "not-allowed" : "pointer",
             }}
           >
-            {loading ? "Iniciando sesión..." : "Iniciar sesión"}
+            {loading ? "Entrando…" : "Iniciar sesión"}
           </button>
         </form>
+
+        <style jsx global>{`
+          input::placeholder {
+            color: rgba(0, 0, 0, 0.45);
+          }
+        `}</style>
       </div>
-    </div>
+    </main>
   );
 }

@@ -18,7 +18,6 @@ export default function SuperadminHotelsPage() {
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>("");
-
   const [profile, setProfile] = useState<LoadedProfile | null>(null);
   const [hotels, setHotels] = useState<Hotel[]>([]);
   const [activeHotelId, setActiveHotelId] = useState<string | null>(null);
@@ -33,8 +32,7 @@ export default function SuperadminHotelsPage() {
 
         const allowed: Role[] = ["superadmin"];
         const p = await requireRoleOrRedirect(router, allowed, "/login");
-        if (!alive) return;
-        if (!p) return;
+        if (!alive || !p) return;
 
         setProfile(p);
 
@@ -77,22 +75,33 @@ export default function SuperadminHotelsPage() {
 
   return (
     <main style={{ padding: 24 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center" }}>
+      {/* Header */}
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          gap: 12,
+          alignItems: "center",
+        }}
+      >
         <div>
-          <div style={{ fontSize: 28, fontWeight: 950 }}>Elegir hotel</div>
+          <div style={{ fontSize: 28, fontWeight: 900 }}>
+            Elegir hotel
+          </div>
           <div style={{ opacity: 0.7, marginTop: 6 }}>
-            {(profile?.full_name ?? "Superadmin")} · Superadmin
+            {profile?.full_name ?? "Superadmin"} · Superadmin
           </div>
         </div>
 
         <button
           onClick={logout}
           style={{
-            padding: "10px 12px",
+            padding: "10px 14px",
             borderRadius: 12,
-            border: "1px solid rgba(0,0,0,0.15)",
-            background: "#fff",
-            fontWeight: 900,
+            border: "1px solid rgba(255,255,255,0.2)",
+            background: "#1f1f1f",
+            color: "#fff",
+            fontWeight: 700,
             cursor: "pointer",
           }}
         >
@@ -100,27 +109,37 @@ export default function SuperadminHotelsPage() {
         </button>
       </div>
 
-      {loading && <p style={{ marginTop: 18 }}>Cargando…</p>}
+      {/* Loading */}
+      {loading && <p style={{ marginTop: 20 }}>Cargando…</p>}
 
+      {/* Error */}
       {!!error && (
         <div
           style={{
-            marginTop: 18,
+            marginTop: 20,
             padding: 12,
             borderRadius: 12,
-            background: "#fee",
-            border: "1px solid #fcc",
-            whiteSpace: "pre-wrap",
+            background: "#2a0000",
+            border: "1px solid #550000",
+            color: "#ffaaaa",
           }}
         >
           {error}
         </div>
       )}
 
+      {/* Hotels */}
       {!loading && !error && (
-        <div style={{ marginTop: 18, display: "grid", gap: 12 }}>
+        <div style={{ marginTop: 24, display: "grid", gap: 16 }}>
           {hotels.length === 0 ? (
-            <div style={{ padding: 14, border: "1px solid #eee", borderRadius: 12, background: "#fff" }}>
+            <div
+              style={{
+                padding: 16,
+                border: "1px solid #333",
+                borderRadius: 12,
+                background: "#1a1a1a",
+              }}
+            >
               No hay hoteles creados aún.
             </div>
           ) : (
@@ -133,10 +152,13 @@ export default function SuperadminHotelsPage() {
                   onClick={() => pickHotel(h.id)}
                   style={{
                     textAlign: "left",
-                    padding: 14,
-                    borderRadius: 14,
-                    border: isActive ? "2px solid #000" : "1px solid #eee",
-                    background: "#fff",
+                    padding: 16,
+                    borderRadius: 16,
+                    border: isActive
+                      ? "2px solid #000"
+                      : "1px solid #ddd",
+                    background: "#ffffff",
+                    color: "#111111",   // ✅ CLAVE para que no sea blanco sobre blanco
                     cursor: "pointer",
                     display: "flex",
                     justifyContent: "space-between",
@@ -145,11 +167,21 @@ export default function SuperadminHotelsPage() {
                   }}
                 >
                   <div>
-                    <div style={{ fontWeight: 950, fontSize: 16 }}>{h.name}</div>
-                    <div style={{ opacity: 0.7, fontSize: 13 }}>ID: {h.id}</div>
+                    <div
+                      style={{
+                        fontWeight: 800,
+                        fontSize: 16,
+                        marginBottom: 4,
+                      }}
+                    >
+                      {h.name}
+                    </div>
+                    <div style={{ fontSize: 13, opacity: 0.6 }}>
+                      ID: {h.id}
+                    </div>
                   </div>
 
-                  <div style={{ fontWeight: 950, fontSize: 13, opacity: 0.85 }}>
+                  <div style={{ fontWeight: 700, fontSize: 13 }}>
                     {isActive ? "Seleccionado" : "Entrar"}
                   </div>
                 </button>

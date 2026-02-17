@@ -156,13 +156,14 @@ export default function DashboardPage() {
   const [worst3Areas, setWorst3Areas] = useState<AreaScore[]>([]);
   const [worst3Audits, setWorst3Audits] = useState<WorstAudit[]>([]);
 
-  // --- Styles ---
+  // --- Styles (✅ SOLO COLORES) ---
   const card: React.CSSProperties = {
     borderRadius: 18,
-    border: "1px solid rgba(0,0,0,0.08)",
-    background: "rgba(255,255,255,0.85)",
+    border: "1px solid rgba(255,255,255,0.10)",
+    background: "rgba(255,255,255,0.92)",
     padding: 20,
-    boxShadow: "0 10px 30px rgba(0,0,0,0.06)",
+    boxShadow: "0 10px 30px rgba(0,0,0,0.20)",
+    color: "#111",
   };
 
   const miniBtn: React.CSSProperties = {
@@ -170,6 +171,7 @@ export default function DashboardPage() {
     borderRadius: 10,
     border: "1px solid rgba(0,0,0,0.12)",
     background: "#fff",
+    color: "#111",
     cursor: "pointer",
     fontWeight: 900,
     fontSize: 12,
@@ -193,6 +195,7 @@ export default function DashboardPage() {
     borderRadius: 12,
     border: "1px solid rgba(0,0,0,0.12)",
     background: "#fff",
+    color: "#111",
     cursor: "pointer",
     fontWeight: 950,
     fontSize: 13,
@@ -491,8 +494,9 @@ export default function DashboardPage() {
           alignItems: "center",
           padding: "14px 16px",
           borderRadius: 12,
-          background: "rgba(0,0,0,0.02)",
-          border: "1px solid rgba(0,0,0,0.08)",
+          background: "rgba(0,0,0,0.04)",
+          border: "1px solid rgba(0,0,0,0.10)",
+          color: "#111",
           gap: 12,
         }}
       >
@@ -694,7 +698,11 @@ export default function DashboardPage() {
               Top 3 Áreas con mejor performance ({now.getFullYear()})
             </div>
             <div style={{ display: "grid", gap: 12 }}>
-              {top3Areas.length > 0 ? top3Areas.map((a, idx) => renderAreaRow(a, idx, "best")) : <div style={{ opacity: 0.7 }}>No hay datos suficientes.</div>}
+              {top3Areas.length > 0 ? (
+                top3Areas.map((a, idx) => renderAreaRow(a, idx, "best"))
+              ) : (
+                <div style={{ opacity: 0.7 }}>No hay datos suficientes.</div>
+              )}
             </div>
           </div>
 
@@ -703,7 +711,11 @@ export default function DashboardPage() {
               Top 3 Áreas con peor performance ({now.getFullYear()})
             </div>
             <div style={{ display: "grid", gap: 12 }}>
-              {worst3Areas.length > 0 ? worst3Areas.map((a, idx) => renderAreaRow(a, idx, "worst")) : <div style={{ opacity: 0.7 }}>No hay datos suficientes.</div>}
+              {worst3Areas.length > 0 ? (
+                worst3Areas.map((a, idx) => renderAreaRow(a, idx, "worst"))
+              ) : (
+                <div style={{ opacity: 0.7 }}>No hay datos suficientes.</div>
+              )}
             </div>
           </div>
         </div>
@@ -726,8 +738,9 @@ export default function DashboardPage() {
                   alignItems: "center",
                   padding: "14px 16px",
                   borderRadius: 12,
-                  background: "rgba(0,0,0,0.02)",
-                  border: "1px solid rgba(0,0,0,0.08)",
+                  background: "rgba(0,0,0,0.04)",
+                  border: "1px solid rgba(0,0,0,0.10)",
+                  color: "#111",
                   gap: 12,
                 }}
               >
@@ -772,6 +785,7 @@ export default function DashboardPage() {
             borderRadius: 14,
             border: "1px solid rgba(0,0,0,0.12)",
             background: "#fff",
+            color: "#111",
             boxShadow: "0 4px 16px rgba(0,0,0,0.06)",
             cursor: "pointer",
           }}
@@ -789,6 +803,7 @@ export default function DashboardPage() {
               borderRadius: 14,
               border: "1px solid rgba(0,0,0,0.12)",
               background: "#fff",
+              color: "#111",
               boxShadow: "0 4px 16px rgba(0,0,0,0.06)",
               cursor: "pointer",
             }}

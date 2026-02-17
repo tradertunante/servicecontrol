@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
-
 import { normalizeRole, type Role } from "@/lib/auth/permissions";
 
 type Profile = {
@@ -22,24 +21,33 @@ export default function HomePage() {
   useEffect(() => {
     let alive = true;
 
-    async function load() {
+    async function run() {
       setLoading(true);
       setError("");
 
-      // ✅ 1) Session local (evita bucle por timing/red)
-      const { data: sessData } = await supabase.auth.getSession();
+      // ✅ 1) Espera corta a que la sesión esté lista (Safari / App Router)
+      const start = Date.now();
+      let session = null as any;
+
+      while (Date.now() - start < 1500) {
+        const { data } = await supabase.auth.getSession();
+        session = data.session;
+        if (session) break;
+        await new Promise((r) => setTimeout(r, 120));
+      }
+
       if (!alive) return;
 
-      if (!sessData.session) {
+      if (!session) {
         router.replace("/login");
         return;
       }
 
-      // ✅ 2) Ya hay sesión: ahora sí user + profile
-      const { data: authData, error: authErr } = await supabase.auth.getUser();
+      // ✅ 2) Carga profile
+      const { data: userData, error: userErr } = await supabase.auth.getUser();
       if (!alive) return;
 
-      if (authErr || !authData?.user) {
+      if (userErr || !userData?.user) {
         router.replace("/login");
         return;
       }
@@ -47,7 +55,7 @@ export default function HomePage() {
       const { data: prof, error: profErr } = await supabase
         .from("profiles")
         .select("id, full_name, role, hotel_id, active")
-        .eq("id", authData.user.id)
+        .eq("id", userData.user.id)
         .maybeSingle();
 
       if (!alive) return;
@@ -74,13 +82,12 @@ export default function HomePage() {
         active: prof.active ?? null,
       };
 
-      // ✅ Rutas por rol (CORRECTAS)
+      // ✅ 3) Redirección por rol (sin doble pantalla)
       if (profile.role === "superadmin") {
         router.replace("/superadmin/hotels");
         return;
       }
 
-      // NOTA: Si quieres que auditor también vaya al dashboard, cambia esto a /dashboard
       if (profile.role === "auditor") {
         router.replace("/audits");
         return;
@@ -89,12 +96,12 @@ export default function HomePage() {
       router.replace("/dashboard");
     }
 
-    load();
+    run();
 
     return () => {
       alive = false;
     };
-  }, [router,]);
+  }, [router]);
 
   if (loading) {
     return (
@@ -131,10 +138,5 @@ export default function HomePage() {
     );
   }
 
-  return (
-    <main style={{ padding: 24 }}>
-      <h1 style={{ fontSize: 28, fontWeight: 900 }}>ServiceControl</h1>
-      <p style={{ opacity: 0.7, marginTop: 8 }}>Redirigiendo…</p>
-    </main>
-  );
+  return null;
 }
