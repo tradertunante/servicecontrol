@@ -166,7 +166,7 @@ export default function LoginPage() {
               color: "white",
               border: "none",
               borderRadius: "10px",
-              fontSize: "15px",
+              fontSize: "14px",
               fontWeight: "800",
               cursor: loading ? "not-allowed" : "pointer",
             }}
