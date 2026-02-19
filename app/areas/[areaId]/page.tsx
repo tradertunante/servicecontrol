@@ -1249,7 +1249,6 @@ export default function AreaPage() {
               </div>
             ))}
           </div>
-
           {templates.length === 0 ? (
             <p style={{ marginTop: 16, opacity: 0.85 }}>No hay auditorías asignadas a esta área todavía.</p>
           ) : null}
