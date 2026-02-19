@@ -13,34 +13,42 @@ type Hotel = {
   created_at?: string | null;
 };
 
+const HOTEL_KEY = "sc_hotel_id";
+
 export default function SuperadminHotelsPage() {
   const router = useRouter();
 
   const [loading, setLoading] = useState(true);
+  const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState<string>("");
   const [profile, setProfile] = useState<LoadedProfile | null>(null);
-
   const [hotels, setHotels] = useState<Hotel[]>([]);
   const [activeHotelId, setActiveHotelId] = useState<string | null>(null);
 
-  // ✅ Crear hotel (modal)
-  const [showCreate, setShowCreate] = useState(false);
-  const [newHotelName, setNewHotelName] = useState("");
-  const [newHotelActive, setNewHotelActive] = useState(true);
-  const [creating, setCreating] = useState(false);
-  const [createError, setCreateError] = useState<string>("");
+  // Theme vars
+  const fg = "var(--text)";
+  const bg = "var(--bg)";
+  const muted = "var(--muted)";
+  const cardBg = "var(--card-bg)";
+  const border = "var(--border)";
+  const shadowSm = "var(--shadow-sm)";
+  const inputBg = "var(--input-bg)";
+  const inputBorder = "var(--input-border)";
 
-  const canCreate = useMemo(() => profile?.role === "superadmin", [profile?.role]);
-
-  const loadHotels = async () => {
-    const { data, error: hotelsErr } = await supabase
-      .from("hotels")
-      .select("id, name, active, created_at")
-      .order("created_at", { ascending: true });
-
-    if (hotelsErr) throw hotelsErr;
-    setHotels((data ?? []) as Hotel[]);
-  };
+  const pill = (on: boolean) =>
+    ({
+      display: "inline-flex",
+      alignItems: "center",
+      gap: 8,
+      padding: "6px 10px",
+      borderRadius: 999,
+      border: `1px solid ${border}`,
+      background: on ? "rgba(15, 118, 110, 0.10)" : "rgba(198, 40, 40, 0.10)",
+      color: on ? "var(--ok, #0f766e)" : "var(--danger, #c62828)",
+      fontWeight: 950,
+      fontSize: 12,
+      whiteSpace: "nowrap",
+    } as React.CSSProperties);
 
   useEffect(() => {
     let alive = true;
@@ -56,12 +64,19 @@ export default function SuperadminHotelsPage() {
 
         setProfile(p);
 
-        await loadHotels();
+        const { data, error: hotelsErr } = await supabase
+          .from("hotels")
+          .select("id, name, active, created_at")
+          .order("created_at", { ascending: true });
 
-        // ✅ Preferimos localStorage; si no existe, usamos profile.hotel_id (si viniera)
-        const saved = localStorage.getItem("sc_hotel_id");
-        const fallback = (p as any)?.hotel_id ?? null;
-        setActiveHotelId(saved || fallback);
+        if (hotelsErr) throw hotelsErr;
+        if (!alive) return;
+
+        const list = (data ?? []) as Hotel[];
+        setHotels(list);
+
+        const saved = localStorage.getItem(HOTEL_KEY);
+        setActiveHotelId(saved);
       } catch (e: any) {
         if (!alive) return;
         setError(e?.message ?? "Error cargando hoteles.");
@@ -75,119 +90,109 @@ export default function SuperadminHotelsPage() {
     };
   }, [router]);
 
-  // ✅ FIX: al elegir hotel, también guardamos en profiles.hotel_id
-  const pickHotel = async (hotelId: string) => {
-    try {
-      // 1) Persistencia local inmediata
-      localStorage.setItem("sc_hotel_id", hotelId);
-      setActiveHotelId(hotelId);
-
-      // 2) Persistencia en DB para que el dashboard (si lee profile.hotel_id) no vuelva al Demo
-      if (profile?.id) {
-        const { error: updErr } = await supabase
-          .from("profiles")
-          .update({ hotel_id: hotelId })
-          .eq("id", profile.id);
-
-        // Si falla por RLS, igualmente seguimos: el localStorage ya está bien
-        if (updErr) {
-          console.warn("No se pudo actualizar profiles.hotel_id:", updErr.message);
-        }
-      }
-
-      // 3) Ir al dashboard
-      router.replace("/dashboard");
-    } catch (e: any) {
-      // fallback seguro
-      router.replace("/dashboard");
-    }
+  const pickHotel = (hotelId: string) => {
+    localStorage.setItem(HOTEL_KEY, hotelId);
+    setActiveHotelId(hotelId);
+    router.replace("/dashboard");
   };
 
   const logout = async () => {
     await supabase.auth.signOut();
-    localStorage.removeItem("sc_hotel_id");
+    localStorage.removeItem(HOTEL_KEY);
     router.replace("/login");
   };
 
-  const openCreate = () => {
-    setCreateError("");
-    setNewHotelName("");
-    setNewHotelActive(true);
-    setShowCreate(true);
-  };
-
   const createHotel = async () => {
-    if (!newHotelName.trim()) {
-      setCreateError("Pon un nombre para el hotel.");
-      return;
-    }
+    const name = window.prompt("Nombre del hotel (ej: Eurostar Gran Central)");
+    if (!name?.trim()) return;
 
-    setCreating(true);
-    setCreateError("");
+    setLoading(true);
+    setError("");
 
     try {
-      const { error: insErr } = await supabase.from("hotels").insert({
-        name: newHotelName.trim(),
-        active: newHotelActive,
-      });
+      const { data, error: insErr } = await supabase
+        .from("hotels")
+        .insert([{ name: name.trim(), active: true }])
+        .select("id, name, active, created_at");
 
       if (insErr) throw insErr;
 
-      setShowCreate(false);
-      await loadHotels();
+      const created = (data ?? []) as Hotel[];
+      setHotels((prev) => [...prev, ...created]);
+      setLoading(false);
     } catch (e: any) {
-      setCreateError(e?.message ?? "No se pudo crear el hotel.");
+      setError(e?.message ?? "No se pudo crear el hotel.");
+      setLoading(false);
+    }
+  };
+
+  const toggleHotelActive = async (hotelId: string, nextActive: boolean) => {
+    setBusyId(hotelId);
+    setError("");
+
+    try {
+      const { data, error: updErr } = await supabase
+        .from("hotels")
+        .update({ active: nextActive })
+        .eq("id", hotelId)
+        .select("id, name, active, created_at")
+        .single();
+
+      if (updErr) throw updErr;
+
+      setHotels((prev) => prev.map((h) => (h.id === hotelId ? ({ ...h, ...(data as Hotel) } as Hotel) : h)));
+
+      // Si desactivas el hotel que está seleccionado, lo sacamos del localStorage
+      if (!nextActive && activeHotelId === hotelId) {
+        localStorage.removeItem(HOTEL_KEY);
+        setActiveHotelId(null);
+      }
+    } catch (e: any) {
+      setError(e?.message ?? "No se pudo actualizar el estado del hotel.");
     } finally {
-      setCreating(false);
+      setBusyId(null);
     }
   };
 
   return (
-    <main style={{ padding: 24 }}>
+    <main style={{ padding: 24, background: bg, color: fg, minHeight: "100vh" }}>
       {/* Header */}
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          gap: 12,
-          alignItems: "center",
-        }}
-      >
+      <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center" }}>
         <div>
-          <div style={{ fontSize: 28, fontWeight: 900 }}>Elegir hotel</div>
+          <div style={{ fontSize: 28, fontWeight: 950 }}>Elegir hotel</div>
           <div style={{ opacity: 0.7, marginTop: 6 }}>
             {profile?.full_name ?? "Superadmin"} · Superadmin
           </div>
         </div>
 
         <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-          {canCreate && (
-            <button
-              onClick={openCreate}
-              style={{
-                padding: "10px 14px",
-                borderRadius: 12,
-                border: "1px solid rgba(0,0,0,0.12)",
-                background: "#ffffff",
-                color: "#111",
-                fontWeight: 800,
-                cursor: "pointer",
-              }}
-            >
-              + Nuevo hotel
-            </button>
-          )}
+          <button
+            onClick={createHotel}
+            style={{
+              padding: "10px 14px",
+              borderRadius: 12,
+              border: `1px solid ${inputBorder}`,
+              background: inputBg,
+              color: fg,
+              fontWeight: 950,
+              cursor: "pointer",
+              boxShadow: shadowSm,
+            }}
+          >
+            + Nuevo hotel
+          </button>
 
           <button
             onClick={logout}
             style={{
               padding: "10px 14px",
               borderRadius: 12,
-              border: "1px solid rgba(255,255,255,0.2)",
-              background: "#1f1f1f",
-              color: "#fff",
-              fontWeight: 700,
+              border: `1px solid ${inputBorder}`,
+              background: fg,
+              color: bg,
+              fontWeight: 950,
               cursor: "pointer",
+              boxShadow: shadowSm,
             }}
           >
             Cerrar sesión
@@ -196,7 +201,7 @@ export default function SuperadminHotelsPage() {
       </div>
 
       {/* Loading */}
-      {loading && <p style={{ marginTop: 20 }}>Cargando…</p>}
+      {loading && <p style={{ marginTop: 20, opacity: 0.8 }}>Cargando…</p>}
 
       {/* Error */}
       {!!error && (
@@ -205,9 +210,10 @@ export default function SuperadminHotelsPage() {
             marginTop: 20,
             padding: 12,
             borderRadius: 12,
-            background: "#2a0000",
-            border: "1px solid #550000",
-            color: "#ffaaaa",
+            background: "rgba(198,40,40,0.10)",
+            border: "1px solid var(--danger, #c62828)",
+            color: "var(--danger, #c62828)",
+            fontWeight: 900,
           }}
         >
           {error}
@@ -218,178 +224,97 @@ export default function SuperadminHotelsPage() {
       {!loading && !error && (
         <div style={{ marginTop: 24, display: "grid", gap: 16 }}>
           {hotels.length === 0 ? (
-            <div
-              style={{
-                padding: 16,
-                border: "1px solid #333",
-                borderRadius: 12,
-                background: "#1a1a1a",
-              }}
-            >
+            <div style={{ padding: 16, border: `1px solid ${border}`, borderRadius: 12, background: cardBg }}>
               No hay hoteles creados aún.
             </div>
           ) : (
             hotels.map((h) => {
-              const isActive = activeHotelId === h.id;
+              const isSelected = activeHotelId === h.id;
+              const isActive = h.active !== false; // null => consideramos activo
+              const isBusy = busyId === h.id;
 
               return (
-                <button
+                <div
                   key={h.id}
-                  onClick={() => pickHotel(h.id)}
                   style={{
-                    textAlign: "left",
                     padding: 16,
                     borderRadius: 16,
-                    border: isActive ? "2px solid #000" : "1px solid #ddd",
-                    background: "#ffffff",
-                    color: "#111111",
-                    cursor: "pointer",
+                    border: isSelected ? "2px solid #000" : `1px solid ${border}`,
+                    background: cardBg,
+                    color: fg,
+                    boxShadow: shadowSm,
                     display: "flex",
                     justifyContent: "space-between",
-                    gap: 12,
                     alignItems: "center",
+                    gap: 12,
                   }}
                 >
-                  <div>
-                    <div style={{ fontWeight: 800, fontSize: 16, marginBottom: 4 }}>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontWeight: 950, fontSize: 16, marginBottom: 6, overflow: "hidden", textOverflow: "ellipsis" }}>
                       {h.name}
-                      {h.active === false ? (
-                        <span style={{ marginLeft: 10, fontSize: 12, opacity: 0.6 }}>
-                          (inactivo)
-                        </span>
-                      ) : null}
                     </div>
-                    <div style={{ fontSize: 13, opacity: 0.6 }}>ID: {h.id}</div>
+
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center", opacity: 0.9 }}>
+                      <span style={{ fontSize: 13, opacity: 0.75 }}>ID: {h.id}</span>
+                      <span style={pill(isActive)}>
+                        <span
+                          style={{
+                            width: 8,
+                            height: 8,
+                            borderRadius: 999,
+                            background: isActive ? "var(--ok, #0f766e)" : "var(--danger, #c62828)",
+                            display: "inline-block",
+                          }}
+                        />
+                        {isActive ? "Activo" : "Inactivo"}
+                      </span>
+                    </div>
                   </div>
 
-                  <div style={{ fontWeight: 700, fontSize: 13 }}>
-                    {isActive ? "Seleccionado" : "Entrar"}
+                  <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+                    {/* Toggle activo */}
+                    <button
+                      disabled={isBusy}
+                      onClick={() => toggleHotelActive(h.id, !isActive)}
+                      style={{
+                        padding: "10px 12px",
+                        borderRadius: 12,
+                        border: `1px solid ${inputBorder}`,
+                        background: inputBg,
+                        color: fg,
+                        cursor: isBusy ? "not-allowed" : "pointer",
+                        fontWeight: 950,
+                        boxShadow: shadowSm,
+                        opacity: isBusy ? 0.6 : 1,
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      {isActive ? "Desactivar" : "Activar"}
+                    </button>
+
+                    {/* Entrar */}
+                    <button
+                      disabled={!isActive}
+                      onClick={() => pickHotel(h.id)}
+                      style={{
+                        padding: "10px 12px",
+                        borderRadius: 12,
+                        border: `1px solid ${inputBorder}`,
+                        background: isActive ? fg : "rgba(0,0,0,0.20)",
+                        color: isActive ? bg : "rgba(255,255,255,0.7)",
+                        cursor: isActive ? "pointer" : "not-allowed",
+                        fontWeight: 950,
+                        boxShadow: shadowSm,
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      {isSelected ? "Seleccionado" : "Entrar"}
+                    </button>
                   </div>
-                </button>
+                </div>
               );
             })
           )}
-        </div>
-      )}
-
-      {/* Modal Crear Hotel */}
-      {showCreate && (
-        <div
-          onClick={() => setShowCreate(false)}
-          style={{
-            position: "fixed",
-            inset: 0,
-            background: "rgba(0,0,0,0.35)",
-            display: "flex",
-            justifyContent: "center",
-            alignItems: "center",
-            padding: 16,
-            zIndex: 50,
-          }}
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            style={{
-              width: "min(520px, 100%)",
-              background: "#fff",
-              borderRadius: 16,
-              border: "1px solid rgba(0,0,0,0.12)",
-              padding: 16,
-              color: "#111",
-            }}
-          >
-            <div style={{ fontSize: 18, fontWeight: 900 }}>Crear nuevo hotel</div>
-            <div style={{ marginTop: 6, opacity: 0.7, fontSize: 13 }}>
-              Se añadirá a la lista para seleccionar y operar.
-            </div>
-
-            <div style={{ marginTop: 14 }}>
-              <div style={{ fontSize: 13, fontWeight: 800, marginBottom: 6 }}>Nombre</div>
-              <input
-                value={newHotelName}
-                onChange={(e) => setNewHotelName(e.target.value)}
-                placeholder="Ej: Paradisus Los Cabos"
-                autoFocus
-                style={{
-                  width: "100%",
-                  padding: "10px 12px",
-                  borderRadius: 12,
-                  border: "1px solid rgba(0,0,0,0.2)",
-                  outline: "none",
-                }}
-              />
-            </div>
-
-            <label
-              style={{
-                display: "flex",
-                gap: 10,
-                alignItems: "center",
-                marginTop: 12,
-                fontSize: 14,
-                userSelect: "none",
-              }}
-            >
-              <input
-                type="checkbox"
-                checked={newHotelActive}
-                onChange={(e) => setNewHotelActive(e.target.checked)}
-              />
-              Hotel activo
-            </label>
-
-            {!!createError && (
-              <div
-                style={{
-                  marginTop: 12,
-                  padding: 10,
-                  borderRadius: 12,
-                  background: "#2a0000",
-                  border: "1px solid #550000",
-                  color: "#ffaaaa",
-                  fontSize: 13,
-                }}
-              >
-                {createError}
-              </div>
-            )}
-
-            <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 14 }}>
-              <button
-                onClick={() => setShowCreate(false)}
-                disabled={creating}
-                style={{
-                  padding: "10px 14px",
-                  borderRadius: 12,
-                  border: "1px solid rgba(0,0,0,0.15)",
-                  background: "#fff",
-                  color: "#111",
-                  fontWeight: 800,
-                  cursor: creating ? "not-allowed" : "pointer",
-                  opacity: creating ? 0.6 : 1,
-                }}
-              >
-                Cancelar
-              </button>
-
-              <button
-                onClick={createHotel}
-                disabled={creating}
-                style={{
-                  padding: "10px 14px",
-                  borderRadius: 12,
-                  border: "1px solid rgba(0,0,0,0.15)",
-                  background: "#111",
-                  color: "#fff",
-                  fontWeight: 900,
-                  cursor: creating ? "not-allowed" : "pointer",
-                  opacity: creating ? 0.75 : 1,
-                }}
-              >
-                {creating ? "Creando…" : "Crear"}
-              </button>
-            </div>
-          </div>
         </div>
       )}
     </main>

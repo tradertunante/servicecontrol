@@ -3,7 +3,7 @@
 @tailwind utilities;
 
 /* =========================
-   BASE
+   BASE: altura completa
    ========================= */
 html,
 body {
@@ -11,52 +11,46 @@ body {
 }
 
 /* =========================
-   🎨 THEME GLOBAL
-   👉 MODIFICA SOLO ESTOS COLORES
+   THEME GLOBAL
+   (cambia aquí con el selector de color de VSCode)
    ========================= */
 :root {
+  /* App */
+  --bg: #dde1ea;                /* fondo de la página */
+  --text: #060101;              /* texto base */
+  --muted: rgba(136, 199, 192, 0.7);
 
-  /* ===== FONDO GENERAL ===== */
-  --bg: #dde1ea;                 /* 🎨 Fondo principal de la página */
-  --text: #060101;               /* 🎨 Texto principal */
-  --muted: rgba(136, 199, 192, 0.7); /* 🎨 Texto secundario */
+  /* Header (DISTINTO al fondo) */
+  --header-bg: rgba(255, 255, 255, 0.75);
+  --header-border: rgba(0, 0, 0, 0.08);
+  --header-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
 
-  /* ===== HEADER ===== */
-  --header-bg: #f5f6fa;          /* 🎨 Fondo del header */
-  --header-border: #d1d5db;      /* 🎨 Línea inferior del header */
+  /* Cards */
+  --card-bg: rgba(255, 255, 255, 0.92);
+  --row-bg: rgba(0, 0, 0, 0.04);
+  --border: rgba(0, 0, 0, 0.12);
+  --shadow-lg: 0 10px 30px rgba(0, 0, 0, 0.20);
+  --shadow-sm: 0 4px 16px rgba(0, 0, 0, 0.06);
 
-  /* ===== CARDS ===== */
-  --card-bg: #ffffff;            /* 🎨 Fondo de tarjetas */
-  --border: #e5e7eb;             /* 🎨 Bordes generales */
-  --row-bg: #f3f4f6;             /* 🎨 Filas internas */
-  
-  /* ===== SOMBRAS ===== */
-  --shadow-lg: 0 10px 30px rgba(0,0,0,0.15);
-  --shadow-sm: 0 4px 16px rgba(0,0,0,0.06);
-
-  /* ===== BOTONES / INPUTS ===== */
-  --input-bg: #a7a7a7;           /* 🎨 Fondo botones e inputs */
+  /* Inputs */
+  --input-bg: #ffffff;
   --input-text: #111111;
-  --input-border: #cbd5e1;
+  --input-border: rgba(0, 0, 0, 0.18);
   --placeholder: rgba(0, 0, 0, 0.45);
 
-  /* ===== ESTADOS KPI ===== */
-  --danger: #c62828;             /* 🎨 Rojo alertas */
-  --warn: #ef6c00;               /* 🎨 Naranja advertencia */
-  --ok: #0f766e;                 /* 🎨 Verde correcto */
-
+  /* Estados */
+  --danger: #c62828;
+  --warn: #ef6c00;
+  --ok: #0f766e;
 }
 
-/* =========================
-   BODY
-   ========================= */
 body {
   background: var(--bg);
   color: var(--text);
 }
 
 /* =========================
-   FORMULARIOS
+   FORMULARIOS: inputs legibles
    ========================= */
 input,
 textarea,
@@ -66,22 +60,19 @@ select {
   border: 1px solid var(--input-border);
 }
 
+/* Placeholder */
 input::placeholder,
 textarea::placeholder {
   color: var(--placeholder);
 }
 
-/* =========================
-   BOTONES / LINKS
-   ========================= */
+/* Botones / links heredan bien */
 button,
 a {
   color: inherit;
 }
 
-/* =========================
-   IMÁGENES
-   ========================= */
+/* Imágenes responsive */
 img {
   max-width: 100%;
   height: auto;
