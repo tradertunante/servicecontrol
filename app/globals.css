@@ -3,7 +3,7 @@
 @tailwind utilities;
 
 /* =========================
-   BASE: altura completa
+   BASE
    ========================= */
 html,
 body {
@@ -11,28 +11,52 @@ body {
 }
 
 /* =========================
-   THEME GLOBAL
-   ✅ CAMBIA SOLO AQUÍ TU FONDO Y TEXTO GENERAL
+   🎨 THEME GLOBAL
+   👉 MODIFICA SOLO ESTOS COLORES
    ========================= */
 :root {
-  --bg: #eee4e4;          /* 👈 FONDO GLOBAL (cambia esto) */
-  --text: #060101;        /* 👈 TEXTO GLOBAL */
-  --muted: rgba(234, 234, 234, 0.7);
 
-  /* Inputs (para que SIEMPRE sean legibles) */
-  --input-bg: #ffffff;    /* fondo del input */
-  --input-text: #111111;  /* texto que escribe el usuario */
-  --input-border: rgba(0, 0, 0, 0.18);
+  /* ===== FONDO GENERAL ===== */
+  --bg: #dde1ea;                 /* 🎨 Fondo principal de la página */
+  --text: #060101;               /* 🎨 Texto principal */
+  --muted: rgba(136, 199, 192, 0.7); /* 🎨 Texto secundario */
+
+  /* ===== HEADER ===== */
+  --header-bg: #f5f6fa;          /* 🎨 Fondo del header */
+  --header-border: #d1d5db;      /* 🎨 Línea inferior del header */
+
+  /* ===== CARDS ===== */
+  --card-bg: #ffffff;            /* 🎨 Fondo de tarjetas */
+  --border: #e5e7eb;             /* 🎨 Bordes generales */
+  --row-bg: #f3f4f6;             /* 🎨 Filas internas */
+  
+  /* ===== SOMBRAS ===== */
+  --shadow-lg: 0 10px 30px rgba(0,0,0,0.15);
+  --shadow-sm: 0 4px 16px rgba(0,0,0,0.06);
+
+  /* ===== BOTONES / INPUTS ===== */
+  --input-bg: #a7a7a7;           /* 🎨 Fondo botones e inputs */
+  --input-text: #111111;
+  --input-border: #cbd5e1;
   --placeholder: rgba(0, 0, 0, 0.45);
+
+  /* ===== ESTADOS KPI ===== */
+  --danger: #c62828;             /* 🎨 Rojo alertas */
+  --warn: #ef6c00;               /* 🎨 Naranja advertencia */
+  --ok: #0f766e;                 /* 🎨 Verde correcto */
+
 }
 
+/* =========================
+   BODY
+   ========================= */
 body {
   background: var(--bg);
   color: var(--text);
 }
 
 /* =========================
-   FORMULARIOS: inputs legibles
+   FORMULARIOS
    ========================= */
 input,
 textarea,
@@ -42,21 +66,22 @@ select {
   border: 1px solid var(--input-border);
 }
 
-/* Placeholder */
 input::placeholder,
 textarea::placeholder {
   color: var(--placeholder);
 }
 
 /* =========================
-   Botones / links heredan bien
+   BOTONES / LINKS
    ========================= */
 button,
 a {
   color: inherit;
 }
 
-/* Opcional: imágenes responsive */
+/* =========================
+   IMÁGENES
+   ========================= */
 img {
   max-width: 100%;
   height: auto;
