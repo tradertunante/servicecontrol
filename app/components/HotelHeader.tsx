@@ -1,17 +1,21 @@
+// app/components/HotelHeader.tsx
 "use client";
 
 import { useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 
+type Hotel = { id: string; name: string };
+
 type Profile = {
   role: string;
-  hotel_id: string;
+  hotel_id: string | null;
 };
+
+const HOTEL_KEY = "sc_hotel_id";
 
 function getPageTitle(pathname: string | null): string {
   if (!pathname) return "";
-
   if (pathname === "/dashboard") return "Dashboard";
   if (pathname === "/admin") return "Admin";
   if (pathname.startsWith("/admin/hotel")) return "Info del Hotel";
@@ -25,11 +29,9 @@ function getPageTitle(pathname: string | null): string {
   }
   if (pathname === "/users") return "Usuarios";
   if (pathname === "/profile") return "Perfil";
-
+  if (pathname.startsWith("/superadmin/hotels")) return "Elegir hotel";
   return "";
 }
-
-const HOTEL_KEY = "sc_hotel_id";
 
 export default function HotelHeader() {
   const router = useRouter();
@@ -40,71 +42,105 @@ export default function HotelHeader() {
   const [loading, setLoading] = useState(true);
   const [isHoveringHotel, setIsHoveringHotel] = useState(false);
 
+  // Relee hotel seleccionado cuando cambias HOTEL_KEY en otra página
   useEffect(() => {
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === HOTEL_KEY) {
+        // forzamos recarga de header (re-fetch) cambiando estado loading
+        setLoading(true);
+      }
+    };
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, []);
+
+  useEffect(() => {
+    let alive = true;
+
     (async () => {
       try {
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
+        setLoading(true);
 
-        if (!user) {
+        const { data: userData, error: userErr } = await supabase.auth.getUser();
+        if (!alive) return;
+
+        if (userErr || !userData?.user) {
           setLoading(false);
           return;
         }
 
-        const { data: profileData } = await supabase
+        const uid = userData.user.id;
+
+        const { data: profileData, error: profileErr } = await supabase
           .from("profiles")
           .select("hotel_id, role")
-          .eq("id", user.id)
+          .eq("id", uid)
           .single();
 
-        if (!profileData?.hotel_id) {
+        if (!alive) return;
+
+        if (profileErr || !profileData) {
           setLoading(false);
           return;
         }
 
-        setProfile({
-          role: profileData.role,
-          hotel_id: profileData.hotel_id,
-        });
+        const role = String(profileData.role ?? "");
+        const prof: Profile = {
+          role,
+          hotel_id: profileData.hotel_id ?? null,
+        };
+        setProfile(prof);
 
-        // ✅ superadmin: usar hotel guardado
-        let hotelIdToUse = profileData.hotel_id;
-        if (profileData.role === "superadmin") {
-          const stored = localStorage.getItem(HOTEL_KEY);
-          if (stored) hotelIdToUse = stored;
+        // ✅ HOTEL A MOSTRAR:
+        // - superadmin => localStorage sc_hotel_id
+        // - resto => profile.hotel_id
+        let hotelIdToUse: string | null = null;
+
+        if (role === "superadmin") {
+          hotelIdToUse = typeof window !== "undefined" ? localStorage.getItem(HOTEL_KEY) : null;
+        } else {
+          hotelIdToUse = prof.hotel_id;
         }
 
-        const { data: hotel } = await supabase
+        if (!hotelIdToUse) {
+          // superadmin aún no seleccionó hotel -> no mostramos header
+          setHotelName(null);
+          setLoading(false);
+          return;
+        }
+
+        const { data: hotel, error: hotelErr } = await supabase
           .from("hotels")
           .select("name")
           .eq("id", hotelIdToUse)
           .single();
 
-        if (hotel) setHotelName(hotel.name);
+        if (!alive) return;
 
+        if (hotelErr || !hotel) {
+          setHotelName(null);
+          setLoading(false);
+          return;
+        }
+
+        setHotelName(hotel.name);
         setLoading(false);
       } catch (e) {
+        if (!alive) return;
         console.error("Error loading header:", e);
         setLoading(false);
       }
     })();
-  }, []);
+
+    return () => {
+      alive = false;
+    };
+  }, [pathname, loading]); // loading se pone true cuando cambia storage (superadmin)
 
   if (loading || !hotelName) return null;
 
   const isAdmin = profile?.role === "admin" || profile?.role === "superadmin";
   const pageTitle = getPageTitle(pathname);
-
-  // ✅ Theme variables
-  const fg = "var(--text)";
-  const pageBg = "var(--bg)"; // fondo de la página (para hover invertido)
-  const inputBg = "var(--input-bg)";
-  const inputBorder = "var(--input-border)";
-
-  // ✅ Header specific (nuevo en globals.css)
-  const headerBg = "var(--header-bg, rgba(255,255,255,0.75))";
-  const headerBorder = "var(--header-border, rgba(0,0,0,0.08))";
 
   return (
     <div
@@ -117,16 +153,15 @@ export default function HotelHeader() {
         justifyContent: "space-between",
         alignItems: "center",
         padding: "12px 24px",
-        background: headerBg,
-        borderBottom: `1px solid ${headerBorder}`,
-        boxShadow: "0 2px 10px rgba(0,0,0,0.06)",
+        background: "var(--header-bg, rgba(255, 255, 255, 0.92))",
+        borderBottom: "1px solid var(--header-border, rgba(0, 0, 0, 0.08))",
+        boxShadow: "0 2px 8px rgba(0, 0, 0, 0.05)",
         zIndex: 1000,
+        backdropFilter: "blur(8px)",
         gap: 16,
-        color: fg,
-        backdropFilter: "blur(10px)",
       }}
     >
-      {/* Hotel + título */}
+      {/* Hotel + página */}
       <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
         <button
           onClick={() => router.push("/dashboard")}
@@ -135,7 +170,7 @@ export default function HotelHeader() {
           style={{
             fontSize: 14,
             fontWeight: 950,
-            opacity: isHoveringHotel ? 1 : 0.85,
+            opacity: isHoveringHotel ? 1 : 0.8,
             letterSpacing: "0.3px",
             whiteSpace: "nowrap",
             background: "none",
@@ -144,7 +179,7 @@ export default function HotelHeader() {
             padding: "4px 8px",
             borderRadius: 8,
             transition: "all 0.2s ease",
-            color: fg,
+            color: isHoveringHotel ? "#000" : "inherit",
             textDecoration: isHoveringHotel ? "underline" : "none",
           }}
         >
@@ -169,9 +204,9 @@ export default function HotelHeader() {
             style={{
               padding: "8px 14px",
               borderRadius: 10,
-              border: `1px solid ${inputBorder}`,
-              background: inputBg,
-              color: fg,
+              border: "1px solid rgba(0, 0, 0, 0.15)",
+              background: "#fff",
+              color: "#000",
               fontWeight: 900,
               cursor: "pointer",
               fontSize: 13,
@@ -179,12 +214,12 @@ export default function HotelHeader() {
               transition: "all 0.2s",
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.background = fg;
-              e.currentTarget.style.color = pageBg;
+              e.currentTarget.style.background = "#000";
+              e.currentTarget.style.color = "#fff";
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.background = inputBg;
-              e.currentTarget.style.color = fg;
+              e.currentTarget.style.background = "#fff";
+              e.currentTarget.style.color = "#000";
             }}
           >
             Admin
@@ -196,9 +231,9 @@ export default function HotelHeader() {
           style={{
             padding: "8px 14px",
             borderRadius: 10,
-            border: `1px solid ${inputBorder}`,
-            background: inputBg,
-            color: fg,
+            border: "1px solid rgba(0, 0, 0, 0.15)",
+            background: "#fff",
+            color: "#000",
             fontWeight: 900,
             cursor: "pointer",
             fontSize: 13,
@@ -206,12 +241,12 @@ export default function HotelHeader() {
             transition: "all 0.2s",
           }}
           onMouseEnter={(e) => {
-            e.currentTarget.style.background = fg;
-            e.currentTarget.style.color = pageBg;
+            e.currentTarget.style.background = "#000";
+            e.currentTarget.style.color = "#fff";
           }}
           onMouseLeave={(e) => {
-            e.currentTarget.style.background = inputBg;
-            e.currentTarget.style.color = fg;
+            e.currentTarget.style.background = "#fff";
+            e.currentTarget.style.color = "#000";
           }}
         >
           Auditar
@@ -222,9 +257,9 @@ export default function HotelHeader() {
           style={{
             padding: "8px 14px",
             borderRadius: 10,
-            border: `1px solid ${inputBorder}`,
-            background: inputBg,
-            color: fg,
+            border: "1px solid rgba(0, 0, 0, 0.15)",
+            background: "#fff",
+            color: "#000",
             fontWeight: 900,
             cursor: "pointer",
             fontSize: 13,
@@ -232,12 +267,12 @@ export default function HotelHeader() {
             transition: "all 0.2s",
           }}
           onMouseEnter={(e) => {
-            e.currentTarget.style.background = fg;
-            e.currentTarget.style.color = pageBg;
+            e.currentTarget.style.background = "#000";
+            e.currentTarget.style.color = "#fff";
           }}
           onMouseLeave={(e) => {
-            e.currentTarget.style.background = inputBg;
-            e.currentTarget.style.color = fg;
+            e.currentTarget.style.background = "#fff";
+            e.currentTarget.style.color = "#000";
           }}
         >
           Perfil
