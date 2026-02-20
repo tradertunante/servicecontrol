@@ -84,7 +84,7 @@ export default function HomePage() {
 
       // ✅ 3) Redirección por rol (sin doble pantalla)
       if (profile.role === "superadmin") {
-        router.replace("/superadmin/hotels");
+        router.replace("/superadmin");
         return;
       }
 
