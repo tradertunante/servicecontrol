@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { requireRoleOrRedirect, type Profile as LoadedProfile } from "@/lib/auth/RequireRole";
 import type { Role } from "@/lib/auth/permissions";
+import HotelHeader from "@/app/components/HotelHeader";
 
 type Hotel = {
   id: string;
@@ -25,10 +26,8 @@ export default function SuperadminHotelsPage() {
   const [hotels, setHotels] = useState<Hotel[]>([]);
   const [activeHotelId, setActiveHotelId] = useState<string | null>(null);
 
-  // Theme vars
   const fg = "var(--text)";
   const bg = "var(--bg)";
-  const muted = "var(--muted)";
   const cardBg = "var(--card-bg)";
   const border = "var(--border)";
   const shadowSm = "var(--shadow-sm)";
@@ -140,9 +139,12 @@ export default function SuperadminHotelsPage() {
 
       if (updErr) throw updErr;
 
-      setHotels((prev) => prev.map((h) => (h.id === hotelId ? ({ ...h, ...(data as Hotel) } as Hotel) : h)));
+      setHotels((prev) =>
+        prev.map((h) =>
+          h.id === hotelId ? ({ ...h, ...(data as Hotel) } as Hotel) : h
+        )
+      );
 
-      // Si desactivas el hotel que está seleccionado, lo sacamos del localStorage
       if (!nextActive && activeHotelId === hotelId) {
         localStorage.removeItem(HOTEL_KEY);
         setActiveHotelId(null);
@@ -156,8 +158,18 @@ export default function SuperadminHotelsPage() {
 
   return (
     <main style={{ padding: 24, background: bg, color: fg, minHeight: "100vh" }}>
+      <HotelHeader />
+
       {/* Header */}
-      <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center" }}>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          gap: 12,
+          alignItems: "center",
+          flexWrap: "wrap",
+        }}
+      >
         <div>
           <div style={{ fontSize: 28, fontWeight: 950 }}>Elegir hotel</div>
           <div style={{ opacity: 0.7, marginTop: 6 }}>
@@ -165,7 +177,24 @@ export default function SuperadminHotelsPage() {
           </div>
         </div>
 
-        <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+        <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+          <button
+            onClick={() => router.push("/superadmin")}
+            style={{
+              padding: "10px 14px",
+              borderRadius: 12,
+              border: `1px solid ${inputBorder}`,
+              background: inputBg,
+              color: fg,
+              fontWeight: 950,
+              cursor: "pointer",
+              boxShadow: shadowSm,
+              whiteSpace: "nowrap",
+            }}
+          >
+            ← Atrás
+          </button>
+
           <button
             onClick={createHotel}
             style={{
@@ -177,6 +206,7 @@ export default function SuperadminHotelsPage() {
               fontWeight: 950,
               cursor: "pointer",
               boxShadow: shadowSm,
+              whiteSpace: "nowrap",
             }}
           >
             + Nuevo hotel
@@ -193,6 +223,7 @@ export default function SuperadminHotelsPage() {
               fontWeight: 950,
               cursor: "pointer",
               boxShadow: shadowSm,
+              whiteSpace: "nowrap",
             }}
           >
             Cerrar sesión
@@ -200,10 +231,8 @@ export default function SuperadminHotelsPage() {
         </div>
       </div>
 
-      {/* Loading */}
       {loading && <p style={{ marginTop: 20, opacity: 0.8 }}>Cargando…</p>}
 
-      {/* Error */}
       {!!error && (
         <div
           style={{
@@ -220,101 +249,76 @@ export default function SuperadminHotelsPage() {
         </div>
       )}
 
-      {/* Hotels */}
       {!loading && !error && (
         <div style={{ marginTop: 24, display: "grid", gap: 16 }}>
-          {hotels.length === 0 ? (
-            <div style={{ padding: 16, border: `1px solid ${border}`, borderRadius: 12, background: cardBg }}>
-              No hay hoteles creados aún.
-            </div>
-          ) : (
-            hotels.map((h) => {
-              const isSelected = activeHotelId === h.id;
-              const isActive = h.active !== false; // null => consideramos activo
-              const isBusy = busyId === h.id;
+          {hotels.map((h) => {
+            const isSelected = activeHotelId === h.id;
+            const isActive = h.active !== false;
+            const isBusy = busyId === h.id;
 
-              return (
-                <div
-                  key={h.id}
-                  style={{
-                    padding: 16,
-                    borderRadius: 16,
-                    border: isSelected ? "2px solid #000" : `1px solid ${border}`,
-                    background: cardBg,
-                    color: fg,
-                    boxShadow: shadowSm,
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    gap: 12,
-                  }}
-                >
-                  <div style={{ minWidth: 0 }}>
-                    <div style={{ fontWeight: 950, fontSize: 16, marginBottom: 6, overflow: "hidden", textOverflow: "ellipsis" }}>
-                      {h.name}
-                    </div>
-
-                    <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center", opacity: 0.9 }}>
-                      <span style={{ fontSize: 13, opacity: 0.75 }}>ID: {h.id}</span>
-                      <span style={pill(isActive)}>
-                        <span
-                          style={{
-                            width: 8,
-                            height: 8,
-                            borderRadius: 999,
-                            background: isActive ? "var(--ok, #0f766e)" : "var(--danger, #c62828)",
-                            display: "inline-block",
-                          }}
-                        />
-                        {isActive ? "Activo" : "Inactivo"}
-                      </span>
-                    </div>
+            return (
+              <div
+                key={h.id}
+                style={{
+                  padding: 16,
+                  borderRadius: 16,
+                  border: isSelected ? "2px solid #000" : `1px solid ${border}`,
+                  background: cardBg,
+                  boxShadow: shadowSm,
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  gap: 12,
+                  flexWrap: "wrap",
+                }}
+              >
+                <div>
+                  <div style={{ fontWeight: 950, fontSize: 16, marginBottom: 6 }}>
+                    {h.name}
                   </div>
-
                   <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-                    {/* Toggle activo */}
-                    <button
-                      disabled={isBusy}
-                      onClick={() => toggleHotelActive(h.id, !isActive)}
-                      style={{
-                        padding: "10px 12px",
-                        borderRadius: 12,
-                        border: `1px solid ${inputBorder}`,
-                        background: inputBg,
-                        color: fg,
-                        cursor: isBusy ? "not-allowed" : "pointer",
-                        fontWeight: 950,
-                        boxShadow: shadowSm,
-                        opacity: isBusy ? 0.6 : 1,
-                        whiteSpace: "nowrap",
-                      }}
-                    >
-                      {isActive ? "Desactivar" : "Activar"}
-                    </button>
-
-                    {/* Entrar */}
-                    <button
-                      disabled={!isActive}
-                      onClick={() => pickHotel(h.id)}
-                      style={{
-                        padding: "10px 12px",
-                        borderRadius: 12,
-                        border: `1px solid ${inputBorder}`,
-                        background: isActive ? fg : "rgba(0,0,0,0.20)",
-                        color: isActive ? bg : "rgba(255,255,255,0.7)",
-                        cursor: isActive ? "pointer" : "not-allowed",
-                        fontWeight: 950,
-                        boxShadow: shadowSm,
-                        whiteSpace: "nowrap",
-                      }}
-                    >
-                      {isSelected ? "Seleccionado" : "Entrar"}
-                    </button>
+                    <span style={{ fontSize: 13, opacity: 0.75 }}>ID: {h.id}</span>
+                    <span style={pill(isActive)}>
+                      {isActive ? "Activo" : "Inactivo"}
+                    </span>
                   </div>
                 </div>
-              );
-            })
-          )}
+
+                <div style={{ display: "flex", gap: 10 }}>
+                  <button
+                    disabled={isBusy}
+                    onClick={() => toggleHotelActive(h.id, !isActive)}
+                    style={{
+                      padding: "10px 12px",
+                      borderRadius: 12,
+                      border: `1px solid ${inputBorder}`,
+                      background: inputBg,
+                      fontWeight: 950,
+                      cursor: isBusy ? "not-allowed" : "pointer",
+                    }}
+                  >
+                    {isActive ? "Desactivar" : "Activar"}
+                  </button>
+
+                  <button
+                    disabled={!isActive}
+                    onClick={() => pickHotel(h.id)}
+                    style={{
+                      padding: "10px 12px",
+                      borderRadius: 12,
+                      border: `1px solid ${inputBorder}`,
+                      background: isActive ? fg : "rgba(0,0,0,0.20)",
+                      color: isActive ? bg : "#fff",
+                      fontWeight: 950,
+                      cursor: isActive ? "pointer" : "not-allowed",
+                    }}
+                  >
+                    {isSelected ? "Seleccionado" : "Entrar"}
+                  </button>
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
     </main>
