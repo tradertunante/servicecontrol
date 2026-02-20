@@ -38,13 +38,15 @@ export default function PackDetailPage() {
   }, [params]);
 
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const [pack, setPack] = useState<PackRow | null>(null);
+
   const [globalTemplates, setGlobalTemplates] = useState<TemplateRow[]>([]);
   const [packTemplates, setPackTemplates] = useState<PackTemplateRow[]>([]);
-  const [saving, setSaving] = useState(false);
 
+  // edición pack
   const [bt, setBt] = useState("hotel");
   const [name, setName] = useState("");
   const [desc, setDesc] = useState("");
@@ -69,6 +71,7 @@ export default function PackDetailPage() {
       cursor: "pointer",
       fontSize: 14,
       whiteSpace: "nowrap",
+      height: 42,
     };
     const btnWhite: React.CSSProperties = {
       padding: "10px 14px",
@@ -80,6 +83,7 @@ export default function PackDetailPage() {
       cursor: "pointer",
       fontSize: 14,
       whiteSpace: "nowrap",
+      height: 42,
     };
     const input: React.CSSProperties = {
       width: "100%",
@@ -87,6 +91,10 @@ export default function PackDetailPage() {
       borderRadius: 12,
       outline: "none",
       fontSize: 14,
+      border: "1px solid var(--input-border)",
+      background: "var(--input-bg)",
+      color: "var(--input-text)",
+      height: 42,
     };
     const label: React.CSSProperties = { fontSize: 12, opacity: 0.75, fontWeight: 900 };
     const row: React.CSSProperties = {
@@ -152,6 +160,7 @@ export default function PackDetailPage() {
     setDesc((packData as any).description ?? "");
     setActive(Boolean((packData as any).active));
 
+    // plantillas globales
     const { data: tData, error: tErr } = await supabase
       .from("audit_templates")
       .select("id, name, scope, created_at")
@@ -165,6 +174,7 @@ export default function PackDetailPage() {
     }
     setGlobalTemplates((tData ?? []) as TemplateRow[]);
 
+    // mapping pack->plantillas
     const { data: mData, error: mErr } = await supabase
       .from("global_audit_pack_templates")
       .select("audit_template_id, position")
@@ -194,7 +204,7 @@ export default function PackDetailPage() {
   }, [packId]);
 
   async function savePack() {
-    if (!pack) return;
+    if (!pack || !packId) return;
     if (!name.trim()) {
       setError("El pack necesita nombre.");
       return;
@@ -288,7 +298,7 @@ export default function PackDetailPage() {
         <button style={styles.btnWhite} onClick={() => router.push("/superadmin/global-audits")}>
           ← Atrás
         </button>
-        <div style={{ marginTop: 14, color: "var(--danger)", fontWeight: 900 }}>{error}</div>
+        <div style={{ marginTop: 14, color: "var(--danger)", fontWeight: 900, whiteSpace: "pre-wrap" }}>{error}</div>
       </main>
     );
   }
@@ -366,12 +376,20 @@ export default function PackDetailPage() {
                   </div>
 
                   <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+                    <button style={styles.btnWhite} onClick={() => router.push(`/superadmin/templates/${t.id}`)}>
+                      Editar
+                    </button>
+                    <button style={styles.btnWhite} onClick={() => router.push(`/superadmin/templates/${t.id}/import`)}>
+                      Importar
+                    </button>
+
                     <input
                       type="number"
                       value={Number((t as any).position ?? 0)}
                       onChange={(e) => setPosition(t.id, Number(e.target.value || 0))}
                       style={{ ...styles.input, width: 120 }}
                     />
+
                     <button style={styles.btnWhite} disabled={saving} onClick={() => removeTemplate(t.id)}>
                       Quitar
                     </button>
@@ -385,6 +403,12 @@ export default function PackDetailPage() {
         <div style={styles.card}>
           <div style={{ fontSize: 18, fontWeight: 950, marginBottom: 10 }}>Plantillas globales disponibles</div>
 
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 10 }}>
+            <button style={styles.btnWhite} onClick={() => router.push("/superadmin/templates")}>
+              + Crear plantilla global
+            </button>
+          </div>
+
           {templatesNotInPack.length === 0 ? (
             <div style={{ opacity: 0.75 }}>No hay más plantillas globales para añadir.</div>
           ) : (
@@ -396,9 +420,17 @@ export default function PackDetailPage() {
                     <div style={{ fontSize: 12, opacity: 0.7 }}>ID: {t.id}</div>
                   </div>
 
-                  <button style={styles.btnDark} disabled={saving} onClick={() => addTemplate(t.id)}>
-                    Añadir
-                  </button>
+                  <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+                    <button style={styles.btnWhite} onClick={() => router.push(`/superadmin/templates/${t.id}`)}>
+                      Editar
+                    </button>
+                    <button style={styles.btnWhite} onClick={() => router.push(`/superadmin/templates/${t.id}/import`)}>
+                      Importar
+                    </button>
+                    <button style={styles.btnDark} disabled={saving} onClick={() => addTemplate(t.id)}>
+                      Añadir
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
