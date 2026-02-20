@@ -6,7 +6,6 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { requireRoleOrRedirect } from "@/lib/auth/RequireRole";
 import HotelHeader from "@/app/components/HotelHeader";
-import BackButton from "@/app/components/BackButton";
 
 const HOTEL_KEY = "sc_hotel_id";
 
@@ -41,7 +40,6 @@ export default function BuilderPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
-
   const [hotelIdInUse, setHotelIdInUse] = useState<string | null>(null);
 
   const [areas, setAreas] = useState<Area[]>([]);
@@ -55,19 +53,16 @@ export default function BuilderPage() {
       setError(null);
 
       try {
-        // ✅ SUPERADMIN también puede entrar al builder
         const p = (await requireRoleOrRedirect(router, ["admin", "superadmin"], "/dashboard")) as Profile | null;
         if (!alive || !p) return;
 
         setProfile(p);
 
-        // ✅ hotelId a usar
         let hotelIdToUse: string | null = null;
 
         if (p.role === "superadmin") {
           hotelIdToUse = typeof window !== "undefined" ? localStorage.getItem(HOTEL_KEY) : null;
 
-          // si no ha seleccionado hotel, lo mandamos a elegir
           if (!hotelIdToUse) {
             router.replace("/superadmin/hotels");
             return;
@@ -84,7 +79,6 @@ export default function BuilderPage() {
 
         setHotelIdInUse(hotelIdToUse);
 
-        // Cargar áreas del hotel en uso
         const { data: areasData, error: areasErr } = await supabase
           .from("areas")
           .select("id, name, type")
@@ -96,7 +90,6 @@ export default function BuilderPage() {
         const areasList = (areasData ?? []) as Area[];
         setAreas(areasList);
 
-        // Cargar plantillas por área
         if (areasList.length > 0) {
           const areaIds = areasList.map((a) => a.id);
 
@@ -132,6 +125,8 @@ export default function BuilderPage() {
     };
   }, [router]);
 
+  const pageWrap: React.CSSProperties = { padding: 24, paddingTop: 96 };
+
   const card: React.CSSProperties = {
     borderRadius: 18,
     border: "1px solid rgba(0,0,0,0.08)",
@@ -140,7 +135,7 @@ export default function BuilderPage() {
     boxShadow: "0 10px 30px rgba(0,0,0,0.06)",
   };
 
-  const btn: React.CSSProperties = {
+  const btnDark: React.CSSProperties = {
     padding: "10px 14px",
     borderRadius: 12,
     border: "1px solid rgba(0,0,0,0.2)",
@@ -162,11 +157,19 @@ export default function BuilderPage() {
     fontSize: 14,
   };
 
+  const pill: React.CSSProperties = {
+    padding: "6px 10px",
+    borderRadius: 999,
+    border: "1px solid rgba(0,0,0,0.12)",
+    background: "rgba(0,0,0,0.04)",
+    fontWeight: 900,
+    fontSize: 12,
+  };
+
   if (loading) {
     return (
-      <main style={{ padding: 24, paddingTop: 80 }}>
+      <main style={pageWrap}>
         <HotelHeader />
-        <BackButton fallback="/dashboard" />
         <div style={{ opacity: 0.8 }}>Cargando…</div>
       </main>
     );
@@ -174,75 +177,79 @@ export default function BuilderPage() {
 
   if (error) {
     return (
-      <main style={{ padding: 24, paddingTop: 80 }}>
+      <main style={pageWrap}>
         <HotelHeader />
-        <BackButton fallback="/dashboard" />
         <div style={{ color: "crimson", fontWeight: 900 }}>{error}</div>
       </main>
     );
   }
 
   return (
-    <main style={{ padding: 24, paddingTop: 80 }}>
+    <main style={pageWrap}>
       <HotelHeader />
-      <BackButton fallback="/dashboard" />
 
-      <div style={{ marginBottom: 20 }}>
-        <div style={{ opacity: 0.7, fontSize: 14 }}>
-          Hola{profile?.full_name ? `, ${profile.full_name}` : ""}. Configura áreas y auditorías del hotel.
+      {/* ✅ TOP BAR como /areas (título izq + botones der) */}
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "flex-start",
+          gap: 16,
+          flexWrap: "wrap",
+          marginBottom: 14,
+        }}
+      >
+        <div>
+          <div style={{ fontSize: 34, fontWeight: 950, letterSpacing: -0.6 }}>Builder</div>
+          <div style={{ opacity: 0.7, fontSize: 14, marginTop: 6 }}>
+            Hola{profile?.full_name ? `, ${profile.full_name}` : ""}. Configura áreas y auditorías del hotel.
+          </div>
+
+          {profile?.role === "superadmin" && hotelIdInUse && (
+            <div style={{ marginTop: 10, display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+              <span style={pill}>
+                Hotel en uso: <strong>{localStorage.getItem(HOTEL_KEY) ? "Seleccionado" : "—"}</strong>
+              </span>
+              <span style={{ fontSize: 12, opacity: 0.7 }}>ID: {hotelIdInUse}</span>
+              <button
+                style={{ ...btnWhite, padding: "8px 10px", fontSize: 12 }}
+                onClick={() => {
+                  localStorage.removeItem(HOTEL_KEY);
+                  router.replace("/superadmin/hotels");
+                }}
+              >
+                Cambiar hotel
+              </button>
+            </div>
+          )}
         </div>
 
-        {/* ✅ Para que veas siempre qué hotel está usando realmente */}
-        {profile?.role === "superadmin" && hotelIdInUse && (
-          <div style={{ marginTop: 10, display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
-            <span
-              style={{
-                padding: "6px 10px",
-                borderRadius: 999,
-                border: "1px solid rgba(0,0,0,0.12)",
-                background: "rgba(0,0,0,0.04)",
-                fontWeight: 900,
-                fontSize: 12,
-              }}
-            >
-              Hotel en uso: <strong>{localStorage.getItem(HOTEL_KEY) ? "Seleccionado" : "—"}</strong>
-            </span>
+        <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+          <button style={btnWhite} onClick={() => router.push("/dashboard")}>
+            ← Atrás
+          </button>
+        </div>
+      </div>
 
-            <span style={{ fontSize: 12, opacity: 0.7 }}>ID: {hotelIdInUse}</span>
-
-            <button
-              style={{
-                padding: "8px 10px",
-                borderRadius: 10,
-                border: "1px solid rgba(0,0,0,0.15)",
-                background: "#fff",
-                fontWeight: 900,
-                cursor: "pointer",
-                fontSize: 12,
-              }}
-              onClick={() => {
-                localStorage.removeItem(HOTEL_KEY);
-                router.replace("/superadmin/hotels");
-              }}
-            >
-              Cambiar hotel
-            </button>
+      {/* ✅ SECCIÓN 0: BIBLIOTECA DE ESTÁNDARES */}
+      <div style={card}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
+          <div>
+            <div style={{ fontSize: 20, fontWeight: 950 }}>📚 Biblioteca de Estándares</div>
+            <div style={{ opacity: 0.7, fontSize: 13, marginTop: 4 }}>
+              Duplica estándares globales a tu hotel y crea auditorías importando plantillas.
+            </div>
           </div>
-        )}
+
+          <button onClick={() => router.push("/standards")} style={btnDark}>
+            Abrir biblioteca
+          </button>
+        </div>
       </div>
 
       {/* SECCIÓN 1: CREAR ÁREAS */}
-      <div style={card}>
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            marginBottom: 16,
-            flexWrap: "wrap",
-            gap: 12,
-          }}
-        >
+      <div style={{ ...card, marginTop: 16 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12, marginBottom: 16 }}>
           <div>
             <div style={{ fontSize: 20, fontWeight: 950 }}>🏢 Gestión de Áreas</div>
             <div style={{ opacity: 0.7, fontSize: 13, marginTop: 4 }}>
@@ -250,21 +257,13 @@ export default function BuilderPage() {
             </div>
           </div>
 
-          <button onClick={() => router.push("/areas")} style={btn}>
+          <button onClick={() => router.push("/areas")} style={btnDark}>
             + Nueva Área
           </button>
         </div>
 
         {areas.length === 0 ? (
-          <div
-            style={{
-              padding: 20,
-              background: "rgba(0,0,0,0.02)",
-              borderRadius: 12,
-              textAlign: "center",
-              opacity: 0.7,
-            }}
-          >
+          <div style={{ padding: 20, background: "rgba(0,0,0,0.02)", borderRadius: 12, textAlign: "center", opacity: 0.7 }}>
             No hay áreas creadas. Crea tu primera área para empezar.
           </div>
         ) : (
@@ -306,15 +305,7 @@ export default function BuilderPage() {
         </div>
 
         {areaTemplates.length === 0 ? (
-          <div
-            style={{
-              padding: 20,
-              background: "rgba(0,0,0,0.02)",
-              borderRadius: 12,
-              textAlign: "center",
-              opacity: 0.7,
-            }}
-          >
+          <div style={{ padding: 20, background: "rgba(0,0,0,0.02)", borderRadius: 12, textAlign: "center", opacity: 0.7 }}>
             Primero crea áreas para poder crear auditorías.
           </div>
         ) : (
@@ -329,36 +320,19 @@ export default function BuilderPage() {
                   border: "1px solid rgba(0,0,0,0.08)",
                 }}
               >
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    marginBottom: 12,
-                    flexWrap: "wrap",
-                    gap: 10,
-                  }}
-                >
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10, marginBottom: 12 }}>
                   <div style={{ fontSize: 16, fontWeight: 950, opacity: 0.9 }}>{area.name}</div>
 
                   <button
                     onClick={() => router.push(`/builder/new?area_id=${area.id}`)}
-                    style={{ ...btn, fontSize: 13, padding: "8px 12px" }}
+                    style={{ ...btnDark, fontSize: 13, padding: "8px 12px" }}
                   >
                     + Nueva Auditoría
                   </button>
                 </div>
 
                 {templates.length === 0 ? (
-                  <div
-                    style={{
-                      padding: 12,
-                      background: "rgba(255,255,255,0.5)",
-                      borderRadius: 10,
-                      opacity: 0.6,
-                      fontSize: 13,
-                    }}
-                  >
+                  <div style={{ padding: 12, background: "rgba(255,255,255,0.5)", borderRadius: 10, opacity: 0.6, fontSize: 13 }}>
                     No hay auditorías en esta área
                   </div>
                 ) : (
@@ -387,15 +361,7 @@ export default function BuilderPage() {
                           />
                           <div style={{ fontWeight: 900, fontSize: 14 }}>{template.name}</div>
                           {!template.active && (
-                            <span
-                              style={{
-                                fontSize: 11,
-                                padding: "2px 8px",
-                                background: "rgba(0,0,0,0.1)",
-                                borderRadius: 6,
-                                opacity: 0.7,
-                              }}
-                            >
+                            <span style={{ fontSize: 11, padding: "2px 8px", background: "rgba(0,0,0,0.1)", borderRadius: 6, opacity: 0.7 }}>
                               Inactiva
                             </span>
                           )}
