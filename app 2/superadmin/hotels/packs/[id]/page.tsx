@@ -1,7 +1,6 @@
-// FILE: app/superadmin/global-audits/[id]/page.tsx
 "use client";
 
-import { useEffect, useMemo, useState, type CSSProperties } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { requireRoleOrRedirect } from "@/lib/auth/RequireRole";
@@ -20,8 +19,6 @@ type TemplateRow = {
   name: string;
   scope: string | null;
   created_at: string | null;
-  active?: boolean | null;
-  area_id?: string | null;
 };
 
 type PackTemplateRow = {
@@ -33,6 +30,7 @@ export default function PackDetailPage() {
   const router = useRouter();
   const params = useParams();
 
+  // ✅ robust: soporta string o string[]
   const packId = useMemo(() => {
     const raw = (params as any)?.id;
     if (typeof raw === "string") return raw;
@@ -46,6 +44,7 @@ export default function PackDetailPage() {
 
   const [pack, setPack] = useState<PackRow | null>(null);
 
+  // templates global
   const [globalTemplates, setGlobalTemplates] = useState<TemplateRow[]>([]);
   const [packTemplates, setPackTemplates] = useState<PackTemplateRow[]>([]);
 
@@ -56,15 +55,15 @@ export default function PackDetailPage() {
   const [active, setActive] = useState(true);
 
   const styles = useMemo(() => {
-    const page: CSSProperties = { padding: 24, paddingTop: 80 };
-    const card: CSSProperties = {
+    const page: React.CSSProperties = { padding: 24, paddingTop: 80 };
+    const card: React.CSSProperties = {
       background: "var(--card-bg)",
       border: "1px solid var(--header-border)",
       borderRadius: 18,
       boxShadow: "var(--shadow-sm)",
       padding: 18,
     };
-    const btnDark: CSSProperties = {
+    const btnDark: React.CSSProperties = {
       padding: "10px 14px",
       borderRadius: 12,
       border: "1px solid rgba(0,0,0,0.18)",
@@ -74,9 +73,8 @@ export default function PackDetailPage() {
       cursor: "pointer",
       fontSize: 14,
       whiteSpace: "nowrap",
-      height: 42,
     };
-    const btnWhite: CSSProperties = {
+    const btnWhite: React.CSSProperties = {
       padding: "10px 14px",
       borderRadius: 12,
       border: "1px solid var(--input-border)",
@@ -86,9 +84,8 @@ export default function PackDetailPage() {
       cursor: "pointer",
       fontSize: 14,
       whiteSpace: "nowrap",
-      height: 42,
     };
-    const input: CSSProperties = {
+    const input: React.CSSProperties = {
       width: "100%",
       padding: "10px 12px",
       borderRadius: 12,
@@ -97,10 +94,9 @@ export default function PackDetailPage() {
       border: "1px solid var(--input-border)",
       background: "var(--input-bg)",
       color: "var(--input-text)",
-      height: 42,
     };
-    const label: CSSProperties = { fontSize: 12, opacity: 0.75, fontWeight: 900 };
-    const row: CSSProperties = {
+    const label: React.CSSProperties = { fontSize: 12, opacity: 0.75, fontWeight: 900 };
+    const row: React.CSSProperties = {
       background: "rgba(0,0,0,0.02)",
       border: "1px solid rgba(0,0,0,0.08)",
       borderRadius: 14,
@@ -138,10 +134,7 @@ export default function PackDetailPage() {
     }
 
     const p = await requireRoleOrRedirect(router, ["superadmin"], "/dashboard");
-    if (!p) {
-      setLoading(false);
-      return;
-    }
+    if (!p) return;
 
     const { data: packData, error: pErr } = await supabase
       .from("global_audit_packs")
@@ -166,10 +159,9 @@ export default function PackDetailPage() {
     setDesc((packData as any).description ?? "");
     setActive(Boolean((packData as any).active));
 
-    // plantillas globales
     const { data: tData, error: tErr } = await supabase
       .from("audit_templates")
-      .select("id, name, scope, created_at, active, area_id")
+      .select("id, name, scope, created_at")
       .eq("scope", "global")
       .order("name", { ascending: true });
 
@@ -180,7 +172,6 @@ export default function PackDetailPage() {
     }
     setGlobalTemplates((tData ?? []) as TemplateRow[]);
 
-    // mapping pack->plantillas
     const { data: mData, error: mErr } = await supabase
       .from("global_audit_pack_templates")
       .select("audit_template_id, position")
@@ -198,12 +189,19 @@ export default function PackDetailPage() {
   }
 
   useEffect(() => {
-    void load();
+    let alive = true;
+    (async () => {
+      if (!alive) return;
+      await load();
+    })();
+    return () => {
+      alive = false;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [packId]);
 
   async function savePack() {
-    if (!pack || !packId) return;
+    if (!pack) return;
     if (!name.trim()) {
       setError("El pack necesita nombre.");
       return;
@@ -281,50 +279,6 @@ export default function PackDetailPage() {
     setSaving(false);
   }
 
-  async function createGlobalTemplateAndOpenEditor() {
-    if (!packId) return;
-
-    const tplNameRaw = window.prompt("Nombre de la plantilla global:", "Nueva plantilla global");
-    const tplName = (tplNameRaw ?? "").trim();
-    if (!tplName) return;
-
-    setSaving(true);
-    setError(null);
-
-    try {
-      const { data: newTpl, error: cErr } = await supabase
-        .from("audit_templates")
-        .insert({
-          name: tplName,
-          scope: "global",
-          active: true,
-          area_id: null,
-        })
-        .select("id")
-        .single();
-
-      if (cErr) throw cErr;
-      if (!newTpl?.id) throw new Error("No se pudo crear la plantilla (sin id).");
-
-      const last = packTemplates.reduce((mx, x) => Math.max(mx, x.position ?? 0), 0);
-      const nextPos = last + 10;
-
-      const { error: mErr } = await supabase.from("global_audit_pack_templates").insert({
-        pack_id: packId,
-        audit_template_id: newTpl.id,
-        position: nextPos,
-      });
-
-      if (mErr) throw mErr;
-
-      router.push(`/superadmin/templates/${newTpl.id}`);
-    } catch (e: any) {
-      setError(e?.message ?? "Error creando plantilla global.");
-    } finally {
-      setSaving(false);
-    }
-  }
-
   if (loading) {
     return (
       <main style={styles.page}>
@@ -338,10 +292,10 @@ export default function PackDetailPage() {
     return (
       <main style={styles.page}>
         <HotelHeader />
-        <button style={styles.btnWhite} onClick={() => router.push("/superadmin/global-audits")}>
+        <button style={styles.btnWhite} onClick={() => router.push("/superadmin/hotels/packs")}>
           ← Atrás
         </button>
-        <div style={{ marginTop: 14, color: "var(--danger)", fontWeight: 900, whiteSpace: "pre-wrap" }}>{error}</div>
+        <div style={{ marginTop: 14, color: "var(--danger)", fontWeight: 900 }}>{error}</div>
       </main>
     );
   }
@@ -359,7 +313,7 @@ export default function PackDetailPage() {
           <div style={{ fontSize: 12, opacity: 0.7, marginTop: 6 }}>ID: {pack?.id}</div>
         </div>
 
-        <button style={styles.btnWhite} onClick={() => router.push("/superadmin/global-audits")}>
+        <button style={styles.btnWhite} onClick={() => router.push("/superadmin/hotels/packs")}>
           ← Atrás
         </button>
       </div>
@@ -374,7 +328,6 @@ export default function PackDetailPage() {
               <option value="hotel">hotel</option>
               <option value="restaurant">restaurant</option>
               <option value="spa">spa</option>
-              <option value="public_areas">public_areas</option>
               <option value="other">other</option>
             </select>
           </div>
@@ -420,21 +373,12 @@ export default function PackDetailPage() {
                   </div>
 
                   <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
-                    <button style={styles.btnWhite} onClick={() => router.push(`/superadmin/templates/${t.id}`)}>
-                      Editar
-                    </button>
-
-                    <button style={styles.btnWhite} onClick={() => router.push(`/superadmin/templates/${t.id}/import`)}>
-                      Importar
-                    </button>
-
                     <input
                       type="number"
                       value={Number(t.position ?? 0)}
                       onChange={(e) => setPosition(t.id, Number(e.target.value || 0))}
                       style={{ ...styles.input, width: 120 }}
                     />
-
                     <button style={styles.btnWhite} disabled={saving} onClick={() => removeTemplate(t.id)}>
                       Quitar
                     </button>
@@ -448,12 +392,6 @@ export default function PackDetailPage() {
         <div style={styles.card}>
           <div style={{ fontSize: 18, fontWeight: 950, marginBottom: 10 }}>Plantillas globales disponibles</div>
 
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 10 }}>
-            <button style={styles.btnDark} disabled={saving} onClick={createGlobalTemplateAndOpenEditor}>
-              + Crear plantilla global
-            </button>
-          </div>
-
           {templatesNotInPack.length === 0 ? (
             <div style={{ opacity: 0.75 }}>No hay más plantillas globales para añadir.</div>
           ) : (
@@ -465,19 +403,9 @@ export default function PackDetailPage() {
                     <div style={{ fontSize: 12, opacity: 0.7 }}>ID: {t.id}</div>
                   </div>
 
-                  <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
-                    <button style={styles.btnWhite} onClick={() => router.push(`/superadmin/templates/${t.id}`)}>
-                      Editar
-                    </button>
-
-                    <button style={styles.btnWhite} onClick={() => router.push(`/superadmin/templates/${t.id}/import`)}>
-                      Importar
-                    </button>
-
-                    <button style={styles.btnDark} disabled={saving} onClick={() => addTemplate(t.id)}>
-                      Añadir
-                    </button>
-                  </div>
+                  <button style={styles.btnDark} disabled={saving} onClick={() => addTemplate(t.id)}>
+                    Añadir
+                  </button>
                 </div>
               ))}
             </div>

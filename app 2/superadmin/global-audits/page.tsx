@@ -1,7 +1,7 @@
-// FILE: app/superadmin/global-audits/page.tsx
+// app/superadmin/global-audits/page.tsx
 "use client";
 
-import { useEffect, useMemo, useState, type CSSProperties } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { requireRoleOrRedirect } from "@/lib/auth/RequireRole";
@@ -31,15 +31,15 @@ export default function GlobalAuditsPage() {
   const [active, setActive] = useState(true);
 
   const styles = useMemo(() => {
-    const page: CSSProperties = { padding: 24, paddingTop: 80 };
-    const card: CSSProperties = {
+    const page: React.CSSProperties = { padding: 24, paddingTop: 80 };
+    const card: React.CSSProperties = {
       background: "var(--card-bg)",
       border: "1px solid var(--header-border)",
       borderRadius: 18,
       boxShadow: "var(--shadow-sm)",
       padding: 18,
     };
-    const btnDark: CSSProperties = {
+    const btnDark: React.CSSProperties = {
       padding: "10px 14px",
       borderRadius: 12,
       border: "1px solid rgba(0,0,0,0.18)",
@@ -50,7 +50,7 @@ export default function GlobalAuditsPage() {
       fontSize: 14,
       whiteSpace: "nowrap",
     };
-    const btnWhite: CSSProperties = {
+    const btnWhite: React.CSSProperties = {
       padding: "10px 14px",
       borderRadius: 12,
       border: "1px solid var(--input-border)",
@@ -61,7 +61,7 @@ export default function GlobalAuditsPage() {
       fontSize: 14,
       whiteSpace: "nowrap",
     };
-    const row: CSSProperties = {
+    const row: React.CSSProperties = {
       background: "rgba(0,0,0,0.02)",
       border: "1px solid rgba(0,0,0,0.08)",
       borderRadius: 14,
@@ -72,7 +72,7 @@ export default function GlobalAuditsPage() {
       gap: 12,
       flexWrap: "wrap",
     };
-    const tag: CSSProperties = {
+    const tag: React.CSSProperties = {
       padding: "6px 10px",
       borderRadius: 999,
       border: "1px solid rgba(0,0,0,0.12)",
@@ -83,8 +83,8 @@ export default function GlobalAuditsPage() {
       letterSpacing: 0.4,
     };
 
-    const label: CSSProperties = { fontWeight: 950, fontSize: 12, opacity: 0.9, marginBottom: 6 };
-    const input: CSSProperties = {
+    const label: React.CSSProperties = { fontWeight: 950, fontSize: 12, opacity: 0.9, marginBottom: 6 };
+    const input: React.CSSProperties = {
       width: "100%",
       height: 44,
       borderRadius: 12,
@@ -94,7 +94,7 @@ export default function GlobalAuditsPage() {
       padding: "0 12px",
       outline: "none",
     };
-    const textarea: CSSProperties = {
+    const textarea: React.CSSProperties = {
       width: "100%",
       borderRadius: 12,
       border: "1px solid var(--input-border)",
@@ -114,10 +114,7 @@ export default function GlobalAuditsPage() {
     setError(null);
 
     const p = await requireRoleOrRedirect(router, ["superadmin"], "/dashboard");
-    if (!p) {
-      setLoading(false);
-      return;
-    }
+    if (!p) return;
 
     const { data, error: e } = await supabase
       .from("global_audit_packs")
@@ -170,7 +167,14 @@ export default function GlobalAuditsPage() {
   }
 
   useEffect(() => {
-    void load();
+    let alive = true;
+    (async () => {
+      if (!alive) return;
+      await load();
+    })();
+    return () => {
+      alive = false;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -180,7 +184,7 @@ export default function GlobalAuditsPage() {
 
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
         <div>
-          <div style={{ fontSize: 28, fontWeight: 950, letterSpacing: -0.4 }}>Biblioteca Global</div>
+          <div style={{ fontSize: 28, fontWeight: 950, letterSpacing: -0.4 }}>Plantillas Globales</div>
           <div style={{ opacity: 0.75, marginTop: 6, fontSize: 13 }}>
             Crea packs y gestiona qué plantillas contiene cada pack.
           </div>
@@ -245,7 +249,11 @@ export default function GlobalAuditsPage() {
 
           <div>
             <div style={styles.label}>Tipo de negocio</div>
-            <select style={styles.input} value={businessType} onChange={(e) => setBusinessType(e.target.value)}>
+            <select
+              style={styles.input}
+              value={businessType}
+              onChange={(e) => setBusinessType(e.target.value)}
+            >
               <option value="hotel">Hotel</option>
               <option value="spa">Spa</option>
               <option value="restaurant">Restaurante</option>

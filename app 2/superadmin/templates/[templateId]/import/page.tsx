@@ -1,14 +1,18 @@
-// FILE: app/superadmin/templates/[templateId]/import/page.tsx
 "use client";
 
-import { useEffect, useMemo, useState, type CSSProperties } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { requireRoleOrRedirect } from "@/lib/auth/RequireRole";
 import HotelHeader from "@/app/components/HotelHeader";
 import { normalizeQuestionOrderForTemplate } from "@/lib/audits/normalizeQuestionOrder";
 
-type ParsedRow = { standard: string; tag: string; classification: string };
+type ParsedRow = {
+  standard: string;
+  tag: string;
+  classification: string;
+};
+
 type RequirementType = "never" | "if_fail" | "always";
 
 function normHeader(s: string) {
@@ -52,8 +56,8 @@ function normalizeStdAndTag(standardRaw: string, tagRaw: string) {
 
 export default function GlobalTemplateImportPage() {
   const router = useRouter();
-  const params = useParams();
-  const templateId = (params as any)?.templateId as string | undefined;
+  const params = useParams<{ templateId: string }>();
+  const templateId = params?.templateId;
 
   const [loading, setLoading] = useState(true);
   const [raw, setRaw] = useState("");
@@ -65,24 +69,22 @@ export default function GlobalTemplateImportPage() {
   const [diagSectionsCount, setDiagSectionsCount] = useState<number>(0);
   const [diagMappedOk, setDiagMappedOk] = useState<number>(0);
 
+  // Validar template existe + es global + superadmin
   useEffect(() => {
-    if (!templateId) {
-      setLoading(false);
-      setError("Falta templateId en la URL.");
-      return;
-    }
+    if (!templateId) return;
 
     (async () => {
       setLoading(true);
       setError(null);
 
       const p = await requireRoleOrRedirect(router, ["superadmin"], "/dashboard");
-      if (!p) {
-        setLoading(false);
-        return;
-      }
+      if (!p) return;
 
-      const { data, error: tErr } = await supabase.from("audit_templates").select("id,scope").eq("id", templateId).single();
+      const { data, error: tErr } = await supabase
+        .from("audit_templates")
+        .select("id,scope")
+        .eq("id", templateId)
+        .single();
 
       if (tErr || !data) {
         setError(tErr?.message ?? "No se encontró la plantilla.");
@@ -102,11 +104,18 @@ export default function GlobalTemplateImportPage() {
 
   const parsed = useMemo(() => {
     const text = raw.trim();
-    if (!text) return { rows: [] as ParsedRow[], sectionsCount: 0, questionsCount: 0, parseError: null as string | null };
+    if (!text) {
+      return { rows: [] as ParsedRow[], sectionsCount: 0, questionsCount: 0, parseError: null as string | null };
+    }
 
     const lines = text.split(/\r?\n/).filter((l) => l.trim().length > 0);
     if (lines.length < 2) {
-      return { rows: [], sectionsCount: 0, questionsCount: 0, parseError: "Pega la tabla con cabeceras y al menos 1 fila." };
+      return {
+        rows: [] as ParsedRow[],
+        sectionsCount: 0,
+        questionsCount: 0,
+        parseError: "Pega la tabla con cabeceras y al menos 1 fila.",
+      };
     }
 
     const header = splitRowSmart(lines[0]).map(normHeader);
@@ -115,7 +124,12 @@ export default function GlobalTemplateImportPage() {
     const idxClass = header.findIndex((h) => h === "CLASSIFICATION");
 
     if (idxStandard === -1 || idxTag === -1 || idxClass === -1) {
-      return { rows: [], sectionsCount: 0, questionsCount: 0, parseError: "Debe incluir encabezados exactos: STANDARD, TAG, CLASSIFICATION" };
+      return {
+        rows: [] as ParsedRow[],
+        sectionsCount: 0,
+        questionsCount: 0,
+        parseError: "Debe incluir encabezados exactos: STANDARD, TAG, CLASSIFICATION",
+      };
     }
 
     const rows: ParsedRow[] = [];
@@ -135,7 +149,7 @@ export default function GlobalTemplateImportPage() {
     }
 
     const uniqSections = new Set(rows.map((r) => normKey(r.classification)));
-    return { rows, sectionsCount: uniqSections.size, questionsCount: rows.length, parseError: null };
+    return { rows, sectionsCount: uniqSections.size, questionsCount: rows.length, parseError: null as string | null };
   }, [raw]);
 
   async function importNow() {
@@ -153,7 +167,12 @@ export default function GlobalTemplateImportPage() {
     setDone(false);
 
     try {
-      const { data: existingSections, error: sErr } = await supabase.from("audit_sections").select("id,name").eq("audit_template_id", templateId);
+      // 1) Secciones existentes
+      const { data: existingSections, error: sErr } = await supabase
+        .from("audit_sections")
+        .select("id,name")
+        .eq("audit_template_id", templateId);
+
       if (sErr) throw sErr;
 
       const mapByKey = new Map<string, { id: string; name: string }>();
@@ -162,6 +181,7 @@ export default function GlobalTemplateImportPage() {
         mapByKey.set(normKey(name), { id: s.id, name });
       });
 
+      // 2) Crear secciones nuevas (orden first-seen)
       const orderedSections: string[] = [];
       const seen = new Set<string>();
 
@@ -190,6 +210,7 @@ export default function GlobalTemplateImportPage() {
 
       setDiagSectionsCount(mapByKey.size);
 
+      // 3) Validación dura
       const missing: Array<{ i: number; classification: string; key: string }> = [];
       let okCount = 0;
 
@@ -213,6 +234,7 @@ export default function GlobalTemplateImportPage() {
         );
       }
 
+      // 4) Insertar preguntas con RequirementType (tu esquema real)
       const orderCounters = new Map<string, number>();
 
       const inserts = parsed.rows.map((r) => {
@@ -259,22 +281,23 @@ export default function GlobalTemplateImportPage() {
     );
   }
 
-  const btnWhite: CSSProperties = {
-    padding: "10px 14px",
-    borderRadius: 12,
-    border: "1px solid rgba(0,0,0,0.2)",
-    background: "#fff",
-    color: "#000",
-    fontWeight: 900,
-    cursor: "pointer",
-    height: 42,
-  };
-
   return (
     <main style={{ padding: 24, paddingTop: 80 }}>
       <HotelHeader />
 
-      <button onClick={() => router.push(`/superadmin/templates/${templateId}`)} style={btnWhite}>
+      <button
+        onClick={() => router.push(`/superadmin/templates/${templateId}`)}
+        style={{
+          padding: "10px 14px",
+          borderRadius: 12,
+          border: "1px solid rgba(0,0,0,0.2)",
+          background: "#fff",
+          color: "#000",
+          fontWeight: 900,
+          cursor: "pointer",
+          height: 42,
+        }}
+      >
         ← Atrás
       </button>
 
@@ -283,10 +306,20 @@ export default function GlobalTemplateImportPage() {
         Debe incluir encabezados: <b>STANDARD</b>, <b>TAG</b>, <b>CLASSIFICATION</b>.
       </div>
 
-      {error ? <div style={{ color: "crimson", fontWeight: 900, marginBottom: 12, whiteSpace: "pre-wrap" }}>{error}</div> : null}
+      {error ? (
+        <div style={{ color: "crimson", fontWeight: 900, marginBottom: 12, whiteSpace: "pre-wrap" }}>{error}</div>
+      ) : null}
+
       {info ? <div style={{ color: "green", fontWeight: 900, marginBottom: 12 }}>{info}</div> : null}
 
-      <div style={{ borderRadius: 18, border: "1px solid rgba(0,0,0,0.10)", background: "rgba(255,255,255,0.85)", padding: 16 }}>
+      <div
+        style={{
+          borderRadius: 18,
+          border: "1px solid rgba(0,0,0,0.10)",
+          background: "rgba(255,255,255,0.85)",
+          padding: 16,
+        }}
+      >
         <div style={{ fontWeight: 950, marginBottom: 8 }}>Pega tu tabla desde Excel/Sheets</div>
 
         <textarea

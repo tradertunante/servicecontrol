@@ -1,7 +1,6 @@
-// FILE: app/superadmin/templates/page.tsx
 "use client";
 
-import { useEffect, useMemo, useState, type CSSProperties } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { requireRoleOrRedirect } from "@/lib/auth/RequireRole";
@@ -42,10 +41,7 @@ export default function SuperadminTemplatesPage() {
       setError(null);
 
       const p = await requireRoleOrRedirect(router, ["superadmin"], "/dashboard");
-      if (!p) {
-        if (mounted) setLoading(false);
-        return;
-      }
+      if (!p) return;
 
       try {
         const { data: tData, error: tErr } = await supabase
@@ -62,7 +58,11 @@ export default function SuperadminTemplatesPage() {
 
         const areaMap = new Map<string, AreaRow>();
         if (areaIds.length) {
-          const { data: aData, error: aErr } = await supabase.from("areas").select("id,name,type").in("id", areaIds);
+          const { data: aData, error: aErr } = await supabase
+            .from("areas")
+            .select("id,name,type")
+            .in("id", areaIds);
+
           if (aErr) throw aErr;
           for (const a of (aData ?? []) as AreaRow[]) areaMap.set(a.id, a);
         }
@@ -98,14 +98,14 @@ export default function SuperadminTemplatesPage() {
     });
   }, [templates, areasById, q, onlyActive]);
 
-  const card: CSSProperties = {
+  const card: React.CSSProperties = {
     borderRadius: 18,
     border: "1px solid rgba(0,0,0,0.08)",
     background: "rgba(255,255,255,0.75)",
     padding: 18,
   };
 
-  const btnBlack: CSSProperties = {
+  const btnBlack: React.CSSProperties = {
     padding: "10px 14px",
     borderRadius: 12,
     border: "1px solid rgba(0,0,0,0.2)",
@@ -117,7 +117,7 @@ export default function SuperadminTemplatesPage() {
     whiteSpace: "nowrap",
   };
 
-  const btnWhite: CSSProperties = {
+  const btnWhite: React.CSSProperties = {
     padding: "10px 14px",
     borderRadius: 12,
     border: "1px solid rgba(0,0,0,0.2)",
@@ -142,7 +142,15 @@ export default function SuperadminTemplatesPage() {
     <main style={{ padding: 24, paddingTop: 80 }}>
       <HotelHeader />
 
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexWrap: "wrap" }}>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "flex-start",
+          gap: 12,
+          flexWrap: "wrap",
+        }}
+      >
         <div>
           <h1 style={{ fontSize: 56, margin: "10px 0 6px" }}>Biblioteca Global</h1>
           <div style={{ opacity: 0.75, fontWeight: 900 }}>Packs + Plantillas (Global)</div>
@@ -153,9 +161,9 @@ export default function SuperadminTemplatesPage() {
             Ver packs
           </button>
 
-          {/* crear PLANTILLA GLOBAL (no la de hotel) */}
-          <button onClick={() => router.push("/superadmin/global-audits")} style={btnBlack}>
-            + Crear (desde packs)
+          {/* ✅ PASO 1: crear plantilla → /superadmin/templates/new */}
+          <button onClick={() => router.push("/superadmin/templates/new")} style={btnBlack}>
+            + Crear plantilla
           </button>
         </div>
       </div>
