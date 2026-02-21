@@ -1,10 +1,10 @@
+// FILE: app/(app)/dashboard/page.tsx
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { requireRoleOrRedirect } from "@/lib/auth/RequireRole";
-import HotelHeader from "@/app/components/HotelHeader";
 import GaugeChart from "@/app/components/GaugeChart";
 import HeatMap from "@/app/components/HeatMap";
 
@@ -115,7 +115,6 @@ function getCurrentQuarter(): number {
   return Math.floor(month / 3) + 1;
 }
 
-// ✅ Usa tu theme base: --text / --muted + variables opcionales
 function scoreColor(score: number) {
   if (score < 60) return "var(--danger, #c62828)";
   if (score < 80) return "var(--warn, #ef6c00)";
@@ -130,7 +129,6 @@ function formatMonthKey(d: Date) {
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
-// ✅ ÚNICA KEY PARA TODO EL SISTEMA (selector + dashboard)
 const HOTEL_KEY = "sc_hotel_id";
 
 export default function DashboardPage() {
@@ -141,7 +139,7 @@ export default function DashboardPage() {
 
   const [profile, setProfile] = useState<Profile | null>(null);
 
-  // Hotel selector para superadmin
+  // Superadmin selector
   const [hotels, setHotels] = useState<HotelRow[]>([]);
   const [selectedHotelId, setSelectedHotelId] = useState<string | null>(null);
 
@@ -158,21 +156,17 @@ export default function DashboardPage() {
   const [worst3Areas, setWorst3Areas] = useState<AreaScore[]>([]);
   const [worst3Audits, setWorst3Audits] = useState<WorstAudit[]>([]);
 
-  // ✅ Variables del theme (globals.css)
   const fg = "var(--text)";
   const bg = "var(--bg)";
-  const muted = "var(--muted)";
   const inputBg = "var(--input-bg)";
   const inputBorder = "var(--input-border)";
 
-  // ✅ Tokens (opcionales, con fallback)
   const cardBg = "var(--card-bg, rgba(255,255,255,0.92))";
   const border = "var(--border, rgba(0,0,0,0.12))";
   const shadowLg = "var(--shadow-lg, 0 10px 30px rgba(0,0,0,0.20))";
   const shadowSm = "var(--shadow-sm, 0 4px 16px rgba(0,0,0,0.06))";
   const rowBg = "var(--row-bg, rgba(0,0,0,0.04))";
 
-  // --- Styles ---
   const card: React.CSSProperties = {
     borderRadius: 18,
     border: `1px solid ${border}`,
@@ -205,25 +199,26 @@ export default function DashboardPage() {
     fontWeight: 950,
     fontSize: 13,
     boxShadow: shadowSm,
+    whiteSpace: "nowrap",
   };
 
   const goAreaDetail = (areaId: string) => router.push(`/areas/${areaId}/history`);
   const goAuditTemplateDetail = (templateId: string) => router.push(`/builder/templates/${templateId}`);
 
-  // Carga perfil + (si superadmin) hoteles + hotel seleccionado
+  // Perfil + (si superadmin) hoteles + hotel seleccionado
   useEffect(() => {
+    let alive = true;
+
     (async () => {
       setLoading(true);
       setError(null);
 
       try {
-        const p = (await requireRoleOrRedirect(
-          router,
-          ["admin", "manager", "auditor", "superadmin"],
-          "/login"
-        )) as Profile | null;
+        const p = (await requireRoleOrRedirect(router, ["admin", "manager", "auditor", "superadmin"], "/login")) as
+          | Profile
+          | null;
 
-        if (!p) return;
+        if (!alive || !p) return;
         setProfile(p);
 
         if (p.role === "superadmin") {
@@ -237,6 +232,7 @@ export default function DashboardPage() {
 
           if (hErr) throw hErr;
 
+          if (!alive) return;
           setHotels((hData ?? []) as HotelRow[]);
           setLoading(false);
           return;
@@ -257,10 +253,16 @@ export default function DashboardPage() {
         setLoading(false);
       }
     })();
+
+    return () => {
+      alive = false;
+    };
   }, [router]);
 
-  // Carga data del hotel seleccionado
+  // Data del hotel seleccionado
   useEffect(() => {
+    let alive = true;
+
     (async () => {
       if (!profile) return;
       if (profile.role === "superadmin" && !selectedHotelId) return;
@@ -308,6 +310,7 @@ export default function DashboardPage() {
           }
         }
 
+        if (!alive) return;
         setAreas(areasList);
 
         const areaIds = areasList.map((a) => a.id);
@@ -422,6 +425,10 @@ export default function DashboardPage() {
         setLoading(false);
       }
     })();
+
+    return () => {
+      alive = false;
+    };
   }, [profile, selectedHotelId]);
 
   const build3MonthTrend = (areaId: string): TrendPoint[] => {
@@ -521,8 +528,7 @@ export default function DashboardPage() {
 
   if (loading) {
     return (
-      <main style={{ padding: 24, paddingTop: 80 }}>
-        <HotelHeader />
+      <main style={{ padding: 24, background: bg, color: fg }}>
         <div style={{ opacity: 0.8 }}>Cargando…</div>
       </main>
     );
@@ -530,19 +536,16 @@ export default function DashboardPage() {
 
   if (error) {
     return (
-      <main style={{ padding: 24, paddingTop: 80 }}>
-        <HotelHeader />
+      <main style={{ padding: 24, background: bg, color: fg }}>
         <div style={{ color: "var(--danger, crimson)", fontWeight: 900 }}>{error}</div>
       </main>
     );
   }
 
-  // --- Superadmin: selector ---
+  // Superadmin: selector
   if (profile?.role === "superadmin" && !selectedHotelId) {
     return (
-      <main style={{ padding: 24, paddingTop: 80 }}>
-        <HotelHeader />
-
+      <main style={{ padding: 24, background: bg, color: fg }}>
         <div style={{ ...card, margin: "0 auto" }}>
           <div style={{ fontSize: 22, fontWeight: 950 }}>Elige un hotel</div>
           <div style={{ marginTop: 8, opacity: 0.7 }}>
@@ -582,13 +585,10 @@ export default function DashboardPage() {
 
   const now = new Date();
   const monthName = now.toLocaleDateString("es-ES", { month: "long", year: "numeric" });
-
   const selectedHotelName = hotels.find((h) => h.id === selectedHotelId)?.name ?? "Hotel";
 
   return (
-    <main style={{ padding: 24, paddingTop: 80, background: bg, color: fg }}>
-      <HotelHeader />
-
+    <main style={{ padding: 24, background: bg, color: fg }}>
       {/* Barra superior informativa */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, marginBottom: 18 }}>
         <div style={{ opacity: 0.7, fontSize: 14 }}>
@@ -627,12 +627,7 @@ export default function DashboardPage() {
         </div>
 
         <div style={card}>
-          <GaugeChart
-            value={quarterScore.avg ?? 0}
-            label={`Q${getCurrentQuarter()} ${now.getFullYear()}`}
-            count={quarterScore.count}
-            size={180}
-          />
+          <GaugeChart value={quarterScore.avg ?? 0} label={`Q${getCurrentQuarter()} ${now.getFullYear()}`} count={quarterScore.count} size={180} />
         </div>
 
         <div style={card}>
