@@ -73,6 +73,8 @@ type QuestionMeta = {
 
 type PeriodKey = "THIS_MONTH" | "LAST_3_MONTHS" | "THIS_YEAR";
 
+const HOTEL_KEY = "sc_hotel_id";
+
 function fmtDate(iso: string | null) {
   if (!iso) return "—";
   const d = new Date(iso);
@@ -87,16 +89,15 @@ function fmtDate(iso: string | null) {
 
 function scoreColor(score: number | null): string {
   if (score === null || Number.isNaN(score)) return "#000";
-  if (score < 60) return "#c62828"; // rojo
-  if (score < 80) return "#ef6c00"; // naranja
-  return "#000"; // negro
+  if (score < 60) return "#c62828";
+  if (score < 80) return "#ef6c00";
+  return "#000";
 }
 
 function clamp(n: number, a: number, b: number) {
   return Math.max(a, Math.min(b, n));
 }
 
-// Sparkline SVG (línea)
 function Sparkline({ values }: { values: number[] }) {
   const w = 120;
   const h = 34;
@@ -153,17 +154,14 @@ function periodLabel(p: PeriodKey) {
 }
 
 function getPeriodRange(now: Date, p: PeriodKey) {
-  // end = ahora (incluido)
   const end = new Date(now);
 
   let start: Date;
   if (p === "THIS_MONTH") {
     start = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
   } else if (p === "LAST_3_MONTHS") {
-    // Incluye el mes actual + 2 anteriores (3 meses naturales)
     start = new Date(now.getFullYear(), now.getMonth() - 2, 1, 0, 0, 0, 0);
   } else {
-    // Año en curso
     start = new Date(now.getFullYear(), 0, 1, 0, 0, 0, 0);
   }
 
@@ -175,7 +173,6 @@ export default function AreaPage() {
   const params = useParams<{ areaId: string }>();
   const searchParams = useSearchParams();
 
-  // ✅ DEFAULT: dashboard
   const tab = (searchParams.get("tab") ?? "dashboard") as "history" | "templates" | "dashboard";
   const areaId = params?.areaId;
 
@@ -186,28 +183,19 @@ export default function AreaPage() {
   const [profile, setProfile] = useState<any>(null);
   const [area, setArea] = useState<Area | null>(null);
 
-  // Templates
   const [templates, setTemplates] = useState<AuditTemplate[]>([]);
-
-  // History / Data (para tu histórico general actual)
   const [runs, setRuns] = useState<AuditRunRow[]>([]);
   const [templateNameById, setTemplateNameById] = useState<Record<string, string>>({});
   const [executorNameById, setExecutorNameById] = useState<Record<string, string>>({});
   const [totalsByTemplate, setTotalsByTemplate] = useState<Record<string, Record<string, SectionTotal>>>({});
   const [exceptionsByRun, setExceptionsByRun] = useState<Record<string, Record<string, { fail: number; na: number }>>>({});
 
-  // ✅ NUEVO: answers por run (para ranking de estándares)
   const [answersByRun, setAnswersByRun] = useState<Record<string, AnswerRow[]>>({});
-  // ✅ NUEVO: meta de preguntas (id -> text/section)
   const [questionMetaById, setQuestionMetaById] = useState<Record<string, QuestionMeta>>({});
 
-  // ✅ filtro de dashboard por plantilla
   const [templateFilter, setTemplateFilter] = useState<string>("ALL");
-
-  // ✅ NUEVO: filtro de periodo del dashboard
   const [period, setPeriod] = useState<PeriodKey>("THIS_MONTH");
 
-  // ✅ Historial (nuevo) con filtros en cascada
   const now = new Date();
   const [histTemplateId, setHistTemplateId] = useState<string>("");
   const [histYear, setHistYear] = useState<number>(now.getFullYear());
@@ -217,18 +205,16 @@ export default function AreaPage() {
   const [histError, setHistError] = useState<string | null>(null);
   const [histRuns, setHistRuns] = useState<AuditRunRow[]>([]);
 
-  // ✅ Si entran sin tab, forzar dashboard
+  // ✅ Si entran sin tab, forzar templates
   useEffect(() => {
     if (!areaId) return;
     const t = searchParams.get("tab");
-    if (!t) {
-      router.replace(`/areas/${areaId}?tab=dashboard`);
-    }
+    if (!t) router.replace(`/areas/${areaId}?tab=templates`);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [areaId]);
 
   // ----------------------
-  // Load all data (como tenías)
+  // Load all data
   // ----------------------
   useEffect(() => {
     if (!areaId) return;
@@ -238,11 +224,14 @@ export default function AreaPage() {
       setError(null);
 
       try {
-        const p = await requireRoleOrRedirect(router, ["admin", "manager", "auditor"], "/areas");
+        // ✅ permitir SUPERADMIN
+        const p = await requireRoleOrRedirect(router, ["admin", "manager", "auditor", "superadmin"], "/areas");
         if (!p) return;
         setProfile(p);
 
-        if (!canRunAudits(p.role)) {
+        // ✅ superadmin debe pasar aunque canRunAudits no lo contemple
+        const allowed = p.role === "superadmin" ? true : canRunAudits(p.role);
+        if (!allowed) {
           setError("No tienes permisos para acceder a esta sección.");
           setLoading(false);
           return;
@@ -270,12 +259,9 @@ export default function AreaPage() {
         const onlyActive = (tData ?? []).filter((t: any) => t.active !== false) as AuditTemplate[];
         setTemplates(onlyActive);
 
-        // ✅ default del filtro de historial: el primero
-        if (!histTemplateId && onlyActive.length > 0) {
-          setHistTemplateId(onlyActive[0].id);
-        }
+        if (!histTemplateId && onlyActive.length > 0) setHistTemplateId(onlyActive[0].id);
 
-        // 3) Runs (últimos 80) para dashboard / cálculos
+        // 3) Runs
         const { data: runData, error: runErr } = await supabase
           .from("audit_runs")
           .select("id,status,score,notes,executed_at,executed_by,audit_template_id,area_id")
@@ -314,7 +300,7 @@ export default function AreaPage() {
           }
         }
 
-        // 6) Totales por sección (por template)
+        // 6) Totales por sección
         if (templateIds.length) {
           const { data: qData, error: qErr } = await supabase
             .from("audit_questions")
@@ -352,7 +338,7 @@ export default function AreaPage() {
           setTotalsByTemplate(totals);
         }
 
-        // 7) Answers (para FAIL/NA por sección + ranking de estándares)
+        // 7) Answers
         if (runIds.length) {
           const { data: aData, error: aErr } = await supabase
             .from("audit_answers")
@@ -363,7 +349,6 @@ export default function AreaPage() {
 
           const answers = (aData ?? []) as AnswerRow[];
 
-          // ✅ answersByRun
           const byRun: Record<string, AnswerRow[]> = {};
           for (const a of answers) {
             if (!byRun[a.audit_run_id]) byRun[a.audit_run_id] = [];
@@ -373,7 +358,6 @@ export default function AreaPage() {
 
           const questionIds = Array.from(new Set(answers.map((a) => a.question_id)));
 
-          // ✅ traemos META completa de preguntas (incluye text + sección + nombre sección)
           const qMetaMap: Record<string, QuestionMeta> = {};
           if (questionIds.length) {
             const { data: q2Data, error: q2Err } = await supabase
@@ -406,7 +390,6 @@ export default function AreaPage() {
           }
           setQuestionMetaById(qMetaMap);
 
-          // ✅ Excepciones FAIL/NA por run y sección (como antes)
           const ex: Record<string, Record<string, { fail: number; na: number }>> = {};
 
           for (const row of answers) {
@@ -434,7 +417,7 @@ export default function AreaPage() {
   }, [areaId, router]);
 
   // ----------------------
-  // Start run (igual)
+  // Start run
   // ----------------------
   async function handleStart(templateId: string) {
     if (!profile || !areaId) return;
@@ -452,10 +435,16 @@ export default function AreaPage() {
 
       const nowIso = new Date().toISOString();
 
+      // ✅ hotel_id para superadmin (area.hotel_id o localStorage)
+      const hotelIdFromLocalStorage = typeof window !== "undefined" ? localStorage.getItem(HOTEL_KEY) : null;
+      const hotelIdToUse = area?.hotel_id ?? profile?.hotel_id ?? hotelIdFromLocalStorage;
+
+      if (!hotelIdToUse) throw new Error("No se pudo determinar el hotel_id para crear la auditoría.");
+
       const { data, error } = await supabase
         .from("audit_runs")
         .insert({
-          hotel_id: profile.hotel_id,
+          hotel_id: hotelIdToUse,
           area_id: areaId,
           audit_template_id: templateId,
           status: "draft",
@@ -477,9 +466,6 @@ export default function AreaPage() {
     }
   }
 
-  // ----------------------
-  // ✅ Nuevo: buscar historial por (template + year + month)
-  // ----------------------
   async function handleSearchHistory() {
     if (!areaId || !histTemplateId) return;
 
@@ -510,9 +496,6 @@ export default function AreaPage() {
     }
   }
 
-  // ----------------------
-  // History aggregation (lo dejas)
-  // ----------------------
   const aggregatedHistory: RunAgg[] = useMemo(() => {
     return runs.map((r) => {
       const templateName = templateNameById[r.audit_template_id] ?? r.audit_template_id;
@@ -549,10 +532,6 @@ export default function AreaPage() {
     });
   }, [runs, templateNameById, executorNameById, totalsByTemplate, exceptionsByRun]);
 
-  // ----------------------
-  // Dashboard aggregation
-  // ✅ MODIFICADO: filtro por periodo + ranking estándares + ranking secciones sin FAIL/NA
-  // ----------------------
   const dashboard = useMemo(() => {
     const WINDOW = 4;
 
@@ -581,14 +560,12 @@ export default function AreaPage() {
         ? null
         : Math.round((lastN.reduce((sum, r) => sum + (Number(r.score) || 0), 0) / lastN.length) * 100) / 100;
 
-    // Tendencia (últimos 12 dentro del periodo)
     const trendRuns = [...sorted].slice(0, 12).reverse();
     const trendValues = trendRuns
       .map((r) => Number(r.score))
       .filter((n) => Number.isFinite(n))
       .map((n) => clamp(n, 0, 100));
 
-    // ✅ Ranking de secciones AGRUPADO POR NOMBRE (análisis transversal)
     const sectionStats: Record<string, { name: string; scores: number[] }> = {};
 
     for (const run of lastN) {
@@ -628,63 +605,6 @@ export default function AreaPage() {
     const worstSection = sectionRanking.find((x) => x.avg_score !== null) ?? null;
     const bestSection = [...sectionRanking].reverse().find((x) => x.avg_score !== null) ?? null;
 
-    // ✅ Ranking de estándares (preguntas) - Top 10 peor puntuados
-    const runsInWindow = lastN.map((r) => r.id);
-    const denomRuns = Math.max(1, runsInWindow.length);
-
-    const qStats: Record<
-      string,
-      {
-        question_id: string;
-        text: string;
-        totalFail: number;
-        totalNa: number;
-        totalSeen: number; // total respuestas (incluye NA)
-      }
-    > = {};
-
-    for (const runId of runsInWindow) {
-      const arr = answersByRun[runId] ?? [];
-      for (const a of arr) {
-        const qid = a.question_id;
-        const meta = questionMetaById[qid];
-        const text = meta?.text ?? "(Sin texto)";
-
-        if (!qStats[qid]) {
-          qStats[qid] = { question_id: qid, text, totalFail: 0, totalNa: 0, totalSeen: 0 };
-        }
-
-        const res = String(a.result ?? "").toUpperCase();
-        qStats[qid].totalSeen += 1;
-        if (res === "FAIL") qStats[qid].totalFail += 1;
-        if (res === "NA") qStats[qid].totalNa += 1;
-      }
-    }
-
-    const standardsRanking = Object.values(qStats)
-      .map((q) => {
-        const denom = Math.max(0, q.totalSeen - q.totalNa);
-        const pass = Math.max(0, denom - q.totalFail);
-        const score = denom === 0 ? null : Math.round(((pass / denom) * 100) * 100) / 100;
-
-        const avgFail = Math.round((q.totalFail / denomRuns) * 100) / 100;
-        const avgNa = Math.round((q.totalNa / denomRuns) * 100) / 100;
-
-        return {
-          question_id: q.question_id,
-          text: q.text,
-          avg_score: score,
-          avg_fail: avgFail,
-          avg_na: avgNa,
-        };
-      })
-      .sort((a, b) => {
-        const av = a.avg_score ?? 9999;
-        const bv = b.avg_score ?? 9999;
-        return av - bv;
-      })
-      .slice(0, 10);
-
     const filterLabel =
       templateFilter === "ALL"
         ? "General (todas)"
@@ -697,26 +617,12 @@ export default function AreaPage() {
       sectionRanking,
       worstSection,
       bestSection,
-      standardsRanking,
       windowSize: lastN.length,
       filterLabel,
       periodLabel: periodLabel(period),
     };
-  }, [
-    runs,
-    totalsByTemplate,
-    exceptionsByRun,
-    templateFilter,
-    templateNameById,
-    templates,
-    period,
-    answersByRun,
-    questionMetaById,
-  ]);
+  }, [runs, totalsByTemplate, exceptionsByRun, templateFilter, templateNameById, templates, period]);
 
-  // ----------------------
-  // UI styles
-  // ----------------------
   const tabBtn = (active: boolean): React.CSSProperties => ({
     padding: "10px 14px",
     borderRadius: 12,
@@ -750,7 +656,7 @@ export default function AreaPage() {
     color: "#fff",
     fontWeight: 900,
     cursor: "pointer",
-    whiteSpace: "ությամբnowrap",
+    whiteSpace: "nowrap",
   };
 
   const ghostBtn: React.CSSProperties = {
@@ -764,11 +670,26 @@ export default function AreaPage() {
     whiteSpace: "nowrap",
   };
 
+  // ✅ Header reusable para Loading / Error / Normal
+  const HeaderRow = ({ size }: { size: number }) => (
+    <div
+      style={{
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "flex-start",
+        gap: 12,
+        marginBottom: 6,
+      }}
+    >
+      <h1 style={{ fontSize: size, margin: 0 }}>{area?.name ?? "Área"}</h1>
+      <BackButton fallback="/areas" />
+    </div>
+  );
+
   if (loading) {
     return (
       <main style={{ padding: 24 }}>
-        <BackButton fallback="/areas" />
-        <h1 style={{ fontSize: 44, marginBottom: 8 }}>{area?.name ?? "Área"}</h1>
+        <HeaderRow size={44} />
         <p>Cargando…</p>
       </main>
     );
@@ -777,8 +698,7 @@ export default function AreaPage() {
   if (error) {
     return (
       <main style={{ padding: 24 }}>
-        <BackButton fallback="/areas" />
-        <h1 style={{ fontSize: 52, marginBottom: 8 }}>{area?.name ?? "Área"}</h1>
+        <HeaderRow size={52} />
         <p style={{ color: "crimson", fontWeight: 800 }}>{error}</p>
       </main>
     );
@@ -786,16 +706,14 @@ export default function AreaPage() {
 
   return (
     <main style={{ padding: 24 }}>
-      <BackButton fallback="/areas" />
-
-      <h1 style={{ fontSize: 56, marginBottom: 6 }}>{area?.name ?? "Área"}</h1>
+      {/* ✅ BackButton a la derecha */}
+      <HeaderRow size={56} />
 
       <div style={{ opacity: 0.85, marginBottom: 18 }}>
         {area?.type ? `${area.type} · ` : ""}
         Rol: <strong>{profile?.role}</strong>
       </div>
 
-      {/* ✅ Orden tabs: Dashboard primero */}
       <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 18 }}>
         <button style={tabBtn(tab === "dashboard")} onClick={() => router.push(`/areas/${areaId}?tab=dashboard`)}>
           Dashboard
@@ -808,17 +726,12 @@ export default function AreaPage() {
         </button>
       </div>
 
-      {/* ---------------------- */}
-      {/* DASHBOARD */}
-      {/* ---------------------- */}
       {tab === "dashboard" ? (
         <div style={{ display: "grid", gap: 14 }}>
-          {/* header dashboard + selectors */}
           <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
             <div style={{ fontSize: 22, fontWeight: 950 }}>Dashboard por área</div>
 
             <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-              {/* ✅ Periodo */}
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                 <div style={{ fontWeight: 900, opacity: 0.9 }}>Periodo:</div>
                 <select
@@ -840,7 +753,6 @@ export default function AreaPage() {
                 </select>
               </div>
 
-              {/* Vista / template */}
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                 <div style={{ fontWeight: 900, opacity: 0.9 }}>Vista:</div>
                 <select
@@ -867,12 +779,9 @@ export default function AreaPage() {
             </div>
           </div>
 
-          {/* cards */}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 12 }}>
             <div style={card}>
-              <div style={{ fontWeight: 950, marginBottom: 6 }}>
-                Score promedio (últimas {dashboard.windowSize || 0})
-              </div>
+              <div style={{ fontWeight: 950, marginBottom: 6 }}>Score promedio (últimas {dashboard.windowSize || 0})</div>
               <div style={{ fontSize: 34, fontWeight: 950, color: scoreColor(dashboard.avgScore) }}>
                 {dashboard.avgScore === null ? "—" : `${dashboard.avgScore.toFixed(2)}%`}
               </div>
@@ -929,14 +838,7 @@ export default function AreaPage() {
               {dashboard.worstSection?.avg_score !== null ? (
                 <>
                   <div style={{ fontWeight: 900 }}>{dashboard.worstSection?.section_name}</div>
-                  <div
-                    style={{
-                      marginTop: 6,
-                      fontSize: 28,
-                      fontWeight: 950,
-                      color: scoreColor(dashboard.worstSection?.avg_score ?? null),
-                    }}
-                  >
+                  <div style={{ marginTop: 6, fontSize: 28, fontWeight: 950, color: scoreColor(dashboard.worstSection?.avg_score ?? null) }}>
                     {dashboard.worstSection?.avg_score?.toFixed(2)}%
                   </div>
                 </>
@@ -950,134 +852,12 @@ export default function AreaPage() {
               {dashboard.bestSection?.avg_score !== null ? (
                 <>
                   <div style={{ fontWeight: 900 }}>{dashboard.bestSection?.section_name}</div>
-                  <div
-                    style={{
-                      marginTop: 6,
-                      fontSize: 28,
-                      fontWeight: 950,
-                      color: scoreColor(dashboard.bestSection?.avg_score ?? null),
-                    }}
-                  >
+                  <div style={{ marginTop: 6, fontSize: 28, fontWeight: 950, color: scoreColor(dashboard.bestSection?.avg_score ?? null) }}>
                     {dashboard.bestSection?.avg_score?.toFixed(2)}%
                   </div>
                 </>
               ) : (
                 <div style={{ opacity: 0.8 }}>—</div>
-              )}
-            </div>
-          </div>
-
-          {/* ✅ Rankings en 2 columnas: estándares (izq) + secciones (der, sin FAIL/NA) */}
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(360px, 1fr))", gap: 12 }}>
-            {/* Izquierda: Estándares peor puntuados */}
-            <div style={card}>
-              <div style={{ fontWeight: 950, marginBottom: 10 }}>
-                Top 10 estándares peor puntuados (promedio últimas {dashboard.windowSize || 0})
-                <div style={{ fontSize: 13, fontWeight: 400, opacity: 0.75, marginTop: 4 }}>
-                  Basado en preguntas / standards dentro del periodo y vista seleccionados
-                </div>
-              </div>
-
-              {dashboard.standardsRanking.length === 0 ? (
-                <div style={{ opacity: 0.8 }}>No hay datos suficientes para esta vista.</div>
-              ) : (
-                <div style={{ overflowX: "auto" }}>
-                  <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                    <thead>
-                      <tr style={{ textAlign: "left" }}>
-                        <th style={{ padding: "10px 8px", borderBottom: "1px solid rgba(0,0,0,0.15)" }}>Estándar</th>
-                        <th style={{ padding: "10px 8px", borderBottom: "1px solid rgba(0,0,0,0.15)" }}>Score prom.</th>
-                        <th style={{ padding: "10px 8px", borderBottom: "1px solid rgba(0,0,0,0.15)" }}>FAIL prom.</th>
-                        <th style={{ padding: "10px 8px", borderBottom: "1px solid rgba(0,0,0,0.15)" }}>NA prom.</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {dashboard.standardsRanking.map((q) => (
-                        <tr key={q.question_id}>
-                          <td style={{ padding: "10px 8px", borderBottom: "1px solid rgba(0,0,0,0.08)" }}>
-                            <div style={{ fontWeight: 900, lineHeight: 1.2 }}>{q.text}</div>
-                          </td>
-                          <td
-                            style={{
-                              padding: "10px 8px",
-                              borderBottom: "1px solid rgba(0,0,0,0.08)",
-                              fontWeight: 950,
-                              color: scoreColor(q.avg_score),
-                              whiteSpace: "nowrap",
-                            }}
-                          >
-                            {q.avg_score === null ? "—" : `${q.avg_score.toFixed(2)}%`}
-                          </td>
-                          <td
-                            style={{
-                              padding: "10px 8px",
-                              borderBottom: "1px solid rgba(0,0,0,0.08)",
-                              fontWeight: 900,
-                              color: "#000",
-                              whiteSpace: "nowrap",
-                            }}
-                          >
-                            {Number(q.avg_fail).toFixed(2)}
-                          </td>
-                          <td
-                            style={{
-                              padding: "10px 8px",
-                              borderBottom: "1px solid rgba(0,0,0,0.08)",
-                              fontWeight: 900,
-                              color: "#000",
-                              whiteSpace: "nowrap",
-                            }}
-                          >
-                            {Number(q.avg_na).toFixed(2)}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
-
-            {/* Derecha: Ranking secciones (sin FAIL/NA) */}
-            <div style={card}>
-              <div style={{ fontWeight: 950, marginBottom: 10 }}>
-                Ranking de secciones (promedio últimas {dashboard.windowSize || 0})
-                <div style={{ fontSize: 13, fontWeight: 400, opacity: 0.75, marginTop: 4 }}>
-                  ✅ Análisis transversal - agregado por nombre de sección en todas las plantillas
-                </div>
-              </div>
-
-              {dashboard.sectionRanking.length === 0 ? (
-                <div style={{ opacity: 0.8 }}>No hay datos suficientes para esta vista.</div>
-              ) : (
-                <div style={{ overflowX: "auto" }}>
-                  <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                    <thead>
-                      <tr style={{ textAlign: "left" }}>
-                        <th style={{ padding: "10px 8px", borderBottom: "1px solid rgba(0,0,0,0.15)" }}>Sección</th>
-                        <th style={{ padding: "10px 8px", borderBottom: "1px solid rgba(0,0,0,0.15)" }}>Score prom.</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {dashboard.sectionRanking.map((s, idx) => (
-                        <tr key={`${s.section_name}-${idx}`}>
-                          <td style={{ padding: "10px 8px", borderBottom: "1px solid rgba(0,0,0,0.08)" }}>{s.section_name}</td>
-                          <td
-                            style={{
-                              padding: "10px 8px",
-                              borderBottom: "1px solid rgba(0,0,0,0.08)",
-                              fontWeight: 950,
-                              color: scoreColor(s.avg_score),
-                              whiteSpace: "nowrap",
-                            }}
-                          >
-                            {s.avg_score === null ? "—" : `${s.avg_score.toFixed(2)}%`}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
               )}
             </div>
           </div>
@@ -1088,22 +868,12 @@ export default function AreaPage() {
         </div>
       ) : null}
 
-      {/* ---------------------- */}
-      {/* HISTORIAL (nuevo con filtros) */}
-      {/* ---------------------- */}
       {tab === "history" ? (
         <div style={{ display: "grid", gap: 14 }}>
           <div style={card}>
             <div style={{ fontSize: 20, fontWeight: 950, marginBottom: 12 }}>Historial</div>
 
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-                gap: 12,
-                alignItems: "end",
-              }}
-            >
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12, alignItems: "end" }}>
               <div>
                 <div style={{ fontSize: 12, fontWeight: 950, opacity: 0.75, marginBottom: 6 }}>Tipo de auditoría</div>
                 <select value={histTemplateId} onChange={(e) => setHistTemplateId(e.target.value)} style={inputStyle}>
@@ -1155,9 +925,7 @@ export default function AreaPage() {
               </div>
             </div>
 
-            {histError ? (
-              <div style={{ marginTop: 12, color: "crimson", fontWeight: 900 }}>{histError}</div>
-            ) : null}
+            {histError ? <div style={{ marginTop: 12, color: "crimson", fontWeight: 900 }}>{histError}</div> : null}
           </div>
 
           <div style={card}>
@@ -1205,9 +973,6 @@ export default function AreaPage() {
         </div>
       ) : null}
 
-      {/* ---------------------- */}
-      {/* AUDITORÍAS DISPONIBLES */}
-      {/* ---------------------- */}
       {tab === "templates" ? (
         <>
           <h2 style={{ fontSize: 24, marginBottom: 12 }}>Auditorías disponibles</h2>
@@ -1249,6 +1014,7 @@ export default function AreaPage() {
               </div>
             ))}
           </div>
+
           {templates.length === 0 ? (
             <p style={{ marginTop: 16, opacity: 0.85 }}>No hay auditorías asignadas a esta área todavía.</p>
           ) : null}
