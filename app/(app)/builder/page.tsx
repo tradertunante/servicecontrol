@@ -1,4 +1,4 @@
-// app/builder/page.tsx
+// FILE: app/builder/page.tsx
 "use client";
 
 import { useEffect, useState } from "react";
@@ -84,10 +84,12 @@ export default function BuilderPage() {
 
       setHotelIdInUse(hotelIdToUse);
 
+      // ✅ Orden de áreas: sort_order primero (si existe), luego nombre
       const { data: areasData, error: areasErr } = await supabase
         .from("areas")
-        .select("id, name, type")
+        .select("id, name, type, sort_order")
         .eq("hotel_id", hotelIdToUse)
+        .order("sort_order", { ascending: true, nullsFirst: false })
         .order("name", { ascending: true });
 
       if (areasErr) throw areasErr;
@@ -355,6 +357,11 @@ export default function BuilderPage() {
         </div>
 
         <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+          {/* ✅ BOTÓN PARA ORDENAR ÁREAS */}
+          <button style={btnWhite} onClick={() => router.push("/areas/order")}>
+            Ordenar áreas
+          </button>
+
           <button style={btnWhite} onClick={() => router.push("/dashboard")}>
             ← Atrás
           </button>
@@ -379,7 +386,16 @@ export default function BuilderPage() {
 
       {/* SECCIÓN 1: GESTIÓN DE ÁREAS */}
       <div style={{ ...card, marginTop: 16 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12, marginBottom: 16 }}>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            flexWrap: "wrap",
+            gap: 12,
+            marginBottom: 16,
+          }}
+        >
           <div>
             <div style={{ fontSize: 20, fontWeight: 950 }}>🏢 Gestión de Áreas</div>
             <div style={{ opacity: 0.7, fontSize: 13, marginTop: 4 }}>
