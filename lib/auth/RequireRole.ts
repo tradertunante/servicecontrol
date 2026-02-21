@@ -10,26 +10,65 @@ export type Profile = {
   active?: boolean | null;
 };
 
+type RouterLike = { replace?: (path: string) => void; push?: (path: string) => void };
+type AllowedRolesInput = Role[] | Role | undefined | null;
+
 /**
  * Carga el profile del usuario logueado y valida role.
  * Si no cumple, redirige.
+ *
+ * Soporta llamadas en ambos órdenes:
+ *  - requireRoleOrRedirect(router, ["admin","superadmin"])
+ *  - requireRoleOrRedirect(["admin","superadmin"], router)
  */
 export async function requireRoleOrRedirect(
-  router: { replace: (path: string) => void },
-  allowedRoles: Role[],
+  a: RouterLike | AllowedRolesInput,
+  b: AllowedRolesInput | RouterLike,
   redirectTo: string = "/login"
 ): Promise<Profile | null> {
+  // Detecta orden de argumentos
+  const aIsRouter = !!a && typeof a === "object" && typeof (a as RouterLike).replace === "function";
+  const bIsRouter = !!b && typeof b === "object" && typeof (b as RouterLike).replace === "function";
+
+  const router: RouterLike | null = aIsRouter
+    ? (a as RouterLike)
+    : bIsRouter
+      ? (b as RouterLike)
+      : null;
+
+  const allowedRoles: AllowedRolesInput = aIsRouter ? (b as AllowedRolesInput) : (a as AllowedRolesInput);
+
+  const safeRedirect = (path: string) => {
+    if (router?.replace) return router.replace(path);
+    if (router?.push) return router.push(path);
+    // fallback ultra-seguro (cliente)
+    if (typeof window !== "undefined") window.location.href = path;
+  };
+
+  // Normaliza roles SIEMPRE a array
+  const rolesArray: Role[] = Array.isArray(allowedRoles)
+    ? allowedRoles
+    : allowedRoles
+      ? [allowedRoles]
+      : [];
+
+  // Si no hay router válido, al menos evita explotar
+  if (!router && typeof window === "undefined") {
+    // En server no podemos redirigir con window ni router
+    return null;
+  }
+
   // 1) session
   const { data: sessData } = await supabase.auth.getSession();
   if (!sessData.session) {
-    router.replace(redirectTo);
+    safeRedirect(redirectTo);
     return null;
   }
 
   // 2) user
   const { data: authData, error: authErr } = await supabase.auth.getUser();
   if (authErr || !authData?.user) {
-    router.replace(redirectTo);
+    safeRedirect(redirectTo);
     return null;
   }
 
@@ -41,12 +80,12 @@ export async function requireRoleOrRedirect(
     .maybeSingle();
 
   if (profErr || !prof) {
-    router.replace(redirectTo);
+    safeRedirect(redirectTo);
     return null;
   }
 
   if (prof.active === false) {
-    router.replace(redirectTo);
+    safeRedirect(redirectTo);
     return null;
   }
 
@@ -60,8 +99,14 @@ export async function requireRoleOrRedirect(
     active: prof.active ?? null,
   };
 
-  if (!allowedRoles.includes(profile.role)) {
-    router.replace(redirectTo);
+  // Seguridad: si no pasan roles, bloquea
+  if (rolesArray.length === 0) {
+    safeRedirect(redirectTo);
+    return null;
+  }
+
+  if (!rolesArray.includes(profile.role)) {
+    safeRedirect(redirectTo);
     return null;
   }
 
