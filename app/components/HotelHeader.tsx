@@ -1,11 +1,9 @@
 // app/components/HotelHeader.tsx
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
-
-type Hotel = { id: string; name: string };
 
 type Profile = {
   role: string;
@@ -13,6 +11,7 @@ type Profile = {
 };
 
 const HOTEL_KEY = "sc_hotel_id";
+const HOTEL_CHANGED_EVENT = "sc-hotel-changed";
 
 function getPageTitle(pathname: string | null): string {
   if (!pathname) return "";
@@ -42,18 +41,52 @@ export default function HotelHeader() {
   const [loading, setLoading] = useState(true);
   const [isHoveringHotel, setIsHoveringHotel] = useState(false);
 
-  // Relee hotel seleccionado cuando cambias HOTEL_KEY en otra página
+  // ✅ Estado que refleja el hotel seleccionado en localStorage (para superadmin)
+  const [lsHotelId, setLsHotelId] = useState<string | null>(null);
+
+  // Inicializa y detecta cambios de hotel (misma pestaña + otras pestañas)
   useEffect(() => {
-    const onStorage = (e: StorageEvent) => {
-      if (e.key === HOTEL_KEY) {
-        // forzamos recarga de header (re-fetch) cambiando estado loading
-        setLoading(true);
+    const read = () => {
+      try {
+        const v = localStorage.getItem(HOTEL_KEY);
+        setLsHotelId(v || null);
+      } catch {
+        setLsHotelId(null);
       }
     };
+
+    read();
+
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === HOTEL_KEY) read();
+    };
+
+    const onCustom = () => read();
+
     window.addEventListener("storage", onStorage);
-    return () => window.removeEventListener("storage", onStorage);
+    window.addEventListener(HOTEL_CHANGED_EVENT, onCustom as EventListener);
+
+    // Fallback: por si alguien cambia localStorage sin disparar el evento custom
+    const t = window.setInterval(() => {
+      try {
+        const v = localStorage.getItem(HOTEL_KEY);
+        const next = v || null;
+        setLsHotelId((prev) => (prev === next ? prev : next));
+      } catch {
+        // nada
+      }
+    }, 800);
+
+    return () => {
+      window.removeEventListener("storage", onStorage);
+      window.removeEventListener(HOTEL_CHANGED_EVENT, onCustom as EventListener);
+      window.clearInterval(t);
+    };
   }, []);
 
+  const pageTitle = useMemo(() => getPageTitle(pathname), [pathname]);
+
+  // Carga profile + hotelName
   useEffect(() => {
     let alive = true;
 
@@ -65,6 +98,8 @@ export default function HotelHeader() {
         if (!alive) return;
 
         if (userErr || !userData?.user) {
+          setProfile(null);
+          setHotelName(null);
           setLoading(false);
           return;
         }
@@ -80,6 +115,8 @@ export default function HotelHeader() {
         if (!alive) return;
 
         if (profileErr || !profileData) {
+          setProfile(null);
+          setHotelName(null);
           setLoading(false);
           return;
         }
@@ -91,19 +128,16 @@ export default function HotelHeader() {
         };
         setProfile(prof);
 
-        // ✅ HOTEL A MOSTRAR:
-        // - superadmin => localStorage sc_hotel_id
+        // ✅ HOTEL A MOSTRAR
+        // - superadmin => localStorage sc_hotel_id (lsHotelId)
         // - resto => profile.hotel_id
-        let hotelIdToUse: string | null = null;
-
-        if (role === "superadmin") {
-          hotelIdToUse = typeof window !== "undefined" ? localStorage.getItem(HOTEL_KEY) : null;
-        } else {
-          hotelIdToUse = prof.hotel_id;
-        }
+        const hotelIdToUse =
+          role === "superadmin"
+            ? (lsHotelId ?? null)
+            : (prof.hotel_id ?? null);
 
         if (!hotelIdToUse) {
-          // superadmin aún no seleccionó hotel -> no mostramos header
+          // No hotel todavía -> mostramos header igualmente (sin nombre)
           setHotelName(null);
           setLoading(false);
           return;
@@ -135,12 +169,13 @@ export default function HotelHeader() {
     return () => {
       alive = false;
     };
-  }, [pathname, loading]); // loading se pone true cuando cambia storage (superadmin)
-
-  if (loading || !hotelName) return null;
+    // ✅ Ojo: NO metemos "loading" aquí (eso era el bucle)
+  }, [pathname, lsHotelId]);
 
   const isAdmin = profile?.role === "admin" || profile?.role === "superadmin";
-  const pageTitle = getPageTitle(pathname);
+
+  // ✅ Ya NO devolvemos null: el header siempre existe
+  const displayHotel = hotelName ?? (loading ? "Cargando…" : "Selecciona hotel");
 
   return (
     <div
@@ -162,7 +197,7 @@ export default function HotelHeader() {
       }}
     >
       {/* Hotel + página */}
-      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0 }}>
         <button
           onClick={() => router.push("/dashboard")}
           onMouseEnter={() => setIsHoveringHotel(true)}
@@ -170,9 +205,11 @@ export default function HotelHeader() {
           style={{
             fontSize: 14,
             fontWeight: 950,
-            opacity: isHoveringHotel ? 1 : 0.8,
+            opacity: loading ? 0.6 : isHoveringHotel ? 1 : 0.85,
             letterSpacing: "0.3px",
             whiteSpace: "nowrap",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
             background: "none",
             border: "none",
             cursor: "pointer",
@@ -181,15 +218,24 @@ export default function HotelHeader() {
             transition: "all 0.2s ease",
             color: isHoveringHotel ? "#000" : "inherit",
             textDecoration: isHoveringHotel ? "underline" : "none",
+            maxWidth: "48vw",
           }}
+          title={displayHotel}
         >
-          {hotelName}
+          {displayHotel}
         </button>
 
         {pageTitle && (
           <>
             <div style={{ opacity: 0.3, fontWeight: 900 }}>·</div>
-            <div style={{ fontSize: 13, fontWeight: 900, opacity: 0.6, whiteSpace: "nowrap" }}>
+            <div
+              style={{
+                fontSize: 13,
+                fontWeight: 900,
+                opacity: 0.6,
+                whiteSpace: "nowrap",
+              }}
+            >
               {pageTitle}
             </div>
           </>
@@ -212,6 +258,7 @@ export default function HotelHeader() {
               fontSize: 13,
               whiteSpace: "nowrap",
               transition: "all 0.2s",
+              opacity: loading ? 0.6 : 1,
             }}
             onMouseEnter={(e) => {
               e.currentTarget.style.background = "#000";
@@ -239,6 +286,7 @@ export default function HotelHeader() {
             fontSize: 13,
             whiteSpace: "nowrap",
             transition: "all 0.2s",
+            opacity: loading ? 0.6 : 1,
           }}
           onMouseEnter={(e) => {
             e.currentTarget.style.background = "#000";
@@ -265,6 +313,7 @@ export default function HotelHeader() {
             fontSize: 13,
             whiteSpace: "nowrap",
             transition: "all 0.2s",
+            opacity: loading ? 0.6 : 1,
           }}
           onMouseEnter={(e) => {
             e.currentTarget.style.background = "#000";
