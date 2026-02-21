@@ -5,7 +5,6 @@ import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { requireRoleOrRedirect } from "@/lib/auth/RequireRole";
-import HotelHeader from "@/app/components/HotelHeader";
 
 type PackRow = {
   id: string;
@@ -31,7 +30,8 @@ export default function GlobalAuditsPage() {
   const [active, setActive] = useState(true);
 
   const styles = useMemo(() => {
-    const page: CSSProperties = { padding: 24, paddingTop: 80 };
+    const page: CSSProperties = { padding: 24, paddingTop: 24 };
+
     const card: CSSProperties = {
       background: "var(--card-bg)",
       border: "1px solid var(--header-border)",
@@ -39,6 +39,7 @@ export default function GlobalAuditsPage() {
       boxShadow: "var(--shadow-sm)",
       padding: 18,
     };
+
     const btnDark: CSSProperties = {
       padding: "10px 14px",
       borderRadius: 12,
@@ -50,6 +51,7 @@ export default function GlobalAuditsPage() {
       fontSize: 14,
       whiteSpace: "nowrap",
     };
+
     const btnWhite: CSSProperties = {
       padding: "10px 14px",
       borderRadius: 12,
@@ -61,6 +63,7 @@ export default function GlobalAuditsPage() {
       fontSize: 14,
       whiteSpace: "nowrap",
     };
+
     const row: CSSProperties = {
       background: "rgba(0,0,0,0.02)",
       border: "1px solid rgba(0,0,0,0.08)",
@@ -72,6 +75,7 @@ export default function GlobalAuditsPage() {
       gap: 12,
       flexWrap: "wrap",
     };
+
     const tag: CSSProperties = {
       padding: "6px 10px",
       borderRadius: 999,
@@ -84,6 +88,7 @@ export default function GlobalAuditsPage() {
     };
 
     const label: CSSProperties = { fontWeight: 950, fontSize: 12, opacity: 0.9, marginBottom: 6 };
+
     const input: CSSProperties = {
       width: "100%",
       height: 44,
@@ -94,6 +99,7 @@ export default function GlobalAuditsPage() {
       padding: "0 12px",
       outline: "none",
     };
+
     const textarea: CSSProperties = {
       width: "100%",
       borderRadius: 12,
@@ -176,8 +182,6 @@ export default function GlobalAuditsPage() {
 
   return (
     <main style={styles.page}>
-      <HotelHeader />
-
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
         <div>
           <div style={{ fontSize: 28, fontWeight: 950, letterSpacing: -0.4 }}>Biblioteca Global</div>
