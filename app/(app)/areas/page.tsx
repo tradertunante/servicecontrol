@@ -120,9 +120,11 @@ export default function AreasPage() {
       setError(null);
 
       try {
-        const p = (await requireRoleOrRedirect(router, ["admin", "manager", "auditor", "superadmin"], "/login")) as
-          | Profile
-          | null;
+        const p = (await requireRoleOrRedirect(
+          router,
+          ["admin", "manager", "auditor", "superadmin"],
+          "/login"
+        )) as Profile | null;
 
         if (!alive || !p) return;
 
@@ -131,7 +133,10 @@ export default function AreasPage() {
         let hotelIdToUse: string | null = null;
 
         if (p.role === "superadmin") {
-          hotelIdToUse = typeof window !== "undefined" ? localStorage.getItem(HOTEL_KEY) : null;
+          hotelIdToUse =
+            typeof window !== "undefined"
+              ? localStorage.getItem(HOTEL_KEY)
+              : null;
 
           if (!hotelIdToUse) {
             setError("No hay hotel seleccionado. Vuelve al dashboard y selecciona uno.");
@@ -252,8 +257,9 @@ export default function AreasPage() {
 
   const canEdit = profile?.role === "admin" || profile?.role === "manager" || profile?.role === "superadmin";
 
+  // ✅ CAMBIO REAL: entrar al área => /areas/[areaId] (donde deben vivir las auditorías del área)
   const goArea = (areaId: string) => {
-    router.push(`/areas/${areaId}/history`);
+    router.push(`/areas/${areaId}`);
   };
 
   const createArea = async () => {
@@ -359,13 +365,13 @@ export default function AreasPage() {
         </div>
 
         <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-          <button onClick={() => router.back()} style={btn}>
+          <button type="button" onClick={() => router.back()} style={btn}>
             ← Atrás
           </button>
 
-          {/* ✅ NUEVO BOTÓN "ORDENAR" */}
           {canEdit && (
             <button
+              type="button"
               onClick={() => router.push("/areas/order")}
               style={btn}
               title="Reordenar las áreas (orden del dashboard)"
@@ -375,7 +381,7 @@ export default function AreasPage() {
           )}
 
           {canEdit && (
-            <button onClick={createArea} style={primaryBtn}>
+            <button type="button" onClick={createArea} style={primaryBtn}>
               + Nueva Área
             </button>
           )}
@@ -484,6 +490,7 @@ export default function AreasPage() {
                   {canEdit && (
                     <>
                       <button
+                        type="button"
                         onClick={() => renameArea(a.id, a.name)}
                         style={{
                           ...smallBtn,
@@ -497,6 +504,7 @@ export default function AreasPage() {
                       </button>
 
                       <button
+                        type="button"
                         onClick={() => editAreaType(a.id, a.type)}
                         style={{
                           ...smallBtn,
@@ -511,7 +519,7 @@ export default function AreasPage() {
                     </>
                   )}
 
-                  <button onClick={() => goArea(a.id)} style={primaryBtn}>
+                  <button type="button" onClick={() => goArea(a.id)} style={primaryBtn}>
                     Entrar
                   </button>
                 </div>
