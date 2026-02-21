@@ -363,6 +363,17 @@ export default function AreasPage() {
             ← Atrás
           </button>
 
+          {/* ✅ NUEVO BOTÓN "ORDENAR" */}
+          {canEdit && (
+            <button
+              onClick={() => router.push("/areas/order")}
+              style={btn}
+              title="Reordenar las áreas (orden del dashboard)"
+            >
+              Ordenar
+            </button>
+          )}
+
           {canEdit && (
             <button onClick={createArea} style={primaryBtn}>
               + Nueva Área
