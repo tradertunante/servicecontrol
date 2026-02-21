@@ -1,3 +1,4 @@
+// FILE: app/superadmin/hotels/page.tsx
 "use client";
 
 import { useEffect, useState } from "react";
@@ -5,7 +6,6 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { requireRoleOrRedirect, type Profile as LoadedProfile } from "@/lib/auth/RequireRole";
 import type { Role } from "@/lib/auth/permissions";
-import HotelHeader from "@/app/components/HotelHeader";
 
 type Hotel = {
   id: string;
@@ -140,9 +140,7 @@ export default function SuperadminHotelsPage() {
       if (updErr) throw updErr;
 
       setHotels((prev) =>
-        prev.map((h) =>
-          h.id === hotelId ? ({ ...h, ...(data as Hotel) } as Hotel) : h
-        )
+        prev.map((h) => (h.id === hotelId ? ({ ...h, ...(data as Hotel) } as Hotel) : h))
       );
 
       if (!nextActive && activeHotelId === hotelId) {
@@ -158,8 +156,6 @@ export default function SuperadminHotelsPage() {
 
   return (
     <main style={{ padding: 24, background: bg, color: fg, minHeight: "100vh" }}>
-      <HotelHeader />
-
       {/* Header */}
       <div
         style={{
@@ -171,7 +167,7 @@ export default function SuperadminHotelsPage() {
         }}
       >
         <div>
-          <div style={{ fontSize: 28, fontWeight: 950 }}>Elegir hotel</div>
+          <div style={{ fontSize: 28, fontWeight: 950 }}>Hoteles</div>
           <div style={{ opacity: 0.7, marginTop: 6 }}>
             {profile?.full_name ?? "Superadmin"} · Superadmin
           </div>
@@ -273,14 +269,10 @@ export default function SuperadminHotelsPage() {
                 }}
               >
                 <div>
-                  <div style={{ fontWeight: 950, fontSize: 16, marginBottom: 6 }}>
-                    {h.name}
-                  </div>
+                  <div style={{ fontWeight: 950, fontSize: 16, marginBottom: 6 }}>{h.name}</div>
                   <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
                     <span style={{ fontSize: 13, opacity: 0.75 }}>ID: {h.id}</span>
-                    <span style={pill(isActive)}>
-                      {isActive ? "Activo" : "Inactivo"}
-                    </span>
+                    <span style={pill(isActive)}>{isActive ? "Activo" : "Inactivo"}</span>
                   </div>
                 </div>
 

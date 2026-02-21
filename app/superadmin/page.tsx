@@ -4,7 +4,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { requireRoleOrRedirect } from "@/lib/auth/RequireRole";
-import HotelHeader from "@/app/components/HotelHeader";
 
 type Card = {
   title: string;
@@ -18,7 +17,7 @@ export default function SuperadminHomePage() {
   const [loading, setLoading] = useState(true);
 
   const styles = useMemo(() => {
-    const page: React.CSSProperties = { padding: 24, paddingTop: 80 };
+    const page: React.CSSProperties = { padding: 24, paddingTop: 24 };
     const headerWrap: React.CSSProperties = {
       display: "flex",
       alignItems: "flex-end",
@@ -78,7 +77,7 @@ export default function SuperadminHomePage() {
 
   const cards: Card[] = [
     {
-      title: "Auditorías Globales",
+      title: "Biblioteca Global",
       subtitle: "Gestiona packs y plantillas base para todos los hoteles (catálogo global).",
       href: "/superadmin/global-audits",
       icon: "🌍",
@@ -94,7 +93,6 @@ export default function SuperadminHomePage() {
   if (loading) {
     return (
       <main style={styles.page}>
-        <HotelHeader />
         <div style={{ opacity: 0.8 }}>Cargando…</div>
       </main>
     );
@@ -102,8 +100,6 @@ export default function SuperadminHomePage() {
 
   return (
     <main style={styles.page}>
-      <HotelHeader />
-
       <div style={styles.headerWrap}>
         <div>
           <div style={styles.title}>Superadmin</div>
@@ -134,7 +130,7 @@ export default function SuperadminHomePage() {
       </div>
 
       <div style={styles.hint}>
-        Consejo: “Auditorías Globales” centraliza los packs y sus plantillas para reutilizarlos entre hoteles.
+        Consejo: “Biblioteca Global” centraliza los packs y sus plantillas para reutilizarlos entre hoteles.
       </div>
     </main>
   );
