@@ -29,6 +29,7 @@ type AreaRow = {
   name: string;
   type: string | null;
   hotel_id: string | null;
+  sort_order?: number | null;
 };
 
 type AuditRunRow = {
@@ -122,10 +123,7 @@ function scoreColor(score: number) {
 }
 
 function formatMonthKey(d: Date) {
-  const s = d
-    .toLocaleDateString("es-ES", { month: "short" })
-    .replace(".", "")
-    .slice(0, 3);
+  const s = d.toLocaleDateString("es-ES", { month: "short" }).replace(".", "").slice(0, 3);
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
@@ -280,8 +278,9 @@ export default function DashboardPage() {
         if (isAdminLike) {
           const { data, error: aErr } = await supabase
             .from("areas")
-            .select("id,name,type,hotel_id")
+            .select("id,name,type,hotel_id,sort_order")
             .eq("hotel_id", hotelIdToUse)
+            .order("sort_order", { ascending: true, nullsFirst: false })
             .order("name", { ascending: true });
 
           if (aErr) throw aErr;
@@ -300,9 +299,10 @@ export default function DashboardPage() {
           if (allowedIds.length > 0) {
             const { data: areasData, error: areasErr } = await supabase
               .from("areas")
-              .select("id,name,type,hotel_id")
+              .select("id,name,type,hotel_id,sort_order")
               .eq("hotel_id", hotelIdToUse)
               .in("id", allowedIds)
+              .order("sort_order", { ascending: true, nullsFirst: false })
               .order("name", { ascending: true });
 
             if (areasErr) throw areasErr;
@@ -352,6 +352,7 @@ export default function DashboardPage() {
         setQuarterScore(getQuarterScore(runsList, currentYear, currentQuarter));
         setYearScore(getYearScore(runsList, currentYear));
 
+        // Heatmap respeta el orden operativo (sort_order)
         const heatData: any[] = [];
         for (const area of areasList) {
           const areaRuns = runsList.filter((r) => r.area_id === area.id);
@@ -386,10 +387,7 @@ export default function DashboardPage() {
 
         const templateNameById = new Map<string, string>();
         if (templateIds.length > 0) {
-          const { data: templatesData, error: tErr } = await supabase
-            .from("audit_templates")
-            .select("id,name")
-            .in("id", templateIds);
+          const { data: templatesData, error: tErr } = await supabase.from("audit_templates").select("id,name").in("id", templateIds);
 
           if (tErr) throw tErr;
           (templatesData ?? []).forEach((t: any) => templateNameById.set(t.id, t.name));
@@ -489,9 +487,7 @@ export default function DashboardPage() {
           <span style={{ fontSize: 22, lineHeight: "22px" }}>{badge}</span>
 
           <div style={{ minWidth: 0 }}>
-            <div style={{ fontWeight: 950, fontSize: 16, overflow: "hidden", textOverflow: "ellipsis" }}>
-              {area.name}
-            </div>
+            <div style={{ fontWeight: 950, fontSize: 16, overflow: "hidden", textOverflow: "ellipsis" }}>{area.name}</div>
 
             <div style={{ marginTop: 6, display: "flex", flexWrap: "wrap", gap: 10, opacity: 0.85 }}>
               <span style={{ fontSize: 12, fontWeight: 900 }}>Tendencia 3 meses:</span>
@@ -499,12 +495,7 @@ export default function DashboardPage() {
                 {trend.map((t) => (
                   <span key={`${t.key}-${t.year}-${t.monthIndex}`} style={{ fontSize: 12 }}>
                     <strong>{t.key}</strong>{" "}
-                    <span
-                      style={{
-                        color: t.avg === null ? "var(--placeholder)" : scoreColor(t.avg ?? 0),
-                        fontWeight: 950,
-                      }}
-                    >
+                    <span style={{ color: t.avg === null ? "var(--placeholder)" : scoreColor(t.avg ?? 0), fontWeight: 950 }}>
                       {t.avg === null ? "—" : `${(t.avg ?? 0).toFixed(1)}%`}
                     </span>{" "}
                     <span style={{ opacity: 0.65 }}>({t.count})</span>
@@ -548,9 +539,7 @@ export default function DashboardPage() {
       <main style={{ padding: 24, background: bg, color: fg }}>
         <div style={{ ...card, margin: "0 auto" }}>
           <div style={{ fontSize: 22, fontWeight: 950 }}>Elige un hotel</div>
-          <div style={{ marginTop: 8, opacity: 0.7 }}>
-            Como superadmin, primero selecciona el hotel con el que quieres trabajar.
-          </div>
+          <div style={{ marginTop: 8, opacity: 0.7 }}>Como superadmin, primero selecciona el hotel con el que quieres trabajar.</div>
 
           <div style={{ marginTop: 16, display: "grid", gap: 10 }}>
             {hotels.length === 0 ? (
@@ -590,40 +579,43 @@ export default function DashboardPage() {
   return (
     <main style={{ padding: 24, background: bg, color: fg }}>
       {/* Barra superior informativa */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, marginBottom: 18 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, marginBottom: 18, flexWrap: "wrap" }}>
         <div style={{ opacity: 0.7, fontSize: 14 }}>
           Hola{profile?.full_name ? `, ${profile.full_name}` : ""}. Rol: <strong>{profile?.role}</strong> · Áreas:{" "}
           <strong>{areas.length}</strong> · Hotel seleccionado: <strong>{selectedHotelName}</strong>
         </div>
 
-        {profile?.role === "superadmin" ? (
-          <button
-            style={ghostBtn}
-            onClick={() => {
-              localStorage.removeItem(HOTEL_KEY);
-              setSelectedHotelId(null);
-              setAreas([]);
-              setRuns([]);
-              setHeatMapData([]);
-              setTop3Areas([]);
-              setWorst3Areas([]);
-              setWorst3Audits([]);
-            }}
-          >
-            Cambiar hotel
-          </button>
-        ) : null}
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+          {(profile?.role === "admin" || profile?.role === "superadmin") && (
+            <button style={ghostBtn} onClick={() => router.push("/areas/order")}>
+              Ordenar áreas
+            </button>
+          )}
+
+          {profile?.role === "superadmin" ? (
+            <button
+              style={ghostBtn}
+              onClick={() => {
+                localStorage.removeItem(HOTEL_KEY);
+                setSelectedHotelId(null);
+                setAreas([]);
+                setRuns([]);
+                setHeatMapData([]);
+                setTop3Areas([]);
+                setWorst3Areas([]);
+                setWorst3Audits([]);
+              }}
+            >
+              Cambiar hotel
+            </button>
+          ) : null}
+        </div>
       </div>
 
       {/* Gauges */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 16 }}>
         <div style={card}>
-          <GaugeChart
-            value={monthScore.avg ?? 0}
-            label={monthName.charAt(0).toUpperCase() + monthName.slice(1)}
-            count={monthScore.count}
-            size={180}
-          />
+          <GaugeChart value={monthScore.avg ?? 0} label={monthName.charAt(0).toUpperCase() + monthName.slice(1)} count={monthScore.count} size={180} />
         </div>
 
         <div style={card}>
@@ -638,29 +630,21 @@ export default function DashboardPage() {
       {/* Heatmap */}
       <div style={{ ...card, marginTop: 16 }}>
         <div style={{ fontSize: 18, fontWeight: 950, marginBottom: 16 }}>Performance por área (últimos 12 meses)</div>
-        {heatMapData.length > 0 ? (
-          <HeatMap data={heatMapData} monthLabels={monthLabels} />
-        ) : (
-          <div style={{ opacity: 0.7 }}>No hay datos suficientes para mostrar el mapa de calor.</div>
-        )}
+        {heatMapData.length > 0 ? <HeatMap data={heatMapData} monthLabels={monthLabels} /> : <div style={{ opacity: 0.7 }}>No hay datos suficientes para mostrar el mapa de calor.</div>}
       </div>
 
       {/* Mejores vs Peores */}
       {(top3Areas.length > 0 || worst3Areas.length > 0) && (
         <div style={{ marginTop: 16, display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 16 }}>
           <div style={card}>
-            <div style={{ fontSize: 18, fontWeight: 950, marginBottom: 16 }}>
-              Top 3 Áreas con mejor performance ({now.getFullYear()})
-            </div>
+            <div style={{ fontSize: 18, fontWeight: 950, marginBottom: 16 }}>Top 3 Áreas con mejor performance ({now.getFullYear()})</div>
             <div style={{ display: "grid", gap: 12 }}>
               {top3Areas.length > 0 ? top3Areas.map((a, idx) => renderAreaRow(a, idx, "best")) : <div style={{ opacity: 0.7 }}>No hay datos suficientes.</div>}
             </div>
           </div>
 
           <div style={card}>
-            <div style={{ fontSize: 18, fontWeight: 950, marginBottom: 16 }}>
-              Top 3 Áreas con peor performance ({now.getFullYear()})
-            </div>
+            <div style={{ fontSize: 18, fontWeight: 950, marginBottom: 16 }}>Top 3 Áreas con peor performance ({now.getFullYear()})</div>
             <div style={{ display: "grid", gap: 12 }}>
               {worst3Areas.length > 0 ? worst3Areas.map((a, idx) => renderAreaRow(a, idx, "worst")) : <div style={{ opacity: 0.7 }}>No hay datos suficientes.</div>}
             </div>
@@ -671,9 +655,7 @@ export default function DashboardPage() {
       {/* Top 3 auditorías peores */}
       {worst3Audits.length > 0 && (
         <div style={{ ...card, marginTop: 16 }}>
-          <div style={{ fontSize: 18, fontWeight: 950, marginBottom: 16 }}>
-            Top 3 auditorías con peor resultado (promedio)
-          </div>
+          <div style={{ fontSize: 18, fontWeight: 950, marginBottom: 16 }}>Top 3 auditorías con peor resultado (promedio)</div>
 
           <div style={{ display: "grid", gap: 12 }}>
             {worst3Audits.map((a, idx) => (
@@ -694,9 +676,7 @@ export default function DashboardPage() {
                 <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
                   <span style={{ fontSize: 22 }}>{idx === 0 ? "🚨" : "⚠️"}</span>
                   <div style={{ minWidth: 0 }}>
-                    <div style={{ fontWeight: 950, fontSize: 16, overflow: "hidden", textOverflow: "ellipsis" }}>
-                      {a.name}
-                    </div>
+                    <div style={{ fontWeight: 950, fontSize: 16, overflow: "hidden", textOverflow: "ellipsis" }}>{a.name}</div>
                     <div style={{ marginTop: 4, fontSize: 12, opacity: 0.75 }}>
                       {a.count} ejecución{a.count === 1 ? "" : "es"} · promedio del periodo
                     </div>
