@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { supabase } from "../../../lib/supabaseClient";
-import { canManageAreas } from "../../../lib/auth/permissions";
+import { supabase } from "@/lib/supabaseClient";
+import { canManageAreas } from "@/lib/auth/permissions";
 
 type Role = "admin" | "manager" | "auditor";
 
@@ -22,15 +22,20 @@ export default function NewAreaPage() {
   const [loading, setLoading] = useState(true);
 
   const [name, setName] = useState("");
-  const [type, setType] = useState("HK"); // default
+  const [type, setType] = useState("HK");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    let alive = true;
+
     const init = async () => {
       setLoading(true);
 
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
       if (!user) {
         router.push("/login");
         return;
@@ -51,15 +56,20 @@ export default function NewAreaPage() {
 
       // 🔒 solo admin/manager
       if (!canManageAreas(p.role)) {
-        router.push("/areas"); // o "/unauthorized" si tienes esa página
+        router.push("/areas");
         return;
       }
 
+      if (!alive) return;
       setProfile(p);
       setLoading(false);
     };
 
-    init();
+    void init();
+
+    return () => {
+      alive = false;
+    };
   }, [router]);
 
   const onCreate = async () => {
@@ -95,7 +105,7 @@ export default function NewAreaPage() {
   if (loading) return <p style={{ padding: 24 }}>Cargando...</p>;
 
   return (
-    <main style={{ padding: 24, fontFamily: "system-ui", maxWidth: 520 }}>
+    <main style={{ padding: 24, fontFamily: "system-ui" }}>
       <h1 style={{ fontSize: 22, fontWeight: 800, marginBottom: 18 }}>Nueva área</h1>
 
       {error && (

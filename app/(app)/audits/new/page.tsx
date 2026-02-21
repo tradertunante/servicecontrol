@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
-import { supabase } from "../../../lib/supabaseClient";
-import { canRunAudits } from "../../../lib/auth/permissions";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { supabase } from "@/lib/supabaseClient";
+import { canManageAreas } from "@/lib/auth/permissions";
 
 type Role = "admin" | "manager" | "auditor";
 
@@ -15,41 +15,22 @@ type Profile = {
   full_name?: string | null;
 };
 
-type Area = {
-  id: string;
-  name: string;
-  type: string;
-};
-
-type AuditTemplate = {
-  id: string;
-  name: string;
-  area_id: string;
-  hotel_id: string;
-  active: boolean;
-};
-
-export default function StartAuditPage() {
+export default function NewAreaPage() {
   const router = useRouter();
-  const sp = useSearchParams();
 
-  // Acepta ambos: areaId / area_id, templateId / template_id
-  const areaId = useMemo(() => sp.get("areaId") || sp.get("area_id") || "", [sp]);
-  const templateId = useMemo(
-    () => sp.get("templateId") || sp.get("template_id") || "",
-    [sp]
-  );
-
-  const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState<Profile | null>(null);
-  const [area, setArea] = useState<Area | null>(null);
-  const [tpl, setTpl] = useState<AuditTemplate | null>(null);
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  const [name, setName] = useState("");
+  const [type, setType] = useState("HK");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    let alive = true;
+
     const init = async () => {
       setLoading(true);
-      setErrorMsg(null);
 
       const {
         data: { user },
@@ -72,135 +53,134 @@ export default function StartAuditPage() {
       }
 
       const p = profileData as Profile;
+
+      // 🔒 solo admin/manager
+      if (!canManageAreas(p.role)) {
+        router.push("/areas");
+        return;
+      }
+
+      if (!alive) return;
       setProfile(p);
-
-      if (!areaId || !templateId) {
-        setErrorMsg("Faltan parámetros (areaId / templateId)");
-        setLoading(false);
-        return;
-      }
-
-      // cargar área
-      const { data: areaData } = await supabase
-        .from("areas")
-        .select("id, name, type")
-        .eq("id", areaId)
-        .single();
-
-      if (areaData) setArea(areaData as Area);
-
-      // cargar template
-      const { data: tplData, error: tplError } = await supabase
-        .from("audit_templates")
-        .select("id, name, area_id, hotel_id, active")
-        .eq("id", templateId)
-        .single();
-
-      if (tplError || !tplData) {
-        setErrorMsg("No se pudo cargar la auditoría seleccionada.");
-        setLoading(false);
-        return;
-      }
-
-      // Validación: que el template sea de tu hotel y del área que estás abriendo
-      const t = tplData as AuditTemplate;
-      setTpl(t);
-
-      if (t.hotel_id !== p.hotel_id || t.area_id !== areaId) {
-        setErrorMsg("Esta auditoría no pertenece a tu hotel o a esta área.");
-        setLoading(false);
-        return;
-      }
-
-      // Permisos
-      if (!canRunAudits(p.role)) {
-        setErrorMsg("No tienes permisos para iniciar esta auditoría.");
-        setLoading(false);
-        return;
-      }
-
       setLoading(false);
     };
 
-    init();
-  }, [router, areaId, templateId]);
+    void init();
 
-  const handleStart = async () => {
-    if (!profile || !areaId || !templateId) return;
+    return () => {
+      alive = false;
+    };
+  }, [router]);
 
-    // Crea el audit_run
-    const { data: runData, error: runError } = await supabase
-      .from("audit_runs")
-      .insert({
-        hotel_id: profile.hotel_id,
-        area_id: areaId,
-        audit_template_id: templateId,
-        executed_by: profile.id,
-        status: "draft",
-      })
-      .select("id")
-      .single();
+  const onCreate = async () => {
+    if (!profile) return;
 
-    if (runError || !runData?.id) {
-      console.error(runError);
-      setErrorMsg("No se pudo iniciar la auditoría.");
+    setError(null);
+
+    const cleanName = name.trim();
+    if (!cleanName) {
+      setError("Pon un nombre de área.");
       return;
     }
 
-    // Te mando a la pantalla del run (si no existe aún, lo creamos después)
-    router.push(`/audits/${runData.id}`);
+    setSaving(true);
+
+    const { error: insertError } = await supabase.from("areas").insert({
+      hotel_id: profile.hotel_id,
+      name: cleanName,
+      type,
+      active: true,
+    });
+
+    setSaving(false);
+
+    if (insertError) {
+      setError(insertError.message);
+      return;
+    }
+
+    router.push("/areas");
   };
 
-  if (loading) return <p style={{ padding: 24, fontFamily: "system-ui" }}>Cargando...</p>;
+  if (loading) return <p style={{ padding: 24 }}>Cargando...</p>;
 
   return (
     <main style={{ padding: 24, fontFamily: "system-ui" }}>
-      <h1 style={{ fontSize: 22, fontWeight: 800, margin: 0 }}>Iniciar auditoría</h1>
+      <h1 style={{ fontSize: 22, fontWeight: 800, marginBottom: 18 }}>Nueva área</h1>
 
-      <div style={{ marginTop: 10, opacity: 0.8 }}>
-        <div>
-          Área: <b>{area?.name ?? "-"}</b>
+      {error && (
+        <div style={{ padding: 12, border: "1px solid #f00", borderRadius: 8, marginBottom: 14 }}>
+          <b>Error:</b> {error}
         </div>
-        <div>
-          Auditoría: <b>{tpl?.name ?? "-"}</b>
+      )}
+
+      <div style={{ display: "grid", gap: 12 }}>
+        <label style={{ display: "grid", gap: 6 }}>
+          <span style={{ fontSize: 13, opacity: 0.8 }}>Nombre</span>
+          <input
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Ej. Housekeeping"
+            style={{ padding: 10, borderRadius: 8, border: "1px solid #ddd" }}
+          />
+        </label>
+
+        <label style={{ display: "grid", gap: 6 }}>
+          <span style={{ fontSize: 13, opacity: 0.8 }}>Tipo</span>
+          <select
+            value={type}
+            onChange={(e) => setType(e.target.value)}
+            style={{ padding: 10, borderRadius: 8, border: "1px solid #ddd" }}
+          >
+            <option value="HK">HK - Housekeeping</option>
+            <option value="FO">FO - Front Office</option>
+            <option value="F&B">F&B - Food & Beverage</option>
+            <option value="SPA">SPA</option>
+            <option value="ENG">ENG - Engineering</option>
+            <option value="SEC">SEC - Security</option>
+            <option value="OTH">OTH - Other</option>
+          </select>
+        </label>
+
+        <div style={{ display: "flex", gap: 10, marginTop: 6 }}>
+          <button
+            onClick={() => router.push("/areas")}
+            style={{
+              padding: "10px 14px",
+              borderRadius: 8,
+              border: "1px solid #ddd",
+              background: "#fff",
+              cursor: "pointer",
+              fontWeight: 600,
+            }}
+          >
+            Cancelar
+          </button>
+
+          <button
+            onClick={onCreate}
+            disabled={saving}
+            style={{
+              padding: "10px 14px",
+              borderRadius: 8,
+              border: "1px solid #000",
+              background: "#000",
+              color: "#fff",
+              cursor: "pointer",
+              fontWeight: 700,
+              opacity: saving ? 0.6 : 1,
+            }}
+          >
+            {saving ? "Creando..." : "Crear área"}
+          </button>
         </div>
       </div>
 
-      {errorMsg ? (
-        <p style={{ color: "crimson", marginTop: 14 }}>{errorMsg}</p>
-      ) : null}
-
-      <div style={{ marginTop: 18, display: "flex", gap: 12 }}>
-        <button
-          onClick={() => router.back()}
-          style={{
-            padding: "10px 12px",
-            borderRadius: 8,
-            border: "1px solid #000",
-            background: "#fff",
-            cursor: "pointer",
-            fontWeight: 700,
-          }}
-        >
-          Volver
-        </button>
-
-        <button
-          onClick={handleStart}
-          disabled={!!errorMsg}
-          style={{
-            padding: "10px 12px",
-            borderRadius: 8,
-            border: "1px solid #000",
-            background: !!errorMsg ? "#777" : "#000",
-            color: "#fff",
-            cursor: !!errorMsg ? "not-allowed" : "pointer",
-            fontWeight: 800,
-          }}
-        >
-          Iniciar auditoría
-        </button>
-      </div>
+      {profile && (
+        <p style={{ marginTop: 18, fontSize: 12, opacity: 0.7 }}>
+          Hotel: <span style={{ fontFamily: "monospace" }}>{profile.hotel_id}</span> · Rol: <b>{profile.role}</b>
+        </p>
+      )}
     </main>
   );
 }
