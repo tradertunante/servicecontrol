@@ -18,7 +18,7 @@ body {
   /* App */
   --bg: #dde1ea;                /* fondo de la página */
   --text: #060101;              /* texto base */
-  --muted: rgba(136, 199, 192, 0.7);
+  --muted: rgba(46, 58, 193, 0.7);
 
   /* Header (DISTINTO al fondo) */
   --header-bg: rgba(255, 255, 255, 0.75);
