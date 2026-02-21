@@ -15,6 +15,9 @@ type Profile = {
   active?: boolean | null;
 };
 
+const HOTEL_KEY = "sc_hotel_id";
+const HOTEL_CHANGED_EVENT = "sc-hotel-changed";
+
 export default function AdminPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
@@ -25,6 +28,9 @@ export default function AdminPage() {
     let alive = true;
 
     (async () => {
+      setLoading(true);
+      setError("");
+
       const { data: authData, error: authErr } = await supabase.auth.getUser();
       if (!alive) return;
 
@@ -55,19 +61,46 @@ export default function AdminPage() {
 
       const role = normalizeRole(prof.role);
 
-      if (role !== "admin") {
+      // ✅ Permitimos admin y superadmin
+      if (role !== "admin" && role !== "superadmin") {
         router.replace("/dashboard");
         return;
       }
 
-      setProfile({
+      const nextProfile: Profile = {
         id: prof.id,
         full_name: prof.full_name ?? null,
         role,
         hotel_id: prof.hotel_id ?? null,
         active: prof.active ?? null,
-      });
+      };
 
+      // ✅ Si eres superadmin, necesitas hotel seleccionado para administrar
+      if (role === "superadmin") {
+        const selectedHotelId = typeof window !== "undefined" ? localStorage.getItem(HOTEL_KEY) : null;
+
+        if (!selectedHotelId) {
+          setError("Como superadmin, primero selecciona un hotel en el dashboard para poder administrar.");
+          setProfile(nextProfile);
+          setLoading(false);
+          return;
+        }
+
+        // (Opcional) Si quieres que TODO el sistema apunte a ese hotel, emitimos el evento
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(new Event(HOTEL_CHANGED_EVENT));
+        }
+      } else {
+        // admin normal: debe tener hotel en perfil
+        if (!nextProfile.hotel_id) {
+          setError("Tu usuario no tiene hotel asignado.");
+          setProfile(nextProfile);
+          setLoading(false);
+          return;
+        }
+      }
+
+      setProfile(nextProfile);
       setLoading(false);
     })();
 
@@ -96,21 +129,37 @@ export default function AdminPage() {
       <main style={{ padding: 24, paddingTop: 80 }}>
         <HotelHeader />
         <h1 style={{ fontSize: 28, fontWeight: 900 }}>Admin</h1>
-        <p style={{ marginTop: 12, color: "crimson" }}>{error}</p>
-        <button
-          onClick={logout}
-          style={{
-            marginTop: 14,
-            padding: "10px 14px",
-            borderRadius: 12,
-            border: "1px solid rgba(0,0,0,0.18)",
-            background: "#fff",
-            fontWeight: 900,
-            cursor: "pointer",
-          }}
-        >
-          Salir
-        </button>
+        <p style={{ marginTop: 12, color: "crimson", fontWeight: 900 }}>{error}</p>
+
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 14 }}>
+          <button
+            onClick={() => router.push("/dashboard")}
+            style={{
+              padding: "10px 14px",
+              borderRadius: 12,
+              border: "1px solid rgba(0,0,0,0.18)",
+              background: "#fff",
+              fontWeight: 900,
+              cursor: "pointer",
+            }}
+          >
+            Ir al dashboard
+          </button>
+
+          <button
+            onClick={logout}
+            style={{
+              padding: "10px 14px",
+              borderRadius: 12,
+              border: "1px solid rgba(0,0,0,0.18)",
+              background: "#fff",
+              fontWeight: 900,
+              cursor: "pointer",
+            }}
+          >
+            Salir
+          </button>
+        </div>
       </main>
     );
   }
@@ -118,7 +167,7 @@ export default function AdminPage() {
   return (
     <main style={{ padding: 24, paddingTop: 80 }}>
       <HotelHeader />
-      
+
       <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
         <div>
           <h1 style={{ fontSize: 30, fontWeight: 950, margin: 0 }}>Admin</h1>
