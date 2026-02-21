@@ -1,7 +1,6 @@
-// FILE: app/superadmin/global-audits/[id]/page.tsx
 "use client";
 
-import { useEffect, useMemo, useState, type CSSProperties } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { requireRoleOrRedirect } from "@/lib/auth/RequireRole";
@@ -56,15 +55,15 @@ export default function PackDetailPage() {
   const [active, setActive] = useState(true);
 
   const styles = useMemo(() => {
-    const page: CSSProperties = { padding: 24, paddingTop: 80 };
-    const card: CSSProperties = {
+    const page: React.CSSProperties = { padding: 24, paddingTop: 80 };
+    const card: React.CSSProperties = {
       background: "var(--card-bg)",
       border: "1px solid var(--header-border)",
       borderRadius: 18,
       boxShadow: "var(--shadow-sm)",
       padding: 18,
     };
-    const btnDark: CSSProperties = {
+    const btnDark: React.CSSProperties = {
       padding: "10px 14px",
       borderRadius: 12,
       border: "1px solid rgba(0,0,0,0.18)",
@@ -76,7 +75,7 @@ export default function PackDetailPage() {
       whiteSpace: "nowrap",
       height: 42,
     };
-    const btnWhite: CSSProperties = {
+    const btnWhite: React.CSSProperties = {
       padding: "10px 14px",
       borderRadius: 12,
       border: "1px solid var(--input-border)",
@@ -88,7 +87,7 @@ export default function PackDetailPage() {
       whiteSpace: "nowrap",
       height: 42,
     };
-    const input: CSSProperties = {
+    const input: React.CSSProperties = {
       width: "100%",
       padding: "10px 12px",
       borderRadius: 12,
@@ -99,8 +98,8 @@ export default function PackDetailPage() {
       color: "var(--input-text)",
       height: 42,
     };
-    const label: CSSProperties = { fontSize: 12, opacity: 0.75, fontWeight: 900 };
-    const row: CSSProperties = {
+    const label: React.CSSProperties = { fontSize: 12, opacity: 0.75, fontWeight: 900 };
+    const row: React.CSSProperties = {
       background: "rgba(0,0,0,0.02)",
       border: "1px solid rgba(0,0,0,0.08)",
       borderRadius: 14,
@@ -138,10 +137,7 @@ export default function PackDetailPage() {
     }
 
     const p = await requireRoleOrRedirect(router, ["superadmin"], "/dashboard");
-    if (!p) {
-      setLoading(false);
-      return;
-    }
+    if (!p) return;
 
     const { data: packData, error: pErr } = await supabase
       .from("global_audit_packs")
@@ -198,7 +194,14 @@ export default function PackDetailPage() {
   }
 
   useEffect(() => {
-    void load();
+    let alive = true;
+    (async () => {
+      if (!alive) return;
+      await load();
+    })();
+    return () => {
+      alive = false;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [packId]);
 
@@ -281,6 +284,13 @@ export default function PackDetailPage() {
     setSaving(false);
   }
 
+  /**
+   * ✅ PASO 1 (lo que me pides):
+   * Crear plantilla GLOBAL y abrir directamente el editor:
+   * /superadmin/templates/[templateId]
+   *
+   * Esto evita /superadmin/templates/new y evita el check constraint "scope_hotel_check".
+   */
   async function createGlobalTemplateAndOpenEditor() {
     if (!packId) return;
 
@@ -292,6 +302,7 @@ export default function PackDetailPage() {
     setError(null);
 
     try {
+      // 1) Crear plantilla global (MUY IMPORTANTE: scope='global')
       const { data: newTpl, error: cErr } = await supabase
         .from("audit_templates")
         .insert({
@@ -299,6 +310,9 @@ export default function PackDetailPage() {
           scope: "global",
           active: true,
           area_id: null,
+          // Si tu tabla tiene hotel_id con NOT NULL para scope='hotel',
+          // dejarlo FUERA o a null es lo correcto para scope='global'.
+          // hotel_id: null,
         })
         .select("id")
         .single();
@@ -306,6 +320,7 @@ export default function PackDetailPage() {
       if (cErr) throw cErr;
       if (!newTpl?.id) throw new Error("No se pudo crear la plantilla (sin id).");
 
+      // 2) Añadirla al pack automáticamente (última posición)
       const last = packTemplates.reduce((mx, x) => Math.max(mx, x.position ?? 0), 0);
       const nextPos = last + 10;
 
@@ -317,6 +332,7 @@ export default function PackDetailPage() {
 
       if (mErr) throw mErr;
 
+      // 3) Abrir editor directamente (tu Builder + Import Excel)
       router.push(`/superadmin/templates/${newTpl.id}`);
     } catch (e: any) {
       setError(e?.message ?? "Error creando plantilla global.");
@@ -374,7 +390,6 @@ export default function PackDetailPage() {
               <option value="hotel">hotel</option>
               <option value="restaurant">restaurant</option>
               <option value="spa">spa</option>
-              <option value="public_areas">public_areas</option>
               <option value="other">other</option>
             </select>
           </div>
@@ -423,7 +438,6 @@ export default function PackDetailPage() {
                     <button style={styles.btnWhite} onClick={() => router.push(`/superadmin/templates/${t.id}`)}>
                       Editar
                     </button>
-
                     <button style={styles.btnWhite} onClick={() => router.push(`/superadmin/templates/${t.id}/import`)}>
                       Importar
                     </button>
@@ -449,6 +463,7 @@ export default function PackDetailPage() {
           <div style={{ fontSize: 18, fontWeight: 950, marginBottom: 10 }}>Plantillas globales disponibles</div>
 
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 10 }}>
+            {/* ✅ ESTE ES EL BOTÓN CORRECTO: crea y abre editor */}
             <button style={styles.btnDark} disabled={saving} onClick={createGlobalTemplateAndOpenEditor}>
               + Crear plantilla global
             </button>
@@ -469,11 +484,9 @@ export default function PackDetailPage() {
                     <button style={styles.btnWhite} onClick={() => router.push(`/superadmin/templates/${t.id}`)}>
                       Editar
                     </button>
-
                     <button style={styles.btnWhite} onClick={() => router.push(`/superadmin/templates/${t.id}/import`)}>
                       Importar
                     </button>
-
                     <button style={styles.btnDark} disabled={saving} onClick={() => addTemplate(t.id)}>
                       Añadir
                     </button>

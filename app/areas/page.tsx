@@ -1,3 +1,4 @@
+// app/areas/page.tsx
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
@@ -45,6 +46,10 @@ export default function AreasPage() {
   const [areas, setAreas] = useState<AreaRow[]>([]);
   const [query, setQuery] = useState("");
 
+  // Busy states
+  const [busyRenameId, setBusyRenameId] = useState<string | null>(null);
+  const [busyTypeId, setBusyTypeId] = useState<string | null>(null);
+
   // ---- Theme vars (globals.css) ----
   const fg = "var(--text)";
   const bg = "var(--bg)";
@@ -91,6 +96,19 @@ export default function AreasPage() {
     padding: 16,
     boxShadow: shadowLg,
     color: fg,
+  };
+
+  const smallBtn: React.CSSProperties = {
+    padding: "8px 10px",
+    borderRadius: 12,
+    border: `1px solid ${inputBorder}`,
+    background: inputBg,
+    color: fg,
+    cursor: "pointer",
+    fontWeight: 950,
+    fontSize: 12,
+    boxShadow: shadowSm,
+    whiteSpace: "nowrap",
   };
 
   // 1) Cargar perfil + decidir hotelIdToUse (superadmin -> localStorage)
@@ -232,6 +250,8 @@ export default function AreasPage() {
     });
   }, [areas, query]);
 
+  const canEdit = profile?.role === "admin" || profile?.role === "manager" || profile?.role === "superadmin";
+
   const goArea = (areaId: string) => {
     router.push(`/areas/${areaId}/history`);
   };
@@ -264,6 +284,64 @@ export default function AreasPage() {
     }
   };
 
+  const renameArea = async (areaId: string, currentName: string) => {
+    if (!hotelId) {
+      alert("No hay hotel seleccionado.");
+      return;
+    }
+
+    const newNameRaw = window.prompt("Nuevo nombre del área:", currentName);
+    const newName = (newNameRaw ?? "").trim();
+    if (!newName || newName === currentName) return;
+
+    setBusyRenameId(areaId);
+    try {
+      const { error: upErr } = await supabase
+        .from("areas")
+        .update({ name: newName })
+        .eq("id", areaId)
+        .eq("hotel_id", hotelId);
+
+      if (upErr) throw upErr;
+
+      setAreas((prev) => prev.map((a) => (a.id === areaId ? { ...a, name: newName } : a)));
+    } catch (e: any) {
+      alert(e?.message ?? "No se pudo renombrar el área.");
+    } finally {
+      setBusyRenameId(null);
+    }
+  };
+
+  const editAreaType = async (areaId: string, currentType: string | null) => {
+    if (!hotelId) {
+      alert("No hay hotel seleccionado.");
+      return;
+    }
+
+    const newTypeRaw = window.prompt("Nuevo tipo (FO, HK, F&B, etc). Deja vacío para borrar:", currentType ?? "");
+    if (newTypeRaw === null) return;
+
+    const newType = newTypeRaw.trim();
+    const finalType = newType ? newType : null;
+
+    setBusyTypeId(areaId);
+    try {
+      const { error: upErr } = await supabase
+        .from("areas")
+        .update({ type: finalType })
+        .eq("id", areaId)
+        .eq("hotel_id", hotelId);
+
+      if (upErr) throw upErr;
+
+      setAreas((prev) => prev.map((a) => (a.id === areaId ? { ...a, type: finalType } : a)));
+    } catch (e: any) {
+      alert(e?.message ?? "No se pudo actualizar el tipo del área.");
+    } finally {
+      setBusyTypeId(null);
+    }
+  };
+
   return (
     <main style={{ padding: 24, paddingTop: 80, background: bg, color: fg }}>
       <HotelHeader />
@@ -275,9 +353,8 @@ export default function AreasPage() {
             Áreas {hotelName ? <span style={{ opacity: 0.65, fontWeight: 800 }}>· {hotelName}</span> : null}
           </div>
           <div style={{ fontSize: 13, opacity: 0.7 }}>
-            Rol: <strong>{profile?.role ?? "—"}</strong>{" "}
-            <span style={{ opacity: 0.6 }}>·</span>{" "}
-            Total: <strong>{areas.length}</strong>
+            Rol: <strong>{profile?.role ?? "—"}</strong> <span style={{ opacity: 0.6 }}>·</span> Total:{" "}
+            <strong>{areas.length}</strong>
           </div>
         </div>
 
@@ -286,7 +363,7 @@ export default function AreasPage() {
             ← Atrás
           </button>
 
-          {(profile?.role === "admin" || profile?.role === "manager" || profile?.role === "superadmin") && (
+          {canEdit && (
             <button onClick={createArea} style={primaryBtn}>
               + Nueva Área
             </button>
@@ -339,9 +416,7 @@ export default function AreasPage() {
             <div style={card}>
               <div style={{ fontWeight: 950 }}>No hay áreas</div>
               <div style={{ marginTop: 6, opacity: 0.75 }}>
-                {query.trim()
-                  ? "No hay resultados para tu búsqueda."
-                  : "Este hotel todavía no tiene áreas creadas."}
+                {query.trim() ? "No hay resultados para tu búsqueda." : "Este hotel todavía no tiene áreas creadas."}
               </div>
             </div>
           ) : (
@@ -354,6 +429,7 @@ export default function AreasPage() {
                   justifyContent: "space-between",
                   alignItems: "center",
                   gap: 12,
+                  flexWrap: "wrap",
                 }}
               >
                 <div style={{ minWidth: 0 }}>
@@ -393,9 +469,41 @@ export default function AreasPage() {
                   </div>
                 </div>
 
-                <button onClick={() => goArea(a.id)} style={primaryBtn}>
-                  Entrar
-                </button>
+                <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+                  {canEdit && (
+                    <>
+                      <button
+                        onClick={() => renameArea(a.id, a.name)}
+                        style={{
+                          ...smallBtn,
+                          opacity: busyRenameId === a.id ? 0.6 : 1,
+                          cursor: busyRenameId === a.id ? "not-allowed" : "pointer",
+                        }}
+                        disabled={busyRenameId === a.id}
+                        title="Editar nombre"
+                      >
+                        {busyRenameId === a.id ? "Guardando…" : "Editar nombre"}
+                      </button>
+
+                      <button
+                        onClick={() => editAreaType(a.id, a.type)}
+                        style={{
+                          ...smallBtn,
+                          opacity: busyTypeId === a.id ? 0.6 : 1,
+                          cursor: busyTypeId === a.id ? "not-allowed" : "pointer",
+                        }}
+                        disabled={busyTypeId === a.id}
+                        title="Editar tipo (FO / HK / F&B...)"
+                      >
+                        {busyTypeId === a.id ? "Guardando…" : "Editar tipo"}
+                      </button>
+                    </>
+                  )}
+
+                  <button onClick={() => goArea(a.id)} style={primaryBtn}>
+                    Entrar
+                  </button>
+                </div>
               </div>
             ))
           )}
