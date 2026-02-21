@@ -1,4 +1,3 @@
-// app/(app)/admin/create-user/page.tsx
 "use client";
 
 import { useEffect, useState } from "react";
@@ -20,12 +19,16 @@ export default function CreateUserPage() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
-  // 1) Gate de permisos (así si esto renderiza, SABEMOS que la ruta existe)
+  // Gate de permisos
   useEffect(() => {
     let mounted = true;
 
     (async () => {
-      const prof = await requireRoleOrRedirect(router, ["admin", "superadmin"], "/login");
+      const prof = await requireRoleOrRedirect(
+        router,
+        ["admin", "superadmin"],
+        "/login"
+      );
       if (!mounted) return;
       setProfile(prof);
       setBooting(false);
@@ -56,8 +59,8 @@ export default function CreateUserPage() {
     }
 
     try {
-      // IMPORTANTE: endpoint relativo funciona, pero uso pathname absoluto por claridad
-      const res = await fetch("/admin/create-user", {
+      // ✅ ENDPOINT CORRECTO
+      const res = await fetch("/api/admin/create-user", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -76,7 +79,9 @@ export default function CreateUserPage() {
       if (!res.ok) {
         setMessage(json?.error || `Error (${res.status}) creando usuario.`);
       } else {
-        setMessage("Usuario creado correctamente.");
+        setMessage(
+          `Usuario creado correctamente. ID: ${json?.user_id ?? "??"}`
+        );
         setFullName("");
         setEmail("");
         setPassword("");
@@ -116,8 +121,14 @@ export default function CreateUserPage() {
               "Cargando permisos…"
             ) : profile ? (
               <>
-                Sesión: <span style={{ fontWeight: 900, color: "var(--text)" }}>{profile.full_name ?? "Usuario"}</span>{" "}
-                · rol <span style={{ fontWeight: 900, color: "var(--text)" }}>{profile.role}</span>
+                Sesión:{" "}
+                <span style={{ fontWeight: 900 }}>
+                  {profile.full_name ?? "Usuario"}
+                </span>{" "}
+                · rol{" "}
+                <span style={{ fontWeight: 900 }}>
+                  {profile.role}
+                </span>
               </>
             ) : (
               "Sin perfil."
@@ -139,45 +150,77 @@ export default function CreateUserPage() {
         >
           <div style={{ display: "grid", gap: 12 }}>
             <div>
-              <label style={{ fontWeight: 800, fontSize: 13 }}>Nombre completo</label>
+              <label style={{ fontWeight: 800, fontSize: 13 }}>
+                Nombre completo
+              </label>
               <input
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
-                style={{ width: "100%", marginTop: 6, padding: 10, borderRadius: 10 }}
+                style={{
+                  width: "100%",
+                  marginTop: 6,
+                  padding: 10,
+                  borderRadius: 10,
+                  border: "1px solid var(--border)",
+                }}
                 placeholder="Opcional"
               />
             </div>
 
             <div>
-              <label style={{ fontWeight: 800, fontSize: 13 }}>Email</label>
+              <label style={{ fontWeight: 800, fontSize: 13 }}>
+                Email
+              </label>
               <input
                 type="email"
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                style={{ width: "100%", marginTop: 6, padding: 10, borderRadius: 10 }}
+                style={{
+                  width: "100%",
+                  marginTop: 6,
+                  padding: 10,
+                  borderRadius: 10,
+                  border: "1px solid var(--border)",
+                }}
                 placeholder="correo@hotel.com"
               />
             </div>
 
             <div>
-              <label style={{ fontWeight: 800, fontSize: 13 }}>Password</label>
+              <label style={{ fontWeight: 800, fontSize: 13 }}>
+                Password
+              </label>
               <input
                 type="password"
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                style={{ width: "100%", marginTop: 6, padding: 10, borderRadius: 10 }}
+                style={{
+                  width: "100%",
+                  marginTop: 6,
+                  padding: 10,
+                  borderRadius: 10,
+                  border: "1px solid var(--border)",
+                }}
                 placeholder="mínimo 8 caracteres"
               />
             </div>
 
             <div>
-              <label style={{ fontWeight: 800, fontSize: 13 }}>Rol</label>
+              <label style={{ fontWeight: 800, fontSize: 13 }}>
+                Rol
+              </label>
               <select
                 value={role}
                 onChange={(e) => setRole(e.target.value as any)}
-                style={{ width: "100%", marginTop: 6, padding: 10, borderRadius: 10 }}
+                style={{
+                  width: "100%",
+                  marginTop: 6,
+                  padding: 10,
+                  borderRadius: 10,
+                  border: "1px solid var(--border)",
+                }}
               >
                 <option value="auditor">Auditor</option>
                 <option value="manager">Manager</option>
@@ -185,7 +228,7 @@ export default function CreateUserPage() {
               </select>
             </div>
 
-            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+            <div style={{ display: "flex", gap: 10 }}>
               <button
                 type="submit"
                 disabled={loading || booting}
@@ -217,36 +260,23 @@ export default function CreateUserPage() {
               </button>
             </div>
 
-            {message ? (
+            {message && (
               <div
                 style={{
-                  marginTop: 4,
+                  marginTop: 8,
                   padding: 12,
                   borderRadius: 12,
                   background: "var(--row-bg)",
                   border: "1px solid var(--border)",
                   fontSize: 13,
                   fontWeight: 800,
-                  color: "var(--text)",
                 }}
               >
                 {message}
               </div>
-            ) : null}
+            )}
           </div>
         </form>
-
-        {/* Debug visible para confirmar que esta página está renderizando */}
-        <div
-          style={{
-            marginTop: 14,
-            maxWidth: 560,
-            color: "var(--muted)",
-            fontSize: 12,
-          }}
-        >
-          Debug: estás en <span style={{ fontWeight: 900, color: "var(--text)" }}>/admin/create-user</span>
-        </div>
       </div>
     </div>
   );
