@@ -1,7 +1,7 @@
 // app/components/HotelHeader.tsx
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 
@@ -32,11 +32,11 @@ function getPageTitle(pathname: string | null): string {
   return "";
 }
 
-// Decide si mostrar back y a dónde ir (no router.back)
+// Atrás jerárquico (sin router.back)
 function getBackTarget(pathname: string | null): string | null {
   if (!pathname) return null;
 
-  // Raíces: no back
+  // Raíces -> no mostrar atrás
   const roots = new Set([
     "/dashboard",
     "/admin",
@@ -49,11 +49,11 @@ function getBackTarget(pathname: string | null): string | null {
   ]);
   if (roots.has(pathname)) return null;
 
-  // Jerarquía típica
+  // Jerarquía
   if (pathname.startsWith("/areas/")) return "/areas";
   if (pathname.startsWith("/builder/")) return "/builder";
   if (pathname.startsWith("/admin/hotel")) return "/admin";
-  if (pathname.startsWith("/audits/")) return "/areas"; // o "/dashboard" si prefieres
+  if (pathname.startsWith("/audits/")) return "/areas"; // ajusta si prefieres /dashboard
 
   // Default seguro
   return "/dashboard";
@@ -63,27 +63,44 @@ export default function HotelHeader() {
   const router = useRouter();
   const pathname = usePathname();
 
+  const headerRef = useRef<HTMLDivElement | null>(null);
+
   const [hotelName, setHotelName] = useState<string | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const [isHoveringHotel, setIsHoveringHotel] = useState(false);
 
+  // ✅ Estado que refleja el hotel seleccionado en localStorage (para superadmin)
   const [lsHotelId, setLsHotelId] = useState<string | null>(null);
 
   // Menú móvil
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
+  // Cerrar menú al tocar fuera (iOS friendly)
   useEffect(() => {
-    const onDocClick = () => setMobileMenuOpen(false);
-    document.addEventListener("click", onDocClick);
-    return () => document.removeEventListener("click", onDocClick);
+    const onPointerDown = (e: PointerEvent) => {
+      const el = headerRef.current;
+      if (!el) return;
+
+      if (!el.contains(e.target as Node)) {
+        setMobileMenuOpen(false);
+      }
+    };
+
+    // Capture=true para que no “se pelee” con React en móvil
+    document.addEventListener("pointerdown", onPointerDown, true);
+
+    return () => {
+      document.removeEventListener("pointerdown", onPointerDown, true);
+    };
   }, []);
 
+  // Cambia ruta => cierra menú
   useEffect(() => {
-    setMobileMenuOpen(false); // cambia ruta => cierra menú
+    setMobileMenuOpen(false);
   }, [pathname]);
 
-  // Inicializa y detecta cambios de hotel
+  // Inicializa y detecta cambios de hotel (misma pestaña + otras pestañas)
   useEffect(() => {
     const read = () => {
       try {
@@ -99,17 +116,21 @@ export default function HotelHeader() {
     const onStorage = (e: StorageEvent) => {
       if (e.key === HOTEL_KEY) read();
     };
+
     const onCustom = () => read();
 
     window.addEventListener("storage", onStorage);
     window.addEventListener(HOTEL_CHANGED_EVENT, onCustom as EventListener);
 
+    // Fallback: por si alguien cambia localStorage sin disparar el evento custom
     const t = window.setInterval(() => {
       try {
         const v = localStorage.getItem(HOTEL_KEY);
         const next = v || null;
         setLsHotelId((prev) => (prev === next ? prev : next));
-      } catch {}
+      } catch {
+        // nada
+      }
     }, 800);
 
     return () => {
@@ -121,6 +142,7 @@ export default function HotelHeader() {
 
   const pageTitle = useMemo(() => getPageTitle(pathname), [pathname]);
 
+  // Carga profile + hotelName
   useEffect(() => {
     let alive = true;
 
@@ -162,6 +184,9 @@ export default function HotelHeader() {
         };
         setProfile(prof);
 
+        // ✅ HOTEL A MOSTRAR
+        // - superadmin => localStorage sc_hotel_id (lsHotelId)
+        // - resto => profile.hotel_id
         const hotelIdToUse =
           role === "superadmin" ? (lsHotelId ?? null) : (prof.hotel_id ?? null);
 
@@ -200,6 +225,8 @@ export default function HotelHeader() {
   }, [pathname, lsHotelId]);
 
   const isAdmin = profile?.role === "admin" || profile?.role === "superadmin";
+
+  // ✅ Ya NO devolvemos null: el header siempre existe
   const displayHotel = hotelName ?? (loading ? "Cargando…" : "Selecciona hotel");
 
   const backTarget = getBackTarget(pathname);
@@ -211,17 +238,16 @@ export default function HotelHeader() {
 
   return (
     <>
-      <div className="scHeader">
+      <div ref={headerRef} className="scHeader">
+        {/* Left: back + hotel + title */}
         <div className="left">
           {showBack && (
             <button
               className="iconBtn"
-              onClick={(e) => {
-                e.stopPropagation();
-                navTo(backTarget!);
-              }}
+              onClick={() => navTo(backTarget!)}
               aria-label="Atrás"
               title="Atrás"
+              disabled={loading}
             >
               ←
             </button>
@@ -235,6 +261,7 @@ export default function HotelHeader() {
               className="hotelBtn"
               title={displayHotel}
               aria-label="Ir a dashboard"
+              disabled={loading}
             >
               {displayHotel}
             </button>
@@ -243,6 +270,7 @@ export default function HotelHeader() {
           </div>
         </div>
 
+        {/* Right: desktop buttons OR mobile menu */}
         <div className="right">
           {/* Desktop actions */}
           <div className="actionsDesktop">
@@ -251,9 +279,11 @@ export default function HotelHeader() {
                 Admin
               </button>
             )}
+
             <button className="pillBtn" onClick={() => navTo("/areas")} disabled={loading}>
               Auditar
             </button>
+
             <button className="pillBtn" onClick={() => navTo("/profile")} disabled={loading}>
               Perfil
             </button>
@@ -263,23 +293,16 @@ export default function HotelHeader() {
           <div className="actionsMobile">
             <button
               className="iconBtn"
-              onClick={(e) => {
-                e.stopPropagation();
-                setMobileMenuOpen((v) => !v);
-              }}
+              onClick={() => setMobileMenuOpen((v) => !v)}
               aria-label="Menú"
               title="Menú"
+              disabled={loading}
             >
               ☰
             </button>
 
             {mobileMenuOpen && (
-              <div
-                className="dropdown"
-                onClick={(e) => e.stopPropagation()}
-                role="menu"
-                aria-label="Menú de navegación"
-              >
+              <div className="dropdown" role="menu" aria-label="Menú de navegación">
                 {isAdmin && (
                   <button className="dropItem" onClick={() => navTo("/admin")} disabled={loading}>
                     Admin
@@ -297,23 +320,22 @@ export default function HotelHeader() {
         </div>
       </div>
 
-      {/* Estilos responsive (sin maxWidth que estreche pantalla) */}
       <style jsx>{`
         .scHeader {
           position: fixed;
           top: 0;
           left: 0;
           right: 0;
-          z-index: 1000;
           display: flex;
-          align-items: center;
           justify-content: space-between;
-          gap: 12px;
+          align-items: center;
           padding: 12px 16px;
           background: var(--header-bg, rgba(255, 255, 255, 0.92));
           border-bottom: 1px solid var(--header-border, rgba(0, 0, 0, 0.08));
           box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+          z-index: 1000;
           backdrop-filter: blur(8px);
+          gap: 12px;
         }
 
         .left {
@@ -341,11 +363,10 @@ export default function HotelHeader() {
           padding: 4px 6px;
           border-radius: 8px;
           opacity: ${loading ? 0.6 : isHoveringHotel ? 1 : 0.85};
-          text-decoration: ${isHoveringHotel ? "underline" : "none"};
-          color: ${isHoveringHotel ? "#000" : "inherit"};
           transition: all 0.2s ease;
+          color: ${isHoveringHotel ? "#000" : "inherit"};
+          text-decoration: ${isHoveringHotel ? "underline" : "none"};
 
-          /* Elipsis sin maxWidth fijo */
           white-space: nowrap;
           overflow: hidden;
           text-overflow: ellipsis;
@@ -373,8 +394,8 @@ export default function HotelHeader() {
 
         .actionsDesktop {
           display: flex;
-          align-items: center;
           gap: 10px;
+          align-items: center;
         }
 
         .actionsMobile {
@@ -404,8 +425,8 @@ export default function HotelHeader() {
         .iconBtn {
           height: 40px;
           min-width: 40px;
-          padding: 0 10px;
-          border-radius: 10px;
+          padding: 0 12px;
+          border-radius: 12px;
           border: 1px solid rgba(0, 0, 0, 0.15);
           background: #fff;
           color: #000;
@@ -418,7 +439,7 @@ export default function HotelHeader() {
           transition: all 0.2s;
         }
 
-        .iconBtn:hover {
+        .iconBtn:hover:not(:disabled) {
           background: #000;
           color: #fff;
         }
@@ -434,6 +455,7 @@ export default function HotelHeader() {
           box-shadow: 0 14px 40px rgba(0, 0, 0, 0.12);
           padding: 6px;
           overflow: hidden;
+          z-index: 2000;
         }
 
         .dropItem {
@@ -454,7 +476,6 @@ export default function HotelHeader() {
           background: rgba(0, 0, 0, 0.06);
         }
 
-        /* Breakpoint móvil */
         @media (max-width: 720px) {
           .scHeader {
             padding: 10px 12px;
@@ -464,9 +485,6 @@ export default function HotelHeader() {
           }
           .actionsMobile {
             display: block;
-          }
-          .hotelBtn {
-            padding: 4px 4px;
           }
         }
       `}</style>
