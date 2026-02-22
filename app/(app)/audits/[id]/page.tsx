@@ -51,7 +51,7 @@ type QuestionRow = {
   classification?: string | null;
 };
 
-type AnswerValue = "FAIL" | "NA";
+type AnswerValue = "PASS" | "FAIL" | "NA";
 
 type AnswerRow = {
   id: string;
@@ -113,6 +113,8 @@ export default function AuditRunPage() {
   useEffect(() => {
     if (!runId) return;
 
+    let alive = true;
+
     (async () => {
       setLoading(true);
       setError(null);
@@ -136,6 +138,7 @@ export default function AuditRunPage() {
 
         if (rErr || !rData) throw rErr ?? new Error("Auditoría no encontrada.");
         const r = rData as AuditRunRow;
+        if (!alive) return;
         setRun(r);
 
         const [{ data: tData, error: tErr }, { data: aData, error: aErr }] = await Promise.all([
@@ -146,6 +149,7 @@ export default function AuditRunPage() {
         if (tErr || !tData) throw tErr ?? new Error("Plantilla no encontrada.");
         if (aErr || !aData) throw aErr ?? new Error("Área no encontrada.");
 
+        if (!alive) return;
         setTemplate(tData as TemplateRow);
         setArea(aData as AreaRow);
 
@@ -158,10 +162,14 @@ export default function AuditRunPage() {
           .order("id", { ascending: true });
 
         if (sErr) throw sErr;
+
         const secs = (sData ?? []) as SectionRow[];
+        if (!alive) return;
         setSections(secs);
 
         const secIds = secs.map((s) => s.id);
+
+        let qListLocal: QuestionRow[] = [];
         if (secIds.length) {
           const { data: qData, error: qErr } = await supabase
             .from("audit_questions")
@@ -176,17 +184,20 @@ export default function AuditRunPage() {
             .order("id", { ascending: true });
 
           if (qErr) throw qErr;
-          
-          const qList = (qData ?? []).map((q: any) => ({
+
+          qListLocal = (qData ?? []).map((q: any) => ({
             ...q,
             photo_requirement: toRequirement(q.photo_requirement),
             comment_requirement: toRequirement(q.comment_requirement),
             signature_requirement: toRequirement(q.signature_requirement),
-          }));
-          
-          setQuestions(qList as QuestionRow[]);
+          })) as QuestionRow[];
+
+          if (!alive) return;
+          setQuestions(qListLocal);
         } else {
+          if (!alive) return;
           setQuestions([]);
+          qListLocal = [];
         }
 
         const { data: ansData, error: ansErr } = await supabase
@@ -199,7 +210,6 @@ export default function AuditRunPage() {
         const map: Record<string, AnswerRow> = {};
         for (const row of (ansData ?? []) as any[]) {
           if (!row?.question_id) continue;
-
           map[row.question_id] = {
             id: row.id,
             audit_run_id: row.audit_run_id,
@@ -210,14 +220,61 @@ export default function AuditRunPage() {
             photo_path: row.photo_path ?? null,
           };
         }
-        setAnswersByQ(map);
 
+        // ✅ Seed: crea faltantes como PASS (para que TODO esté PASS por defecto)
+        const toUpsert: any[] = [];
+        for (const q of qListLocal) {
+          if (!map[q.id]) {
+            toUpsert.push({
+              audit_run_id: runId,
+              question_id: q.id,
+              answer: "PASS",
+              result: "PASS",
+              comment: null,
+              photo_path: null,
+            });
+          } else {
+            // Si existe pero viene null, normaliza a PASS
+            const cur = map[q.id];
+            if (!cur.answer || !cur.result) {
+              toUpsert.push({
+                audit_run_id: runId,
+                question_id: q.id,
+                answer: (cur.answer ?? "PASS") as AnswerValue,
+                result: (cur.result ?? "PASS") as AnswerValue,
+                comment: cur.comment ?? null,
+                photo_path: cur.photo_path ?? null,
+              });
+            }
+          }
+        }
+
+        if (toUpsert.length) {
+          const { data: seeded, error: seedErr } = await supabase
+            .from("audit_answers")
+            .upsert(toUpsert, { onConflict: "audit_run_id,question_id" })
+            .select("id,audit_run_id,question_id,answer,result,comment,photo_path");
+
+          if (seedErr) throw seedErr;
+
+          for (const row of seeded ?? []) {
+            map[(row as any).question_id] = row as AnswerRow;
+          }
+        }
+
+        if (!alive) return;
+        setAnswersByQ(map);
         setLoading(false);
       } catch (e: any) {
+        if (!alive) return;
         setLoading(false);
         setError(e?.message ?? "Error cargando auditoría.");
       }
     })();
+
+    return () => {
+      alive = false;
+    };
   }, [runId, router]);
 
   const totals = useMemo(() => {
@@ -229,8 +286,7 @@ export default function AuditRunPage() {
       const a = answersByQ[q.id];
       if (!a) continue;
 
-      const val = (a.answer ?? a.result) as AnswerValue | null;
-      if (!val) continue;
+      const val = ((a.answer ?? a.result) ?? "PASS") as AnswerValue;
 
       if (val === "FAIL") fail += 1;
       if (val === "NA") na += 1;
@@ -252,34 +308,13 @@ export default function AuditRunPage() {
     return bySection;
   }, [questions]);
 
-  async function setAnswer(questionId: string, next: AnswerValue | null) {
+  async function setAnswer(questionId: string, next: AnswerValue) {
     if (!runId) return;
 
     setSaving(true);
     setError(null);
 
     try {
-      if (next === null) {
-        const current = answersByQ[questionId];
-        if (current?.id) {
-          // Si había foto, eliminarla de Storage
-          if (current.photo_path) {
-            const parts = current.photo_path.split("/");
-            const fileName = parts[parts.length - 1];
-            await supabase.storage.from("audit-photos").remove([fileName]);
-          }
-
-          const { error: delErr } = await supabase.from("audit_answers").delete().eq("id", current.id);
-          if (delErr) throw delErr;
-
-          const copy = { ...answersByQ };
-          delete copy[questionId];
-          setAnswersByQ(copy);
-        }
-        setSaving(false);
-        return;
-      }
-
       const current = answersByQ[questionId];
 
       const payload = {
@@ -300,10 +335,10 @@ export default function AuditRunPage() {
       if (upErr || !data) throw upErr ?? new Error("No se pudo guardar.");
 
       setAnswersByQ({ ...answersByQ, [questionId]: data as AnswerRow });
-      setSaving(false);
     } catch (e: any) {
-      setSaving(false);
       setError(e?.message ?? "No se pudo guardar la respuesta.");
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -319,14 +354,13 @@ export default function AuditRunPage() {
       }
 
       const { error: upErr } = await supabase.from("audit_answers").update({ comment }).eq("id", current.id);
-
       if (upErr) throw upErr;
 
       setAnswersByQ({ ...answersByQ, [questionId]: { ...current, comment } });
-      setSaving(false);
     } catch (e: any) {
-      setSaving(false);
       setError(e?.message ?? "No se pudo guardar el comentario.");
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -335,7 +369,18 @@ export default function AuditRunPage() {
 
     const current = answersByQ[questionId];
     if (!current?.id) {
-      setError("Primero marca FAIL o NA para esta pregunta.");
+      setError("No existe respuesta para esta pregunta (seed falló).");
+      return;
+    }
+
+    // Regla: solo permitir subir foto si está en FAIL (o si la pregunta es ALWAYS)
+    const q = questions.find((x) => x.id === questionId);
+    const selected = ((current.answer ?? current.result) ?? "PASS") as AnswerValue;
+    const allow =
+      q?.photo_requirement === "always" || selected === "FAIL";
+
+    if (!allow) {
+      setError("Para subir foto, marca FAIL (o que la foto sea obligatoria).");
       return;
     }
 
@@ -343,39 +388,28 @@ export default function AuditRunPage() {
     setError(null);
 
     try {
-      // Generar nombre único
       const timestamp = Date.now();
-      const extension = file.name.split(".").pop();
+      const extension = file.name.split(".").pop() || "jpg";
       const fileName = `${runId}_${questionId}_${timestamp}.${extension}`;
 
-      // Subir a Storage
-      const { data: uploadData, error: uploadErr } = await supabase.storage
-        .from("audit-photos")
-        .upload(fileName, file, {
-          cacheControl: "3600",
-          upsert: false,
-        });
+      const { error: uploadErr } = await supabase.storage.from("audit-photos").upload(fileName, file, {
+        cacheControl: "3600",
+        upsert: false,
+      });
 
       if (uploadErr) throw uploadErr;
 
-      // Obtener URL pública
       const { data: urlData } = supabase.storage.from("audit-photos").getPublicUrl(fileName);
-
       const publicUrl = urlData.publicUrl;
 
-      // Guardar en DB
-      const { error: upErr } = await supabase
-        .from("audit_answers")
-        .update({ photo_path: publicUrl })
-        .eq("id", current.id);
-
+      const { error: upErr } = await supabase.from("audit_answers").update({ photo_path: publicUrl }).eq("id", current.id);
       if (upErr) throw upErr;
 
       setAnswersByQ({ ...answersByQ, [questionId]: { ...current, photo_path: publicUrl } });
-      setUploading(false);
     } catch (e: any) {
-      setUploading(false);
       setError(e?.message ?? "No se pudo subir la foto.");
+    } finally {
+      setUploading(false);
     }
   }
 
@@ -390,46 +424,34 @@ export default function AuditRunPage() {
     setError(null);
 
     try {
-      // Extraer nombre del archivo de la URL
       const parts = current.photo_path.split("/");
       const fileName = parts[parts.length - 1];
 
-      // Eliminar de Storage
       const { error: delErr } = await supabase.storage.from("audit-photos").remove([fileName]);
       if (delErr) console.warn("Error eliminando de Storage:", delErr);
 
-      // Actualizar DB
-      const { error: upErr } = await supabase
-        .from("audit_answers")
-        .update({ photo_path: null })
-        .eq("id", current.id);
-
+      const { error: upErr } = await supabase.from("audit_answers").update({ photo_path: null }).eq("id", current.id);
       if (upErr) throw upErr;
 
       setAnswersByQ({ ...answersByQ, [questionId]: { ...current, photo_path: null } });
-      setSaving(false);
     } catch (e: any) {
-      setSaving(false);
       setError(e?.message ?? "No se pudo eliminar la foto.");
+    } finally {
+      setSaving(false);
     }
   }
 
   async function submitRun() {
     if (!run) return;
 
-    // Validación condicional
     for (const q of questions) {
       const a = answersByQ[q.id];
       if (!a) continue;
 
-      const val = (a.answer ?? a.result) as AnswerValue | null;
-      if (!val) continue;
+      const val = ((a.answer ?? a.result) ?? "PASS") as AnswerValue;
 
-      // Determinar si aplica el requirement
-      const shouldCheckComment =
-        q.comment_requirement === "always" || (q.comment_requirement === "if_fail" && val === "FAIL");
-      const shouldCheckPhoto =
-        q.photo_requirement === "always" || (q.photo_requirement === "if_fail" && val === "FAIL");
+      const shouldCheckComment = q.comment_requirement === "always" || (q.comment_requirement === "if_fail" && val === "FAIL");
+      const shouldCheckPhoto = q.photo_requirement === "always" || (q.photo_requirement === "if_fail" && val === "FAIL");
 
       if (shouldCheckComment && !(a.comment ?? "").trim()) {
         setError(`Falta comentario en: "${q.text}"`);
@@ -458,7 +480,6 @@ export default function AuditRunPage() {
       if (upErr) throw upErr;
 
       setRun({ ...run, status: "submitted", score });
-
       router.push(`/audits/${run.id}/view`);
     } catch (e: any) {
       setError(e?.message ?? "No se pudo enviar la auditoría.");
@@ -467,7 +488,6 @@ export default function AuditRunPage() {
     }
   }
 
-  // Determinar si mostrar campo según requirement
   function shouldShowField(requirement: RequirementType, isFail: boolean): boolean {
     if (requirement === "never") return false;
     if (requirement === "always") return true;
@@ -585,8 +605,9 @@ export default function AuditRunPage() {
               <div style={{ display: "grid", gap: 12 }}>
                 {qs.map((q) => {
                   const a = answersByQ[q.id];
-                  const selected = (a?.answer ?? a?.result) ?? null;
+                  const selected = (((a?.answer ?? a?.result) ?? "PASS") as AnswerValue);
 
+                  const isPass = selected === "PASS";
                   const isFail = selected === "FAIL";
                   const isNA = selected === "NA";
 
@@ -595,7 +616,8 @@ export default function AuditRunPage() {
 
                   const requireComment =
                     q.comment_requirement === "always" || (q.comment_requirement === "if_fail" && isFail);
-                  const requirePhoto = q.photo_requirement === "always" || (q.photo_requirement === "if_fail" && isFail);
+                  const requirePhoto =
+                    q.photo_requirement === "always" || (q.photo_requirement === "if_fail" && isFail);
 
                   return (
                     <div
@@ -611,7 +633,20 @@ export default function AuditRunPage() {
 
                       <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
                         <button
-                          onClick={() => setAnswer(q.id, isFail ? null : "FAIL")}
+                          onClick={() => setAnswer(q.id, "PASS")}
+                          disabled={saving}
+                          style={{
+                            ...btnGhost,
+                            background: isPass ? "#000" : "#fff",
+                            color: isPass ? "#fff" : "#000",
+                            fontWeight: 950,
+                          }}
+                        >
+                          PASS
+                        </button>
+
+                        <button
+                          onClick={() => setAnswer(q.id, isFail ? "PASS" : "FAIL")}
                           disabled={saving}
                           style={{
                             ...btnGhost,
@@ -624,7 +659,7 @@ export default function AuditRunPage() {
                         </button>
 
                         <button
-                          onClick={() => setAnswer(q.id, isNA ? null : "NA")}
+                          onClick={() => setAnswer(q.id, isNA ? "PASS" : "NA")}
                           disabled={saving}
                           style={{
                             ...btnGhost,
@@ -640,7 +675,6 @@ export default function AuditRunPage() {
                         {q.photo_requirement !== "never" && <span style={pill}>Foto</span>}
                       </div>
 
-                      {/* Solo mostrar campos si hay excepción */}
                       {a && (showComment || showPhoto) ? (
                         <div style={{ marginTop: 12, display: "grid", gap: 10 }}>
                           {showComment && (

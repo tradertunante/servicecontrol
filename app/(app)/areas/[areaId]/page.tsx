@@ -173,8 +173,10 @@ export default function AreaPage() {
   const params = useParams<{ areaId: string }>();
   const searchParams = useSearchParams();
 
-  const tab = (searchParams.get("tab") ?? "dashboard") as "history" | "templates" | "dashboard";
   const areaId = params?.areaId;
+
+  // ✅ DEFAULT dashboard
+  const tab = (searchParams.get("tab") ?? "dashboard") as "history" | "templates" | "dashboard";
 
   const [loading, setLoading] = useState(true);
   const [starting, setStarting] = useState<string | null>(null);
@@ -205,11 +207,11 @@ export default function AreaPage() {
   const [histError, setHistError] = useState<string | null>(null);
   const [histRuns, setHistRuns] = useState<AuditRunRow[]>([]);
 
-  // ✅ Si entran sin tab, forzar templates
+  // ✅ Si entran sin tab, FORZAR dashboard (y evitar flashes)
   useEffect(() => {
     if (!areaId) return;
     const t = searchParams.get("tab");
-    if (!t) router.replace(`/areas/${areaId}?tab=templates`);
+    if (!t) router.replace(`/areas/${areaId}?tab=dashboard`);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [areaId]);
 
@@ -224,8 +226,8 @@ export default function AreaPage() {
       setError(null);
 
       try {
-        // ✅ permitir SUPERADMIN
-        const p = await requireRoleOrRedirect(router, ["admin", "manager", "auditor", "superadmin"], "/areas");
+        // ✅ Si no hay sesión -> /login (NO /areas)
+        const p = await requireRoleOrRedirect(router, ["admin", "manager", "auditor", "superadmin"], "/login");
         if (!p) return;
         setProfile(p);
 
@@ -435,7 +437,6 @@ export default function AreaPage() {
 
       const nowIso = new Date().toISOString();
 
-      // ✅ hotel_id para superadmin (area.hotel_id o localStorage)
       const hotelIdFromLocalStorage = typeof window !== "undefined" ? localStorage.getItem(HOTEL_KEY) : null;
       const hotelIdToUse = area?.hotel_id ?? profile?.hotel_id ?? hotelIdFromLocalStorage;
 
@@ -496,6 +497,7 @@ export default function AreaPage() {
     }
   }
 
+  // (aggs) — se mantienen como estaban
   const aggregatedHistory: RunAgg[] = useMemo(() => {
     return runs.map((r) => {
       const templateName = templateNameById[r.audit_template_id] ?? r.audit_template_id;
@@ -534,7 +536,6 @@ export default function AreaPage() {
 
   const dashboard = useMemo(() => {
     const WINDOW = 4;
-
     const { startMs, endMs } = getPeriodRange(new Date(), period);
 
     const base = runs
@@ -670,17 +671,8 @@ export default function AreaPage() {
     whiteSpace: "nowrap",
   };
 
-  // ✅ Header reusable para Loading / Error / Normal
   const HeaderRow = ({ size }: { size: number }) => (
-    <div
-      style={{
-        display: "flex",
-        justifyContent: "space-between",
-        alignItems: "flex-start",
-        gap: 12,
-        marginBottom: 6,
-      }}
-    >
+    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, marginBottom: 6 }}>
       <h1 style={{ fontSize: size, margin: 0 }}>{area?.name ?? "Área"}</h1>
       <BackButton fallback="/areas" />
     </div>
@@ -706,7 +698,6 @@ export default function AreaPage() {
 
   return (
     <main style={{ padding: 24 }}>
-      {/* ✅ BackButton a la derecha */}
       <HeaderRow size={56} />
 
       <div style={{ opacity: 0.85, marginBottom: 18 }}>
@@ -715,13 +706,13 @@ export default function AreaPage() {
       </div>
 
       <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 18 }}>
-        <button style={tabBtn(tab === "dashboard")} onClick={() => router.push(`/areas/${areaId}?tab=dashboard`)}>
+        <button style={tabBtn(tab === "dashboard")} onClick={() => router.replace(`/areas/${areaId}?tab=dashboard`)}>
           Dashboard
         </button>
-        <button style={tabBtn(tab === "history")} onClick={() => router.push(`/areas/${areaId}?tab=history`)}>
+        <button style={tabBtn(tab === "history")} onClick={() => router.replace(`/areas/${areaId}?tab=history`)}>
           Historial
         </button>
-        <button style={tabBtn(tab === "templates")} onClick={() => router.push(`/areas/${areaId}?tab=templates`)}>
+        <button style={tabBtn(tab === "templates")} onClick={() => router.replace(`/areas/${areaId}?tab=templates`)}>
           Auditorías disponibles
         </button>
       </div>
@@ -812,19 +803,7 @@ export default function AreaPage() {
                     </span>
                   </div>
 
-                  <button
-                    onClick={() => router.push(`/audits/${dashboard.lastRun!.id}`)}
-                    style={{
-                      marginTop: 10,
-                      padding: "10px 14px",
-                      borderRadius: 12,
-                      border: "1px solid rgba(0,0,0,0.2)",
-                      background: "#000",
-                      color: "#fff",
-                      fontWeight: 900,
-                      cursor: "pointer",
-                    }}
-                  >
+                  <button onClick={() => router.push(`/audits/${dashboard.lastRun!.id}`)} style={{ marginTop: 10, ...primaryBtn }}>
                     Ver auditoría
                   </button>
                 </>
@@ -863,7 +842,8 @@ export default function AreaPage() {
           </div>
 
           <div style={{ opacity: 0.75, fontSize: 13 }}>
-            Nota: el dashboard se calcula con auditorías <strong>submitted</strong> con score, filtrando por <strong>periodo</strong> y opcionalmente por <strong>plantilla</strong>.
+            Nota: el dashboard se calcula con auditorías <strong>submitted</strong> con score, filtrando por <strong>periodo</strong> y opcionalmente por{" "}
+            <strong>plantilla</strong>.
           </div>
         </div>
       ) : null}
@@ -1015,9 +995,7 @@ export default function AreaPage() {
             ))}
           </div>
 
-          {templates.length === 0 ? (
-            <p style={{ marginTop: 16, opacity: 0.85 }}>No hay auditorías asignadas a esta área todavía.</p>
-          ) : null}
+          {templates.length === 0 ? <p style={{ marginTop: 16, opacity: 0.85 }}>No hay auditorías asignadas a esta área todavía.</p> : null}
         </>
       ) : null}
     </main>

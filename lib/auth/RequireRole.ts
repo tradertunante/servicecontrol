@@ -18,49 +18,47 @@ type AllowedRolesInput = Role[] | Role | undefined | null;
  * Si no cumple, redirige.
  *
  * Soporta llamadas en ambos órdenes:
- *  - requireRoleOrRedirect(router, ["admin","superadmin"])
- *  - requireRoleOrRedirect(["admin","superadmin"], router)
+ *  - requireRoleOrRedirect(router, ["admin","superadmin"], "/login")
+ *  - requireRoleOrRedirect(["admin","superadmin"], router, "/login")
  */
 export async function requireRoleOrRedirect(
   a: RouterLike | AllowedRolesInput,
   b: AllowedRolesInput | RouterLike,
   redirectTo: string = "/login"
 ): Promise<Profile | null> {
-  // Detecta orden de argumentos
-  const aIsRouter = !!a && typeof a === "object" && typeof (a as RouterLike).replace === "function";
-  const bIsRouter = !!b && typeof b === "object" && typeof (b as RouterLike).replace === "function";
+  // Detecta orden de argumentos (router puede tener replace o push)
+  const aIsRouter =
+    !!a &&
+    typeof a === "object" &&
+    (typeof (a as RouterLike).replace === "function" || typeof (a as RouterLike).push === "function");
 
-  const router: RouterLike | null = aIsRouter
-    ? (a as RouterLike)
-    : bIsRouter
-      ? (b as RouterLike)
-      : null;
+  const bIsRouter =
+    !!b &&
+    typeof b === "object" &&
+    (typeof (b as RouterLike).replace === "function" || typeof (b as RouterLike).push === "function");
+
+  const router: RouterLike | null = aIsRouter ? (a as RouterLike) : bIsRouter ? (b as RouterLike) : null;
 
   const allowedRoles: AllowedRolesInput = aIsRouter ? (b as AllowedRolesInput) : (a as AllowedRolesInput);
 
   const safeRedirect = (path: string) => {
     if (router?.replace) return router.replace(path);
     if (router?.push) return router.push(path);
-    // fallback ultra-seguro (cliente)
     if (typeof window !== "undefined") window.location.href = path;
   };
 
   // Normaliza roles SIEMPRE a array
-  const rolesArray: Role[] = Array.isArray(allowedRoles)
-    ? allowedRoles
-    : allowedRoles
-      ? [allowedRoles]
-      : [];
+  const rolesArray: Role[] = Array.isArray(allowedRoles) ? allowedRoles : allowedRoles ? [allowedRoles] : [];
 
-  // Si no hay router válido, al menos evita explotar
-  if (!router && typeof window === "undefined") {
-    // En server no podemos redirigir con window ni router
+  // Seguridad: si no pasan roles, bloquea
+  if (rolesArray.length === 0) {
+    safeRedirect(redirectTo);
     return null;
   }
 
-  // 1) session
-  const { data: sessData } = await supabase.auth.getSession();
-  if (!sessData.session) {
+  // 1) session (rápido y fiable)
+  const { data: sessData, error: sessErr } = await supabase.auth.getSession();
+  if (sessErr || !sessData.session) {
     safeRedirect(redirectTo);
     return null;
   }
@@ -99,12 +97,7 @@ export async function requireRoleOrRedirect(
     active: prof.active ?? null,
   };
 
-  // Seguridad: si no pasan roles, bloquea
-  if (rolesArray.length === 0) {
-    safeRedirect(redirectTo);
-    return null;
-  }
-
+  // 4) role check
   if (!rolesArray.includes(profile.role)) {
     safeRedirect(redirectTo);
     return null;
