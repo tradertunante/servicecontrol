@@ -1,23 +1,17 @@
+// FILE: app/(app)/areas/[areaId]/page.tsx
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import type { CSSProperties } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
-import { normalizeRole, type Role } from "@/lib/auth/permissions";
+import { requireRoleOrRedirect, type Profile } from "@/lib/auth/RequireRole";
 import { canRunAudits } from "@/lib/auth/permissions";
 import BackButton from "@/app/components/BackButton";
 
 // ----------------------
 // Types
 // ----------------------
-type Profile = {
-  id: string;
-  full_name: string | null;
-  role: Role;
-  hotel_id: string | null;
-  active?: boolean | null;
-};
-
 type Area = {
   id: string;
   name: string;
@@ -48,10 +42,28 @@ type SectionTotal = {
   total_questions: number;
 };
 
+type SectionAgg = {
+  section_id: string;
+  section_name: string;
+  total_questions: number;
+  fail_count: number;
+  na_count: number;
+  denom: number; // total - NA
+  pass: number; // denom - FAIL
+  score: number | null;
+};
+
+type RunAgg = {
+  run: AuditRunRow;
+  templateName: string;
+  executedByName: string | null;
+  sections: SectionAgg[];
+};
+
 type AnswerRow = {
   audit_run_id: string;
   question_id: string;
-  result: string | null;
+  result: string | null; // PASS/FAIL/NA...
 };
 
 type QuestionMeta = {
@@ -88,6 +100,43 @@ function clamp(n: number, a: number, b: number) {
   return Math.max(a, Math.min(b, n));
 }
 
+function Sparkline({ values }: { values: number[] }) {
+  const w = 120;
+  const h = 34;
+  const pad = 3;
+
+  if (!values.length) {
+    return (
+      <div style={{ width: w, height: h, display: "flex", alignItems: "center", opacity: 0.6 }}>
+        —
+      </div>
+    );
+  }
+
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  const span = Math.max(1, max - min);
+
+  const pts = values.map((v, i) => {
+    const x = pad + (i * (w - pad * 2)) / Math.max(1, values.length - 1);
+    const y = pad + (h - pad * 2) * (1 - (v - min) / span);
+    return { x, y };
+  });
+
+  const d = pts
+    .map((p, i) => `${i === 0 ? "M" : "L"} ${p.x.toFixed(2)} ${p.y.toFixed(2)}`)
+    .join(" ");
+
+  return (
+    <div style={{ width: w, height: h, overflow: "hidden" }}>
+      <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} role="img" aria-label="tendencia" style={{ display: "block" }}>
+        <path d={d} fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
+        <circle cx={pts[pts.length - 1].x} cy={pts[pts.length - 1].y} r="2.5" fill="currentColor" />
+      </svg>
+    </div>
+  );
+}
+
 function monthLabel(monthIndex: number) {
   const d = new Date(2020, monthIndex, 1);
   const s = d.toLocaleDateString("es-ES", { month: "long" }).replace(".", "");
@@ -96,17 +145,27 @@ function monthLabel(monthIndex: number) {
 
 function monthStartEndISO(year: number, monthIndex: number) {
   const start = new Date(year, monthIndex, 1, 0, 0, 0, 0);
-  const end = new Date(year, monthIndex + 1, 1, 0, 0, 0, 0);
+  const end = new Date(year, monthIndex + 1, 1, 0, 0, 0, 0); // exclusive
   return { start: start.toISOString(), end: end.toISOString() };
+}
+
+function periodLabel(p: PeriodKey) {
+  if (p === "THIS_MONTH") return "Este mes";
+  if (p === "LAST_3_MONTHS") return "3 últimos meses";
+  return "Año";
 }
 
 function getPeriodRange(now: Date, p: PeriodKey) {
   const end = new Date(now);
-  let start: Date;
 
-  if (p === "THIS_MONTH") start = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
-  else if (p === "LAST_3_MONTHS") start = new Date(now.getFullYear(), now.getMonth() - 2, 1, 0, 0, 0, 0);
-  else start = new Date(now.getFullYear(), 0, 1, 0, 0, 0, 0);
+  let start: Date;
+  if (p === "THIS_MONTH") {
+    start = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
+  } else if (p === "LAST_3_MONTHS") {
+    start = new Date(now.getFullYear(), now.getMonth() - 2, 1, 0, 0, 0, 0);
+  } else {
+    start = new Date(now.getFullYear(), 0, 1, 0, 0, 0, 0);
+  }
 
   return { startMs: start.getTime(), endMs: end.getTime() };
 }
@@ -118,8 +177,11 @@ export default function AreaPage() {
 
   const areaId = params?.areaId;
 
-  // ✅ default dashboard
-  const tab = (searchParams.get("tab") ?? "dashboard") as "dashboard" | "history" | "templates";
+  const tab = (searchParams.get("tab") ?? "dashboard") as "history" | "templates" | "dashboard";
+
+  // ✅ leer defaults desde querystring
+  const qsTemplate = searchParams.get("template"); // "ALL" o templateId
+  const qsPeriod = searchParams.get("period") as PeriodKey | null;
 
   const [loading, setLoading] = useState(true);
   const [starting, setStarting] = useState<string | null>(null);
@@ -134,28 +196,63 @@ export default function AreaPage() {
   const [executorNameById, setExecutorNameById] = useState<Record<string, string>>({});
   const [totalsByTemplate, setTotalsByTemplate] = useState<Record<string, Record<string, SectionTotal>>>({});
   const [exceptionsByRun, setExceptionsByRun] = useState<Record<string, Record<string, { fail: number; na: number }>>>({});
+
   const [answersByRun, setAnswersByRun] = useState<Record<string, AnswerRow[]>>({});
   const [questionMetaById, setQuestionMetaById] = useState<Record<string, QuestionMeta>>({});
 
-  const [templateFilter, setTemplateFilter] = useState<string>("ALL");
-  const [period, setPeriod] = useState<PeriodKey>("THIS_MONTH");
+  // ✅ states que se sincronizan con URL
+  const [templateFilter, setTemplateFilter] = useState<string>(qsTemplate ?? "ALL");
+  const [period, setPeriod] = useState<PeriodKey>(qsPeriod ?? "THIS_MONTH");
 
   const now = new Date();
   const [histTemplateId, setHistTemplateId] = useState<string>("");
   const [histYear, setHistYear] = useState<number>(now.getFullYear());
   const [histMonth, setHistMonth] = useState<number>(now.getMonth());
+
   const [histLoading, setHistLoading] = useState(false);
   const [histError, setHistError] = useState<string | null>(null);
   const [histRuns, setHistRuns] = useState<AuditRunRow[]>([]);
 
-  // ✅ si entran sin tab => dashboard
+  const buildQs = (patch: Record<string, string>) => {
+    const qs = new URLSearchParams(searchParams.toString());
+    Object.entries(patch).forEach(([k, v]) => qs.set(k, v));
+    return qs.toString();
+  };
+
+  // ✅ Si entran sin tab, FORZAR dashboard preservando period/template
   useEffect(() => {
     if (!areaId) return;
-    if (!searchParams.get("tab")) router.replace(`/areas/${areaId}?tab=dashboard`);
+    const t = searchParams.get("tab");
+    if (!t) {
+      const qs = new URLSearchParams(searchParams.toString());
+      qs.set("tab", "dashboard");
+      router.replace(`/areas/${areaId}?${qs.toString()}`);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [areaId]);
 
-  // ✅ AUTH + LOAD (SIN RequireRole)
+  // ✅ sincroniza URL -> state (para cuando vienes desde dashboard con ?template=...&period=...)
+  useEffect(() => {
+    const t = searchParams.get("template");
+    const p = searchParams.get("period") as PeriodKey | null;
+
+    if (t && t !== templateFilter) setTemplateFilter(t);
+    if (p && p !== period) setPeriod(p);
+
+    // si no existen, ponemos defaults (sin romper otros qs)
+    if (!searchParams.get("template") || !searchParams.get("period")) {
+      if (!areaId) return;
+      const qs = new URLSearchParams(searchParams.toString());
+      if (!qs.get("template")) qs.set("template", "ALL");
+      if (!qs.get("period")) qs.set("period", "THIS_MONTH");
+      router.replace(`/areas/${areaId}?${qs.toString()}`);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
+
+  // ----------------------
+  // Load all data
+  // ----------------------
   useEffect(() => {
     if (!areaId) return;
 
@@ -164,46 +261,16 @@ export default function AreaPage() {
       setError(null);
 
       try {
-        const { data: auth, error: authErr } = await supabase.auth.getUser();
-        if (authErr || !auth?.user) {
-          router.replace("/login");
-          return;
-        }
+        const p = await requireRoleOrRedirect(router, ["admin", "manager", "auditor", "superadmin"], "/login");
+        if (!p) return;
+        setProfile(p);
 
-        const { data: prof, error: profErr } = await supabase
-          .from("profiles")
-          .select("id, full_name, role, hotel_id, active")
-          .eq("id", auth.user.id)
-          .maybeSingle();
-
-        if (profErr || !prof || prof.active === false) {
-          router.replace("/login");
-          return;
-        }
-
-        const p: Profile = {
-          id: prof.id,
-          full_name: prof.full_name ?? null,
-          role: normalizeRole(prof.role),
-          hotel_id: prof.hotel_id ?? null,
-          active: prof.active ?? null,
-        };
-
-        // ✅ roles permitidos
-        if (!["admin", "manager", "auditor", "superadmin"].includes(p.role)) {
-          router.replace("/login");
-          return;
-        }
-
-        // ✅ permiso de acceder al módulo
         const allowed = p.role === "superadmin" ? true : canRunAudits(p.role);
         if (!allowed) {
           setError("No tienes permisos para acceder a esta sección.");
           setLoading(false);
           return;
         }
-
-        setProfile(p);
 
         // 1) Área
         const { data: areaData, error: areaErr } = await supabase
@@ -226,6 +293,7 @@ export default function AreaPage() {
 
         const onlyActive = (tData ?? []).filter((t: any) => t.active !== false) as AuditTemplate[];
         setTemplates(onlyActive);
+
         if (!histTemplateId && onlyActive.length > 0) setHistTemplateId(onlyActive[0].id);
 
         // 3) Runs
@@ -247,16 +315,17 @@ export default function AreaPage() {
         const templateIds = Array.from(new Set(finalRuns.map((r) => r.audit_template_id)));
         const executorIds = Array.from(new Set(finalRuns.map((r) => r.executed_by).filter(Boolean) as string[]));
 
-        // 4) nombres templates
+        // 4) Nombres templates
         if (templateIds.length) {
           const { data: tplData, error: tplErr } = await supabase.from("audit_templates").select("id,name").in("id", templateIds);
           if (tplErr) throw tplErr;
+
           const map: Record<string, string> = {};
           for (const row of (tplData ?? []) as any[]) map[row.id] = row.name;
           setTemplateNameById(map);
         }
 
-        // 5) nombres ejecutores
+        // 5) Nombres ejecutores
         if (executorIds.length) {
           const { data: pData, error: pErr } = await supabase.from("profiles").select("id,full_name").in("id", executorIds);
           if (!pErr && pData) {
@@ -266,7 +335,7 @@ export default function AreaPage() {
           }
         }
 
-        // 6) totales sección
+        // 6) Totales por sección
         if (templateIds.length) {
           const { data: qData, error: qErr } = await supabase
             .from("audit_questions")
@@ -288,19 +357,23 @@ export default function AreaPage() {
           if (qErr) throw qErr;
 
           const totals: Record<string, Record<string, SectionTotal>> = {};
+
           for (const row of (qData ?? []) as any[]) {
             const tplId = row.audit_sections?.audit_template_id as string | undefined;
             const secId = (row.audit_sections?.id ?? row.audit_section_id) as string | undefined;
             const secName = (row.audit_sections?.name ?? "Sin sección") as string;
+
             if (!tplId || !secId) continue;
+
             if (!totals[tplId]) totals[tplId] = {};
             if (!totals[tplId][secId]) totals[tplId][secId] = { section_id: secId, section_name: secName, total_questions: 0 };
             totals[tplId][secId].total_questions += 1;
           }
+
           setTotalsByTemplate(totals);
         }
 
-        // 7) answers
+        // 7) Answers
         if (runIds.length) {
           const { data: aData, error: aErr } = await supabase
             .from("audit_answers")
@@ -310,6 +383,7 @@ export default function AreaPage() {
           if (aErr) throw aErr;
 
           const answers = (aData ?? []) as AnswerRow[];
+
           const byRun: Record<string, AnswerRow[]> = {};
           for (const a of answers) {
             if (!byRun[a.audit_run_id]) byRun[a.audit_run_id] = [];
@@ -341,21 +415,30 @@ export default function AreaPage() {
             for (const q of (q2Data ?? []) as any[]) {
               const secId = (q.audit_sections?.id ?? q.audit_section_id ?? "unknown") as string;
               const secName = (q.audit_sections?.name ?? "Sin sección") as string;
-              qMetaMap[q.id] = { id: q.id, text: q.text ?? "(Sin texto)", audit_section_id: secId, section_name: secName };
+              qMetaMap[q.id] = {
+                id: q.id,
+                text: q.text ?? "(Sin texto)",
+                audit_section_id: secId,
+                section_name: secName,
+              };
             }
           }
           setQuestionMetaById(qMetaMap);
 
           const ex: Record<string, Record<string, { fail: number; na: number }>> = {};
+
           for (const row of answers) {
             const rid = row.audit_run_id;
             const res = String(row.result ?? "").toUpperCase();
             const secId = qMetaMap[row.question_id]?.audit_section_id ?? "unknown";
+
             if (!ex[rid]) ex[rid] = {};
             if (!ex[rid][secId]) ex[rid][secId] = { fail: 0, na: 0 };
+
             if (res === "FAIL") ex[rid][secId].fail += 1;
             if (res === "NA") ex[rid][secId].na += 1;
           }
+
           setExceptionsByRun(ex);
         }
 
@@ -365,8 +448,12 @@ export default function AreaPage() {
         setError(e?.message ?? "Error cargando área.");
       }
     })();
-  }, [areaId, router, histTemplateId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [areaId, router]);
 
+  // ----------------------
+  // Start run
+  // ----------------------
   async function handleStart(templateId: string) {
     if (!profile || !areaId) return;
 
@@ -374,14 +461,19 @@ export default function AreaPage() {
     setError(null);
 
     try {
-      const { data: auth, error: userErr } = await supabase.auth.getUser();
-      if (userErr || !auth?.user) throw userErr ?? new Error("No hay sesión activa.");
+      const {
+        data: { user },
+        error: userErr,
+      } = await supabase.auth.getUser();
+
+      if (userErr || !user) throw userErr ?? new Error("No hay sesión activa.");
+
+      const nowIso = new Date().toISOString();
 
       const hotelIdFromLocalStorage = typeof window !== "undefined" ? localStorage.getItem(HOTEL_KEY) : null;
       const hotelIdToUse = area?.hotel_id ?? profile?.hotel_id ?? hotelIdFromLocalStorage;
-      if (!hotelIdToUse) throw new Error("No se pudo determinar el hotel_id para crear la auditoría.");
 
-      const nowIso = new Date().toISOString();
+      if (!hotelIdToUse) throw new Error("No se pudo determinar el hotel_id para crear la auditoría.");
 
       const { data, error } = await supabase
         .from("audit_runs")
@@ -393,12 +485,13 @@ export default function AreaPage() {
           score: null,
           notes: null,
           executed_at: nowIso,
-          executed_by: auth.user.id,
+          executed_by: user.id,
         })
         .select("id")
         .single();
 
       if (error || !data) throw error ?? new Error("No se pudo crear la auditoría.");
+
       router.push(`/audits/${data.id}`);
     } catch (e: any) {
       setError(e?.message ?? "No se pudo iniciar la auditoría.");
@@ -427,6 +520,7 @@ export default function AreaPage() {
         .order("executed_at", { ascending: false });
 
       if (rErr) throw rErr;
+
       setHistRuns((data ?? []) as AuditRunRow[]);
     } catch (e: any) {
       setHistError(e?.message ?? "No se pudo buscar el historial.");
@@ -435,6 +529,42 @@ export default function AreaPage() {
       setHistLoading(false);
     }
   }
+
+  const aggregatedHistory: RunAgg[] = useMemo(() => {
+    return runs.map((r) => {
+      const templateName = templateNameById[r.audit_template_id] ?? r.audit_template_id;
+      const executedByName = r.executed_by ? executorNameById[r.executed_by] ?? r.executed_by : null;
+
+      const totals = totalsByTemplate[r.audit_template_id] ?? {};
+      const exceptions = exceptionsByRun[r.id] ?? {};
+      const sectionIds = Object.keys(totals);
+
+      const sections: SectionAgg[] = sectionIds.map((secId) => {
+        const t = totals[secId];
+        const fail = exceptions[secId]?.fail ?? 0;
+        const na = exceptions[secId]?.na ?? 0;
+
+        const totalQ = t?.total_questions ?? 0;
+        const denom = Math.max(0, totalQ - na);
+        const pass = Math.max(0, denom - fail);
+        const score = denom === 0 ? null : (pass / denom) * 100;
+
+        return {
+          section_id: secId,
+          section_name: t?.section_name ?? "Sin sección",
+          total_questions: totalQ,
+          fail_count: fail,
+          na_count: na,
+          denom,
+          pass,
+          score,
+        };
+      });
+
+      sections.sort((a, b) => a.section_name.localeCompare(b.section_name));
+      return { run: r, templateName, executedByName, sections };
+    });
+  }, [runs, templateNameById, executorNameById, totalsByTemplate, exceptionsByRun]);
 
   const dashboard = useMemo(() => {
     const WINDOW = 4;
@@ -463,10 +593,70 @@ export default function AreaPage() {
         ? null
         : Math.round((lastN.reduce((sum, r) => sum + (Number(r.score) || 0), 0) / lastN.length) * 100) / 100;
 
-    return { lastRun, avgScore, windowSize: lastN.length };
-  }, [runs, period, templateFilter]);
+    const trendRuns = [...sorted].slice(0, 12).reverse();
+    const trendValues = trendRuns
+      .map((r) => Number(r.score))
+      .filter((n) => Number.isFinite(n))
+      .map((n) => clamp(n, 0, 100));
 
-  const tabBtn = (active: boolean): React.CSSProperties => ({
+    const sectionStats: Record<string, { name: string; scores: number[] }> = {};
+
+    for (const run of lastN) {
+      const totals = totalsByTemplate[run.audit_template_id] ?? {};
+      const exceptions = exceptionsByRun[run.id] ?? {};
+
+      for (const secId of Object.keys(totals)) {
+        const t = totals[secId];
+        const fail = exceptions[secId]?.fail ?? 0;
+        const na = exceptions[secId]?.na ?? 0;
+
+        const totalQ = t?.total_questions ?? 0;
+        const denom = Math.max(0, totalQ - na);
+        const pass = Math.max(0, denom - fail);
+        const score = denom === 0 ? null : (pass / denom) * 100;
+
+        const sectionName = t?.section_name ?? "Sin sección";
+        if (!sectionStats[sectionName]) sectionStats[sectionName] = { name: sectionName, scores: [] };
+        if (score !== null) sectionStats[sectionName].scores.push(score);
+      }
+    }
+
+    const sectionRanking = Object.values(sectionStats)
+      .map((s) => {
+        const avg =
+          s.scores.length === 0
+            ? null
+            : Math.round((s.scores.reduce((a, b) => a + b, 0) / s.scores.length) * 100) / 100;
+        return { section_name: s.name, avg_score: avg };
+      })
+      .sort((a, b) => {
+        const av = a.avg_score ?? 9999;
+        const bv = b.avg_score ?? 9999;
+        return av - bv;
+      });
+
+    const worstSection = sectionRanking.find((x) => x.avg_score !== null) ?? null;
+    const bestSection = [...sectionRanking].reverse().find((x) => x.avg_score !== null) ?? null;
+
+    const filterLabel =
+      templateFilter === "ALL"
+        ? "General (todas)"
+        : templateNameById[templateFilter] ?? templates.find((t) => t.id === templateFilter)?.name ?? "Plantilla";
+
+    return {
+      lastRun,
+      avgScore,
+      trendValues,
+      sectionRanking,
+      worstSection,
+      bestSection,
+      windowSize: lastN.length,
+      filterLabel,
+      periodLabel: periodLabel(period),
+    };
+  }, [runs, totalsByTemplate, exceptionsByRun, templateFilter, templateNameById, templates, period]);
+
+  const tabBtn = (active: boolean): CSSProperties => ({
     padding: "10px 14px",
     borderRadius: 12,
     border: "1px solid rgba(0,0,0,0.2)",
@@ -476,14 +666,14 @@ export default function AreaPage() {
     cursor: "pointer",
   });
 
-  const card: React.CSSProperties = {
+  const card: CSSProperties = {
     borderRadius: 18,
     border: "1px solid rgba(0,0,0,0.08)",
     background: "rgba(255,255,255,0.75)",
     padding: 18,
   };
 
-  const inputStyle: React.CSSProperties = {
+  const inputStyle: CSSProperties = {
     padding: "10px 12px",
     borderRadius: 12,
     border: "1px solid rgba(0,0,0,0.20)",
@@ -491,7 +681,7 @@ export default function AreaPage() {
     fontWeight: 900,
   };
 
-  const primaryBtn: React.CSSProperties = {
+  const primaryBtn: CSSProperties = {
     padding: "10px 14px",
     borderRadius: 12,
     border: "1px solid rgba(0,0,0,0.2)",
@@ -502,7 +692,7 @@ export default function AreaPage() {
     whiteSpace: "nowrap",
   };
 
-  const ghostBtn: React.CSSProperties = {
+  const ghostBtn: CSSProperties = {
     padding: "10px 14px",
     borderRadius: 12,
     border: "1px solid rgba(0,0,0,0.2)",
@@ -519,6 +709,11 @@ export default function AreaPage() {
       <BackButton fallback="/areas" />
     </div>
   );
+
+  const goTab = (nextTab: "dashboard" | "history" | "templates") => {
+    if (!areaId) return;
+    router.replace(`/areas/${areaId}?${buildQs({ tab: nextTab })}`);
+  };
 
   if (loading) {
     return (
@@ -548,34 +743,164 @@ export default function AreaPage() {
       </div>
 
       <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 18 }}>
-        <button style={tabBtn(tab === "dashboard")} onClick={() => router.replace(`/areas/${areaId}?tab=dashboard`)}>
+        <button style={tabBtn(tab === "dashboard")} onClick={() => goTab("dashboard")}>
           Dashboard
         </button>
-        <button style={tabBtn(tab === "history")} onClick={() => router.replace(`/areas/${areaId}?tab=history`)}>
+        <button style={tabBtn(tab === "history")} onClick={() => goTab("history")}>
           Historial
         </button>
-        <button style={tabBtn(tab === "templates")} onClick={() => router.replace(`/areas/${areaId}?tab=templates`)}>
+        <button style={tabBtn(tab === "templates")} onClick={() => goTab("templates")}>
           Auditorías disponibles
         </button>
       </div>
 
       {tab === "dashboard" ? (
         <div style={{ display: "grid", gap: 14 }}>
-          <div style={card}>
-            <div style={{ fontWeight: 950, marginBottom: 8 }}>Dashboard por área</div>
-            <div style={{ opacity: 0.85 }}>
-              Score promedio (últimas {dashboard.windowSize || 0}):{" "}
-              <strong style={{ color: scoreColor(dashboard.avgScore) }}>
-                {dashboard.avgScore === null ? "—" : `${dashboard.avgScore.toFixed(2)}%`}
-              </strong>
+          <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+            <div style={{ fontSize: 22, fontWeight: 950 }}>Dashboard por área</div>
+
+            <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <div style={{ fontWeight: 900, opacity: 0.9 }}>Periodo:</div>
+                <select
+                  value={period}
+                  onChange={(e) => {
+                    const next = e.target.value as PeriodKey;
+                    setPeriod(next);
+
+                    if (!areaId) return;
+                    const qs = new URLSearchParams(searchParams.toString());
+                    qs.set("tab", "dashboard");
+                    qs.set("period", next);
+                    qs.set("template", templateFilter);
+                    router.replace(`/areas/${areaId}?${qs.toString()}`);
+                  }}
+                  style={{
+                    padding: "10px 12px",
+                    borderRadius: 14,
+                    border: "2px solid rgba(255,0,150,0.20)",
+                    outline: "none",
+                    minWidth: 220,
+                    fontWeight: 900,
+                    background: "#fff",
+                  }}
+                >
+                  <option value="THIS_MONTH">Este mes</option>
+                  <option value="LAST_3_MONTHS">3 últimos meses</option>
+                  <option value="THIS_YEAR">Año</option>
+                </select>
+              </div>
+
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <div style={{ fontWeight: 900, opacity: 0.9 }}>Vista:</div>
+                <select
+                  value={templateFilter}
+                  onChange={(e) => {
+                    const next = e.target.value;
+                    setTemplateFilter(next);
+
+                    if (!areaId) return;
+                    const qs = new URLSearchParams(searchParams.toString());
+                    qs.set("tab", "dashboard");
+                    qs.set("template", next);
+                    qs.set("period", period);
+                    router.replace(`/areas/${areaId}?${qs.toString()}`);
+                  }}
+                  style={{
+                    padding: "10px 12px",
+                    borderRadius: 14,
+                    border: "2px solid rgba(255,0,150,0.35)",
+                    outline: "none",
+                    minWidth: 260,
+                    fontWeight: 900,
+                    background: "#fff",
+                  }}
+                >
+                  <option value="ALL">General (todas)</option>
+                  {templates.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
-            {dashboard.lastRun ? (
-              <button style={{ marginTop: 12, ...primaryBtn }} onClick={() => router.push(`/audits/${dashboard.lastRun!.id}`)}>
-                Ver última auditoría
-              </button>
-            ) : (
-              <div style={{ marginTop: 10, opacity: 0.75 }}>No hay auditorías enviadas todavía.</div>
-            )}
+          </div>
+
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 12 }}>
+            <div style={card}>
+              <div style={{ fontWeight: 950, marginBottom: 6 }}>Score promedio (últimas {dashboard.windowSize || 0})</div>
+              <div style={{ fontSize: 34, fontWeight: 950, color: scoreColor(dashboard.avgScore) }}>
+                {dashboard.avgScore === null ? "—" : `${dashboard.avgScore.toFixed(2)}%`}
+              </div>
+
+              <div style={{ marginTop: 10, opacity: 0.85, display: "flex", alignItems: "center", gap: 12 }}>
+                <span style={{ fontWeight: 900 }}>Tendencia</span>
+                <span style={{ color: scoreColor(dashboard.avgScore), display: "inline-flex" }}>
+                  <Sparkline values={dashboard.trendValues} />
+                </span>
+              </div>
+
+              <div style={{ marginTop: 8, fontSize: 12.5, opacity: 0.75 }}>
+                Vista: <strong>{dashboard.filterLabel}</strong> · Periodo: <strong>{dashboard.periodLabel}</strong>
+              </div>
+            </div>
+
+            <div style={card}>
+              <div style={{ fontWeight: 950, marginBottom: 6 }}>Última auditoría</div>
+              {dashboard.lastRun ? (
+                <>
+                  <div style={{ fontWeight: 900 }}>
+                    {templateNameById[dashboard.lastRun.audit_template_id] ?? dashboard.lastRun.audit_template_id}
+                  </div>
+                  <div style={{ opacity: 0.85, marginTop: 4 }}>
+                    {fmtDate(dashboard.lastRun.executed_at)} ·{" "}
+                    <span style={{ fontWeight: 950, color: scoreColor(dashboard.lastRun.score) }}>
+                      {dashboard.lastRun.score === null ? "—" : `${Number(dashboard.lastRun.score).toFixed(2)}%`}
+                    </span>
+                  </div>
+
+                  <button onClick={() => router.push(`/audits/${dashboard.lastRun!.id}`)} style={{ marginTop: 10, ...primaryBtn }}>
+                    Ver auditoría
+                  </button>
+                </>
+              ) : (
+                <div style={{ opacity: 0.8 }}>No hay auditorías enviadas todavía.</div>
+              )}
+            </div>
+
+            <div style={card}>
+              <div style={{ fontWeight: 950, marginBottom: 6 }}>Sección más débil</div>
+              {dashboard.worstSection?.avg_score !== null ? (
+                <>
+                  <div style={{ fontWeight: 900 }}>{dashboard.worstSection?.section_name}</div>
+                  <div style={{ marginTop: 6, fontSize: 28, fontWeight: 950, color: scoreColor(dashboard.worstSection?.avg_score ?? null) }}>
+                    {dashboard.worstSection?.avg_score?.toFixed(2)}%
+                  </div>
+                </>
+              ) : (
+                <div style={{ opacity: 0.8 }}>—</div>
+              )}
+            </div>
+
+            <div style={card}>
+              <div style={{ fontWeight: 950, marginBottom: 6 }}>Sección más fuerte</div>
+              {dashboard.bestSection?.avg_score !== null ? (
+                <>
+                  <div style={{ fontWeight: 900 }}>{dashboard.bestSection?.section_name}</div>
+                  <div style={{ marginTop: 6, fontSize: 28, fontWeight: 950, color: scoreColor(dashboard.bestSection?.avg_score ?? null) }}>
+                    {dashboard.bestSection?.avg_score?.toFixed(2)}%
+                  </div>
+                </>
+              ) : (
+                <div style={{ opacity: 0.8 }}>—</div>
+              )}
+            </div>
+          </div>
+
+          <div style={{ opacity: 0.75, fontSize: 13 }}>
+            Nota: el dashboard se calcula con auditorías <strong>submitted</strong> con score, filtrando por <strong>periodo</strong> y opcionalmente por{" "}
+            <strong>plantilla</strong>.
           </div>
         </div>
       ) : null}
