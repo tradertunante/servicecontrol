@@ -46,8 +46,8 @@ type SectionAgg = {
   total_questions: number;
   fail_count: number;
   na_count: number;
-  denom: number; // total - NA
-  pass: number; // denom - FAIL
+  denom: number;
+  pass: number;
   score: number | null;
 };
 
@@ -168,15 +168,25 @@ function getPeriodRange(now: Date, p: PeriodKey) {
   return { startMs: start.getTime(), endMs: end.getTime() };
 }
 
+function safePeriod(v: string | null): PeriodKey {
+  if (v === "THIS_MONTH" || v === "LAST_3_MONTHS" || v === "THIS_YEAR") return v;
+  return "THIS_MONTH";
+}
+
 export default function AreaPage() {
   const router = useRouter();
-  const params = useParams<{ areaId: string }>();
+  const params = useParams();
   const searchParams = useSearchParams();
 
-  const areaId = params?.areaId;
+  // ✅ soporta carpeta [id] o [areaId]
+  const areaId = (params as any)?.areaId ?? (params as any)?.id;
 
-  // ✅ DEFAULT dashboard
+  // ✅ default dashboard
   const tab = (searchParams.get("tab") ?? "dashboard") as "history" | "templates" | "dashboard";
+
+  // ✅ deep-link filters
+  const initialTemplate = searchParams.get("template") ?? "ALL";
+  const initialPeriod = safePeriod(searchParams.get("period"));
 
   const [loading, setLoading] = useState(true);
   const [starting, setStarting] = useState<string | null>(null);
@@ -195,8 +205,8 @@ export default function AreaPage() {
   const [answersByRun, setAnswersByRun] = useState<Record<string, AnswerRow[]>>({});
   const [questionMetaById, setQuestionMetaById] = useState<Record<string, QuestionMeta>>({});
 
-  const [templateFilter, setTemplateFilter] = useState<string>("ALL");
-  const [period, setPeriod] = useState<PeriodKey>("THIS_MONTH");
+  const [templateFilter, setTemplateFilter] = useState<string>(initialTemplate);
+  const [period, setPeriod] = useState<PeriodKey>(initialPeriod);
 
   const now = new Date();
   const [histTemplateId, setHistTemplateId] = useState<string>("");
@@ -207,11 +217,16 @@ export default function AreaPage() {
   const [histError, setHistError] = useState<string | null>(null);
   const [histRuns, setHistRuns] = useState<AuditRunRow[]>([]);
 
-  // ✅ Si entran sin tab, FORZAR dashboard (y evitar flashes)
+  // ✅ si vienen sin tab, lo fijamos a dashboard (y preservamos template/period)
   useEffect(() => {
     if (!areaId) return;
+
     const t = searchParams.get("tab");
-    if (!t) router.replace(`/areas/${areaId}?tab=dashboard`);
+    if (!t) {
+      const qp = new URLSearchParams(searchParams.toString());
+      qp.set("tab", "dashboard");
+      router.replace(`/areas/${areaId}?${qp.toString()}`);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [areaId]);
 
@@ -226,12 +241,10 @@ export default function AreaPage() {
       setError(null);
 
       try {
-        // ✅ Si no hay sesión -> /login (NO /areas)
-        const p = await requireRoleOrRedirect(router, ["admin", "manager", "auditor", "superadmin"], "/login");
+        const p = await requireRoleOrRedirect(router, ["admin", "manager", "auditor", "superadmin"], "/areas");
         if (!p) return;
         setProfile(p);
 
-        // ✅ superadmin debe pasar aunque canRunAudits no lo contemple
         const allowed = p.role === "superadmin" ? true : canRunAudits(p.role);
         if (!allowed) {
           setError("No tienes permisos para acceder a esta sección.");
@@ -262,6 +275,12 @@ export default function AreaPage() {
         setTemplates(onlyActive);
 
         if (!histTemplateId && onlyActive.length > 0) setHistTemplateId(onlyActive[0].id);
+
+        // ✅ si te pasan template por URL y no existe en el área, no rompas: vuelve a ALL
+        if (templateFilter !== "ALL") {
+          const exists = onlyActive.some((x) => x.id === templateFilter);
+          if (!exists) setTemplateFilter("ALL");
+        }
 
         // 3) Runs
         const { data: runData, error: runErr } = await supabase
@@ -418,6 +437,18 @@ export default function AreaPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [areaId, router]);
 
+  // ✅ sincroniza filtros con URL (para que “Ver detalle” deje Vista seleccionada)
+  useEffect(() => {
+    if (!areaId) return;
+    const qp = new URLSearchParams(searchParams.toString());
+    qp.set("tab", tab);
+    if (templateFilter && templateFilter !== "ALL") qp.set("template", templateFilter);
+    else qp.delete("template");
+    qp.set("period", period);
+    router.replace(`/areas/${areaId}?${qp.toString()}`);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [templateFilter, period]);
+
   // ----------------------
   // Start run
   // ----------------------
@@ -497,7 +528,6 @@ export default function AreaPage() {
     }
   }
 
-  // (aggs) — se mantienen como estaban
   const aggregatedHistory: RunAgg[] = useMemo(() => {
     return runs.map((r) => {
       const templateName = templateNameById[r.audit_template_id] ?? r.audit_template_id;
@@ -536,6 +566,7 @@ export default function AreaPage() {
 
   const dashboard = useMemo(() => {
     const WINDOW = 4;
+
     const { startMs, endMs } = getPeriodRange(new Date(), period);
 
     const base = runs
@@ -706,13 +737,13 @@ export default function AreaPage() {
       </div>
 
       <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 18 }}>
-        <button style={tabBtn(tab === "dashboard")} onClick={() => router.replace(`/areas/${areaId}?tab=dashboard`)}>
+        <button style={tabBtn(tab === "dashboard")} onClick={() => router.push(`/areas/${areaId}?tab=dashboard`)}>
           Dashboard
         </button>
-        <button style={tabBtn(tab === "history")} onClick={() => router.replace(`/areas/${areaId}?tab=history`)}>
+        <button style={tabBtn(tab === "history")} onClick={() => router.push(`/areas/${areaId}?tab=history`)}>
           Historial
         </button>
-        <button style={tabBtn(tab === "templates")} onClick={() => router.replace(`/areas/${areaId}?tab=templates`)}>
+        <button style={tabBtn(tab === "templates")} onClick={() => router.push(`/areas/${areaId}?tab=templates`)}>
           Auditorías disponibles
         </button>
       </div>
@@ -842,8 +873,7 @@ export default function AreaPage() {
           </div>
 
           <div style={{ opacity: 0.75, fontSize: 13 }}>
-            Nota: el dashboard se calcula con auditorías <strong>submitted</strong> con score, filtrando por <strong>periodo</strong> y opcionalmente por{" "}
-            <strong>plantilla</strong>.
+            Nota: el dashboard se calcula con auditorías <strong>submitted</strong> con score, filtrando por <strong>periodo</strong> y opcionalmente por <strong>plantilla</strong>.
           </div>
         </div>
       ) : null}

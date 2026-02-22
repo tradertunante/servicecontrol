@@ -2,6 +2,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import type { CSSProperties } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { requireRoleOrRedirect } from "@/lib/auth/RequireRole";
@@ -59,7 +60,8 @@ type TrendPoint = {
 };
 
 type WorstAudit = {
-  id: string;
+  id: string; // templateId
+  areaId: string; // <-- NUEVO (para poder navegar al área correcta)
   name: string;
   avg: number;
   count: number;
@@ -130,6 +132,8 @@ function formatMonthKey(d: Date) {
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
+type PeriodKey = "THIS_MONTH" | "LAST_3_MONTHS" | "THIS_YEAR";
+
 const HOTEL_KEY = "sc_hotel_id";
 
 export default function DashboardPage() {
@@ -168,7 +172,7 @@ export default function DashboardPage() {
   const shadowSm = "var(--shadow-sm, 0 4px 16px rgba(0,0,0,0.06))";
   const rowBg = "var(--row-bg, rgba(0,0,0,0.04))";
 
-  const card: React.CSSProperties = {
+  const card: CSSProperties = {
     borderRadius: 18,
     border: `1px solid ${border}`,
     background: cardBg,
@@ -177,7 +181,7 @@ export default function DashboardPage() {
     color: fg,
   };
 
-  const miniBtn: React.CSSProperties = {
+  const miniBtn: CSSProperties = {
     padding: "8px 10px",
     borderRadius: 10,
     border: `1px solid ${border}`,
@@ -190,7 +194,7 @@ export default function DashboardPage() {
     whiteSpace: "nowrap",
   };
 
-  const ghostBtn: React.CSSProperties = {
+  const ghostBtn: CSSProperties = {
     padding: "10px 12px",
     borderRadius: 12,
     border: `1px solid ${border}`,
@@ -203,8 +207,15 @@ export default function DashboardPage() {
     whiteSpace: "nowrap",
   };
 
-  const goAreaDetail = (areaId: string) => router.push(`/areas/${areaId}/history`);
-  const goAuditTemplateDetail = (templateId: string) => router.push(`/builder/templates/${templateId}`);
+  // ✅ Ahora NO vamos a /history (eso te daba 404). Vamos a /areas/[id]?tab=dashboard
+  const goAreaDetail = (areaId: string) => {
+    router.push(`/areas/${areaId}?tab=dashboard&period=THIS_YEAR&template=ALL`);
+  };
+
+  // ✅ Para auditorías peores: vamos al área y preseleccionamos la Vista=template
+  const goWorstAuditDetail = (areaId: string, templateId: string) => {
+    router.push(`/areas/${areaId}?tab=dashboard&period=THIS_MONTH&template=${templateId}`);
+  };
 
   // Perfil + (si superadmin) hoteles + hotel seleccionado
   useEffect(() => {
@@ -410,14 +421,24 @@ export default function DashboardPage() {
           templateAgg.set(key, { sum: prev.sum + score, count: prev.count + 1 });
         }
 
+        // ✅ templateId -> areaId (deducido desde runsList)
+        const templateAreaById = new Map<string, string>();
+        for (const r of runsList) {
+          if (r.audit_template_id && r.area_id && !templateAreaById.has(r.audit_template_id)) {
+            templateAreaById.set(r.audit_template_id, r.area_id);
+          }
+        }
+
         const worstAudits: WorstAudit[] = Array.from(templateAgg.entries())
           .map(([id, v]) => ({
-            id,
+            id, // templateId
+            areaId: templateAreaById.get(id) ?? "",
             name: templateNameById.get(id) ?? "Auditoría",
             avg: v.count > 0 ? v.sum / v.count : 0,
             count: v.count,
           }))
           .filter((a) => a.count > 0)
+          .filter((a) => !!a.areaId)
           .sort((a, b) => a.avg - b.avg)
           .slice(0, 3);
 
@@ -631,7 +652,12 @@ export default function DashboardPage() {
         </div>
 
         <div style={card}>
-          <GaugeChart value={quarterScore.avg ?? 0} label={`Q${getCurrentQuarter()} ${now.getFullYear()}`} count={quarterScore.count} size={180} />
+          <GaugeChart
+            value={quarterScore.avg ?? 0}
+            label={`Q${getCurrentQuarter()} ${now.getFullYear()}`}
+            count={quarterScore.count}
+            size={180}
+          />
         </div>
 
         <div style={card}>
@@ -651,13 +677,24 @@ export default function DashboardPage() {
 
       {/* Mejores vs Peores */}
       {(top3Areas.length > 0 || worst3Areas.length > 0) && (
-        <div style={{ marginTop: 16, display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 16 }}>
+        <div
+          style={{
+            marginTop: 16,
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
+            gap: 16,
+          }}
+        >
           <div style={card}>
             <div style={{ fontSize: 18, fontWeight: 950, marginBottom: 16 }}>
               Top 3 Áreas con mejor performance ({now.getFullYear()})
             </div>
             <div style={{ display: "grid", gap: 12 }}>
-              {top3Areas.length > 0 ? top3Areas.map((a, idx) => renderAreaRow(a, idx, "best")) : <div style={{ opacity: 0.7 }}>No hay datos suficientes.</div>}
+              {top3Areas.length > 0 ? (
+                top3Areas.map((a, idx) => renderAreaRow(a, idx, "best"))
+              ) : (
+                <div style={{ opacity: 0.7 }}>No hay datos suficientes.</div>
+              )}
             </div>
           </div>
 
@@ -666,7 +703,11 @@ export default function DashboardPage() {
               Top 3 Áreas con peor performance ({now.getFullYear()})
             </div>
             <div style={{ display: "grid", gap: 12 }}>
-              {worst3Areas.length > 0 ? worst3Areas.map((a, idx) => renderAreaRow(a, idx, "worst")) : <div style={{ opacity: 0.7 }}>No hay datos suficientes.</div>}
+              {worst3Areas.length > 0 ? (
+                worst3Areas.map((a, idx) => renderAreaRow(a, idx, "worst"))
+              ) : (
+                <div style={{ opacity: 0.7 }}>No hay datos suficientes.</div>
+              )}
             </div>
           </div>
         </div>
@@ -709,7 +750,7 @@ export default function DashboardPage() {
 
                 <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                   <span style={{ fontWeight: 950, fontSize: 20, color: scoreColor(a.avg) }}>{a.avg.toFixed(1)}%</span>
-                  <button onClick={() => goAuditTemplateDetail(a.id)} style={miniBtn}>
+                  <button onClick={() => goWorstAuditDetail(a.areaId, a.id)} style={miniBtn}>
                     Ver detalle
                   </button>
                 </div>
