@@ -134,9 +134,7 @@ export default function AreasPage() {
 
         if (p.role === "superadmin") {
           hotelIdToUse =
-            typeof window !== "undefined"
-              ? localStorage.getItem(HOTEL_KEY)
-              : null;
+            typeof window !== "undefined" ? localStorage.getItem(HOTEL_KEY) : null;
 
           if (!hotelIdToUse) {
             setError("No hay hotel seleccionado. Vuelve al dashboard y selecciona uno.");
@@ -190,7 +188,10 @@ export default function AreasPage() {
       setError(null);
 
       try {
-        const isAdminLike = profile.role === "admin" || profile.role === "manager" || profile.role === "superadmin";
+        const isAdminLike =
+          profile.role === "admin" ||
+          profile.role === "manager" ||
+          profile.role === "superadmin";
 
         let areasList: AreaRow[] = [];
 
@@ -213,7 +214,9 @@ export default function AreasPage() {
 
           if (accessErr) throw accessErr;
 
-          const allowedIds = (accessData ?? []).map((r: any) => r.area_id).filter(Boolean);
+          const allowedIds = (accessData ?? [])
+            .map((r: any) => r.area_id)
+            .filter(Boolean);
 
           if (allowedIds.length > 0) {
             const { data: areasData, error: areasErr } = await supabase
@@ -255,11 +258,14 @@ export default function AreasPage() {
     });
   }, [areas, query]);
 
-  const canEdit = profile?.role === "admin" || profile?.role === "manager" || profile?.role === "superadmin";
+  const canEdit =
+    profile?.role === "admin" ||
+    profile?.role === "manager" ||
+    profile?.role === "superadmin";
 
-  // ✅ CAMBIO REAL: entrar al área => /areas/[areaId] (donde deben vivir las auditorías del área)
+  // ✅ CAMBIO: entrar al área SIEMPRE al dashboard del área
   const goArea = (areaId: string) => {
-    router.push(`/areas/${areaId}`);
+    router.push(`/areas/${areaId}?tab=dashboard`);
   };
 
   const createArea = async () => {
@@ -324,7 +330,10 @@ export default function AreasPage() {
       return;
     }
 
-    const newTypeRaw = window.prompt("Nuevo tipo (FO, HK, F&B, etc). Deja vacío para borrar:", currentType ?? "");
+    const newTypeRaw = window.prompt(
+      "Nuevo tipo (FO, HK, F&B, etc). Deja vacío para borrar:",
+      currentType ?? ""
+    );
     if (newTypeRaw === null) return;
 
     const newType = newTypeRaw.trim();
