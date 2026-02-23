@@ -23,6 +23,11 @@ export default function AdminPage() {
   const links: QuickLink[] = useMemo(
     () => [
       {
+        title: "Gestionar áreas",
+        description: "Crea, edita, ordena y administra las áreas del hotel.",
+        href: "/admin/areas",
+      },
+      {
         title: "Crear usuario",
         description: "Da de alta usuarios y asígnales rol y hotel.",
         href: "/admin/create-user",
@@ -76,18 +81,22 @@ export default function AdminPage() {
             padding: 20,
           }}
         >
-          <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "flex-start",
+              justifyContent: "space-between",
+              gap: 12,
+              flexWrap: "wrap",
+            }}
+          >
             <div>
-              <div style={{ fontSize: 13, color: "var(--muted)", fontWeight: 700 }}>
-                Panel · Administración
-              </div>
+              <div style={{ fontSize: 13, color: "var(--muted)", fontWeight: 700 }}>Panel · Administración</div>
 
-              <h1 style={{ margin: "6px 0 4px", fontSize: 22, fontWeight: 900 }}>
-                Admin del Hotel
-              </h1>
+              <h1 style={{ margin: "6px 0 4px", fontSize: 22, fontWeight: 900 }}>Admin del Hotel</h1>
 
               <p style={{ margin: 0, fontSize: 14, color: "var(--muted)" }}>
-                Gestiona usuarios y accesos del hotel seleccionado.
+                Gestiona usuarios, accesos y configuración del hotel seleccionado.
               </p>
             </div>
 
@@ -120,6 +129,22 @@ export default function AdminPage() {
                 }}
               >
                 Auditar
+              </button>
+
+              {/* ✅ NUEVO: acceso directo a áreas admin */}
+              <button
+                onClick={() => router.push("/admin/areas")}
+                style={{
+                  padding: "10px 14px",
+                  borderRadius: 12,
+                  border: "1px solid var(--border)",
+                  background: "var(--card-bg)",
+                  boxShadow: "var(--shadow-sm)",
+                  cursor: "pointer",
+                  fontWeight: 900,
+                }}
+              >
+                Áreas
               </button>
             </div>
           </div>
@@ -170,9 +195,7 @@ export default function AdminPage() {
               >
                 <div style={{ fontSize: 14 }}>
                   <span style={{ color: "var(--muted)", fontWeight: 800 }}>Sesión:</span>{" "}
-                  <span style={{ fontWeight: 900 }}>
-                    {profile?.full_name ? profile.full_name : "Usuario"}
-                  </span>{" "}
+                  <span style={{ fontWeight: 900 }}>{profile?.full_name ? profile.full_name : "Usuario"}</span>{" "}
                   <span style={{ color: "var(--muted)" }}>· rol</span>{" "}
                   <span style={{ fontWeight: 900 }}>{profile?.role}</span>
                 </div>
@@ -215,13 +238,7 @@ export default function AdminPage() {
         <div style={{ marginTop: 18 }}>
           <div style={{ fontWeight: 900, marginBottom: 10 }}>Accesos rápidos</div>
 
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
-              gap: 16,
-            }}
-          >
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 16 }}>
             {links.map((l) => (
               <Link
                 key={l.href}
