@@ -61,7 +61,7 @@ type TrendPoint = {
 
 type WorstAudit = {
   id: string; // templateId
-  areaId: string; // <-- NUEVO (para poder navegar al área correcta)
+  areaId: string;
   name: string;
   avg: number;
   count: number;
@@ -121,7 +121,7 @@ function getCurrentQuarter(): number {
 function scoreColor(score: number) {
   if (score < 60) return "var(--danger, #c62828)";
   if (score < 80) return "var(--warn, #ef6c00)";
-  return "var(--ok, var(--text))";
+  return "var(--ok, #0a7a3b)";
 }
 
 function formatMonthKey(d: Date) {
@@ -133,7 +133,6 @@ function formatMonthKey(d: Date) {
 }
 
 type PeriodKey = "THIS_MONTH" | "LAST_3_MONTHS" | "THIS_YEAR";
-
 const HOTEL_KEY = "sc_hotel_id";
 
 export default function DashboardPage() {
@@ -144,7 +143,6 @@ export default function DashboardPage() {
 
   const [profile, setProfile] = useState<Profile | null>(null);
 
-  // Superadmin selector
   const [hotels, setHotels] = useState<HotelRow[]>([]);
   const [selectedHotelId, setSelectedHotelId] = useState<string | null>(null);
 
@@ -207,17 +205,14 @@ export default function DashboardPage() {
     whiteSpace: "nowrap",
   };
 
-  // ✅ Ahora NO vamos a /history (eso te daba 404). Vamos a /areas/[id]?tab=dashboard
   const goAreaDetail = (areaId: string) => {
     router.push(`/areas/${areaId}?tab=dashboard&period=THIS_YEAR&template=ALL`);
   };
 
-  // ✅ Para auditorías peores: vamos al área y preseleccionamos la Vista=template
   const goWorstAuditDetail = (areaId: string, templateId: string) => {
     router.push(`/areas/${areaId}?tab=dashboard&period=THIS_MONTH&template=${templateId}`);
   };
 
-  // Perfil + (si superadmin) hoteles + hotel seleccionado
   useEffect(() => {
     let alive = true;
 
@@ -271,7 +266,6 @@ export default function DashboardPage() {
     };
   }, [router]);
 
-  // Data del hotel seleccionado
   useEffect(() => {
     let alive = true;
 
@@ -366,7 +360,6 @@ export default function DashboardPage() {
         setQuarterScore(getQuarterScore(runsList, currentYear, currentQuarter));
         setYearScore(getYearScore(runsList, currentYear));
 
-        // heatmap respeta el orden de "areasList"
         const heatData: any[] = [];
         for (const area of areasList) {
           const areaRuns = runsList.filter((r) => r.area_id === area.id);
@@ -421,7 +414,6 @@ export default function DashboardPage() {
           templateAgg.set(key, { sum: prev.sum + score, count: prev.count + 1 });
         }
 
-        // ✅ templateId -> areaId (deducido desde runsList)
         const templateAreaById = new Map<string, string>();
         for (const r of runsList) {
           if (r.audit_template_id && r.area_id && !templateAreaById.has(r.audit_template_id)) {
@@ -431,7 +423,7 @@ export default function DashboardPage() {
 
         const worstAudits: WorstAudit[] = Array.from(templateAgg.entries())
           .map(([id, v]) => ({
-            id, // templateId
+            id,
             areaId: templateAreaById.get(id) ?? "",
             name: templateNameById.get(id) ?? "Auditoría",
             avg: v.count > 0 ? v.sum / v.count : 0,
@@ -496,33 +488,18 @@ export default function DashboardPage() {
     const trend = build3MonthTrend(area.id);
 
     return (
-      <div
-        key={area.id}
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          padding: "14px 16px",
-          borderRadius: 12,
-          background: rowBg,
-          border: `1px solid ${border}`,
-          color: fg,
-          gap: 12,
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "flex-start", gap: 12, minWidth: 0 }}>
-          <span style={{ fontSize: 22, lineHeight: "22px" }}>{badge}</span>
+      <div key={area.id} className="rowCard" style={{ background: rowBg, border: `1px solid ${border}`, color: fg }}>
+        <div className="rowLeft">
+          <span className="rowBadge">{badge}</span>
 
           <div style={{ minWidth: 0 }}>
-            <div style={{ fontWeight: 950, fontSize: 16, overflow: "hidden", textOverflow: "ellipsis" }}>
-              {area.name}
-            </div>
+            <div className="rowTitle">{area.name}</div>
 
-            <div style={{ marginTop: 6, display: "flex", flexWrap: "wrap", gap: 10, opacity: 0.85 }}>
-              <span style={{ fontSize: 12, fontWeight: 900 }}>Tendencia 3 meses:</span>
-              <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+            <div className="rowTrend">
+              <span className="rowTrendLabel">Tendencia 3 meses:</span>
+              <div className="rowTrendItems">
                 {trend.map((t) => (
-                  <span key={`${t.key}-${t.year}-${t.monthIndex}`} style={{ fontSize: 12 }}>
+                  <span key={`${t.key}-${t.year}-${t.monthIndex}`} className="rowTrendItem">
                     <strong>{t.key}</strong>{" "}
                     <span
                       style={{
@@ -540,10 +517,12 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <span style={{ fontSize: 13, opacity: 0.7 }}>({area.count} auditorías)</span>
-          <span style={{ fontWeight: 950, fontSize: 20, color }}>{area.score.toFixed(1)}%</span>
-          <button onClick={() => goAreaDetail(area.id)} style={miniBtn}>
+        <div className="rowRight">
+          <span className="rowMeta">({area.count} auditorías)</span>
+          <span className="rowScore" style={{ color }}>
+            {area.score.toFixed(1)}%
+          </span>
+          <button onClick={() => goAreaDetail(area.id)} style={miniBtn} className="rowBtn">
             Ver detalle
           </button>
         </div>
@@ -553,24 +532,25 @@ export default function DashboardPage() {
 
   if (loading) {
     return (
-      <main style={{ padding: 24, background: bg, color: fg }}>
+      <main className="dash" style={{ background: bg, color: fg }}>
         <div style={{ opacity: 0.8 }}>Cargando…</div>
+        <style jsx>{dashCss}</style>
       </main>
     );
   }
 
   if (error) {
     return (
-      <main style={{ padding: 24, background: bg, color: fg }}>
+      <main className="dash" style={{ background: bg, color: fg }}>
         <div style={{ color: "var(--danger, crimson)", fontWeight: 900 }}>{error}</div>
+        <style jsx>{dashCss}</style>
       </main>
     );
   }
 
-  // Superadmin: selector
   if (profile?.role === "superadmin" && !selectedHotelId) {
     return (
-      <main style={{ padding: 24, background: bg, color: fg }}>
+      <main className="dash" style={{ background: bg, color: fg }}>
         <div style={{ ...card, margin: "0 auto" }}>
           <div style={{ fontSize: 22, fontWeight: 950 }}>Elige un hotel</div>
           <div style={{ marginTop: 8, opacity: 0.7 }}>
@@ -604,6 +584,8 @@ export default function DashboardPage() {
             )}
           </div>
         </div>
+
+        <style jsx>{dashCss}</style>
       </main>
     );
   }
@@ -613,10 +595,10 @@ export default function DashboardPage() {
   const selectedHotelName = hotels.find((h) => h.id === selectedHotelId)?.name ?? "Hotel";
 
   return (
-    <main style={{ padding: 24, background: bg, color: fg }}>
-      {/* Barra superior informativa */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, marginBottom: 18 }}>
-        <div style={{ opacity: 0.7, fontSize: 14 }}>
+    <main className="dash" style={{ background: bg, color: fg }}>
+      {/* Barra superior */}
+      <div className="topBar">
+        <div className="topText">
           Hola{profile?.full_name ? `, ${profile.full_name}` : ""}. Rol: <strong>{profile?.role}</strong> · Áreas:{" "}
           <strong>{areas.length}</strong> · Hotel seleccionado: <strong>{selectedHotelName}</strong>
         </div>
@@ -641,8 +623,8 @@ export default function DashboardPage() {
       </div>
 
       {/* Gauges */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 16 }}>
-        <div style={card}>
+      <div className="gridGauges">
+        <div style={card} className="card">
           <GaugeChart
             value={monthScore.avg ?? 0}
             label={monthName.charAt(0).toUpperCase() + monthName.slice(1)}
@@ -651,7 +633,7 @@ export default function DashboardPage() {
           />
         </div>
 
-        <div style={card}>
+        <div style={card} className="card">
           <GaugeChart
             value={quarterScore.avg ?? 0}
             label={`Q${getCurrentQuarter()} ${now.getFullYear()}`}
@@ -660,14 +642,14 @@ export default function DashboardPage() {
           />
         </div>
 
-        <div style={card}>
+        <div style={card} className="card">
           <GaugeChart value={yearScore.avg ?? 0} label={`Año ${now.getFullYear()}`} count={yearScore.count} size={180} />
         </div>
       </div>
 
       {/* Heatmap */}
-      <div style={{ ...card, marginTop: 16 }}>
-        <div style={{ fontSize: 18, fontWeight: 950, marginBottom: 16 }}>Performance por área (últimos 12 meses)</div>
+      <div style={{ ...card, marginTop: 16 }} className="card">
+        <div className="sectionTitle">Performance por área (últimos 12 meses)</div>
         {heatMapData.length > 0 ? (
           <HeatMap data={heatMapData} monthLabels={monthLabels} />
         ) : (
@@ -677,37 +659,18 @@ export default function DashboardPage() {
 
       {/* Mejores vs Peores */}
       {(top3Areas.length > 0 || worst3Areas.length > 0) && (
-        <div
-          style={{
-            marginTop: 16,
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
-            gap: 16,
-          }}
-        >
-          <div style={card}>
-            <div style={{ fontSize: 18, fontWeight: 950, marginBottom: 16 }}>
-              Top 3 Áreas con mejor performance ({now.getFullYear()})
-            </div>
+        <div className="gridTwo" style={{ marginTop: 16 }}>
+          <div style={card} className="card">
+            <div className="sectionTitle">Top 3 Áreas con mejor performance ({now.getFullYear()})</div>
             <div style={{ display: "grid", gap: 12 }}>
-              {top3Areas.length > 0 ? (
-                top3Areas.map((a, idx) => renderAreaRow(a, idx, "best"))
-              ) : (
-                <div style={{ opacity: 0.7 }}>No hay datos suficientes.</div>
-              )}
+              {top3Areas.length > 0 ? top3Areas.map((a, idx) => renderAreaRow(a, idx, "best")) : <div style={{ opacity: 0.7 }}>No hay datos suficientes.</div>}
             </div>
           </div>
 
-          <div style={card}>
-            <div style={{ fontSize: 18, fontWeight: 950, marginBottom: 16 }}>
-              Top 3 Áreas con peor performance ({now.getFullYear()})
-            </div>
+          <div style={card} className="card">
+            <div className="sectionTitle">Top 3 Áreas con peor performance ({now.getFullYear()})</div>
             <div style={{ display: "grid", gap: 12 }}>
-              {worst3Areas.length > 0 ? (
-                worst3Areas.map((a, idx) => renderAreaRow(a, idx, "worst"))
-              ) : (
-                <div style={{ opacity: 0.7 }}>No hay datos suficientes.</div>
-              )}
+              {worst3Areas.length > 0 ? worst3Areas.map((a, idx) => renderAreaRow(a, idx, "worst")) : <div style={{ opacity: 0.7 }}>No hay datos suficientes.</div>}
             </div>
           </div>
         </div>
@@ -715,42 +678,27 @@ export default function DashboardPage() {
 
       {/* Top 3 auditorías peores */}
       {worst3Audits.length > 0 && (
-        <div style={{ ...card, marginTop: 16 }}>
-          <div style={{ fontSize: 18, fontWeight: 950, marginBottom: 16 }}>
-            Top 3 auditorías con peor resultado (promedio)
-          </div>
+        <div style={{ ...card, marginTop: 16 }} className="card">
+          <div className="sectionTitle">Top 3 auditorías con peor resultado (promedio)</div>
 
           <div style={{ display: "grid", gap: 12 }}>
             {worst3Audits.map((a, idx) => (
-              <div
-                key={a.id}
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  padding: "14px 16px",
-                  borderRadius: 12,
-                  background: rowBg,
-                  border: `1px solid ${border}`,
-                  color: fg,
-                  gap: 12,
-                }}
-              >
-                <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
-                  <span style={{ fontSize: 22 }}>{idx === 0 ? "🚨" : "⚠️"}</span>
+              <div key={a.id} className="rowCard" style={{ background: rowBg, border: `1px solid ${border}`, color: fg }}>
+                <div className="rowLeft">
+                  <span className="rowBadge">{idx === 0 ? "🚨" : "⚠️"}</span>
                   <div style={{ minWidth: 0 }}>
-                    <div style={{ fontWeight: 950, fontSize: 16, overflow: "hidden", textOverflow: "ellipsis" }}>
-                      {a.name}
-                    </div>
+                    <div className="rowTitle">{a.name}</div>
                     <div style={{ marginTop: 4, fontSize: 12, opacity: 0.75 }}>
                       {a.count} ejecución{a.count === 1 ? "" : "es"} · promedio del periodo
                     </div>
                   </div>
                 </div>
 
-                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                  <span style={{ fontWeight: 950, fontSize: 20, color: scoreColor(a.avg) }}>{a.avg.toFixed(1)}%</span>
-                  <button onClick={() => goWorstAuditDetail(a.areaId, a.id)} style={miniBtn}>
+                <div className="rowRight">
+                  <span className="rowScore" style={{ color: scoreColor(a.avg) }}>
+                    {a.avg.toFixed(1)}%
+                  </span>
+                  <button onClick={() => goWorstAuditDetail(a.areaId, a.id)} style={miniBtn} className="rowBtn">
                     Ver detalle
                   </button>
                 </div>
@@ -761,9 +709,10 @@ export default function DashboardPage() {
       )}
 
       {/* Acceso rápido */}
-      <div style={{ marginTop: 16, display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 14 }}>
+      <div className="gridQuick" style={{ marginTop: 16 }}>
         <button
           onClick={() => router.push("/areas")}
+          className="quickBtn"
           style={{
             textAlign: "left",
             padding: 16,
@@ -782,6 +731,7 @@ export default function DashboardPage() {
         {profile?.role === "admin" || profile?.role === "superadmin" ? (
           <button
             onClick={() => router.push("/builder")}
+            className="quickBtn"
             style={{
               textAlign: "left",
               padding: 16,
@@ -798,6 +748,179 @@ export default function DashboardPage() {
           </button>
         ) : null}
       </div>
+
+      <style jsx>{dashCss}</style>
     </main>
   );
 }
+
+const dashCss = `
+  .dash{
+    padding: 24px;
+  }
+
+  .topBar{
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 18px;
+  }
+
+  .topText{
+    opacity: 0.7;
+    font-size: 14px;
+    line-height: 1.25;
+  }
+
+  .sectionTitle{
+    font-size: 18px;
+    font-weight: 950;
+    margin-bottom: 16px;
+  }
+
+  .gridGauges{
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 16px;
+  }
+
+  .gridTwo{
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 16px;
+  }
+
+  .gridQuick{
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 14px;
+  }
+
+  .rowCard{
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 14px 16px;
+    border-radius: 12px;
+    gap: 12px;
+  }
+
+  .rowLeft{
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    min-width: 0;
+    flex: 1;
+  }
+
+  .rowBadge{
+    font-size: 22px;
+    line-height: 22px;
+    flex-shrink: 0;
+  }
+
+  .rowTitle{
+    font-weight: 950;
+    font-size: 16px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .rowTrend{
+    margin-top: 6px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    opacity: 0.85;
+  }
+
+  .rowTrendLabel{
+    font-size: 12px;
+    font-weight: 900;
+  }
+
+  .rowTrendItems{
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  .rowTrendItem{
+    font-size: 12px;
+  }
+
+  .rowRight{
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-shrink: 0;
+  }
+
+  .rowMeta{
+    font-size: 13px;
+    opacity: 0.7;
+    white-space: nowrap;
+  }
+
+  .rowScore{
+    font-weight: 950;
+    font-size: 20px;
+    white-space: nowrap;
+  }
+
+  /* ✅ MOBILE */
+  @media (max-width: 720px){
+    .dash{
+      padding: 14px 12px;
+    }
+
+    .card{
+      padding: 16px !important;
+      border-radius: 22px !important;
+    }
+
+    .topBar{
+      flex-direction: column;
+      align-items: stretch;
+      margin-bottom: 14px;
+    }
+
+    .sectionTitle{
+      font-size: 20px;
+      margin-bottom: 12px;
+      line-height: 1.1;
+    }
+
+    .gridGauges{
+      grid-template-columns: 1fr;
+      gap: 12px;
+    }
+
+    .gridTwo{
+      grid-template-columns: 1fr;
+      gap: 12px;
+    }
+
+    .gridQuick{
+      grid-template-columns: 1fr;
+      gap: 12px;
+    }
+
+    /* Filas Top3 / Worst3: apilar el lado derecho abajo */
+    .rowCard{
+      flex-direction: column;
+      align-items: stretch;
+      gap: 10px;
+    }
+
+    .rowRight{
+      justify-content: space-between;
+    }
+
+    .rowBtn{
+      width: 100%;
+    }
+  }
+`;

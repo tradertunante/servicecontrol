@@ -31,37 +31,58 @@ function getCellTextColor(value: number | null): string {
 }
 
 export default function HeatMap({ data, monthLabels }: HeatMapProps) {
+  const stickyBg = "rgba(255,255,255,0.92)";
+
   return (
-    <div style={{ overflowX: "auto" }}>
+    <div
+      style={{
+        width: "100%",
+        overflowX: "auto",
+        WebkitOverflowScrolling: "touch",
+        borderRadius: 14,
+      }}
+    >
       <table
         style={{
-          width: "100%",
           borderCollapse: "separate",
-          borderSpacing: "4px",
+          borderSpacing: "6px",
+          width: "max-content",
+          minWidth: "100%",
         }}
       >
         <thead>
           <tr>
             <th
               style={{
+                position: "sticky",
+                left: 0,
+                zIndex: 4,
                 padding: "10px 14px",
                 textAlign: "left",
                 fontWeight: 950,
                 fontSize: 14,
                 opacity: 0.7,
+                background: stickyBg,
+                borderRadius: 10,
+                boxShadow: "10px 0 18px rgba(0,0,0,0.06)",
+                whiteSpace: "nowrap",
               }}
             >
               Área
             </th>
+
             {monthLabels.map((label) => (
               <th
                 key={label}
                 style={{
-                  padding: "10px 8px",
+                  padding: "10px 10px",
                   textAlign: "center",
                   fontWeight: 950,
                   fontSize: 13,
                   opacity: 0.7,
+                  whiteSpace: "nowrap",
+                  background: "rgba(255,255,255,0.65)",
+                  borderRadius: 10,
                 }}
               >
                 {label}
@@ -74,15 +95,26 @@ export default function HeatMap({ data, monthLabels }: HeatMapProps) {
           {data.map((row) => (
             <tr key={row.areaName}>
               <td
+                title={row.areaName}
                 style={{
+                  position: "sticky",
+                  left: 0,
+                  zIndex: 3,
                   padding: "12px 14px",
                   fontWeight: 950,
                   fontSize: 14,
                   whiteSpace: "nowrap",
+                  background: stickyBg,
+                  borderRadius: 10,
+                  boxShadow: "10px 0 18px rgba(0,0,0,0.06)",
+                  maxWidth: 220,
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
                 }}
               >
                 {row.areaName}
               </td>
+
               {row.months.map((cell, idx) => (
                 <td
                   key={idx}
@@ -92,24 +124,27 @@ export default function HeatMap({ data, monthLabels }: HeatMapProps) {
                       : "Sin datos"
                   }
                   style={{
-                    padding: "12px 8px",
+                    padding: "12px 10px",
                     textAlign: "center",
                     background: getCellColor(cell.value),
-                    borderRadius: 8,
+                    borderRadius: 10,
                     fontWeight: 900,
                     fontSize: 13,
                     color: getCellTextColor(cell.value),
                     cursor: cell.value !== null ? "pointer" : "default",
-                    transition: "all 0.2s",
+                    transition: "transform 0.12s ease, box-shadow 0.12s ease",
+                    minWidth: 64,
+                    whiteSpace: "nowrap",
+                    willChange: "transform",
                   }}
                   onMouseEnter={(e) => {
                     if (cell.value !== null) {
-                      e.currentTarget.style.transform = "scale(1.05)";
-                      e.currentTarget.style.boxShadow = "0 4px 12px rgba(0,0,0,0.15)";
+                      e.currentTarget.style.transform = "translateY(-1px) scale(1.03)";
+                      e.currentTarget.style.boxShadow = "0 6px 14px rgba(0,0,0,0.14)";
                     }
                   }}
                   onMouseLeave={(e) => {
-                    e.currentTarget.style.transform = "scale(1)";
+                    e.currentTarget.style.transform = "none";
                     e.currentTarget.style.boxShadow = "none";
                   }}
                 >
@@ -120,6 +155,15 @@ export default function HeatMap({ data, monthLabels }: HeatMapProps) {
           ))}
         </tbody>
       </table>
+
+      {/* Ajustes específicos móvil */}
+      <style jsx>{`
+        @media (max-width: 720px) {
+          table {
+            border-spacing: 6px;
+          }
+        }
+      `}</style>
     </div>
   );
 }
