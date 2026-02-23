@@ -1,4 +1,4 @@
-// app/areas/page.tsx  ✅ Selector para moverse entre áreas (sin edición)
+// app/areas/page.tsx
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
@@ -46,7 +46,7 @@ export default function AreasPage() {
   const [areas, setAreas] = useState<AreaRow[]>([]);
   const [query, setQuery] = useState("");
 
-  // ---- Theme vars (globals.css) ----
+  // ---- Theme vars ----
   const fg = "var(--text)";
   const bg = "var(--bg)";
   const cardBg = "var(--card-bg)";
@@ -57,42 +57,7 @@ export default function AreasPage() {
   const inputBg = "var(--input-bg)";
   const inputBorder = "var(--input-border)";
 
-  const btn: React.CSSProperties = {
-    padding: "10px 12px",
-    borderRadius: 12,
-    border: `1px solid ${inputBorder}`,
-    background: inputBg,
-    color: fg,
-    cursor: "pointer",
-    fontWeight: 950,
-    fontSize: 13,
-    boxShadow: shadowSm,
-    whiteSpace: "nowrap",
-  };
-
-  const primaryBtn: React.CSSProperties = {
-    padding: "10px 12px",
-    borderRadius: 12,
-    border: `1px solid ${inputBorder}`,
-    background: fg,
-    color: bg,
-    cursor: "pointer",
-    fontWeight: 950,
-    fontSize: 13,
-    boxShadow: shadowSm,
-    whiteSpace: "nowrap",
-  };
-
-  const card: React.CSSProperties = {
-    borderRadius: 18,
-    border: `1px solid ${border}`,
-    background: cardBg,
-    padding: 16,
-    boxShadow: shadowLg,
-    color: fg,
-  };
-
-  // 1) Perfil + hotel
+  // 1) Auth + decidir hotel
   useEffect(() => {
     let alive = true;
 
@@ -101,42 +66,34 @@ export default function AreasPage() {
       setError(null);
 
       try {
-        // ✅ Selector: lo ven todos los roles operativos
-        const p = (await requireRoleOrRedirect(
-          router,
-          ["admin", "manager", "auditor", "superadmin"],
-          "/login"
-        )) as Profile | null;
+        const p = (await requireRoleOrRedirect(router, ["admin", "manager", "auditor", "superadmin"], "/login")) as
+          | Profile
+          | null;
 
         if (!alive || !p) return;
 
-        setProfile(p);
-
-        let hotelIdToUse: string | null = null;
-
-        if (p.role === "superadmin") {
-          hotelIdToUse = typeof window !== "undefined" ? localStorage.getItem(HOTEL_KEY) : null;
-          if (!hotelIdToUse) {
-            setError("No hay hotel seleccionado. Vuelve al dashboard y selecciona uno.");
-            setLoading(false);
-            return;
-          }
-        } else {
-          if (!p.hotel_id) {
-            setError("Tu usuario no tiene hotel asignado.");
-            setLoading(false);
-            return;
-          }
-          hotelIdToUse = p.hotel_id;
-          if (typeof window !== "undefined") localStorage.setItem(HOTEL_KEY, hotelIdToUse);
+        // ✅ Si es admin/superadmin => esta pantalla NO es para ellos
+        if (p.role === "admin" || p.role === "superadmin") {
+          router.replace("/admin/areas");
+          return;
         }
 
-        setHotelId(hotelIdToUse);
+        setProfile(p);
+
+        // Manager/Auditor: hotel desde perfil
+        if (!p.hotel_id) {
+          setError("Tu usuario no tiene hotel asignado.");
+          setLoading(false);
+          return;
+        }
+
+        setHotelId(p.hotel_id);
+        if (typeof window !== "undefined") localStorage.setItem(HOTEL_KEY, p.hotel_id);
 
         const { data: h, error: hErr } = await supabase
           .from("hotels")
           .select("id,name")
-          .eq("id", hotelIdToUse)
+          .eq("id", p.hotel_id)
           .single();
 
         if (hErr) throw hErr;
@@ -156,7 +113,7 @@ export default function AreasPage() {
     };
   }, [router]);
 
-  // 2) Cargar áreas (admin/manager/superadmin ven todas; auditor solo acceso)
+  // 2) Cargar áreas: manager = todas, auditor = accesos
   useEffect(() => {
     let alive = true;
 
@@ -167,11 +124,9 @@ export default function AreasPage() {
       setError(null);
 
       try {
-        const isAdminLike = profile.role === "admin" || profile.role === "manager" || profile.role === "superadmin";
-
         let areasList: AreaRow[] = [];
 
-        if (isAdminLike) {
+        if (profile.role === "manager") {
           const { data, error: aErr } = await supabase
             .from("areas")
             .select("id,name,type,hotel_id,created_at")
@@ -181,6 +136,7 @@ export default function AreasPage() {
           if (aErr) throw aErr;
           areasList = (data ?? []) as AreaRow[];
         } else {
+          // auditor
           const { data: accessData, error: accessErr } = await supabase
             .from("user_area_access")
             .select("area_id")
@@ -224,47 +180,40 @@ export default function AreasPage() {
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return areas;
-    return areas.filter((a) => `${a.name ?? ""} ${a.type ?? ""} ${a.id ?? ""}`.toLowerCase().includes(q));
+
+    return areas.filter((a) => {
+      const hay = `${a.name ?? ""} ${a.type ?? ""} ${a.id ?? ""}`.toLowerCase();
+      return hay.includes(q);
+    });
   }, [areas, query]);
 
   const goArea = (areaId: string) => {
     router.push(`/areas/${areaId}?tab=dashboard`);
   };
 
-  // ✅ aquí NO se edita
-  const canManage = profile?.role === "admin" || profile?.role === "superadmin";
-
   return (
     <main className="areasPage" style={{ background: bg, color: fg }}>
       <HotelHeader />
 
       <div className="areasInner">
-        {/* Top bar */}
         <div className="topBar">
           <div className="topLeft">
             <div className="title">
-              Áreas {hotelName ? <span className="hotel">· {hotelName}</span> : null}
+              Mis Áreas {hotelName ? <span className="hotel">· {hotelName}</span> : null}
             </div>
             <div className="meta">
-              Rol: <strong>{profile?.role ?? "—"}</strong> <span className="dot">·</span> Total: <strong>{areas.length}</strong>
+              Rol: <strong>{profile?.role ?? "—"}</strong> <span className="dot">·</span> Total:{" "}
+              <strong>{areas.length}</strong>
             </div>
           </div>
 
           <div className="topActions">
-            <button type="button" onClick={() => router.back()} className="btn">
-              ← Atrás
+            <button type="button" onClick={() => router.push("/dashboard")} className="btn">
+              Dashboard
             </button>
-
-            {/* ✅ acceso a gestión solo para admin/superadmin */}
-            {canManage && (
-              <button type="button" onClick={() => router.push("/admin/areas")} className="btn" title="Gestionar áreas">
-                Gestionar
-              </button>
-            )}
           </div>
         </div>
 
-        {/* Search */}
         <div className="searchRow">
           <input
             value={query}
@@ -274,19 +223,17 @@ export default function AreasPage() {
           />
         </div>
 
-        {/* Loading / Error */}
         {loading && <div style={{ marginTop: 14, opacity: 0.8 }}>Cargando…</div>}
 
         {error && <div className="errorBox">{error}</div>}
 
-        {/* List */}
         {!loading && !error && (
           <div className="list">
             {filtered.length === 0 ? (
               <div className="card">
                 <div style={{ fontWeight: 950 }}>No hay áreas</div>
                 <div style={{ marginTop: 6, opacity: 0.75 }}>
-                  {query.trim() ? "No hay resultados para tu búsqueda." : "Este hotel todavía no tiene áreas creadas."}
+                  {query.trim() ? "No hay resultados para tu búsqueda." : "No tienes áreas asignadas todavía."}
                 </div>
               </div>
             ) : (
@@ -301,19 +248,6 @@ export default function AreasPage() {
                       <span className="metaSmall">
                         ID: <span className="mono">{a.id}</span>
                       </span>
-
-                      {a.created_at ? (
-                        <span className="metaSmall">
-                          Creada:{" "}
-                          <span>
-                            {new Date(a.created_at).toLocaleDateString("es-ES", {
-                              day: "2-digit",
-                              month: "short",
-                              year: "numeric",
-                            })}
-                          </span>
-                        </span>
-                      ) : null}
                     </div>
                   </div>
 
@@ -505,10 +439,11 @@ export default function AreasPage() {
           display: flex;
           gap: 10px;
           align-items: center;
+          flex-wrap: wrap;
           justify-content: flex-end;
         }
 
-        /* ✅ MOBILE */
+        /* Mobile */
         @media (max-width: 720px) {
           .areasInner {
             padding: 14px 12px;
@@ -522,25 +457,22 @@ export default function AreasPage() {
 
           .topActions {
             display: grid;
-            grid-template-columns: 1fr 1fr;
+            grid-template-columns: 1fr;
             gap: 10px;
           }
 
-          .btn,
-          .primaryBtn {
+          .btn {
             width: 100%;
           }
 
           .itemCard {
             flex-direction: column;
             align-items: stretch;
-            gap: 12px;
           }
 
           .itemActions {
             display: grid;
             grid-template-columns: 1fr;
-            gap: 10px;
           }
 
           .enterBtn {
