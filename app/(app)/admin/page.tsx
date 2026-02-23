@@ -33,8 +33,8 @@ export default function AdminPage() {
         href: "/admin/create-user",
       },
       {
-        title: "Eliminar usuario",
-        description: "Desactiva accesos o elimina usuarios del sistema.",
+        title: "Administrar usuarios",
+        description: "Gestiona usuarios: desactivar accesos, revisar roles y permisos.",
         href: "/admin/delete-user",
       },
       // Nota: /admin/user-area-access ahora mismo es API (route.ts). Cuando tengas UI, lo activamos.
@@ -131,7 +131,7 @@ export default function AdminPage() {
                 Auditar
               </button>
 
-              {/* ✅ NUEVO: acceso directo a áreas admin */}
+              {/* ✅ acceso directo a áreas admin */}
               <button
                 onClick={() => router.push("/admin/areas")}
                 style={{
