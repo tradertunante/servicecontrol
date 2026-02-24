@@ -56,6 +56,7 @@ export default function StandardsPage() {
   const [areas, setAreas] = useState<Area[]>([]);
   const [hotelTemplates, setHotelTemplates] = useState<HotelTemplate[]>([]);
   const [savingTemplateId, setSavingTemplateId] = useState<string | null>(null);
+  const [duplicatingTemplateId, setDuplicatingTemplateId] = useState<string | null>(null);
 
   const card: React.CSSProperties = {
     borderRadius: 18,
@@ -270,6 +271,38 @@ export default function StandardsPage() {
     }
   };
 
+  // ✅ NUEVO: duplicar auditoría YA importada (para varios restaurantes, etc.)
+  const duplicateHotelTemplate = async (template: HotelTemplate) => {
+    if (!hotelIdInUse) return alert("No hay hotel seleccionado.");
+
+    // Nombre sugerido
+    const suggested = `${template.name} (Copia)`;
+    const name = window.prompt("Nombre para la copia:", suggested);
+    if (!name) return;
+
+    setDuplicatingTemplateId(template.id);
+    try {
+      // RPC que clonará: audit_templates + secciones + preguntas
+      const { data, error } = await supabase.rpc("clone_hotel_audit_template", {
+        p_template_id: template.id,
+        p_target_hotel_id: hotelIdInUse,
+        p_new_name: name,
+      });
+
+      if (error) throw error;
+
+      // data devuelve el new_template_id (según el SQL)
+      await loadAll(hotelIdInUse);
+
+      // Opcional: si quieres llevarlo directo al editor:
+      // if (data) router.push(`/builder/${data}`);
+    } catch (e: any) {
+      alert(e?.message ?? "No se pudo duplicar la auditoría.");
+    } finally {
+      setDuplicatingTemplateId(null);
+    }
+  };
+
   const templatesByPack = useMemo(() => {
     const map = new Map<string, HotelTemplate[]>();
     for (const t of hotelTemplates) {
@@ -343,7 +376,11 @@ export default function StandardsPage() {
                     </button>
 
                     <button
-                      style={{ ...btn, opacity: busyPackId === p.id ? 0.7 : 1, cursor: busyPackId === p.id ? "not-allowed" : "pointer" }}
+                      style={{
+                        ...btn,
+                        opacity: busyPackId === p.id ? 0.7 : 1,
+                        cursor: busyPackId === p.id ? "not-allowed" : "pointer",
+                      }}
                       onClick={() => duplicatePackToHotel(p.id)}
                       disabled={busyPackId === p.id}
                     >
@@ -360,7 +397,8 @@ export default function StandardsPage() {
         <div style={card}>
           <div style={{ fontSize: 18, fontWeight: 950, marginBottom: 8 }}>🏨 En mi hotel</div>
           <div style={{ opacity: 0.75, fontSize: 13, marginBottom: 12 }}>
-            Aquí ves lo importado. Asigna un área a cada auditoría para que aparezca en el Builder.
+            Aquí ves lo importado. Asigna un área a cada auditoría para que aparezca en el Builder. Usa “Duplicar” si necesitas varias
+            instancias (p. ej. varios restaurantes).
           </div>
 
           {hotelTemplates.length === 0 ? (
@@ -386,9 +424,7 @@ export default function StandardsPage() {
                         <div key={t.id} style={row}>
                           <div style={{ minWidth: 260 }}>
                             <div style={{ fontWeight: 950 }}>{t.name}</div>
-                            <div style={subtitle}>
-                              Área: {t.area_id ? areaName.get(t.area_id) ?? "—" : "Sin asignar"}
-                            </div>
+                            <div style={subtitle}>Área: {t.area_id ? areaName.get(t.area_id) ?? "—" : "Sin asignar"}</div>
                           </div>
 
                           <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
@@ -404,7 +440,7 @@ export default function StandardsPage() {
                                 height: 42,
                                 minWidth: 220,
                               }}
-                              disabled={savingTemplateId === t.id}
+                              disabled={savingTemplateId === t.id || duplicatingTemplateId === t.id}
                             >
                               <option value="">(Sin área)</option>
                               {areas.map((a) => (
@@ -414,7 +450,16 @@ export default function StandardsPage() {
                               ))}
                             </select>
 
-                            <button style={btnWhite} onClick={() => router.push(`/builder/${t.id}`)}>
+                            <button
+                              style={btnWhite}
+                              onClick={() => duplicateHotelTemplate(t)}
+                              disabled={duplicatingTemplateId === t.id}
+                              title="Crea una copia de esta auditoría para asignarla a otro restaurante/área"
+                            >
+                              {duplicatingTemplateId === t.id ? "Duplicando…" : "Duplicar"}
+                            </button>
+
+                            <button style={btnWhite} onClick={() => router.push(`/builder/${t.id}`)} disabled={duplicatingTemplateId === t.id}>
                               Editar
                             </button>
                           </div>
