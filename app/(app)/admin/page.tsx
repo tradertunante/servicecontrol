@@ -35,7 +35,7 @@ export default function AdminPage() {
       {
         title: "Administrar usuarios",
         description: "Gestiona usuarios: desactivar accesos, revisar roles y permisos.",
-        href: "/admin/delete-user",
+        href: "/admin/admin-user",
       },
       // Nota: /admin/user-area-access ahora mismo es API (route.ts). Cuando tengas UI, lo activamos.
     ],
