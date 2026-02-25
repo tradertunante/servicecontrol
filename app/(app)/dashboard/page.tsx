@@ -28,9 +28,9 @@ type HotelRow = {
 type AreaRow = {
   id: string;
   name: string;
-  type: string | null; // lo usas como "Grupo" (ROOMS / A&B / SPA)
+  type: string | null; // Grupo
   hotel_id: string | null;
-  sort_order?: number | null; // <-- este manda el orden
+  sort_order?: number | null;
 };
 
 type AuditRunRow = {
@@ -67,6 +67,9 @@ type WorstAudit = {
   count: number;
 };
 
+// --------------------
+// Helpers scores
+// --------------------
 function getMonthScore(runs: AuditRunRow[], year: number, month: number): ScoreAgg {
   const vals = runs
     .filter((r) => r.executed_at)
@@ -113,6 +116,36 @@ function getYearScore(runs: AuditRunRow[], year: number): ScoreAgg {
   return { avg: Math.round(avg * 100) / 100, count: vals.length };
 }
 
+// ✅ por template dentro de un área
+function getMonthScoreForTemplate(runs: AuditRunRow[], templateId: string, year: number, month: number): ScoreAgg {
+  const vals = runs
+    .filter((r) => r.executed_at)
+    .filter((r) => r.audit_template_id === templateId)
+    .filter((r) => {
+      const d = new Date(r.executed_at!);
+      return d.getFullYear() === year && d.getMonth() === month;
+    })
+    .map((r) => Number(r.score))
+    .filter((n) => Number.isFinite(n) && n >= 0 && n <= 100);
+
+  if (vals.length === 0) return { avg: null, count: 0 };
+  const avg = vals.reduce((s, n) => s + n, 0) / vals.length;
+  return { avg: Math.round(avg * 100) / 100, count: vals.length };
+}
+
+function getYearScoreForTemplate(runs: AuditRunRow[], templateId: string, year: number): ScoreAgg {
+  const vals = runs
+    .filter((r) => r.executed_at)
+    .filter((r) => r.audit_template_id === templateId)
+    .filter((r) => new Date(r.executed_at!).getFullYear() === year)
+    .map((r) => Number(r.score))
+    .filter((n) => Number.isFinite(n) && n >= 0 && n <= 100);
+
+  if (vals.length === 0) return { avg: null, count: 0 };
+  const avg = vals.reduce((s, n) => s + n, 0) / vals.length;
+  return { avg: Math.round(avg * 100) / 100, count: vals.length };
+}
+
 function getCurrentQuarter(): number {
   const month = new Date().getMonth();
   return Math.floor(month / 3) + 1;
@@ -125,10 +158,7 @@ function scoreColor(score: number) {
 }
 
 function formatMonthKey(d: Date) {
-  const s = d
-    .toLocaleDateString("es-ES", { month: "short" })
-    .replace(".", "")
-    .slice(0, 3);
+  const s = d.toLocaleDateString("es-ES", { month: "short" }).replace(".", "").slice(0, 3);
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
@@ -212,6 +242,7 @@ export default function DashboardPage() {
     router.push(`/areas/${areaId}?tab=dashboard&period=THIS_MONTH&template=${templateId}`);
   };
 
+  // ✅ Auth / hotel selection
   useEffect(() => {
     let alive = true;
 
@@ -231,11 +262,7 @@ export default function DashboardPage() {
           const stored = typeof window !== "undefined" ? localStorage.getItem(HOTEL_KEY) : null;
           setSelectedHotelId(stored || null);
 
-          const { data: hData, error: hErr } = await supabase
-            .from("hotels")
-            .select("id,name,created_at")
-            .order("created_at", { ascending: false });
-
+          const { data: hData, error: hErr } = await supabase.from("hotels").select("id,name,created_at").order("created_at", { ascending: false });
           if (hErr) throw hErr;
 
           if (!alive) return;
@@ -265,6 +292,7 @@ export default function DashboardPage() {
     };
   }, [router]);
 
+  // ✅ Load dashboard data
   useEffect(() => {
     let alive = true;
 
@@ -283,7 +311,6 @@ export default function DashboardPage() {
         let areasList: AreaRow[] = [];
 
         if (isAdminLike) {
-          // ✅ ESTE ES EL ORDEN DEL DASHBOARD
           const { data, error: aErr } = await supabase
             .from("areas")
             .select("id,name,type,hotel_id,sort_order")
@@ -360,31 +387,82 @@ export default function DashboardPage() {
         setQuarterScore(getQuarterScore(runsList, currentYear, currentQuarter));
         setYearScore(getYearScore(runsList, currentYear));
 
+        // ✅ HEATMAP: 12M + última col "Año" (media anual del año actual)
         const heatData: any[] = [];
+        const yearNow = new Date().getFullYear();
+
         for (const area of areasList) {
           const areaRuns = runsList.filter((r) => r.area_id === area.id);
-          const months: any[] = [];
 
+          // Dept months rolling 12
+          const months: any[] = [];
           for (let i = 11; i >= 0; i--) {
             const d = new Date();
             d.setMonth(d.getMonth() - i);
             const y = d.getFullYear();
             const m = d.getMonth();
-
             const s = getMonthScore(areaRuns, y, m);
             months.push({ value: s.avg, count: s.count });
           }
 
-          
+          // Dept anual (año actual)
+          const deptYear = getYearScore(areaRuns, yearNow);
+          months.push({ value: deptYear.avg, count: deptYear.count });
+
+          // Templates dentro del área (children)
+          const templateIdsForArea = Array.from(new Set(areaRuns.map((r) => r.audit_template_id).filter(Boolean)));
+
+          // nombres templates (solo lo necesario para este área)
+          const templateNameById = new Map<string, string>();
+          if (templateIdsForArea.length > 0) {
+            const { data: tData, error: tErr } = await supabase.from("audit_templates").select("id,name").in("id", templateIdsForArea);
+            if (tErr) throw tErr;
+            (tData ?? []).forEach((t: any) => templateNameById.set(t.id, t.name));
+          }
+
+          const children: any[] = [];
+          for (const tid of templateIdsForArea) {
+            const tMonths: any[] = [];
+
+            for (let i = 11; i >= 0; i--) {
+              const d = new Date();
+              d.setMonth(d.getMonth() - i);
+              const y = d.getFullYear();
+              const m = d.getMonth();
+              const s = getMonthScoreForTemplate(areaRuns, tid, y, m);
+              tMonths.push({ value: s.avg, count: s.count });
+            }
+
+            const yAgg = getYearScoreForTemplate(areaRuns, tid, yearNow);
+            tMonths.push({ value: yAgg.avg, count: yAgg.count });
+
+            children.push({
+              label: templateNameById.get(tid) ?? "Auditoría",
+              months: tMonths,
+            });
+          }
+
+          // opcional: ordena children por peor anual primero
+          children.sort((a, b) => {
+            const av = a.months?.[a.months.length - 1]?.value ?? 999;
+            const bv = b.months?.[b.months.length - 1]?.value ?? 999;
+            return (av ?? 999) - (bv ?? 999);
+          });
+
           heatData.push({
-  group: area.type ?? "Sin categoría",
-  label: area.name,
-  sort_order: area.sort_order ?? null,
-  months,
-});
+            group: area.type ?? "Sin categoría",
+            label: area.name,
+            sort_order: area.sort_order ?? null,
+            months,
+            children,
+          });
         }
+
         setHeatMapData(heatData);
 
+        // --------------------
+        // Top/Worst depts (año actual)
+        // --------------------
         const areaScores: AreaScore[] = areasList.map((area) => {
           const areaRuns = runsList.filter((r) => r.area_id === area.id);
           const s = getYearScore(areaRuns, currentYear);
@@ -396,6 +474,9 @@ export default function DashboardPage() {
         setTop3Areas([...withData].sort((a, b) => b.score - a.score).slice(0, 3));
         setWorst3Areas([...withData].sort((a, b) => a.score - b.score).slice(0, 3));
 
+        // --------------------
+        // Worst audits (por template global)
+        // --------------------
         const templateIds = Array.from(new Set(runsList.map((r) => r.audit_template_id).filter(Boolean)));
 
         const templateNameById = new Map<string, string>();
@@ -406,14 +487,13 @@ export default function DashboardPage() {
         }
 
         const templateAgg = new Map<string, { sum: number; count: number }>();
-
         for (const r of runsList) {
-          const score = Number(r.score);
-          if (!Number.isFinite(score) || score < 0 || score > 100) continue;
+          const sc = Number(r.score);
+          if (!Number.isFinite(sc) || sc < 0 || sc > 100) continue;
 
           const key = r.audit_template_id;
           const prev = templateAgg.get(key) ?? { sum: 0, count: 0 };
-          templateAgg.set(key, { sum: prev.sum + score, count: prev.count + 1 });
+          templateAgg.set(key, { sum: prev.sum + sc, count: prev.count + 1 });
         }
 
         const templateAreaById = new Map<string, string>();
@@ -473,6 +553,7 @@ export default function DashboardPage() {
     return points;
   };
 
+  // ✅ Labels: 12 meses + "Año" (última columna fija)
   const monthLabels = useMemo(() => {
     const labels: string[] = [];
     for (let i = 11; i >= 0; i--) {
@@ -481,6 +562,7 @@ export default function DashboardPage() {
       const s = d.toLocaleDateString("es-ES", { month: "short" }).replace(".", "");
       labels.push(s.charAt(0).toUpperCase() + s.slice(1, 3));
     }
+    labels.push("Año");
     return labels;
   }, []);
 
@@ -636,7 +718,7 @@ export default function DashboardPage() {
       </div>
 
       <div style={{ ...card, marginTop: 16 }} className="card">
-        <div className="sectionTitle">Performance por departamento (últimos 12 meses)</div>
+        <div className="sectionTitle">Tendencia · 12M</div>
         {heatMapData.length > 0 ? <HeatMap data={heatMapData} monthLabels={monthLabels} /> : <div style={{ opacity: 0.7 }}>No hay datos suficientes.</div>}
       </div>
 
@@ -689,7 +771,6 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* Acceso rápido (sin Builder) */}
       <div className="gridQuick" style={{ marginTop: 16 }}>
         <button
           onClick={() => router.push("/areas")}
@@ -716,7 +797,11 @@ export default function DashboardPage() {
 }
 
 const dashCss = `
-  .dash{ padding: 24px; }
+  /* Blindaje para evitar overflow horizontal (iOS) */
+  .dash{
+    padding: 24px;
+    overflow-x: hidden;
+  }
 
   .topBar{
     display:flex; justify-content:space-between; align-items:center;
@@ -725,7 +810,12 @@ const dashCss = `
 
   .topText{ opacity:0.7; font-size:14px; line-height:1.25; }
 
-  .sectionTitle{ font-size:18px; font-weight:950; margin-bottom:16px; }
+  .sectionTitle{
+    font-size:22px;
+    font-weight:950;
+    letter-spacing:0.4px;
+    margin-bottom:22px;
+  }
 
   .gridGauges{
     display:grid;
@@ -752,7 +842,16 @@ const dashCss = `
 
   .rowLeft{ display:flex; align-items:flex-start; gap:12px; min-width:0; flex:1; }
   .rowBadge{ font-size:22px; line-height:22px; flex-shrink:0; }
-  .rowTitle{ font-weight:950; font-size:16px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+
+  .rowTitle{
+    font-weight:950;
+    font-size:16px;
+    white-space: normal;
+    overflow: visible;
+    text-overflow: unset;
+    word-break: break-word;
+    overflow-wrap: anywhere;
+  }
 
   .rowTrend{ margin-top:6px; display:flex; flex-wrap:wrap; gap:10px; opacity:0.85; }
   .rowTrendLabel{ font-size:12px; font-weight:900; }
@@ -767,7 +866,7 @@ const dashCss = `
     .dash{ padding:14px 12px; }
     .card{ padding:16px !important; border-radius:22px !important; }
     .topBar{ flex-direction:column; align-items:stretch; margin-bottom:14px; }
-    .sectionTitle{ font-size:20px; margin-bottom:12px; line-height:1.1; }
+    .sectionTitle{ font-size:20px; margin-bottom:16px; line-height:1.1; }
     .gridGauges{ grid-template-columns:1fr; gap:12px; }
     .gridTwo{ grid-template-columns:1fr; gap:12px; }
     .gridQuick{ grid-template-columns:1fr; gap:12px; }
