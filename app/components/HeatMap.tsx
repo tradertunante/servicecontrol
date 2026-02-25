@@ -1,169 +1,188 @@
-// app/components/HeatMap.tsx
+// FILE: app/components/HeatMap.tsx
 "use client";
 
-type HeatMapCell = {
-  value: number | null;
-  count: number;
-};
+import React, { useMemo } from "react";
 
-type HeatMapProps = {
-  data: {
-    areaName: string;
-    months: HeatMapCell[];
-  }[];
-  monthLabels: string[];
-};
+type HeatCell = { value: number | null; count: number };
 
-function getCellColor(value: number | null): string {
-  if (value === null) return "rgba(0,0,0,0.03)";
-  if (value < 60) return "#ffcdd2";
-  if (value < 70) return "#ffcc80";
-  if (value < 80) return "#fff59d";
-  if (value < 90) return "#c5e1a5";
-  return "#a5d6a7";
-}
+// ✅ Acepta sort_order para ordenar igual que Admin
+export type HeatMapRow =
+  | {
+      // formato nuevo (recomendado)
+      group?: string;        // ROOMS / A&B / SPA ...
+      label?: string;        // nombre del departamento
+      sort_order?: number | null;
+      months: HeatCell[];
+    }
+  | {
+      // compat con formato antiguo
+      areaName?: string;
+      months: HeatCell[];
+    };
 
-function getCellTextColor(value: number | null): string {
-  if (value === null) return "rgba(0,0,0,0.3)";
-  if (value < 60) return "#c62828";
-  if (value < 80) return "#ef6c00";
-  return "#2e7d32";
-}
+export default function HeatMap({ data, monthLabels }: { data: HeatMapRow[]; monthLabels: string[] }) {
+  const rows = useMemo(() => {
+    return (data ?? []).map((r: any) => ({
+      group: (r.group ?? "").trim() || "Sin categoría",
+      label: (r.label ?? r.areaName ?? "—") as string,
+      sort_order: typeof r.sort_order === "number" ? r.sort_order : null,
+      months: (r.months ?? []) as HeatCell[],
+    }));
+  }, [data]);
 
-export default function HeatMap({ data, monthLabels }: HeatMapProps) {
-  const stickyBg = "rgba(255,255,255,0.92)";
+  const grouped = useMemo(() => {
+    const map = new Map<
+      string,
+      {
+        group: string;
+        items: { label: string; sort_order: number | null; months: HeatCell[] }[];
+      }
+    >();
+
+    for (const r of rows) {
+      const g = (r.group ?? "").trim() || "Sin categoría";
+      if (!map.has(g)) map.set(g, { group: g, items: [] });
+      map.get(g)!.items.push({ label: r.label, sort_order: r.sort_order, months: r.months });
+    }
+
+    // ✅ Orden dentro del grupo: sort_order asc, luego label
+    for (const v of map.values()) {
+      v.items.sort((a, b) => {
+        const ao = a.sort_order;
+        const bo = b.sort_order;
+
+        const aHas = typeof ao === "number";
+        const bHas = typeof bo === "number";
+
+        if (aHas && bHas && ao !== bo) return ao - bo;
+        if (aHas && !bHas) return -1;
+        if (!aHas && bHas) return 1;
+
+        return (a.label ?? "").localeCompare(b.label ?? "", "es");
+      });
+    }
+
+    // Orden de grupos: Rooms / A&B / Spa / resto / Sin categoría
+    const priority = (g: string) => {
+      const low = g.toLowerCase();
+      if (low === "rooms") return 0;
+      if (low === "a&b" || low === "a&b " || low === "f&b" || low === "fnb") return 1;
+      if (low === "spa") return 2;
+      if (low === "sin categoría") return 99;
+      return 10;
+    };
+
+    return Array.from(map.values()).sort(
+      (a, b) => priority(a.group) - priority(b.group) || a.group.localeCompare(b.group, "es")
+    );
+  }, [rows]);
+
+  const cellBg = (v: number | null) => {
+    if (v === null || !Number.isFinite(v)) return "rgba(0,0,0,0.04)";
+    if (v < 60) return "rgba(198,40,40,0.20)";
+    if (v < 80) return "rgba(239,108,0,0.18)";
+    return "rgba(10,122,59,0.18)";
+  };
+
+  const cellText = (v: number | null) => {
+    if (v === null || !Number.isFinite(v)) return "—";
+    return `${v.toFixed(0)}%`;
+  };
+
+  const wrap: React.CSSProperties = { width: "100%", overflowX: "auto" };
+
+  const table: React.CSSProperties = {
+    width: "100%",
+    borderCollapse: "separate",
+    borderSpacing: 10,
+    minWidth: 980,
+  };
+
+  const th: React.CSSProperties = {
+    textAlign: "center",
+    fontWeight: 950,
+    opacity: 0.75,
+    fontSize: 13,
+    whiteSpace: "nowrap",
+  };
+
+  const thLeft: React.CSSProperties = { ...th, textAlign: "left", paddingLeft: 6 };
+
+  const deptCell: React.CSSProperties = {
+    textAlign: "left",
+    fontWeight: 950,
+    padding: "10px 14px",
+    borderRadius: 12,
+    background: "rgba(0,0,0,0.03)",
+    border: "1px solid rgba(0,0,0,0.06)",
+    whiteSpace: "nowrap",
+  };
+
+  const cell: React.CSSProperties = {
+    textAlign: "center",
+    fontWeight: 950,
+    padding: "10px 12px",
+    borderRadius: 12,
+    border: "1px solid rgba(0,0,0,0.06)",
+    whiteSpace: "nowrap",
+    minWidth: 62,
+  };
+
+  const groupRow: React.CSSProperties = {
+    fontWeight: 1000,
+    fontSize: 14,
+    opacity: 0.9,
+    padding: "10px 14px",
+    borderRadius: 14,
+    border: "1px solid rgba(0,0,0,0.06)",
+    background: "rgba(0,0,0,0.02)",
+  };
 
   return (
-    <div
-      style={{
-        width: "100%",
-        overflowX: "auto",
-        WebkitOverflowScrolling: "touch",
-        borderRadius: 14,
-      }}
-    >
-      <table
-        style={{
-          borderCollapse: "separate",
-          borderSpacing: "6px",
-          width: "max-content",
-          minWidth: "100%",
-        }}
-      >
+    <div style={wrap}>
+      <table style={table}>
         <thead>
           <tr>
-            <th
-              style={{
-                position: "sticky",
-                left: 0,
-                zIndex: 4,
-                padding: "10px 14px",
-                textAlign: "left",
-                fontWeight: 950,
-                fontSize: 14,
-                opacity: 0.7,
-                background: stickyBg,
-                borderRadius: 10,
-                boxShadow: "10px 0 18px rgba(0,0,0,0.06)",
-                whiteSpace: "nowrap",
-              }}
-            >
-              Área
-            </th>
-
-            {monthLabels.map((label) => (
-              <th
-                key={label}
-                style={{
-                  padding: "10px 10px",
-                  textAlign: "center",
-                  fontWeight: 950,
-                  fontSize: 13,
-                  opacity: 0.7,
-                  whiteSpace: "nowrap",
-                  background: "rgba(255,255,255,0.65)",
-                  borderRadius: 10,
-                }}
-              >
-                {label}
+            <th style={thLeft}>Departamento</th>
+            {monthLabels.map((m) => (
+              <th key={m} style={th}>
+                {m}
               </th>
             ))}
           </tr>
         </thead>
 
         <tbody>
-          {data.map((row) => (
-            <tr key={row.areaName}>
-              <td
-                title={row.areaName}
-                style={{
-                  position: "sticky",
-                  left: 0,
-                  zIndex: 3,
-                  padding: "12px 14px",
-                  fontWeight: 950,
-                  fontSize: 14,
-                  whiteSpace: "nowrap",
-                  background: stickyBg,
-                  borderRadius: 10,
-                  boxShadow: "10px 0 18px rgba(0,0,0,0.06)",
-                  maxWidth: 220,
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                }}
-              >
-                {row.areaName}
-              </td>
-
-              {row.months.map((cell, idx) => (
-                <td
-                  key={idx}
-                  title={
-                    cell.value !== null
-                      ? `${cell.value.toFixed(1)}% (${cell.count} ${cell.count === 1 ? "auditoría" : "auditorías"})`
-                      : "Sin datos"
-                  }
-                  style={{
-                    padding: "12px 10px",
-                    textAlign: "center",
-                    background: getCellColor(cell.value),
-                    borderRadius: 10,
-                    fontWeight: 900,
-                    fontSize: 13,
-                    color: getCellTextColor(cell.value),
-                    cursor: cell.value !== null ? "pointer" : "default",
-                    transition: "transform 0.12s ease, box-shadow 0.12s ease",
-                    minWidth: 64,
-                    whiteSpace: "nowrap",
-                    willChange: "transform",
-                  }}
-                  onMouseEnter={(e) => {
-                    if (cell.value !== null) {
-                      e.currentTarget.style.transform = "translateY(-1px) scale(1.03)";
-                      e.currentTarget.style.boxShadow = "0 6px 14px rgba(0,0,0,0.14)";
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.transform = "none";
-                    e.currentTarget.style.boxShadow = "none";
-                  }}
-                >
-                  {cell.value !== null ? `${cell.value.toFixed(0)}%` : "—"}
+          {grouped.map((g) => (
+            <React.Fragment key={g.group}>
+              <tr>
+                <td style={groupRow} colSpan={1 + monthLabels.length}>
+                  {g.group}
                 </td>
+              </tr>
+
+              {g.items.map((r) => (
+                <tr key={`${g.group}-${r.label}`}>
+                  <td style={deptCell}>{r.label}</td>
+                  {monthLabels.map((_, idx) => {
+                    const c = r.months[idx] ?? { value: null, count: 0 };
+                    const v = c.value;
+                    return (
+                      <td
+                        key={idx}
+                        style={{ ...cell, background: cellBg(v) }}
+                        title={v === null ? `Sin ejecuciones (${c.count})` : `${v.toFixed(1)}% · ejecuciones: ${c.count}`}
+                      >
+                        {cellText(v)}
+                      </td>
+                    );
+                  })}
+                </tr>
               ))}
-            </tr>
+            </React.Fragment>
           ))}
         </tbody>
       </table>
-
-      {/* Ajustes específicos móvil */}
-      <style jsx>{`
-        @media (max-width: 720px) {
-          table {
-            border-spacing: 6px;
-          }
-        }
-      `}</style>
     </div>
   );
 }

@@ -1,4 +1,5 @@
-// app/user-management/page.tsx
+// FILE: app/admin/page.tsx
+// ✅ Es tu “admin” nuevo: unifica panel + departamentos + usuarios + auditorías por departamento + tile Builder (acceso rápido)
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
@@ -20,10 +21,10 @@ type UserRow = {
   mfa: string;
 };
 
-type AreaRow = {
+type DepartmentRow = {
   id: string;
-  name: string;
-  type: string | null;
+  name: string; // ✅ “Departamento” (Front, HSK, RD…)
+  type: string | null; // ✅ “Área macro” (Rooms / F&B / Spa)
   sort_order?: number | null;
   active?: boolean | null;
 };
@@ -45,9 +46,9 @@ type HotelRow = {
 const HOTEL_KEY = "sc_hotel_id";
 const HOTEL_CHANGED_EVENT = "sc-hotel-changed";
 
-type ViewMode = "hotel-info" | "areas" | "users" | "area-audits";
+type ViewMode = "hotel-info" | "departments" | "users" | "department-audits" | "builder";
 
-export default function UserManagementPage() {
+export default function AdminPage() {
   const router = useRouter();
 
   const [activeHotelId, setActiveHotelId] = useState<string | null>(null);
@@ -95,46 +96,38 @@ export default function UserManagementPage() {
 
     setHotelLoading(true);
     try {
-      const { data, error } = await supabase
-        .from("hotels")
-        .select("id, name, created_at")
-        .eq("id", activeHotelId)
-        .single();
-
+      const { data, error } = await supabase.from("hotels").select("id, name, created_at").eq("id", activeHotelId).single();
       if (error) throw error;
       setHotel((data ?? null) as any);
     } catch (e: any) {
       setHotel(null);
-      setHotelError(e?.message || "No se pudo cargar info del hotel (¿existe tabla hotels?).");
+      setHotelError(e?.message || "No se pudo cargar info del hotel.");
     } finally {
       setHotelLoading(false);
     }
   }
 
   // ----------------------------
-  // Áreas
+  // Departamentos (tabla areas)
   // ----------------------------
-  const [areas, setAreas] = useState<AreaRow[]>([]);
-  const [areasLoading, setAreasLoading] = useState(false);
-  const [areasError, setAreasError] = useState("");
+  const [departments, setDepartments] = useState<DepartmentRow[]>([]);
+  const [departmentsLoading, setDepartmentsLoading] = useState(false);
+  const [departmentsError, setDepartmentsError] = useState("");
 
-  const [areaQuery, setAreaQuery] = useState("");
-  const [selectedAreaId, setSelectedAreaId] = useState<string | null>(null);
+  const [deptQuery, setDeptQuery] = useState("");
+  const [selectedDeptId, setSelectedDeptId] = useState<string | null>(null);
 
-  const selectedArea = useMemo(
-    () => areas.find((a) => a.id === selectedAreaId) ?? null,
-    [areas, selectedAreaId]
-  );
+  const selectedDept = useMemo(() => departments.find((a) => a.id === selectedDeptId) ?? null, [departments, selectedDeptId]);
 
-  async function loadAreas() {
-    setAreasError("");
+  async function loadDepartments() {
+    setDepartmentsError("");
 
     if (!activeHotelId) {
-      setAreas([]);
+      setDepartments([]);
       return;
     }
 
-    setAreasLoading(true);
+    setDepartmentsLoading(true);
     try {
       const { data, error } = await supabase
         .from("areas")
@@ -144,144 +137,140 @@ export default function UserManagementPage() {
         .order("name", { ascending: true });
 
       if (error) throw error;
-      setAreas((data ?? []) as any);
+      setDepartments((data ?? []) as any);
     } catch (e: any) {
-      setAreas([]);
-      setAreasError(e?.message || "Error cargando áreas.");
+      setDepartments([]);
+      setDepartmentsError(e?.message || "Error cargando departamentos.");
     } finally {
-      setAreasLoading(false);
+      setDepartmentsLoading(false);
     }
   }
 
-  const filteredAreas = useMemo(() => {
-    const needle = areaQuery.trim().toLowerCase();
-    if (!needle) return areas;
-    return areas.filter((a) => (a.name ?? "").toLowerCase().includes(needle));
-  }, [areas, areaQuery]);
+  const filteredDepartments = useMemo(() => {
+    const needle = deptQuery.trim().toLowerCase();
+    if (!needle) return departments;
+    return departments.filter((a) => (a.name ?? "").toLowerCase().includes(needle));
+  }, [departments, deptQuery]);
 
-  // Modal Crear/Editar Área
-  const [areaModalOpen, setAreaModalOpen] = useState(false);
-  const [areaModalMode, setAreaModalMode] = useState<"create" | "edit">("create");
-  const [areaFormId, setAreaFormId] = useState<string | null>(null);
-  const [areaFormName, setAreaFormName] = useState("");
-  const [areaFormType, setAreaFormType] = useState("");
-  const [areaFormSort, setAreaFormSort] = useState<string>("");
-  const [areaFormActive, setAreaFormActive] = useState(true);
-  const [areaFormBusy, setAreaFormBusy] = useState(false);
-  const [areaFormError, setAreaFormError] = useState("");
+  // Modal Crear/Editar Departamento
+  const [deptModalOpen, setDeptModalOpen] = useState(false);
+  const [deptModalMode, setDeptModalMode] = useState<"create" | "edit">("create");
+  const [deptFormId, setDeptFormId] = useState<string | null>(null);
+  const [deptFormName, setDeptFormName] = useState("");
+  const [deptFormType, setDeptFormType] = useState(""); // Rooms / F&B / Spa
+  const [deptFormSort, setDeptFormSort] = useState<string>("");
+  const [deptFormActive, setDeptFormActive] = useState(true);
+  const [deptFormBusy, setDeptFormBusy] = useState(false);
+  const [deptFormError, setDeptFormError] = useState("");
 
-  function openCreateArea() {
-    setAreaModalMode("create");
-    setAreaFormId(null);
-    setAreaFormName("");
-    setAreaFormType("");
-    setAreaFormSort("");
-    setAreaFormActive(true);
-    setAreaFormError("");
-    setAreaModalOpen(true);
+  function openCreateDepartment() {
+    setDeptModalMode("create");
+    setDeptFormId(null);
+    setDeptFormName("");
+    setDeptFormType("");
+    setDeptFormSort("");
+    setDeptFormActive(true);
+    setDeptFormError("");
+    setDeptModalOpen(true);
   }
 
-  function openEditArea(a: AreaRow) {
-    setAreaModalMode("edit");
-    setAreaFormId(a.id);
-    setAreaFormName(a.name ?? "");
-    setAreaFormType(a.type ?? "");
-    setAreaFormSort(typeof a.sort_order === "number" ? String(a.sort_order) : "");
-    setAreaFormActive((a.active ?? true) === true);
-    setAreaFormError("");
-    setAreaModalOpen(true);
+  function openEditDepartment(a: DepartmentRow) {
+    setDeptModalMode("edit");
+    setDeptFormId(a.id);
+    setDeptFormName(a.name ?? "");
+    setDeptFormType(a.type ?? "");
+    setDeptFormSort(typeof a.sort_order === "number" ? String(a.sort_order) : "");
+    setDeptFormActive((a.active ?? true) === true);
+    setDeptFormError("");
+    setDeptModalOpen(true);
   }
 
-  async function saveArea() {
-    setAreaFormError("");
+  async function saveDepartment() {
+    setDeptFormError("");
 
     if (!activeHotelId) {
-      setAreaFormError("No hay hotel seleccionado.");
+      setDeptFormError("No hay hotel seleccionado.");
       return;
     }
 
-    const name = areaFormName.trim();
+    const name = deptFormName.trim();
     if (!name) {
-      setAreaFormError("El nombre del área es obligatorio.");
+      setDeptFormError("El nombre del departamento es obligatorio.");
       return;
     }
 
-    const sort_order = areaFormSort.trim() === "" ? null : Number(areaFormSort.trim());
+    const sort_order = deptFormSort.trim() === "" ? null : Number(deptFormSort.trim());
     if (sort_order !== null && Number.isNaN(sort_order)) {
-      setAreaFormError("Orden debe ser un número.");
+      setDeptFormError("Orden debe ser un número.");
       return;
     }
 
-    setAreaFormBusy(true);
+    setDeptFormBusy(true);
     try {
-      if (areaModalMode === "create") {
+      if (deptModalMode === "create") {
         const { error } = await supabase.from("areas").insert({
           hotel_id: activeHotelId,
           name,
-          type: areaFormType.trim() || null,
+          type: deptFormType.trim() || null,
           sort_order,
-          active: areaFormActive,
+          active: deptFormActive,
         });
         if (error) throw error;
       } else {
-        if (!areaFormId) throw new Error("Falta id del área.");
+        if (!deptFormId) throw new Error("Falta id del departamento.");
         const { error } = await supabase
           .from("areas")
           .update({
             name,
-            type: areaFormType.trim() || null,
+            type: deptFormType.trim() || null,
             sort_order,
-            active: areaFormActive,
+            active: deptFormActive,
           })
-          .eq("id", areaFormId);
+          .eq("id", deptFormId);
         if (error) throw error;
       }
 
-      setAreaModalOpen(false);
-      await loadAreas();
+      setDeptModalOpen(false);
+      await loadDepartments();
     } catch (e: any) {
-      setAreaFormError(e?.message || "No se pudo guardar el área.");
+      setDeptFormError(e?.message || "No se pudo guardar el departamento.");
     } finally {
-      setAreaFormBusy(false);
+      setDeptFormBusy(false);
     }
   }
 
-  async function toggleAreaActive(areaId: string, nextActive: boolean) {
+  async function toggleDepartmentActive(deptId: string, nextActive: boolean) {
     if (!activeHotelId) return;
     try {
-      const { error } = await supabase
-        .from("areas")
-        .update({ active: nextActive })
-        .eq("id", areaId)
-        .eq("hotel_id", activeHotelId);
+      const { error } = await supabase.from("areas").update({ active: nextActive }).eq("id", deptId).eq("hotel_id", activeHotelId);
       if (error) throw error;
 
-      setAreas((prev) => prev.map((a) => (a.id === areaId ? { ...a, active: nextActive } : a)));
+      setDepartments((prev) => prev.map((a) => (a.id === deptId ? { ...a, active: nextActive } : a)));
     } catch (e) {
       console.error(e);
-      alert("No se pudo cambiar el estado del área.");
+      alert("No se pudo cambiar el estado del departamento.");
     }
   }
 
-  async function deleteArea(areaId: string) {
+  async function deleteDepartment(deptId: string) {
     if (!activeHotelId) return;
 
-    const ok = confirm("¿Seguro que quieres BORRAR esta área? (puede afectar auditorías asociadas)");
+    const ok = confirm("¿Seguro que quieres BORRAR este departamento? (puede afectar auditorías asociadas)");
     if (!ok) return;
 
     try {
-      const { error } = await supabase.from("areas").delete().eq("id", areaId).eq("hotel_id", activeHotelId);
+      const { error } = await supabase.from("areas").delete().eq("id", deptId).eq("hotel_id", activeHotelId);
       if (error) throw error;
 
-      if (selectedAreaId === areaId) {
-        setSelectedAreaId(null);
-        setViewMode("areas");
+      if (selectedDeptId === deptId) {
+        setSelectedDeptId(null);
+        setViewMode("departments");
       }
 
-      await loadAreas();
+      await loadDepartments();
     } catch (e: any) {
       console.error(e);
-      alert(e?.message || "No se pudo borrar el área.");
+      alert(e?.message || "No se pudo borrar el departamento.");
     }
   }
 
@@ -344,7 +333,7 @@ export default function UserManagementPage() {
     });
   }, [users, userQuery, userRoleFilter, userStatusFilter]);
 
-  // Modal Editar Usuario (con borrar dentro)
+  // Modal Editar Usuario (con desactivar dentro)
   const [userModalOpen, setUserModalOpen] = useState(false);
   const [userFormBusy, setUserFormBusy] = useState(false);
   const [userFormError, setUserFormError] = useState("");
@@ -418,12 +407,10 @@ export default function UserManagementPage() {
     }
   }
 
-  async function deleteUserFromModal() {
+  async function deactivateUserFromModal() {
     if (!activeHotelId || !userFormId) return;
 
-    const ok = confirm(
-      "¿Seguro que quieres DESACTIVAR este usuario?\n\n(Es lo más seguro. Si quieres borrado real de Auth lo añadimos luego.)"
-    );
+    const ok = confirm("¿Seguro que quieres DESACTIVAR este usuario?");
     if (!ok) return;
 
     const token = await getBearer();
@@ -459,7 +446,7 @@ export default function UserManagementPage() {
   }
 
   // ----------------------------
-  // Auditorías por área
+  // Auditorías por departamento
   // ----------------------------
   const [templates, setTemplates] = useState<AuditTemplateRow[]>([]);
   const [templatesLoading, setTemplatesLoading] = useState(false);
@@ -468,7 +455,7 @@ export default function UserManagementPage() {
   const [templateQuery, setTemplateQuery] = useState("");
   const [templateStatus, setTemplateStatus] = useState<"all" | "active" | "inactive">("all");
 
-  async function loadAreaTemplates(areaId: string) {
+  async function loadDeptTemplates(deptId: string) {
     setTemplatesError("");
     setTemplates([]);
 
@@ -483,7 +470,7 @@ export default function UserManagementPage() {
         .from("audit_templates")
         .select("id, name, active, area_id, created_at")
         .eq("hotel_id", activeHotelId)
-        .eq("area_id", areaId)
+        .eq("area_id", deptId)
         .order("name", { ascending: true });
 
       if (error) throw error;
@@ -491,7 +478,7 @@ export default function UserManagementPage() {
     } catch (e: any) {
       console.error(e);
       setTemplates([]);
-      setTemplatesError(e?.message || "Error cargando auditorías del área.");
+      setTemplatesError(e?.message || "Error cargando auditorías del departamento.");
     } finally {
       setTemplatesLoading(false);
     }
@@ -503,10 +490,7 @@ export default function UserManagementPage() {
     if (needle) list = list.filter((t) => (t.name ?? "").toLowerCase().includes(needle));
 
     if (templateStatus !== "all") {
-      list =
-        templateStatus === "active"
-          ? list.filter((t) => (t.active ?? true) === true)
-          : list.filter((t) => (t.active ?? true) === false);
+      list = templateStatus === "active" ? list.filter((t) => (t.active ?? true) === true) : list.filter((t) => (t.active ?? true) === false);
     }
 
     return list;
@@ -516,13 +500,13 @@ export default function UserManagementPage() {
   // Init on hotel change
   // ----------------------------
   useEffect(() => {
-    setSelectedAreaId(null);
+    setSelectedDeptId(null);
     setTemplates([]);
     setTemplatesError("");
     setViewMode("hotel-info");
 
     loadHotelInfo();
-    loadAreas();
+    loadDepartments();
     loadUsers();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeHotelId]);
@@ -535,18 +519,26 @@ export default function UserManagementPage() {
     loadHotelInfo();
   }
 
-  function openAreasModule() {
-    setViewMode("areas");
+  function openDepartmentsModule() {
+    setViewMode("departments");
   }
 
   function openUsersModule() {
     setViewMode("users");
   }
 
-  function openAreaAudits(a: AreaRow) {
-    setSelectedAreaId(a.id);
-    setViewMode("area-audits");
-    loadAreaTemplates(a.id);
+  function openDeptAudits(a: DepartmentRow) {
+    setSelectedDeptId(a.id);
+    setViewMode("department-audits");
+    loadDeptTemplates(a.id);
+  }
+
+  function openBuilder() {
+    if (selectedDeptId) {
+      router.push(`/builder?area_id=${encodeURIComponent(selectedDeptId)}`);
+      return;
+    }
+    router.push("/builder");
   }
 
   // ----------------------------
@@ -559,54 +551,46 @@ export default function UserManagementPage() {
       <div style={{ padding: 18 }}>
         <div style={{ display: "grid", gridTemplateColumns: "360px 1fr", gap: 18, alignItems: "start" }}>
           {/* LEFT */}
-          <aside
-            style={{
-              background: "#d9f1f4",
-              borderRadius: 12,
-              border: "1px solid rgba(0,0,0,0.08)",
-              overflow: "hidden",
-            }}
-          >
+          <aside style={{ background: "#d9f1f4", borderRadius: 12, border: "1px solid rgba(0,0,0,0.08)", overflow: "hidden" }}>
             <div style={{ padding: 16, borderBottom: "1px solid rgba(0,0,0,0.08)" }}>
               <div style={{ fontSize: 26, fontWeight: 950 }}>Panel de control</div>
-              <div style={{ marginTop: 8, opacity: 0.85, fontSize: 13, fontWeight: 800 }}>
-                Hotel seleccionado
-              </div>
+              <div style={{ marginTop: 8, opacity: 0.85, fontSize: 13, fontWeight: 800 }}>Hotel seleccionado</div>
             </div>
 
             <div style={{ padding: 12 }}>
+              <NavTile title="Builder" active={viewMode === "builder"} onClick={() => setViewMode("builder")} />
               <NavTile title="Info del hotel" active={viewMode === "hotel-info"} onClick={openHotelInfo} />
-              <NavTile title="Áreas" active={viewMode === "areas"} onClick={openAreasModule} />
+              <NavTile title="Departamentos" active={viewMode === "departments"} onClick={openDepartmentsModule} />
               <NavTile title="Usuarios" active={viewMode === "users"} onClick={openUsersModule} />
 
               <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid rgba(0,0,0,0.10)" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center" }}>
-                  <div style={{ fontWeight: 950, fontSize: 13, opacity: 0.8 }}>Áreas existentes</div>
-                  <button style={ghostBtn} onClick={loadAreas} disabled={areasLoading}>
-                    {areasLoading ? "…" : "Recargar"}
+                  <div style={{ fontWeight: 950, fontSize: 13, opacity: 0.8 }}>Departamentos existentes</div>
+                  <button style={ghostBtn} onClick={loadDepartments} disabled={departmentsLoading}>
+                    {departmentsLoading ? "…" : "Recargar"}
                   </button>
                 </div>
 
                 <div style={{ marginTop: 10 }}>
-                  <input value={areaQuery} onChange={(e) => setAreaQuery(e.target.value)} placeholder="Buscar área…" style={input} />
+                  <input value={deptQuery} onChange={(e) => setDeptQuery(e.target.value)} placeholder="Buscar departamento…" style={input} />
                 </div>
 
-                {areasError ? <ErrorBox text={areasError} /> : null}
+                {departmentsError ? <ErrorBox text={departmentsError} /> : null}
 
                 <div style={{ marginTop: 10 }}>
-                  {areasLoading ? (
-                    <div style={{ padding: 10, fontWeight: 900, opacity: 0.75 }}>Cargando áreas…</div>
-                  ) : filteredAreas.length === 0 ? (
-                    <div style={{ padding: 10, fontWeight: 900, opacity: 0.75 }}>No hay áreas.</div>
+                  {departmentsLoading ? (
+                    <div style={{ padding: 10, fontWeight: 900, opacity: 0.75 }}>Cargando…</div>
+                  ) : filteredDepartments.length === 0 ? (
+                    <div style={{ padding: 10, fontWeight: 900, opacity: 0.75 }}>No hay departamentos.</div>
                   ) : (
-                    filteredAreas.map((a) => {
+                    filteredDepartments.map((a) => {
                       const isActive = (a.active ?? true) === true;
-                      const isSel = viewMode === "area-audits" && selectedAreaId === a.id;
+                      const isSel = viewMode === "department-audits" && selectedDeptId === a.id;
 
                       return (
                         <button
                           key={a.id}
-                          onClick={() => openAreaAudits(a)}
+                          onClick={() => openDeptAudits(a)}
                           style={{
                             width: "100%",
                             textAlign: "left",
@@ -617,7 +601,7 @@ export default function UserManagementPage() {
                             marginTop: 10,
                             cursor: "pointer",
                           }}
-                          title={a.type ? `Tipo: ${a.type}` : "Ver auditorías del área"}
+                          title={a.type ? `Grupo: ${a.type}` : "Ver auditorías del departamento"}
                         >
                           <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
                             <div style={{ fontWeight: 950 }}>
@@ -637,7 +621,7 @@ export default function UserManagementPage() {
                                 whiteSpace: "nowrap",
                               }}
                             >
-                              {isActive ? "activa" : "inactiva"}
+                              {isActive ? "activo" : "inactivo"}
                             </span>
                           </div>
                         </button>
@@ -667,38 +651,32 @@ export default function UserManagementPage() {
 
                 <div style={{ padding: 16 }}>
                   <div style={grid2}>
-                    {/* ✅ ÚNICO ID visible en todo el panel */}
                     <InfoCard label="Hotel ID" value={activeHotelId ?? "—"} />
                     <InfoCard label="Nombre" value={hotel?.name ?? "—"} />
                   </div>
                 </div>
               </Section>
-            ) : viewMode === "areas" ? (
+            ) : viewMode === "departments" ? (
               <Section
-                title="Áreas"
-                subtitle="Crear, buscar, desactivar, modificar y borrar áreas (sin salir de esta página)."
+                title="Departamentos"
+                subtitle="Crear, buscar, desactivar, modificar y borrar (sin salir de esta página)."
                 right={
                   <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                    <button style={primaryBtn} onClick={openCreateArea}>
-                      + Crear área
+                    <button style={primaryBtn} onClick={openCreateDepartment}>
+                      + Crear departamento
                     </button>
-                    <button style={ghostBtn} onClick={loadAreas} disabled={areasLoading}>
-                      {areasLoading ? "Cargando…" : "Recargar"}
+                    <button style={ghostBtn} onClick={loadDepartments} disabled={departmentsLoading}>
+                      {departmentsLoading ? "Cargando…" : "Recargar"}
                     </button>
                   </div>
                 }
               >
-                {areasError ? <ErrorBox text={areasError} /> : null}
+                {departmentsError ? <ErrorBox text={departmentsError} /> : null}
 
                 <div style={{ padding: 16 }}>
                   <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
-                    <input
-                      value={areaQuery}
-                      onChange={(e) => setAreaQuery(e.target.value)}
-                      placeholder="Buscar área…"
-                      style={{ ...input, flex: 1, minWidth: 280 }}
-                    />
-                    <button style={ghostBtn} onClick={() => setAreaQuery("")}>
+                    <input value={deptQuery} onChange={(e) => setDeptQuery(e.target.value)} placeholder="Buscar departamento…" style={{ ...input, flex: 1, minWidth: 280 }} />
+                    <button style={ghostBtn} onClick={() => setDeptQuery("")}>
                       Reset
                     </button>
                   </div>
@@ -707,28 +685,28 @@ export default function UserManagementPage() {
                     <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 900 }}>
                       <thead>
                         <tr style={{ background: "#f3f5f7" }}>
-                          <th style={th}>Área</th>
-                          <th style={th}>Tipo</th>
+                          <th style={th}>Departamento</th>
+                          <th style={th}>Grupo</th>
                           <th style={th}>Orden</th>
                           <th style={th}>Estado</th>
                           <th style={th}>Acciones</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {areasLoading ? (
+                        {departmentsLoading ? (
                           <tr>
                             <td style={td} colSpan={5}>
                               Cargando…
                             </td>
                           </tr>
-                        ) : filteredAreas.length === 0 ? (
+                        ) : filteredDepartments.length === 0 ? (
                           <tr>
                             <td style={td} colSpan={5}>
-                              No hay áreas.
+                              No hay departamentos.
                             </td>
                           </tr>
                         ) : (
-                          filteredAreas.map((a) => {
+                          filteredDepartments.map((a) => {
                             const isActive = (a.active ?? true) === true;
                             return (
                               <tr key={a.id} style={{ borderTop: "1px solid rgba(0,0,0,0.08)" }}>
@@ -749,18 +727,18 @@ export default function UserManagementPage() {
                                       color: isActive ? "green" : "rgba(0,0,0,0.55)",
                                     }}
                                   >
-                                    {isActive ? "activa" : "inactiva"}
+                                    {isActive ? "activo" : "inactivo"}
                                   </span>
                                 </td>
                                 <td style={td}>
                                   <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                                    <button style={ghostBtn} onClick={() => toggleAreaActive(a.id, !isActive)}>
+                                    <button style={ghostBtn} onClick={() => toggleDepartmentActive(a.id, !isActive)}>
                                       {isActive ? "Desactivar" : "Activar"}
                                     </button>
-                                    <button style={primaryBtn} onClick={() => openEditArea(a)}>
+                                    <button style={primaryBtn} onClick={() => openEditDepartment(a)}>
                                       Modificar
                                     </button>
-                                    <button style={dangerBtn} onClick={() => deleteArea(a.id)}>
+                                    <button style={dangerBtn} onClick={() => deleteDepartment(a.id)}>
                                       Borrar
                                     </button>
                                   </div>
@@ -777,7 +755,7 @@ export default function UserManagementPage() {
             ) : viewMode === "users" ? (
               <Section
                 title="Usuarios"
-                subtitle="Buscar, desactivar, modificar y borrar usuarios (sin salir de esta página)."
+                subtitle="Buscar, desactivar, modificar y gestionar usuarios (sin salir de esta página)."
                 right={
                   <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
                     <button style={primaryBtn} onClick={() => router.push("/admin/create-user")}>
@@ -800,14 +778,7 @@ export default function UserManagementPage() {
                       style={{ ...input, height: 54, fontSize: 18, fontWeight: 900 }}
                     />
 
-                    {/* ✅ filtros armonizados: lado a lado, mismo tamaño */}
-                    <div
-                      style={{
-                        display: "grid",
-                        gridTemplateColumns: "1fr 1fr",
-                        gap: 12,
-                      }}
-                    >
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                       <select value={userRoleFilter} onChange={(e) => setUserRoleFilter(e.target.value as any)} style={input}>
                         <option value="all">Todos los roles</option>
                         <option value="admin">admin</option>
@@ -825,12 +796,7 @@ export default function UserManagementPage() {
 
                     <div>
                       <button
-                        style={{
-                          ...ghostBtn,
-                          padding: "14px 16px",
-                          borderRadius: 14,
-                          fontSize: 16,
-                        }}
+                        style={{ ...ghostBtn, padding: "14px 16px", borderRadius: 14, fontSize: 16 }}
                         onClick={() => {
                           setUserQuery("");
                           setUserRoleFilter("all");
@@ -873,7 +839,6 @@ export default function UserManagementPage() {
                               <tr key={u.id} style={{ borderTop: "1px solid rgba(0,0,0,0.08)" }}>
                                 <td style={td}>
                                   <div style={{ fontWeight: 950 }}>{u.full_name || "—"}</div>
-                                  {/* ✅ sin ID */}
                                   <div style={{ fontSize: 12, opacity: 0.65 }}>{u.username}</div>
                                 </td>
                                 <td style={td}>{u.email ?? "—"}</td>
@@ -898,7 +863,6 @@ export default function UserManagementPage() {
                                     <button
                                       style={ghostBtn}
                                       onClick={async () => {
-                                        // toggle rápido (sin borrar aquí)
                                         const token = await getBearer();
                                         if (!token || !activeHotelId) return alert("Sin sesión / hotel.");
                                         const res = await fetch(`/api/admin/users`, {
@@ -917,8 +881,6 @@ export default function UserManagementPage() {
                                     <button style={primaryBtn} onClick={() => openEditUser(u)}>
                                       Modificar
                                     </button>
-
-                                    {/* ✅ Borrar eliminado de aquí: va dentro del modal */}
                                   </div>
                                 </td>
                               </tr>
@@ -930,29 +892,46 @@ export default function UserManagementPage() {
                   </div>
                 </div>
               </Section>
+            ) : viewMode === "builder" ? (
+              <Section
+                title="Builder"
+                subtitle="Acceso rápido al Builder del hotel. Si has seleccionado un departamento, se abre filtrado."
+                right={
+                  <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                    <button style={primaryBtn} onClick={openBuilder}>
+                      Abrir Builder
+                    </button>
+                    {selectedDeptId ? (
+                      <button style={ghostBtn} onClick={() => router.push(`/builder?area_id=${encodeURIComponent(selectedDeptId)}`)}>
+                        Abrir departamento seleccionado
+                      </button>
+                    ) : null}
+                  </div>
+                }
+              >
+                <div style={{ padding: 16 }}>
+                  <div style={{ fontWeight: 900, opacity: 0.75 }}>Este módulo es un acceso rápido. El Builder se abre en su vista propia.</div>
+                </div>
+              </Section>
             ) : (
               <Section
-                title={selectedArea ? selectedArea.name : "Área"}
+                title={selectedDept ? selectedDept.name : "Departamento"}
                 subtitle="Auditorías (plantillas) existentes para edición."
                 right={
                   <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                    <button style={ghostBtn} onClick={() => setViewMode("areas")}>
+                    <button style={ghostBtn} onClick={() => setViewMode("departments")}>
                       ← Volver
                     </button>
 
-                    <button
-                      style={primaryBtn}
-                      disabled={!selectedAreaId}
-                      onClick={() => selectedAreaId && router.push(`/builder?area_id=${encodeURIComponent(selectedAreaId)}`)}
-                    >
+                    <button style={ghostBtn} disabled={!selectedDeptId} onClick={() => selectedDeptId && router.push(`/builder?area_id=${encodeURIComponent(selectedDeptId)}`)}>
+                      Abrir en Builder
+                    </button>
+
+                    <button style={primaryBtn} disabled={!selectedDeptId} onClick={() => selectedDeptId && router.push(`/builder?area_id=${encodeURIComponent(selectedDeptId)}`)}>
                       + Nueva auditoría
                     </button>
 
-                    <button
-                      style={ghostBtn}
-                      disabled={!selectedAreaId || templatesLoading}
-                      onClick={() => selectedAreaId && loadAreaTemplates(selectedAreaId)}
-                    >
+                    <button style={ghostBtn} disabled={!selectedDeptId || templatesLoading} onClick={() => selectedDeptId && loadDeptTemplates(selectedDeptId)}>
                       {templatesLoading ? "Cargando…" : "Recargar"}
                     </button>
                   </div>
@@ -962,12 +941,7 @@ export default function UserManagementPage() {
 
                 <div style={{ padding: 16 }}>
                   <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
-                    <input
-                      value={templateQuery}
-                      onChange={(e) => setTemplateQuery(e.target.value)}
-                      placeholder="Buscar auditoría…"
-                      style={{ ...input, flex: 1, minWidth: 280 }}
-                    />
+                    <input value={templateQuery} onChange={(e) => setTemplateQuery(e.target.value)} placeholder="Buscar auditoría…" style={{ ...input, flex: 1, minWidth: 280 }} />
 
                     <select value={templateStatus} onChange={(e) => setTemplateStatus(e.target.value as any)} style={input}>
                       <option value="all">Todas</option>
@@ -992,11 +966,15 @@ export default function UserManagementPage() {
                       <tbody>
                         {templatesLoading ? (
                           <tr>
-                            <td style={td} colSpan={3}>Cargando…</td>
+                            <td style={td} colSpan={3}>
+                              Cargando…
+                            </td>
                           </tr>
                         ) : filteredTemplates.length === 0 ? (
                           <tr>
-                            <td style={td} colSpan={3}>No hay auditorías para esta área.</td>
+                            <td style={td} colSpan={3}>
+                              No hay auditorías para este departamento.
+                            </td>
                           </tr>
                         ) : (
                           filteredTemplates.map((t) => {
@@ -1005,7 +983,6 @@ export default function UserManagementPage() {
                               <tr key={t.id} style={{ borderTop: "1px solid rgba(0,0,0,0.08)" }}>
                                 <td style={td}>
                                   <div style={{ fontWeight: 950 }}>{t.name}</div>
-                                  {/* ✅ sin ID */}
                                 </td>
                                 <td style={td}>
                                   <span
@@ -1046,48 +1023,48 @@ export default function UserManagementPage() {
         </div>
       </div>
 
-      {/* MODAL: ÁREA */}
-      {areaModalOpen ? (
+      {/* MODAL: DEPARTAMENTO */}
+      {deptModalOpen ? (
         <Modal
-          title={areaModalMode === "create" ? "Crear área" : "Modificar área"}
-          onClose={() => setAreaModalOpen(false)}
+          title={deptModalMode === "create" ? "Crear departamento" : "Modificar departamento"}
+          onClose={() => setDeptModalOpen(false)}
           footer={
             <>
-              <button style={ghostBtn} onClick={() => setAreaModalOpen(false)} disabled={areaFormBusy}>
+              <button style={ghostBtn} onClick={() => setDeptModalOpen(false)} disabled={deptFormBusy}>
                 Cancelar
               </button>
-              <button style={primaryBtn} onClick={saveArea} disabled={areaFormBusy}>
-                {areaFormBusy ? "Guardando…" : "Guardar"}
+              <button style={primaryBtn} onClick={saveDepartment} disabled={deptFormBusy}>
+                {deptFormBusy ? "Guardando…" : "Guardar"}
               </button>
             </>
           }
         >
-          {areaFormError ? <ErrorBox text={areaFormError} /> : null}
+          {deptFormError ? <ErrorBox text={deptFormError} /> : null}
 
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-            <Field label="Nombre">
-              <input value={areaFormName} onChange={(e) => setAreaFormName(e.target.value)} style={input} />
+            <Field label="Nombre (Departamento)">
+              <input value={deptFormName} onChange={(e) => setDeptFormName(e.target.value)} style={input} placeholder="Ej: Front / Housekeeping / RD / Spa…" />
             </Field>
 
-            <Field label="Tipo">
-              <input value={areaFormType} onChange={(e) => setAreaFormType(e.target.value)} style={input} placeholder="Ej: FOH / HSK / A&B…" />
+            <Field label="Grupo (Rooms / F&B / Spa)">
+              <input value={deptFormType} onChange={(e) => setDeptFormType(e.target.value)} style={input} placeholder="Ej: Rooms" />
             </Field>
 
             <Field label="Orden">
-              <input value={areaFormSort} onChange={(e) => setAreaFormSort(e.target.value)} style={input} placeholder="Ej: 10" />
+              <input value={deptFormSort} onChange={(e) => setDeptFormSort(e.target.value)} style={input} placeholder="Ej: 10" />
             </Field>
 
             <div style={{ display: "flex", alignItems: "end" }}>
               <label style={{ display: "flex", gap: 10, alignItems: "center", fontWeight: 900 }}>
-                <input type="checkbox" checked={areaFormActive} onChange={(e) => setAreaFormActive(e.target.checked)} />
-                Activa
+                <input type="checkbox" checked={deptFormActive} onChange={(e) => setDeptFormActive(e.target.checked)} />
+                Activo
               </label>
             </div>
           </div>
         </Modal>
       ) : null}
 
-      {/* MODAL: USUARIO (con borrar dentro) */}
+      {/* MODAL: USUARIO */}
       {userModalOpen ? (
         <Modal
           title="Modificar usuario"
@@ -1130,7 +1107,6 @@ export default function UserManagementPage() {
               </label>
             </div>
 
-            {/* ✅ Zona de “Borrar” dentro del modal */}
             <div style={{ gridColumn: "1 / -1", marginTop: 10 }}>
               <div
                 style={{
@@ -1146,12 +1122,10 @@ export default function UserManagementPage() {
                 }}
               >
                 <div>
-                  <div style={{ fontWeight: 950, color: "crimson" }}>Borrar / Desactivar</div>
-                  <div style={{ fontSize: 12, opacity: 0.75, fontWeight: 800 }}>
-                    Por ahora “borrar” = desactivar (más seguro). Si quieres borrado real de Auth, lo añadimos luego.
-                  </div>
+                  <div style={{ fontWeight: 950, color: "crimson" }}>Desactivar</div>
+                  <div style={{ fontSize: 12, opacity: 0.75, fontWeight: 800 }}>Por ahora desactivar = “borrar” (más seguro).</div>
                 </div>
-                <button style={dangerBtn} onClick={deleteUserFromModal} disabled={userFormBusy}>
+                <button style={dangerBtn} onClick={deactivateUserFromModal} disabled={userFormBusy}>
                   Desactivar usuario
                 </button>
               </div>
@@ -1166,17 +1140,7 @@ export default function UserManagementPage() {
 // ----------------------------
 // UI helpers
 // ----------------------------
-function Section({
-  title,
-  subtitle,
-  right,
-  children,
-}: {
-  title: string;
-  subtitle?: string;
-  right?: React.ReactNode;
-  children: React.ReactNode;
-}) {
+function Section({ title, subtitle, right, children }: { title: string; subtitle?: string; right?: React.ReactNode; children: React.ReactNode }) {
   return (
     <div>
       <div
@@ -1258,17 +1222,7 @@ function InfoCard({ label, value }: { label: string; value: string }) {
   );
 }
 
-function Modal({
-  title,
-  onClose,
-  children,
-  footer,
-}: {
-  title: string;
-  onClose: () => void;
-  children: React.ReactNode;
-  footer: React.ReactNode;
-}) {
+function Modal({ title, onClose, children, footer }: { title: string; onClose: () => void; children: React.ReactNode; footer: React.ReactNode }) {
   return (
     <div style={modalBg} onClick={onClose}>
       <div style={modalCard} onClick={(e) => e.stopPropagation()}>
