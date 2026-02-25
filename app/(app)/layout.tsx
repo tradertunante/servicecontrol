@@ -1,4 +1,3 @@
-// app/(app)/layout.tsx
 import HotelHeader from "@/app/components/HotelHeader";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
