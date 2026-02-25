@@ -47,7 +47,6 @@ export default function TeamPage() {
   const [error, setError] = useState<string | null>(null);
 
   const [profile, setProfile] = useState<Profile | null>(null);
-
   const [hotelId, setHotelId] = useState<string | null>(null);
   const [hotel, setHotel] = useState<HotelRow | null>(null);
 
@@ -81,7 +80,6 @@ export default function TeamPage() {
 
   function getActiveHotelId(p: Profile): string | null {
     if (p.role === "superadmin") {
-      // superadmin elige hotel en selector (localStorage)
       const v = typeof window !== "undefined" ? localStorage.getItem(HOTEL_KEY) : null;
       return v || null;
     }
@@ -113,8 +111,7 @@ export default function TeamPage() {
     if (mErr) throw mErr;
     setMembers((mData ?? []) as any);
 
-    // Links team_member_areas (los del hotel)
-    // Hacemos join indirecto: obtenemos por team_member_id IN (...)
+    // Links team_member_areas
     const memberIds = (mData ?? []).map((x: any) => x.id);
     if (memberIds.length === 0) {
       setLinks([]);
@@ -192,7 +189,6 @@ export default function TeamPage() {
   }, [router]);
 
   async function createMember() {
-    if (!profile) return;
     setError(null);
 
     const hid = hotelId;
@@ -230,20 +226,18 @@ export default function TeamPage() {
       const areaIds = newAreaIds;
 
       if (areaIds.length) {
-        const payload = areaIds.map((area_id) => ({
-          team_member_id: memberId,
-          area_id,
-        }));
-
-        const { error: linkErr } = await supabase.from("team_member_areas").insert(payload);
+        const payload = areaIds.map((area_id) => ({ team_member_id: memberId, area_id }));
+        // Upsert para evitar duplicados si tienes unique(team_member_id,area_id)
+        const { error: linkErr } = await supabase.from("team_member_areas").upsert(payload, {
+          onConflict: "team_member_id,area_id",
+        });
         if (linkErr) throw linkErr;
       }
 
-      // Refresh rápido (sin recargar todo)
+      // Refresh rápido
       setMembers((prev) => [...prev, inserted as any].sort((a, b) => a.full_name.localeCompare(b.full_name)));
 
       if (newAreaIds.length) {
-        // re-leer links del miembro creado para tener ids reales
         const { data: lData, error: lErr } = await supabase
           .from("team_member_areas")
           .select("id,team_member_id,area_id")
@@ -273,10 +267,11 @@ export default function TeamPage() {
     try {
       const payload = ids.map((area_id) => ({ team_member_id: memberId, area_id }));
 
-      const { error: insErr } = await supabase.from("team_member_areas").insert(payload);
+      const { error: insErr } = await supabase.from("team_member_areas").upsert(payload, {
+        onConflict: "team_member_id,area_id",
+      });
       if (insErr) throw insErr;
 
-      // re-leer links del miembro (para obtener ids reales)
       const { data: lData, error: lErr } = await supabase
         .from("team_member_areas")
         .select("id,team_member_id,area_id")
@@ -284,7 +279,6 @@ export default function TeamPage() {
 
       if (lErr) throw lErr;
 
-      // sustituimos links del miembro en el estado
       setLinks((prev) => {
         const others = prev.filter((x) => x.team_member_id !== memberId);
         return [...others, ...((lData ?? []) as any[])];
@@ -341,25 +335,13 @@ export default function TeamPage() {
             <h1 className="text-2xl font-extrabold tracking-tight">Equipo</h1>
           </div>
 
-          {/* Si ya tienes header global con botones, puedes borrar este bloque */}
+          {/* ✅ Importar (ya NO duplicamos botones de header aquí) */}
           <div className="flex gap-2">
             <button
-              onClick={() => router.push("/admin")}
-              className="rounded-xl border bg-white px-4 py-2 text-sm font-extrabold hover:bg-gray-50"
+              onClick={() => router.push("/team/import")}
+              className="rounded-2xl border bg-white px-4 py-2 text-sm font-extrabold hover:bg-gray-50"
             >
-              Admin
-            </button>
-            <button
-              onClick={() => router.push("/areas")}
-              className="rounded-xl border bg-white px-4 py-2 text-sm font-extrabold hover:bg-gray-50"
-            >
-              Auditar
-            </button>
-            <button
-              onClick={() => router.push("/profile")}
-              className="rounded-xl border bg-white px-4 py-2 text-sm font-extrabold hover:bg-gray-50"
-            >
-              Perfil
+              Importar
             </button>
           </div>
         </div>
@@ -440,7 +422,7 @@ export default function TeamPage() {
                 const assignedOptions = assigned.map((id) => areasById.get(id)).filter(Boolean) as AreaOption[];
 
                 const pending = pendingAreasByMember[m.id] ?? [];
-                const disabledIds = assigned; // para que no se repita
+                const disabledIds = assigned;
 
                 return (
                   <div key={m.id} className="rounded-2xl border bg-white p-4">
@@ -459,9 +441,7 @@ export default function TeamPage() {
                                   key={a.id}
                                   className="inline-flex items-center gap-2 rounded-full border bg-white px-3 py-1.5 text-sm font-semibold shadow-sm"
                                 >
-                                  <span className="text-gray-900">
-                                    {a.type ? `${a.name} · ${a.type}` : a.name}
-                                  </span>
+                                  <span className="text-gray-900">{a.type ? `${a.name} · ${a.type}` : a.name}</span>
                                   <button
                                     type="button"
                                     onClick={() => removeAreaFromMember(m.id, a.id)}
@@ -489,9 +469,7 @@ export default function TeamPage() {
                         label=""
                         options={areas}
                         value={pending}
-                        onChange={(next) =>
-                          setPendingAreasByMember((prev) => ({ ...prev, [m.id]: next }))
-                        }
+                        onChange={(next) => setPendingAreasByMember((prev) => ({ ...prev, [m.id]: next }))}
                         disabledIds={disabledIds}
                         placeholder="Añadir área…"
                         hint="Selecciona varias y luego pulsa Añadir."
@@ -507,9 +485,7 @@ export default function TeamPage() {
                         </button>
 
                         <button
-                          onClick={() =>
-                            setPendingAreasByMember((prev) => ({ ...prev, [m.id]: [] }))
-                          }
+                          onClick={() => setPendingAreasByMember((prev) => ({ ...prev, [m.id]: [] }))}
                           disabled={saving || pending.length === 0}
                           className="rounded-2xl border bg-white px-4 py-2.5 text-sm font-extrabold hover:bg-gray-50 disabled:opacity-60"
                         >
@@ -523,15 +499,6 @@ export default function TeamPage() {
             </div>
           )}
         </section>
-
-        {/* Debug opcional */}
-        {profile ? (
-          <div className="mt-6 text-xs font-semibold text-gray-500">
-            Sesión: <span className="font-mono">{profile.id}</span> · Rol:{" "}
-            <span className="font-extrabold">{profile.role}</span> · Hotel activo:{" "}
-            <span className="font-mono">{hotelId ?? "null"}</span>
-          </div>
-        ) : null}
       </div>
     </main>
   );
