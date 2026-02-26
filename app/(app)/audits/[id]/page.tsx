@@ -156,7 +156,6 @@ export default function AuditRunPage() {
         setArea(aData as AreaRow);
 
         // 3) ✅ TEAM MEMBERS filtrados por esta área (team_member_areas)
-        //    - primero sacamos IDs en la tabla link
         const { data: linkData, error: linkErr } = await supabase
           .from("team_member_areas")
           .select("team_member_id")
@@ -164,9 +163,7 @@ export default function AuditRunPage() {
 
         if (linkErr) throw linkErr;
 
-        const ids = Array.from(
-          new Set((linkData ?? []).map((x: any) => x.team_member_id).filter(Boolean))
-        ) as string[];
+        const ids = Array.from(new Set((linkData ?? []).map((x: any) => x.team_member_id).filter(Boolean))) as string[];
 
         let list: TeamMemberLite[] = [];
 
@@ -178,7 +175,6 @@ export default function AuditRunPage() {
             .in("id", ids)
             .order("full_name", { ascending: true });
 
-          // si tu team_members tiene hotel_id (en tu caso sí), filtramos por hotel
           const hotelId = (aData as any).hotel_id as string | null;
           if (hotelId) q = q.eq("hotel_id", hotelId);
 
@@ -527,7 +523,6 @@ export default function AuditRunPage() {
     if (!run) return;
     if (submitted) return;
 
-    // Validación de requisitos
     for (const q of questions) {
       const a = answersByQ[q.id];
       if (!a) continue;
@@ -595,6 +590,22 @@ export default function AuditRunPage() {
     );
   }
 
+  // ✅ FIX TS: a partir de aquí run NO puede ser null
+  if (!run) {
+    return (
+      <main className="w-full min-h-screen bg-gray-50 overflow-x-hidden">
+        <div className="w-full px-4 py-4">
+          <div className="mb-3">
+            <BackButton fallback="/areas" />
+          </div>
+          <p className="text-sm font-semibold text-gray-700">Auditoría no disponible.</p>
+        </div>
+      </main>
+    );
+  }
+
+  const scoreText = run.score === null ? "—" : `${run.score.toFixed(2)}%`;
+
   return (
     <main className="w-full min-h-screen bg-gray-50 overflow-x-hidden">
       <div className="w-full px-4 pt-4 pb-24">
@@ -609,7 +620,7 @@ export default function AuditRunPage() {
             {template?.name ?? "—"} · {area?.name ?? "—"} {area?.type ? `· ${area.type}` : ""}
           </div>
 
-          <div className="text-xs text-gray-500">Fecha: {fmtDate(run?.executed_at ?? null)}</div>
+          <div className="text-xs text-gray-500">Fecha: {fmtDate(run.executed_at ?? null)}</div>
 
           {error ? <div className="text-sm font-semibold text-red-600 mt-2">{error}</div> : null}
         </div>
@@ -650,9 +661,7 @@ export default function AuditRunPage() {
           </div>
 
           {submitted ? (
-            <div className="mt-2 text-sm font-extrabold">
-              Score: {run?.score === null ? "—" : `${run.score.toFixed(2)}%`}
-            </div>
+            <div className="mt-2 text-sm font-extrabold">Score: {scoreText}</div>
           ) : (
             <div className="mt-2 text-xs text-gray-500">El resultado se mostrará al enviar la auditoría.</div>
           )}
