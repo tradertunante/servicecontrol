@@ -7,14 +7,18 @@ type Role = "admin" | "manager" | "auditor";
 type CallerRole = "admin" | "manager" | "auditor" | "superadmin";
 
 function projectRefFromUrl(url: string) {
-  // https://xxxxx.supabase.co  ->  xxxxx
   try {
     const u = new URL(url);
-    const host = u.hostname; // xxxxx.supabase.co
+    const host = u.hostname;
     return host.split(".")[0] || host;
   } catch {
     return "unknown";
   }
+}
+
+function isUuidLike(x: any) {
+  const s = String(x ?? "");
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(s);
 }
 
 export async function POST(req: NextRequest) {
@@ -34,7 +38,6 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // No imprimimos la key. Solo validamos “forma” para debug.
     if (!serviceRoleKey.startsWith("eyJ")) {
       console.warn(
         `[create-user:${reqId}] SUPABASE_SERVICE_ROLE_KEY no parece JWT (¿key incorrecta o de otro proyecto?)`
@@ -84,14 +87,6 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Forbidden: solo admin/superadmin." }, { status: 403 });
     }
 
-    if (!callerProfile.hotel_id) {
-      console.warn(`[create-user:${reqId}] Missing caller hotel_id`);
-      return NextResponse.json(
-        { error: "No hay hotel seleccionado. Selecciona un hotel primero." },
-        { status: 400 }
-      );
-    }
-
     const body = await req.json().catch(() => null);
     if (!body || typeof body !== "object") {
       console.warn(`[create-user:${reqId}] Invalid body`);
@@ -103,6 +98,9 @@ export async function POST(req: NextRequest) {
     const password = String(body.password ?? "");
     const role = String(body.role ?? "auditor") as Role;
 
+    // ✅ hotel_id objetivo (para superadmin viene del body)
+    const requestedHotelId = body.hotel_id ? String(body.hotel_id).trim() : null;
+
     if (!email) return NextResponse.json({ error: "Email es obligatorio." }, { status: 400 });
     if (!password || password.length < 8) {
       return NextResponse.json({ error: "Password mínimo 8 caracteres." }, { status: 400 });
@@ -111,13 +109,38 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Rol inválido." }, { status: 400 });
     }
 
+    // ✅ Decide hotel_id final
+    let targetHotelId: string | null = null;
+
+    if (callerRole === "admin") {
+      // admin SOLO puede crear en su hotel
+      targetHotelId = callerProfile.hotel_id ?? null;
+      if (!targetHotelId) {
+        console.warn(`[create-user:${reqId}] Admin missing caller hotel_id`);
+        return NextResponse.json(
+          { error: "Tu usuario admin no tiene hotel asignado (hotel_id). Revisa el profile." },
+          { status: 400 }
+        );
+      }
+    } else {
+      // superadmin DEBE indicar hotel_id
+      if (!requestedHotelId || !isUuidLike(requestedHotelId)) {
+        console.warn(`[create-user:${reqId}] Superadmin missing/invalid hotel_id in body`);
+        return NextResponse.json(
+          { error: "Como superadmin, debes seleccionar un hotel antes de crear usuarios." },
+          { status: 400 }
+        );
+      }
+      targetHotelId = requestedHotelId;
+    }
+
     // Cliente Service Role
     const admin = createClient(supabaseConfig.url, serviceRoleKey, {
       auth: { persistSession: false },
     });
 
     console.log(
-      `[create-user:${reqId}] Creating user email=${email} role=${role} hotel_id=${callerProfile.hotel_id}`
+      `[create-user:${reqId}] Creating user email=${email} role=${role} hotel_id=${targetHotelId} callerRole=${callerRole}`
     );
 
     // 1) Crear usuario Auth
@@ -130,7 +153,6 @@ export async function POST(req: NextRequest) {
 
     if (createErr || !created?.user) {
       console.error(`[create-user:${reqId}] createUser failed`, createErr?.message);
-      // Mensaje más útil para casos comunes
       const msg =
         createErr?.message?.toLowerCase().includes("already registered") ||
         createErr?.message?.toLowerCase().includes("already exists")
@@ -138,10 +160,7 @@ export async function POST(req: NextRequest) {
           : createErr?.message ?? "No se pudo crear el usuario en Auth.";
 
       return NextResponse.json(
-        {
-          error: msg,
-          debug: { projectRef, step: "createUser" },
-        },
+        { error: msg, debug: { projectRef, step: "createUser" } },
         { status: 400 }
       );
     }
@@ -153,7 +172,7 @@ export async function POST(req: NextRequest) {
     const { error: upsertErr } = await admin.from("profiles").upsert(
       {
         id: newUserId,
-        hotel_id: callerProfile.hotel_id,
+        hotel_id: targetHotelId, // ✅ aquí va el hotel objetivo
         role,
         active: true,
         full_name,
@@ -163,24 +182,16 @@ export async function POST(req: NextRequest) {
 
     if (upsertErr) {
       console.error(`[create-user:${reqId}] profile upsert failed`, upsertErr.message);
-      // rollback
       await admin.auth.admin.deleteUser(newUserId);
 
       return NextResponse.json(
-        {
-          error: upsertErr.message ?? "No se pudo crear el profile.",
-          debug: { projectRef, step: "upsertProfile" },
-        },
+        { error: upsertErr.message ?? "No se pudo crear el profile.", debug: { projectRef, step: "upsertProfile" } },
         { status: 400 }
       );
     }
 
     console.log(`[create-user:${reqId}] OK`);
-    return NextResponse.json({
-      ok: true,
-      user_id: newUserId,
-      debug: { projectRef },
-    });
+    return NextResponse.json({ ok: true, user_id: newUserId, debug: { projectRef } });
   } catch (e: any) {
     console.error(`[create-user:${reqId}] Unexpected error`, e?.message);
     return NextResponse.json(
