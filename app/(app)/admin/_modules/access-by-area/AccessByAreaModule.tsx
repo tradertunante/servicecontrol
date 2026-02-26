@@ -1,7 +1,7 @@
-// app/(app)/admin/_modules/access/UserAreaAccessModule.tsx
+// app/(app)/admin/_modules/access-by-area/AccessByAreaModule.tsx
 "use client";
 
-export default function UserAreaAccessModule() {
+export default function AccessByAreaModule() {
   return (
     <div
       style={{
@@ -12,7 +12,7 @@ export default function UserAreaAccessModule() {
         fontWeight: 900,
       }}
     >
-      TODO: Migrar módulo user-area-access aquí.
+      AccessByAreaModule pendiente de conectar (aquí luego pegamos tu lógica de accesos por área).
     </div>
   );
 }
