@@ -32,6 +32,7 @@ type AuditRunRow = {
   area_id: string;
   status: string | null;
   hotel_id: string | null;
+  audit_template_id: string | null; // ✅ para ranking por tipo
 };
 
 type AnswerRowLite = {
@@ -55,15 +56,15 @@ type TeamMemberLite = {
   employee_number: string | null;
 };
 
+type TemplateLite = { id: string; name: string };
+
 const HOTEL_KEY = "sc_hotel_id";
 
 function canSeeAnalytics(role: Role) {
-  // ✅ permitimos manager, pero luego filtramos áreas por permisos
   return role === "admin" || role === "manager" || role === "superadmin";
 }
 
 function isAdminLike(role: Role) {
-  // ✅ SOLO admin + superadmin ven todas las áreas
   return role === "admin" || role === "superadmin";
 }
 
@@ -86,6 +87,40 @@ function topicKey(q: QuestionLite) {
   return `Q:${q.id}`;
 }
 
+type SortKey = "name" | "audits_count" | "fail_rate_pct" | "last_audit_at";
+type SortDir = "asc" | "desc";
+
+function SortHeader({
+  label,
+  active,
+  dir,
+  onClick,
+  align = "left",
+}: {
+  label: string;
+  active: boolean;
+  dir: SortDir;
+  onClick: () => void;
+  align?: "left" | "right";
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={[
+        "inline-flex items-center gap-1 font-extrabold text-xs text-gray-500 hover:text-gray-700 select-none",
+        align === "right" ? "ml-auto" : "",
+      ].join(" ")}
+      title="Ordenar"
+    >
+      <span>{label}</span>
+      <span className={active ? "text-gray-700" : "text-gray-300"} aria-hidden>
+        {dir === "asc" ? "▲" : "▼"}
+      </span>
+    </button>
+  );
+}
+
 export default function TeamAnalyticsPage() {
   const router = useRouter();
 
@@ -106,14 +141,21 @@ export default function TeamAnalyticsPage() {
 
   const [tab, setTab] = useState<"ranking" | "common" | "similar">("ranking");
 
+  // ✅ Ranking: selector general vs por tipo (template)
+  const [templates, setTemplates] = useState<TemplateLite[]>([]);
+  const [rankingMode, setRankingMode] = useState<string>("all"); // "all" | templateId
+
+  // ✅ Sorting
+  const [sortKey, setSortKey] = useState<SortKey>("fail_rate_pct");
+  const [sortDir, setSortDir] = useState<SortDir>("desc");
+
   const [ranking, setRanking] = useState<
     Array<{
       team_member_id: string;
       name: string;
-      position: string | null;
-      employee_number: string | null;
-      answered: number;
-      fails: number;
+      audits_count: number; // ✅ nuevo
+      answered: number; // se mantiene para cálculo, no se muestra
+      fails: number; // se mantiene para cálculo, no se muestra
       fail_rate_pct: number | null;
       last_audit_at: string | null;
     }>
@@ -138,7 +180,10 @@ export default function TeamAnalyticsPage() {
     }>
   >([]);
 
-  const selectedArea = useMemo(() => areas.find((a) => a.id === selectedAreaId) ?? null, [areas, selectedAreaId]);
+  const selectedArea = useMemo(
+    () => areas.find((a) => a.id === selectedAreaId) ?? null,
+    [areas, selectedAreaId]
+  );
 
   const fromISO = useMemo(() => {
     if (period === "30") return isoDaysAgo(30);
@@ -167,6 +212,46 @@ export default function TeamAnalyticsPage() {
     if (period === "365") return "Últimos 12 meses";
     return "Personalizado";
   }, [period]);
+
+  const sortedRanking = useMemo(() => {
+    const arr = [...ranking];
+
+    const dirMul = sortDir === "asc" ? 1 : -1;
+
+    const cmpStr = (a: string, b: string) => a.localeCompare(b, "es-ES", { sensitivity: "base" }) * dirMul;
+    const cmpNum = (a: number | null, b: number | null) => {
+      const av = a ?? -Infinity;
+      const bv = b ?? -Infinity;
+      if (av === bv) return 0;
+      return av > bv ? 1 * dirMul : -1 * dirMul;
+    };
+    const cmpDate = (a: string | null, b: string | null) => {
+      const av = a ? new Date(a).getTime() : -Infinity;
+      const bv = b ? new Date(b).getTime() : -Infinity;
+      if (av === bv) return 0;
+      return av > bv ? 1 * dirMul : -1 * dirMul;
+    };
+
+    arr.sort((x, y) => {
+      if (sortKey === "name") return cmpStr(x.name ?? "", y.name ?? "");
+      if (sortKey === "audits_count") return cmpNum(x.audits_count, y.audits_count);
+      if (sortKey === "fail_rate_pct") return cmpNum(x.fail_rate_pct, y.fail_rate_pct);
+      return cmpDate(x.last_audit_at, y.last_audit_at);
+    });
+
+    return arr;
+  }, [ranking, sortKey, sortDir]);
+
+  function toggleSort(nextKey: SortKey) {
+    setSortKey((prevKey) => {
+      if (prevKey !== nextKey) {
+        setSortDir("desc"); // default sensato
+        return nextKey;
+      }
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+      return prevKey;
+    });
+  }
 
   // ----------------------------
   // Boot: auth + hotel + AREAS (con permisos)
@@ -222,7 +307,6 @@ export default function TeamAnalyticsPage() {
         const { data: hData, error: hErr } = await supabase.from("hotels").select("id,name").eq("id", hid).single();
         if (hErr) throw hErr;
 
-        // ✅ AREAS: admin/superadmin todas, manager solo sus áreas (user_area_access)
         let areaRows: AreaRow[] = [];
 
         if (isAdminLike(p.role)) {
@@ -235,7 +319,6 @@ export default function TeamAnalyticsPage() {
           if (aErr) throw aErr;
           areaRows = (aData ?? []) as AreaRow[];
         } else {
-          // manager (y si luego quieres auditor) => solo áreas permitidas
           const { data: accessData, error: accessErr } = await supabase
             .from("user_area_access")
             .select("area_id")
@@ -265,7 +348,6 @@ export default function TeamAnalyticsPage() {
         setHotel((hData as any) ?? null);
         setAreas(areaRows);
 
-        // ✅ seleccion por defecto: primera de sus áreas permitidas
         if (areaRows.length > 0) {
           setSelectedAreaId(areaRows[0].id);
         } else {
@@ -303,7 +385,7 @@ export default function TeamAnalyticsPage() {
         // 1) Runs del área en el periodo, submitted, con colaborador
         const { data: runsData, error: runsErr } = await supabase
           .from("audit_runs")
-          .select("id,executed_at,team_member_id,area_id,status,hotel_id")
+          .select("id,executed_at,team_member_id,area_id,status,hotel_id,audit_template_id")
           .eq("hotel_id", hotelId)
           .eq("area_id", selectedAreaId)
           .eq("status", "submitted")
@@ -314,7 +396,50 @@ export default function TeamAnalyticsPage() {
 
         if (runsErr) throw runsErr;
 
-        const runs = (runsData ?? []) as AuditRunRow[];
+        const runsAll = (runsData ?? []) as AuditRunRow[];
+
+        if (runsAll.length === 0) {
+          if (!alive) return;
+          setRanking([]);
+          setCommonFailures([]);
+          setPairs([]);
+          setTemplates([]);
+          setRankingMode("all");
+          setBusy(false);
+          return;
+        }
+
+        // ✅ Templates disponibles para el dropdown (en base a lo que aparece en el periodo)
+        const templateIds = Array.from(
+          new Set(runsAll.map((r) => r.audit_template_id).filter(Boolean))
+        ) as string[];
+
+        let templateList: TemplateLite[] = [];
+        if (templateIds.length > 0) {
+          const { data: tData, error: tErr } = await supabase
+            .from("audit_templates")
+            .select("id,name")
+            .in("id", templateIds);
+
+          if (tErr) throw tErr;
+          templateList = (tData ?? []) as TemplateLite[];
+          templateList.sort((a, b) => (a.name ?? "").localeCompare(b.name ?? "", "es-ES"));
+        }
+
+        if (!alive) return;
+        setTemplates(templateList);
+
+        // Si el usuario tenía seleccionado un template que ya no existe en este filtro, volvemos a "all"
+        if (rankingMode !== "all" && !templateIds.includes(rankingMode)) {
+          setRankingMode("all");
+        }
+
+        // ✅ Filtramos runs según rankingMode (all vs template)
+        const runs =
+          rankingMode === "all"
+            ? runsAll
+            : runsAll.filter((r) => r.audit_template_id === rankingMode);
+
         const runIds = runs.map((r) => r.id);
 
         if (runIds.length === 0) {
@@ -371,6 +496,13 @@ export default function TeamAnalyticsPage() {
           if (r.team_member_id) memberByRun.set(r.id, r.team_member_id);
         }
 
+        // ✅ Auditorías por miembro (nuevo)
+        const auditsByMember = new Map<string, number>();
+        for (const r of runs) {
+          if (!r.team_member_id) continue;
+          auditsByMember.set(r.team_member_id, (auditsByMember.get(r.team_member_id) ?? 0) + 1);
+        }
+
         // A) Ranking
         const agg = new Map<string, { answered: number; fails: number }>();
         for (const a of answersLite) {
@@ -395,16 +527,21 @@ export default function TeamAnalyticsPage() {
           }
         }
 
-        const rankingList = Array.from(agg.entries()).map(([memberId, v]) => {
+        const rankingList = Array.from(
+          new Set([
+            ...Array.from(agg.keys()),
+            ...Array.from(auditsByMember.keys()), // por si hubiera runs sin answers (raro, pero)
+          ])
+        ).map((memberId) => {
           const tm = tmById.get(memberId);
+          const v = agg.get(memberId) ?? { answered: 0, fails: 0 };
           const denom = v.answered;
           const failRate = denom === 0 ? null : Math.round((v.fails / denom) * 100 * 100) / 100;
 
           return {
             team_member_id: memberId,
             name: tm?.full_name ?? "—",
-            position: tm?.position ?? null,
-            employee_number: tm?.employee_number ?? null,
+            audits_count: auditsByMember.get(memberId) ?? 0,
             answered: v.answered,
             fails: v.fails,
             fail_rate_pct: failRate,
@@ -412,7 +549,10 @@ export default function TeamAnalyticsPage() {
           };
         });
 
-        rankingList.sort((a, b) => (b.fail_rate_pct ?? -1) - (a.fail_rate_pct ?? -1));
+        // default sort (si el user no tocó nada): peor → mejor por %FAIL
+        // (pero el render usa sortedRanking con sortKey/sortDir)
+        if (!alive) return;
+        setRanking(rankingList);
 
         // B) Fallos comunes por topic
         const topicAgg = new Map<string, { fail_count: number; members: Set<string>; exampleText?: string }>();
@@ -437,7 +577,11 @@ export default function TeamAnalyticsPage() {
 
         const commonList = Array.from(topicAgg.entries())
           .map(([key, v]) => ({
-            topic: key.startsWith("TAG:") ? key.replace("TAG:", "") : key.startsWith("CLASS:") ? key.replace("CLASS:", "") : key,
+            topic: key.startsWith("TAG:")
+              ? key.replace("TAG:", "")
+              : key.startsWith("CLASS:")
+              ? key.replace("CLASS:", "")
+              : key,
             fail_count: v.fail_count,
             affected_members: v.members.size,
             examples: v.exampleText,
@@ -486,7 +630,6 @@ export default function TeamAnalyticsPage() {
         }));
 
         if (!alive) return;
-        setRanking(rankingList);
         setCommonFailures(commonList);
         setPairs(pairsUi);
         setBusy(false);
@@ -500,7 +643,14 @@ export default function TeamAnalyticsPage() {
     return () => {
       alive = false;
     };
-  }, [hotelId, selectedAreaId, fromISO, toISO]);
+  }, [hotelId, selectedAreaId, fromISO, toISO, rankingMode]);
+
+  // Ajuste por defecto de sorting al entrar (siempre que no hayan tocado)
+  useEffect(() => {
+    // cuando cambias el modo (all/template) suele tener sentido volver a %FAIL desc
+    setSortKey("fail_rate_pct");
+    setSortDir("desc");
+  }, [rankingMode, selectedAreaId, fromISO, toISO]);
 
   if (loading) {
     return (
@@ -662,44 +812,94 @@ export default function TeamAnalyticsPage() {
             <div className="flex items-start justify-between gap-3">
               <div>
                 <div className="text-sm font-extrabold">Ranking por colaborador</div>
-                <div className="mt-1 text-xs font-semibold text-gray-500">
-                  Ordenado por % de fallos (peor → mejor). NA no cuenta.
-                </div>
+                <div className="mt-1 text-xs font-semibold text-gray-500">NA no cuenta. Puedes ordenar por cualquier columna.</div>
               </div>
 
-              <div className="rounded-2xl border bg-gray-50 px-3 py-2 text-xs font-extrabold text-gray-700">
-                {ranking.length} colaboradores
+              <div className="flex items-center gap-2">
+                {/* ✅ Dropdown: general vs por tipo */}
+                <div className="grid gap-1.5">
+                  <label className="text-[11px] font-extrabold text-gray-500">Vista</label>
+                  <select
+                    value={rankingMode}
+                    onChange={(e) => setRankingMode(e.target.value)}
+                    className="rounded-2xl border bg-white px-3 py-2 text-xs font-extrabold outline-none focus:border-black"
+                  >
+                    <option value="all">Ranking general (todas)</option>
+                    {templates.map((t) => (
+                      <option key={t.id} value={t.id}>
+                        Por tipo: {t.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="rounded-2xl border bg-gray-50 px-3 py-2 text-xs font-extrabold text-gray-700">
+                  {sortedRanking.length} colaboradores
+                </div>
               </div>
             </div>
 
-            {ranking.length === 0 ? (
+            {sortedRanking.length === 0 ? (
               <div className="mt-4 text-sm font-semibold text-gray-600">
-                No hay auditorías con colaborador en este periodo.
+                No hay auditorías con colaborador en este periodo (con los filtros actuales).
               </div>
             ) : (
               <div className="mt-4 overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="text-xs text-gray-500">
-                      <th className="text-left font-extrabold py-2 pr-3">Colaborador</th>
-                      <th className="text-left font-extrabold py-2 pr-3">Posición</th>
-                      <th className="text-left font-extrabold py-2 pr-3">Nº</th>
-                      <th className="text-right font-extrabold py-2 pl-3">Respondidas</th>
-                      <th className="text-right font-extrabold py-2 pl-3">FAIL</th>
-                      <th className="text-right font-extrabold py-2 pl-3">% FAIL</th>
-                      <th className="text-right font-extrabold py-2 pl-3">Última</th>
+                      <th className="text-left py-2 pr-3">
+                        <SortHeader
+                          label="Colaborador"
+                          active={sortKey === "name"}
+                          dir={sortKey === "name" ? sortDir : "desc"}
+                          onClick={() => toggleSort("name")}
+                        />
+                      </th>
+
+                      <th className="text-right py-2 pl-3">
+                        <SortHeader
+                          label="Nº auditorías"
+                          active={sortKey === "audits_count"}
+                          dir={sortKey === "audits_count" ? sortDir : "desc"}
+                          onClick={() => toggleSort("audits_count")}
+                          align="right"
+                        />
+                      </th>
+
+                      <th className="text-right py-2 pl-3">
+                        <SortHeader
+                          label="% FAIL"
+                          active={sortKey === "fail_rate_pct"}
+                          dir={sortKey === "fail_rate_pct" ? sortDir : "desc"}
+                          onClick={() => toggleSort("fail_rate_pct")}
+                          align="right"
+                        />
+                      </th>
+
+                      <th className="text-right py-2 pl-3">
+                        <SortHeader
+                          label="Última"
+                          active={sortKey === "last_audit_at"}
+                          dir={sortKey === "last_audit_at" ? sortDir : "desc"}
+                          onClick={() => toggleSort("last_audit_at")}
+                          align="right"
+                        />
+                      </th>
                     </tr>
                   </thead>
+
                   <tbody>
-                    {ranking.map((r) => (
+                    {sortedRanking.map((r) => (
                       <tr key={r.team_member_id} className="border-t">
                         <td className="py-3 pr-3">
                           <div className="font-extrabold text-gray-900">{r.name}</div>
                         </td>
-                        <td className="py-3 pr-3 font-semibold text-gray-700">{r.position ?? "—"}</td>
-                        <td className="py-3 pr-3 font-semibold text-gray-700">{r.employee_number ?? "—"}</td>
-                        <td className="py-3 pl-3 text-right font-semibold text-gray-800">{r.answered}</td>
-                        <td className="py-3 pl-3 text-right font-extrabold text-gray-900">{r.fails}</td>
+
+                        <td className="py-3 pl-3 text-right font-extrabold text-gray-900">
+                          {r.audits_count}
+                        </td>
+
                         <td className="py-3 pl-3 text-right font-extrabold">
                           {r.fail_rate_pct === null ? (
                             <span className="text-gray-500">—</span>
@@ -718,6 +918,7 @@ export default function TeamAnalyticsPage() {
                             </span>
                           )}
                         </td>
+
                         <td className="py-3 pl-3 text-right text-xs font-semibold text-gray-600">
                           {r.last_audit_at ? new Date(r.last_audit_at).toLocaleDateString("es-ES") : "—"}
                         </td>
@@ -736,7 +937,8 @@ export default function TeamAnalyticsPage() {
               <div>
                 <div className="text-sm font-extrabold">Fallos más comunes</div>
                 <div className="mt-1 text-xs font-semibold text-gray-500">
-                  Agrupado por <span className="font-extrabold">Tag</span> o <span className="font-extrabold">Classification</span>.
+                  Agrupado por <span className="font-extrabold">Tag</span> o{" "}
+                  <span className="font-extrabold">Classification</span>.
                 </div>
               </div>
 
