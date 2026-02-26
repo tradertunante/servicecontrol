@@ -1,16 +1,7 @@
 "use client";
+
+import DepartmentsModule from "../departments/DepartmentsModule";
+
 export default function AreasModule() {
-  return (
-    <div
-      style={{
-        padding: 16,
-        borderRadius: 16,
-        border: "1px solid var(--border)",
-        background: "rgba(0,0,0,0.03)",
-        fontWeight: 900,
-      }}
-    >
-      TODO: Migrar módulo de áreas aquí.
-    </div>
-  );
+  return <DepartmentsModule />;
 }
