@@ -820,7 +820,7 @@ export default function DashboardPage() {
 
         {/* ✅ NUEVO BOTÓN: Analytics */}
         <button
-          onClick={() => router.push("/team/analytics")}
+          onClick={() => router.push("/analytics")}
           className="quickBtn"
           style={{
             textAlign: "left",
