@@ -1,3 +1,4 @@
+// FILE: app/(app)/analytics/_hooks/useMemberAnalytics.ts
 "use client";
 
 import { useEffect, useState } from "react";
@@ -62,26 +63,30 @@ export function useMemberAnalytics({
         if (runsErr) throw runsErr;
 
         const runsMemberAll = (runsData ?? []) as AuditRunRow[];
-
         if (!alive) return;
 
-        if (runsMemberAll.length === 0) {
+        // Mapa de nombres
+        const templateNameById = new Map<string, string>();
+        templates.forEach((t) => templateNameById.set(t.id, t.name));
+
+        // ✅ Aplicamos filtro de auditoría seleccionado
+        const runsMember =
+          memberAuditMode === "all"
+            ? runsMemberAll
+            : runsMemberAll.filter((r) => r.audit_template_id === memberAuditMode);
+
+        // ✅ Si con el filtro seleccionado no hay auditorías, debe salir 0
+        if (runsMember.length === 0) {
           setReport({ audits_count: 0, overall_fail_pct: null, by_template: [] });
           setTrend([]);
           setTopStandards([]);
           return;
         }
 
-        const templateNameById = new Map<string, string>();
-        templates.forEach((t) => templateNameById.set(t.id, t.name));
-
-        const runsMember =
-          memberAuditMode === "all"
-            ? runsMemberAll
-            : runsMemberAll.filter((r) => r.audit_template_id === memberAuditMode);
-
+        // Para respuestas: necesitamos todas las del colaborador en periodo
+        // (así no hacemos otra query dependiendo del filtro), pero luego agregamos SOLO las filtradas.
         const runIdsMemberAll = runsMemberAll.map((r) => r.id);
-        const runIdsMember = new Set(runsMember.map((r) => r.id));
+        const runIdsSelected = new Set(runsMember.map((r) => r.id));
 
         const { data: ansData, error: ansErr } = await supabase
           .from("audit_answers")
@@ -108,20 +113,13 @@ export function useMemberAnalytics({
         const qById = new Map<string, QuestionLite>();
         (qData ?? []).forEach((q: any) => qById.set(q.id, q as QuestionLite));
 
-        // Informe
-        const auditsCount = runsMemberAll.length;
+        // =========================================================
+        // ✅ INFORME SOLO DEL FILTRO SELECCIONADO
+        // =========================================================
+        const auditsCount = runsMember.length;
 
-        const auditsByTemplate = new Map<string | null, { audits: number; answered: number; fails: number }>();
-        for (const r of runsMemberAll) {
-          const key = r.audit_template_id ?? null;
-          const cur = auditsByTemplate.get(key) ?? { audits: 0, answered: 0, fails: 0 };
-          cur.audits += 1;
-          auditsByTemplate.set(key, cur);
-        }
-
+        // Respondidas/fallos por run (de todo el periodo), luego se filtra por runIdsSelected
         const answeredByRun = new Map<string, { answered: number; fails: number }>();
-        let overallAnswered = 0;
-        let overallFails = 0;
 
         for (const a of answers) {
           const val = (a.result ?? a.answer) as "PASS" | "FAIL" | "NA" | null;
@@ -132,41 +130,74 @@ export function useMemberAnalytics({
           cur.answered += 1;
           if (val === "FAIL") cur.fails += 1;
           answeredByRun.set(a.audit_run_id, cur);
-
-          overallAnswered += 1;
-          if (val === "FAIL") overallFails += 1;
         }
 
-        const runTemplateById = new Map<string, string | null>();
-        runsMemberAll.forEach((r) => runTemplateById.set(r.id, r.audit_template_id ?? null));
+        // ✅ Overall SOLO con runs filtradas
+        let overallAnswered = 0;
+        let overallFails = 0;
 
         for (const [runId, v] of answeredByRun.entries()) {
-          const tId = runTemplateById.get(runId) ?? null;
-          const cur = auditsByTemplate.get(tId) ?? { audits: 0, answered: 0, fails: 0 };
-          cur.answered += v.answered;
-          cur.fails += v.fails;
-          auditsByTemplate.set(tId, cur);
+          if (!runIdsSelected.has(runId)) continue;
+          overallAnswered += v.answered;
+          overallFails += v.fails;
         }
 
         const overallFailPct = overallAnswered ? pct(overallFails, overallAnswered) : null;
 
-        const byTemplateRows = Array.from(auditsByTemplate.entries())
-          .map(([template_id, v]) => {
-            const template_name = template_id ? templateNameById.get(template_id) ?? "—" : "Sin tipo";
-            return {
-              template_id,
-              template_name,
-              audits_count: v.audits,
-              audits_pct: pct(v.audits, auditsCount),
-              fail_pct: v.answered ? pct(v.fails, v.answered) : null,
-            };
-          })
-          .sort((a, b) => b.audits_count - a.audits_count);
+        // Distribución por tipo:
+        // - Si "all": distribuimos dentro del periodo (pero sigue siendo "seleccionado" porque seleccionaste "todas")
+        // - Si tipo concreto: no aporta, devolvemos []
+        let byTemplateRows: MemberReport["by_template"] = [];
+
+        if (memberAuditMode === "all") {
+          const auditsByTemplate = new Map<
+            string | null,
+            { audits: number; answered: number; fails: number }
+          >();
+
+          // auditorías por template SOLO de runsMember (que aquí == runsMemberAll)
+          for (const r of runsMember) {
+            const key = r.audit_template_id ?? null;
+            const cur = auditsByTemplate.get(key) ?? { audits: 0, answered: 0, fails: 0 };
+            cur.audits += 1;
+            auditsByTemplate.set(key, cur);
+          }
+
+          // sumar answered/fails por template SOLO de runsMember
+          const runTemplateById = new Map<string, string | null>();
+          runsMember.forEach((r) => runTemplateById.set(r.id, r.audit_template_id ?? null));
+
+          for (const r of runsMember) {
+            const v = answeredByRun.get(r.id) ?? { answered: 0, fails: 0 };
+            const tId = runTemplateById.get(r.id) ?? null;
+            const cur = auditsByTemplate.get(tId) ?? { audits: 0, answered: 0, fails: 0 };
+            cur.answered += v.answered;
+            cur.fails += v.fails;
+            auditsByTemplate.set(tId, cur);
+          }
+
+          byTemplateRows = Array.from(auditsByTemplate.entries())
+            .map(([template_id, v]) => {
+              const template_name = template_id
+                ? templateNameById.get(template_id) ?? "—"
+                : "Sin tipo";
+              return {
+                template_id,
+                template_name,
+                audits_count: v.audits,
+                audits_pct: pct(v.audits, auditsCount),
+                fail_pct: v.answered ? pct(v.fails, v.answered) : null,
+              };
+            })
+            .sort((a, b) => b.audits_count - a.audits_count);
+        }
 
         // Trend (según filtro)
         const trendRows: MemberTrendRow[] = runsMember.map((r) => {
           const v = answeredByRun.get(r.id) ?? { answered: 0, fails: 0 };
-          const templateName = r.audit_template_id ? templateNameById.get(r.audit_template_id) ?? "—" : "Sin tipo";
+          const templateName = r.audit_template_id
+            ? templateNameById.get(r.audit_template_id) ?? "—"
+            : "Sin tipo";
           return {
             run_id: r.id,
             executed_at: r.executed_at,
@@ -180,7 +211,7 @@ export function useMemberAnalytics({
         // Top estándares (según filtro)
         const failAgg = new Map<string, number>();
         for (const a of answers) {
-          if (!runIdsMember.has(a.audit_run_id)) continue;
+          if (!runIdsSelected.has(a.audit_run_id)) continue;
           const val = (a.result ?? a.answer) as "PASS" | "FAIL" | "NA" | null;
           if (val !== "FAIL") continue;
           failAgg.set(a.question_id, (failAgg.get(a.question_id) ?? 0) + 1);
@@ -201,7 +232,12 @@ export function useMemberAnalytics({
           .slice(0, 20);
 
         if (!alive) return;
-        setReport({ audits_count: auditsCount, overall_fail_pct: overallFailPct, by_template: byTemplateRows });
+
+        setReport({
+          audits_count: auditsCount,
+          overall_fail_pct: overallFailPct,
+          by_template: byTemplateRows,
+        });
         setTrend(trendRows);
         setTopStandards(top);
       } catch {

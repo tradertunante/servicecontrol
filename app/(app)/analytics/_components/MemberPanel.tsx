@@ -40,14 +40,7 @@ export default function MemberPanel({
   trend: MemberTrendRow[];
   topStandards: MemberTopStandardRow[];
 }) {
-  const memberName = selectedMemberId
-    ? members.find((m) => m.id === selectedMemberId)?.full_name ?? "—"
-    : "—";
-
-  const auditLabel =
-    memberAuditMode === "all"
-      ? "General"
-      : templates.find((t) => t.id === memberAuditMode)?.name ?? "—";
+  const showDistribution = memberAuditMode === "all";
 
   return (
     <section className="mt-4 rounded-2xl border bg-white p-5 shadow-sm">
@@ -64,7 +57,8 @@ export default function MemberPanel({
         </div>
       </div>
 
-      <div className="mt-4 grid gap-3 lg:grid-cols-3">
+      {/* ✅ Quitamos "Resumen" y dejamos 2 columnas */}
+      <div className="mt-4 grid gap-3 lg:grid-cols-2">
         <div className="grid gap-1.5">
           <label className="text-xs font-extrabold text-gray-500">Colaborador</label>
           <select
@@ -101,20 +95,14 @@ export default function MemberPanel({
             ))}
           </select>
         </div>
-
-        <div className="grid gap-1.5">
-          <label className="text-xs font-extrabold text-gray-500">Resumen</label>
-          <div className="rounded-2xl border bg-gray-50 px-4 py-3 text-sm font-semibold text-gray-700">
-            {memberName} · {auditLabel}
-          </div>
-        </div>
       </div>
 
       <div className="mt-4 grid gap-4 lg:grid-cols-3">
         <div className="rounded-2xl border bg-gray-50 p-4">
           <div className="text-xs font-extrabold text-gray-500">Nº auditorías</div>
           <div className="mt-1 text-2xl font-extrabold text-gray-900">
-            {report?.audits_count ?? "—"}
+            {/* ✅ si no hay report aún, mostramos —; si hay report, mostramos el número (incluyendo 0) */}
+            {report ? report.audits_count : "—"}
           </div>
         </div>
 
@@ -130,7 +118,7 @@ export default function MemberPanel({
         <div className="rounded-2xl border bg-gray-50 p-4">
           <div className="text-xs font-extrabold text-gray-500">Distribución por tipo</div>
 
-          {report?.by_template?.length ? (
+          {showDistribution && report?.by_template?.length ? (
             <div className="mt-2 space-y-2">
               {report.by_template.slice(0, 5).map((t) => {
                 const success = t.fail_pct === null ? null : successPctFromFail(t.fail_pct);
@@ -174,12 +162,10 @@ export default function MemberPanel({
             </div>
           </div>
 
-          {/* ✅ GRÁFICA (Éxito%) */}
           <div className="mt-3">
             <MemberTrendChart trend={trend} />
           </div>
 
-          {/* Tabla */}
           {trend.length === 0 ? (
             <div className="mt-3 text-sm font-semibold text-gray-600">
               No hay auditorías para este colaborador con el filtro seleccionado.
@@ -207,7 +193,11 @@ export default function MemberPanel({
                           {r.template_name}
                         </td>
                         <td className="py-2 pl-3 text-right font-extrabold">
-                          {success === null ? <span className="text-gray-500">—</span> : `${success.toFixed(2)}%`}
+                          {success === null ? (
+                            <span className="text-gray-500">—</span>
+                          ) : (
+                            `${success.toFixed(2)}%`
+                          )}
                         </td>
                         <td className="py-2 pl-3 text-right text-xs font-semibold text-gray-700">
                           {r.fails}/{r.answered}
@@ -245,10 +235,7 @@ export default function MemberPanel({
           ) : (
             <div className="mt-3 space-y-3">
               {topStandards.map((s, idx) => (
-                <div
-                  key={`${s.question_id}-${idx}`}
-                  className="rounded-2xl border bg-gray-50 p-3"
-                >
+                <div key={`${s.question_id}-${idx}`} className="rounded-2xl border bg-gray-50 p-3">
                   <div className="flex items-start justify-between gap-3">
                     <div style={{ minWidth: 0 }}>
                       <div className="text-sm font-extrabold text-gray-900 break-words">
@@ -265,9 +252,7 @@ export default function MemberPanel({
                             ) : null}
                             {s.classification ? (
                               <span>
-                                <span className="font-extrabold text-gray-700">
-                                  Clasificación:
-                                </span>{" "}
+                                <span className="font-extrabold text-gray-700">Clasificación:</span>{" "}
                                 {s.classification}
                               </span>
                             ) : null}
