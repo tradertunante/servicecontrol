@@ -1,3 +1,4 @@
+// FILE: app/(app)/analytics/page.tsx
 "use client";
 
 import { useMemo, useState } from "react";

@@ -1,3 +1,4 @@
+// FILE: app/(app)/analytics/_components/MemberPanel.tsx
 "use client";
 
 import type {
@@ -7,6 +8,14 @@ import type {
   TeamMemberLite,
   TemplateLite,
 } from "../_lib/analyticsTypes";
+
+import MemberTrendChart from "./MemberTrendChart";
+
+function successPctFromFail(fail: number | null) {
+  if (fail === null || fail === undefined) return null;
+  const v = 100 - fail;
+  return Math.max(0, Math.min(100, v));
+}
 
 export default function MemberPanel({
   summary,
@@ -110,11 +119,11 @@ export default function MemberPanel({
         </div>
 
         <div className="rounded-2xl border bg-gray-50 p-4">
-          <div className="text-xs font-extrabold text-gray-500">% FAIL general</div>
+          <div className="text-xs font-extrabold text-gray-500">% Éxito general</div>
           <div className="mt-1 text-2xl font-extrabold text-gray-900">
             {report?.overall_fail_pct === null || report?.overall_fail_pct === undefined
               ? "—"
-              : `${report.overall_fail_pct.toFixed(2)}%`}
+              : `${successPctFromFail(report.overall_fail_pct)!.toFixed(2)}%`}
           </div>
         </div>
 
@@ -123,19 +132,27 @@ export default function MemberPanel({
 
           {report?.by_template?.length ? (
             <div className="mt-2 space-y-2">
-              {report.by_template.slice(0, 5).map((t) => (
-                <div key={t.template_id ?? "null"} className="flex items-center justify-between gap-3">
-                  <div className="text-xs font-semibold text-gray-800 truncate">{t.template_name}</div>
-                  <div className="flex items-center gap-2 flex-shrink-0">
-                    <span className="rounded-full border bg-white px-2.5 py-1 text-[11px] font-extrabold text-gray-800">
-                      {t.audits_pct.toFixed(2)}%
-                    </span>
-                    <span className="rounded-full border bg-white px-2.5 py-1 text-[11px] font-extrabold text-gray-800">
-                      FAIL {t.fail_pct === null ? "—" : `${t.fail_pct.toFixed(2)}%`}
-                    </span>
+              {report.by_template.slice(0, 5).map((t) => {
+                const success = t.fail_pct === null ? null : successPctFromFail(t.fail_pct);
+                return (
+                  <div
+                    key={t.template_id ?? "null"}
+                    className="flex items-center justify-between gap-3"
+                  >
+                    <div className="text-xs font-semibold text-gray-800 truncate">
+                      {t.template_name}
+                    </div>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <span className="rounded-full border bg-white px-2.5 py-1 text-[11px] font-extrabold text-gray-800">
+                        {t.audits_pct.toFixed(2)}%
+                      </span>
+                      <span className="rounded-full border bg-white px-2.5 py-1 text-[11px] font-extrabold text-gray-800">
+                        Éxito {success === null ? "—" : `${success.toFixed(2)}%`}
+                      </span>
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           ) : (
             <div className="mt-2 text-sm font-semibold text-gray-600">—</div>
@@ -149,7 +166,7 @@ export default function MemberPanel({
             <div>
               <div className="text-sm font-extrabold text-gray-900">Progresión en el tiempo</div>
               <div className="mt-1 text-xs font-semibold text-gray-500">
-                FAIL% por auditoría (ordenado por fecha).
+                Éxito% por auditoría (ordenado por fecha).
               </div>
             </div>
             <div className="rounded-full border bg-gray-50 px-3 py-1 text-xs font-extrabold text-gray-700">
@@ -157,6 +174,12 @@ export default function MemberPanel({
             </div>
           </div>
 
+          {/* ✅ GRÁFICA (Éxito%) */}
+          <div className="mt-3">
+            <MemberTrendChart trend={trend} />
+          </div>
+
+          {/* Tabla */}
           {trend.length === 0 ? (
             <div className="mt-3 text-sm font-semibold text-gray-600">
               No hay auditorías para este colaborador con el filtro seleccionado.
@@ -168,27 +191,33 @@ export default function MemberPanel({
                   <tr className="text-xs text-gray-500">
                     <th className="text-left py-2 pr-3">Fecha</th>
                     <th className="text-left py-2 pr-3">Tipo</th>
-                    <th className="text-right py-2 pl-3">FAIL%</th>
+                    <th className="text-right py-2 pl-3">Éxito%</th>
                     <th className="text-right py-2 pl-3">Fallos</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {trend.slice(-20).map((r) => (
-                    <tr key={r.run_id} className="border-t">
-                      <td className="py-2 pr-3 text-xs font-semibold text-gray-700">
-                        {r.executed_at ? new Date(r.executed_at).toLocaleDateString("es-ES") : "—"}
-                      </td>
-                      <td className="py-2 pr-3 text-xs font-semibold text-gray-700">{r.template_name}</td>
-                      <td className="py-2 pl-3 text-right font-extrabold">
-                        {r.fail_pct === null ? <span className="text-gray-500">—</span> : `${r.fail_pct.toFixed(2)}%`}
-                      </td>
-                      <td className="py-2 pl-3 text-right text-xs font-semibold text-gray-700">
-                        {r.fails}/{r.answered}
-                      </td>
-                    </tr>
-                  ))}
+                  {trend.slice(-20).map((r) => {
+                    const success = successPctFromFail(r.fail_pct);
+                    return (
+                      <tr key={r.run_id} className="border-t">
+                        <td className="py-2 pr-3 text-xs font-semibold text-gray-700">
+                          {r.executed_at ? new Date(r.executed_at).toLocaleDateString("es-ES") : "—"}
+                        </td>
+                        <td className="py-2 pr-3 text-xs font-semibold text-gray-700">
+                          {r.template_name}
+                        </td>
+                        <td className="py-2 pl-3 text-right font-extrabold">
+                          {success === null ? <span className="text-gray-500">—</span> : `${success.toFixed(2)}%`}
+                        </td>
+                        <td className="py-2 pl-3 text-right text-xs font-semibold text-gray-700">
+                          {r.fails}/{r.answered}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
+
               <div className="mt-2 text-[11px] font-semibold text-gray-500">
                 Mostrando las últimas 20 auditorías del periodo.
               </div>
@@ -216,21 +245,30 @@ export default function MemberPanel({
           ) : (
             <div className="mt-3 space-y-3">
               {topStandards.map((s, idx) => (
-                <div key={`${s.question_id}-${idx}`} className="rounded-2xl border bg-gray-50 p-3">
+                <div
+                  key={`${s.question_id}-${idx}`}
+                  className="rounded-2xl border bg-gray-50 p-3"
+                >
                   <div className="flex items-start justify-between gap-3">
                     <div style={{ minWidth: 0 }}>
-                      <div className="text-sm font-extrabold text-gray-900 break-words">{s.standard}</div>
+                      <div className="text-sm font-extrabold text-gray-900 break-words">
+                        {s.standard}
+                      </div>
                       <div className="mt-1 text-xs font-semibold text-gray-600">
                         {s.tag || s.classification ? (
                           <>
                             {s.tag ? (
                               <span className="mr-2">
-                                <span className="font-extrabold text-gray-700">Tag:</span> {s.tag}
+                                <span className="font-extrabold text-gray-700">Tag:</span>{" "}
+                                {s.tag}
                               </span>
                             ) : null}
                             {s.classification ? (
                               <span>
-                                <span className="font-extrabold text-gray-700">Clasificación:</span> {s.classification}
+                                <span className="font-extrabold text-gray-700">
+                                  Clasificación:
+                                </span>{" "}
+                                {s.classification}
                               </span>
                             ) : null}
                           </>
