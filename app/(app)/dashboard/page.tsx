@@ -1,3 +1,4 @@
+// FILE: app/(app)/dashboard/page.tsx
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
@@ -6,7 +7,6 @@ import { useRouter } from "next/navigation";
 import { requireRoleOrRedirect } from "@/lib/auth/RequireRole";
 
 import type { Profile } from "./_lib/dashboardTypes";
-import { buildMonthLabels12MPlusYear } from "./_lib/dashboardUtils";
 
 import DashboardShell, { buildCardStyle, buildGhostBtnStyle, buildMiniBtnStyle } from "./_components/DashboardShell";
 import DashboardTopBar from "./_components/DashboardTopBar";
@@ -18,6 +18,7 @@ import WorstAuditsCard from "./_components/WorstAuditsCard";
 import QuickLinks from "./_components/QuickLinks";
 
 import { HOTEL_KEY, useDashboardData } from "./_hooks/useDashboardData";
+import type { HeatMode } from "./_lib/dashboardUtils";
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -27,6 +28,10 @@ export default function DashboardPage() {
   const [profile, setProfile] = useState<Profile | null>(null);
 
   const [selectedHotelId, setSelectedHotelId] = useState<string | null>(null);
+
+  // ✅ Heat controls
+  const [heatMode, setHeatMode] = useState<HeatMode>("YEAR");
+  const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
 
   // 🎨 tokens
   const fg = "var(--text)";
@@ -40,9 +45,7 @@ export default function DashboardPage() {
   const rowBg = "var(--row-bg, rgba(0,0,0,0.04))";
 
   const card = useMemo(() => buildCardStyle({ fg, border, cardBg, shadowLg }), [fg, border, cardBg, shadowLg]);
-
   const miniBtn: CSSProperties = useMemo(() => buildMiniBtnStyle({ fg, border, inputBg }), [fg, border, inputBg]);
-
   const ghostBtn: CSSProperties = useMemo(
     () => buildGhostBtnStyle({ fg, border, inputBg, shadowSm }),
     [fg, border, inputBg, shadowSm]
@@ -64,7 +67,6 @@ export default function DashboardPage() {
         if (!alive || !p) return;
         setProfile(p);
 
-        // hotel inicial
         if (p.role === "superadmin") {
           const stored = typeof window !== "undefined" ? localStorage.getItem(HOTEL_KEY) : null;
           setSelectedHotelId(stored || null);
@@ -98,16 +100,23 @@ export default function DashboardPage() {
     monthScore,
     quarterScore,
     yearScore,
-    heatMapData, // ✅ IMPORTANTÍSIMO (antes era heatMapDataByTemplate)
+    heatMapData,
+    monthLabels,
+    availableYears,
     top3Areas,
     worst3Areas,
     worst3Audits,
     selectedHotelName,
     canChooseHotel,
     resetForHotelChange,
-  } = useDashboardData({ profile, selectedHotelId, setSelectedHotelId });
+  } = useDashboardData({ profile, selectedHotelId, setSelectedHotelId, heatMode, selectedYear });
 
-  const monthLabels = useMemo(() => buildMonthLabels12MPlusYear(), []);
+  // si cambian años disponibles, ajusta selectedYear a uno existente
+  useEffect(() => {
+    if (!availableYears?.length) return;
+    if (!availableYears.includes(selectedYear)) setSelectedYear(availableYears[0]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [availableYears?.join(","), selectedYear]);
 
   const goAreaDetail = (areaId: string) => {
     router.push(`/areas/${areaId}?tab=dashboard&period=THIS_YEAR&template=ALL`);
@@ -186,9 +195,18 @@ export default function DashboardPage() {
 
       <GaugesRow card={card} monthScore={monthScore} quarterScore={quarterScore} yearScore={yearScore} />
 
-      {/* ✅ aquí ya no puede ser undefined */}
-      <HeatMapCard card={card} heatMapData={heatMapData} monthLabels={monthLabels} />
+      <HeatMapCard
+        card={card}
+        heatMapData={heatMapData}
+        monthLabels={monthLabels}
+        heatMode={heatMode}
+        setHeatMode={setHeatMode}
+        selectedYear={selectedYear}
+        setSelectedYear={setSelectedYear}
+        availableYears={availableYears}
+      />
 
+      {/* ✅ RESTAURADO: rankings */}
       <AreaRankings
         card={card}
         rowBg={rowBg}
@@ -199,8 +217,10 @@ export default function DashboardPage() {
         worst3Areas={worst3Areas}
         runs={runs}
         onGoAreaDetail={goAreaDetail}
+        selectedYear={selectedYear}
       />
 
+      {/* ✅ RESTAURADO: peores auditorías */}
       <WorstAuditsCard
         card={card}
         rowBg={rowBg}
