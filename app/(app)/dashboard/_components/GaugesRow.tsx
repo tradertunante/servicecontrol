@@ -49,7 +49,7 @@ export default function GaugesRow({
         return (
           <div key={idx} style={card} className="card gaugeCard">
             <div className="gaugeWrap">
-              <GaugeChart value={avgNum ?? 0} /> {/* el chart necesita número, pero el texto será "—" si no hay datos */}
+              <GaugeChart value={avgNum ?? 0} />
               <div className="gaugeText">
                 <div className="gaugePct">{label}</div>
                 <div className="gaugeCount">({count} auditorías)</div>
@@ -83,24 +83,41 @@ export default function GaugesRow({
           place-items: center;
         }
 
+        /* ✅ CLAVE: ocultar cualquier texto que pinte GaugeChart en el centro (SVG <text>) */
+        .gaugeWrap :global(svg text) {
+          display: none !important;
+        }
+        /* Por si GaugeChart usa <tspan> o grupos */
+        .gaugeWrap :global(svg tspan) {
+          display: none !important;
+        }
+
         .gaugeText {
           position: absolute;
           display: grid;
           place-items: center;
           gap: 2px;
           text-align: center;
+          pointer-events: none;
         }
 
         .gaugePct {
           font-weight: 950;
           font-size: 34px;
           line-height: 1;
+          color: var(--text);
+          text-shadow: none !important;
+          filter: none !important;
+          -webkit-text-stroke: 0 !important;
         }
 
         .gaugeCount {
           font-size: 12px;
           opacity: 0.7;
           font-weight: 800;
+          color: var(--text);
+          text-shadow: none !important;
+          filter: none !important;
         }
 
         .gaugeTitle {
