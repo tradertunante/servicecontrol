@@ -1,158 +1,152 @@
-// FILE: app/components/HeatMap.tsx
 "use client";
 
 import React, { useMemo, useState } from "react";
 
 type HeatCell = { value: number | null; count: number };
 
-export type HeatMapRow =
-  | {
-      group?: string;
-      label?: string;
-      months: HeatCell[];
-    }
-  | {
-      areaName?: string;
-      months: HeatCell[];
-    };
+export type HeatMapRow = {
+  group: string; // p.ej. "HK"
+  label: string; // p.ej. "Housekeeping"
+  months: HeatCell[]; // 12M + Año
+  rowId?: string; // estable (area_id)
+  children?: Array<{
+    label: string; // nombre del template
+    months: HeatCell[];
+    templateId?: string;
+  }>;
+};
 
-function clamp(n: number, a: number, b: number) {
-  return Math.max(a, Math.min(b, n));
+function pct(v: number) {
+  return `${Math.round(v)}%`;
 }
 
 /**
- * Color por %:
- * 0   => rojo
- * 50  => amarillo
- * 100 => verde
+ * ✅ Escala basada en globals.css (SIN colores hardcodeados)
+ * Define en globals.css:
+ * --heat-1..--heat-5 (de peor a mejor, o como lo tengas)
+ * --heat-text, --heat-border
  */
-function bgFromPct(v: number | null) {
-  if (v === null || Number.isNaN(v)) return "rgba(0,0,0,0.06)";
-  const t = clamp(v, 0, 100) / 100; // 0..1
-  const hue = 0 + 120 * t; // 0=rojo, 120=verde
-  // un poco más suave para que no “cante”
-  return `hsl(${hue.toFixed(0)} 70% 78%)`;
+function heatToken(score: number) {
+  // Ajusta los cortes si quieres otra lógica
+  if (score < 55) return "var(--heat-1)";
+  if (score < 65) return "var(--heat-2)";
+  if (score < 75) return "var(--heat-3)";
+  if (score < 85) return "var(--heat-4)";
+  return "var(--heat-5)";
 }
 
-function textColorForPct(v: number | null) {
-  if (v === null || Number.isNaN(v)) return "rgba(0,0,0,0.65)";
-  // si baja mucho, ponemos texto más oscuro (fondo más “caliente” y claro)
-  // si está alto, igual oscuro. Mantener simple:
-  return "rgba(0,0,0,0.85)";
-}
-
-export default function HeatMap({
-  data,
-  monthLabels,
-}: {
-  data: HeatMapRow[];
-  monthLabels: string[];
-}) {
+export default function HeatMap({ data, monthLabels }: { data: HeatMapRow[]; monthLabels: string[] }) {
   const rows = useMemo(() => {
-    return (data ?? []).map((r: any) => ({
+    return (data ?? []).map((r) => ({
       group: (r.group ?? "").trim() || "Sin categoría",
-      label: (r.label ?? r.areaName ?? "—") as string,
+      label: (r.label ?? "—") as string,
       months: (r.months ?? []) as HeatCell[],
+      rowId: (r.rowId ?? `${(r.group ?? "").trim()}__${(r.label ?? "").trim()}`) as string,
+      children: (r.children ?? []) as any[],
     }));
   }, [data]);
 
-  const grouped = useMemo(() => {
-    const map = new Map<
-      string,
-      { group: string; items: { label: string; months: HeatCell[] }[] }
-    >();
-    for (const r of rows) {
-      const key = r.group || "Sin categoría";
-      if (!map.has(key)) map.set(key, { group: key, items: [] });
-      map.get(key)!.items.push({ label: r.label, months: r.months });
-    }
-    return Array.from(map.values()).map((g) => ({
-      ...g,
-      items: g.items.sort((a, b) => a.label.localeCompare(b.label)),
-    }));
+  // ✅ Quitamos filas grupo (HK/FO/F&B) -> simplemente ordenamos por label y listo
+  const sortedAreas = useMemo(() => {
+    const copy = [...rows];
+    copy.sort((a, b) => (a.label ?? "").localeCompare(b.label ?? "", "es"));
+    return copy;
   }, [rows]);
 
-  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
-
-  // ✅ Identificamos la columna anual: si el último label es "Año" lo tratamos como anual
-  const yearColIndex =
-    monthLabels.length > 0 && monthLabels[monthLabels.length - 1].toLowerCase() === "año"
-      ? monthLabels.length - 1
-      : -1;
+  const [open, setOpen] = useState<Record<string, boolean>>({});
+  const toggle = (rowId: string) => setOpen((s) => ({ ...s, [rowId]: !s[rowId] }));
 
   return (
-    <div className="heatRoot">
-      <div className="heatGrid">
+    <div className="wrap">
+      <div className="grid">
         {/* Header */}
-        <div className="hCell hSticky hDept">Departamento</div>
+        <div className="head leftHead">Departamento</div>
+        {monthLabels.map((m) => (
+          <div key={m} className="head">
+            {m}
+          </div>
+        ))}
 
-        {monthLabels.map((m, idx) => {
-          const isYear = idx === yearColIndex;
+        {/* Body (solo áreas, sin grupos) */}
+        {sortedAreas.map((area) => {
+          const hasChildren = (area.children ?? []).length > 0;
+          const isOpen = !!open[area.rowId!];
+
           return (
-            <div
-              key={idx}
-              className={`hCell hSticky ${isYear ? "hYear" : ""}`}
-              title={isYear ? "Promedio anual" : m}
-            >
-              {m}
-            </div>
-          );
-        })}
+            <React.Fragment key={area.rowId}>
+              {/* Area label */}
+              <button
+                type="button"
+                className={`labelCell ${hasChildren ? "clickable" : ""}`}
+                onClick={() => hasChildren && toggle(area.rowId!)}
+                title={hasChildren ? "Ver desglose por auditoría" : ""}
+              >
+                <span className="labelInner">
+                  {hasChildren ? <span className={`tri ${isOpen ? "open" : ""}`}>▶</span> : <span className="triGhost" />}
+                  <span className="labelText">{area.label}</span>
+                </span>
+              </button>
 
-        {/* Body */}
-        {grouped.map((g) => {
-          const isOpen = openGroups[g.group] ?? true;
-          return (
-            <React.Fragment key={g.group}>
-              <div className="groupRow">
-                <button
-                  className="groupBtn"
-                  onClick={() =>
-                    setOpenGroups((p) => ({
-                      ...p,
-                      [g.group]: !(p[g.group] ?? true),
-                    }))
-                  }
-                  aria-label={`toggle ${g.group}`}
-                >
-                  <span className="chev">{isOpen ? "▾" : "▸"}</span>
-                  <span className="gName">{g.group}</span>
-                </button>
-              </div>
-              <div className="groupFill" />
+              {/* Area months */}
+              {area.months.map((c, i) => {
+                const key = `${area.rowId}-m-${i}`;
+                if (!c || c.count === 0 || c.value === null) {
+                  return (
+                    <div key={key} className="cell empty">
+                      —
+                    </div>
+                  );
+                }
 
-              {isOpen
-                ? g.items.map((it) => (
-                    <React.Fragment key={`${g.group}-${it.label}`}>
-                      <div className="deptCell">
-                        <div className="deptText" title={it.label}>
-                          {it.label}
-                        </div>
+                const bg = heatToken(c.value);
+                return (
+                  <div key={key} className="cell">
+                    <div
+                      className="pill"
+                      style={{
+                        background: bg,
+                        color: "var(--heat-text, var(--text))",
+                        boxShadow: "inset 0 0 0 1px var(--heat-border, rgba(0,0,0,0.08))",
+                      }}
+                    >
+                      <div className="val">{pct(c.value)}</div>
+                    </div>
+                  </div>
+                );
+              })}
+
+              {/* Children */}
+              {hasChildren && isOpen
+                ? area.children!.map((ch, idx) => (
+                    <React.Fragment key={`${area.rowId}-ch-${idx}`}>
+                      <div className="childLabelCell">
+                        <span className="childDot">•</span>
+                        <span className="childText">{ch.label}</span>
                       </div>
 
-                      {monthLabels.map((_, mi) => {
-                        const isYear = mi === yearColIndex;
-                        const cell = it.months?.[mi] ?? { value: null, count: 0 };
-                        const v = cell.value;
+                      {(ch.months ?? []).map((c: HeatCell, i: number) => {
+                        const key = `${area.rowId}-ch-${idx}-m-${i}`;
+                        if (!c || c.count === 0 || c.value === null) {
+                          return (
+                            <div key={key} className="cell empty child">
+                              —
+                            </div>
+                          );
+                        }
 
+                        const bg = heatToken(c.value);
                         return (
-                          <div
-                            key={mi}
-                            className={`mCell ${isYear ? "mYearCell" : ""}`}
-                            title={
-                              v === null
-                                ? "—"
-                                : `${v.toFixed(1)}% · ${cell.count} audits`
-                            }
-                          >
+                          <div key={key} className="cell child">
                             <div
-                              className={`mBox ${isYear ? "mYearBox" : ""}`}
+                              className="pill childPill"
                               style={{
-                                background: bgFromPct(v),
-                                color: textColorForPct(v),
+                                background: bg,
+                                color: "var(--heat-text, var(--text))",
+                                boxShadow: "inset 0 0 0 1px var(--heat-border, rgba(0,0,0,0.08))",
+                                opacity: 0.92,
                               }}
                             >
-                              {v === null ? "—" : `${Math.round(v)}%`}
+                              <div className="val childVal">{pct(c.value)}</div>
                             </div>
                           </div>
                         );
@@ -166,175 +160,138 @@ export default function HeatMap({
       </div>
 
       <style jsx>{`
-        /* ✅ Ajuste fino para que quepa en desktop */
-        .heatRoot {
-          --deptW: 240px;
-          --cellW: 66px;
-          --cellH: 38px;
-          --gap: 10px;
-          --radius: 14px;
+        .wrap {
+          width: max-content;
         }
 
-        .heatGrid {
+        .grid {
           display: grid;
-          grid-template-columns: var(--deptW) repeat(${monthLabels.length}, var(--cellW));
-          gap: var(--gap);
+          grid-template-columns: 260px repeat(${monthLabels.length}, 72px);
+          gap: 10px;
           align-items: center;
         }
 
-        .hCell {
-          height: var(--cellH);
-          border-radius: var(--radius);
-          background: rgba(255, 255, 255, 0.65);
-          display: flex;
-          align-items: center;
-          justify-content: center;
+        .head {
           font-weight: 950;
-          border: 1px solid rgba(0, 0, 0, 0.06);
-          box-shadow: 0 4px 14px rgba(0, 0, 0, 0.04);
-          padding: 0 10px;
+          font-size: 14px;
+          opacity: 0.9;
+          text-align: center;
+          padding: 10px 8px;
+          border-radius: 12px;
+          background: var(--heat-head-bg, rgba(0, 0, 0, 0.04));
           white-space: nowrap;
         }
 
-        .hDept {
-          justify-content: center;
+        .leftHead {
+          text-align: left;
+          padding-left: 14px;
         }
 
-        /* sticky header dentro del contenedor */
-        .hSticky {
-          position: sticky;
-          top: 0;
-          z-index: 2;
+        .labelCell {
+          border: 0;
+          background: var(--heat-label-bg, rgba(0, 0, 0, 0.03));
+          padding: 10px 12px;
+          border-radius: 14px;
+          text-align: left;
+          cursor: default;
         }
 
-        /* ✅ Header Año (diferenciado) */
-        .hYear {
-          background: rgba(0, 0, 0, 0.08);
-          border: 2px solid rgba(0, 0, 0, 0.18);
-          font-weight: 1000;
+        .labelCell.clickable {
+          cursor: pointer;
         }
 
-        .groupRow {
-          grid-column: 1 / 2;
+        .labelCell.clickable:hover {
+          background: var(--heat-label-bg-hover, rgba(0, 0, 0, 0.06));
         }
 
-        .groupFill {
-          grid-column: 2 / -1;
-          height: 1px;
-          background: rgba(0, 0, 0, 0.06);
-          margin: 6px 0;
-        }
-
-        .groupBtn {
-          width: 100%;
-          height: var(--cellH);
-          border-radius: var(--radius);
-          border: 1px solid rgba(0, 0, 0, 0.06);
-          background: rgba(255, 255, 255, 0.9);
-          font-weight: 950;
+        .labelInner {
           display: flex;
           align-items: center;
           gap: 10px;
-          padding: 0 12px;
-          cursor: pointer;
-          box-shadow: 0 4px 14px rgba(0, 0, 0, 0.04);
+          min-width: 0;
         }
 
-        .chev {
-          opacity: 0.75;
-          font-size: 14px;
-          width: 14px;
-          text-align: center;
+        .tri {
+          display: inline-block;
+          transform: rotate(0deg);
+          transition: transform 0.12s ease;
+          font-size: 12px;
+          opacity: 0.7;
+          width: 12px;
+        }
+
+        .tri.open {
+          transform: rotate(90deg);
+        }
+
+        .triGhost {
+          width: 12px;
+        }
+
+        .labelText {
+          font-weight: 900;
+          font-size: 13px;
+          opacity: 0.95;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+
+        .childLabelCell {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          padding: 8px 12px 8px 28px;
+          border-radius: 14px;
+          background: var(--heat-child-label-bg, rgba(0, 0, 0, 0.02));
+          text-align: left;
+          min-width: 0;
+        }
+
+        .childDot {
+          opacity: 0.6;
           flex-shrink: 0;
         }
 
-        .gName {
+        .childText {
+          font-size: 12px;
+          font-weight: 800;
+          opacity: 0.85;
+          white-space: nowrap;
           overflow: hidden;
           text-overflow: ellipsis;
-          white-space: nowrap;
         }
 
-        .deptCell {
-          height: var(--cellH);
-          border-radius: var(--radius);
-          border: 1px solid rgba(0, 0, 0, 0.06);
-          background: rgba(255, 255, 255, 0.75);
+        .cell {
+          height: 38px;
           display: flex;
           align-items: center;
-          padding: 0 12px;
-          box-shadow: 0 4px 14px rgba(0, 0, 0, 0.04);
+          justify-content: center;
         }
 
-        .deptText {
+        .cell.empty {
+          opacity: 0.6;
+          font-weight: 800;
+        }
+
+        .pill {
+          min-width: 56px;
+          padding: 8px 10px;
+          border-radius: 14px;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+        }
+
+        .val {
           font-weight: 950;
-          font-size: 13.5px;
-          line-height: 1.1;
-          overflow: hidden;
-          text-overflow: ellipsis;
-          white-space: nowrap;
-          width: 100%;
+          font-size: 12px;
+          opacity: 0.95;
         }
 
-        .mCell {
-          height: var(--cellH);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-        }
-
-        .mBox {
-          width: 100%;
-          height: var(--cellH);
-          border-radius: var(--radius);
-          border: 1px solid rgba(0, 0, 0, 0.06);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          font-weight: 1000;
-          font-size: 13px;
-          box-shadow: 0 4px 14px rgba(0, 0, 0, 0.04);
-          user-select: none;
-        }
-
-        /* ✅ Columna Año (celdas) */
-        .mYearCell {
-          /* nada aquí; lo marcamos en la caja */
-        }
-        .mYearBox {
-          border: 2px solid rgba(0, 0, 0, 0.22);
-          box-shadow: 0 8px 22px rgba(0, 0, 0, 0.10);
-        }
-
-        /* ✅ En pantallas medias, compactamos aún más para que NO haya scroll */
-        @media (max-width: 1200px) {
-          .heatRoot {
-            --deptW: 220px;
-            --cellW: 60px;
-            --cellH: 36px;
-            --gap: 8px;
-          }
-          .deptText {
-            font-size: 13px;
-          }
-          .mBox {
-            font-size: 12.5px;
-          }
-        }
-
-        /* ✅ Móvil: aquí NO necesitamos que “quepa”; dejamos scroll (lo gestiona HeatMapCard) */
-        @media (max-width: 720px) {
-          .heatRoot {
-            --deptW: 220px;
-            --cellW: 72px;
-            --cellH: 40px;
-            --gap: 10px;
-          }
-          .deptText {
-            font-size: 13px;
-          }
-          .mBox {
-            font-size: 13px;
-          }
+        .childVal {
+          font-size: 11px;
+          opacity: 0.9;
         }
       `}</style>
     </div>

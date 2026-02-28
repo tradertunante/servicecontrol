@@ -1,360 +1,379 @@
-// FILE: app/(app)/dashboard/_hooks/useDashboardData.ts
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
-import type {
-  AreaRow,
-  AreaScore,
-  AuditRunRow,
-  HotelRow,
-  Profile,
-  ScoreAgg,
-  WorstAudit,
-} from "../_lib/dashboardTypes";
-import {
-  getCurrentQuarter,
-  getMonthScore,
-  getMonthScoreForTemplate,
-  getQuarterScore,
-  getYearScore,
-  getYearScoreForTemplate,
-} from "../_lib/dashboardUtils";
+import type { Profile } from "../_lib/dashboardTypes";
 
 export const HOTEL_KEY = "sc_hotel_id";
 
-type UseDashboardDataArgs = {
+type HotelRow = { id: string; name: string; active: boolean | null };
+type AreaRow = { id: string; hotel_id: string; name: string; type: string | null; active: boolean | null };
+type TemplateRow = { id: string; name: string; hotel_id: string | null };
+
+type AuditRunRow = {
+  id: string;
+  hotel_id: string;
+  area_id: string;
+  audit_template_id: string;
+  team_member_id: string | null;
+  executed_by: string;
+  executed_at: string;
+  score: number | null;
+  status: string | null;
+};
+
+type GaugeScore = { value: number; count: number };
+
+type HeatCell = { value: number | null; count: number };
+type HeatMapRow = {
+  group: string; // area.type (FO/HK/F&B)
+  label: string; // area.name
+  rowId: string; // area.id
+  months: HeatCell[];
+  children?: Array<{
+    label: string; // template.name
+    templateId: string;
+    months: HeatCell[];
+  }>;
+};
+
+function startOfMonth(d: Date) {
+  return new Date(d.getFullYear(), d.getMonth(), 1, 0, 0, 0, 0);
+}
+function startOfQuarter(d: Date) {
+  const q = Math.floor(d.getMonth() / 3);
+  return new Date(d.getFullYear(), q * 3, 1, 0, 0, 0, 0);
+}
+function startOfYear(d: Date) {
+  return new Date(d.getFullYear(), 0, 1, 0, 0, 0, 0);
+}
+
+function avgScore(rows: AuditRunRow[]) {
+  const vals = rows.map((r) => (typeof r.score === "number" ? r.score : null)).filter((v): v is number => v !== null);
+  if (vals.length === 0) return { value: 0, count: 0 };
+  const sum = vals.reduce((a, b) => a + b, 0);
+  return { value: sum / vals.length, count: vals.length };
+}
+
+function buildMonthWindows12MPlusYear() {
+  const now = new Date();
+  const windows: { from: Date; to: Date }[] = [];
+
+  // 12 meses (incluyendo el actual)
+  for (let i = 11; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    windows.push({
+      from: new Date(d.getFullYear(), d.getMonth(), 1, 0, 0, 0, 0),
+      to: new Date(d.getFullYear(), d.getMonth() + 1, 1, 0, 0, 0, 0),
+    });
+  }
+
+  // Año actual como última columna
+  windows.push({
+    from: startOfYear(now),
+    to: new Date(now.getFullYear() + 1, 0, 1, 0, 0, 0, 0),
+  });
+
+  return windows;
+}
+
+function calcCellsForRuns(runs: AuditRunRow[]) {
+  const windows = buildMonthWindows12MPlusYear();
+  const cells: HeatCell[] = windows.map(() => ({ value: null, count: 0 }));
+
+  for (const r of runs) {
+    if (typeof r.score !== "number") continue;
+    const dt = new Date(r.executed_at);
+
+    for (let i = 0; i < windows.length; i++) {
+      const w = windows[i];
+      if (dt >= w.from && dt < w.to) {
+        const cell = cells[i];
+        const prevCount = cell.count;
+        const prevVal = cell.value ?? 0;
+
+        const newCount = prevCount + 1;
+        const newVal = (prevVal * prevCount + r.score) / newCount;
+
+        cell.count = newCount;
+        cell.value = newVal;
+        break;
+      }
+    }
+  }
+
+  return cells;
+}
+
+function buildHeatMapWithBreakdown(runs: AuditRunRow[], areas: AreaRow[], templates: TemplateRow[]) {
+  const tplNameById = new Map<string, string>();
+  for (const t of templates) tplNameById.set(t.id, t.name);
+
+  // runs por area
+  const runsByArea = new Map<string, AuditRunRow[]>();
+  for (const r of runs) {
+    if (!runsByArea.has(r.area_id)) runsByArea.set(r.area_id, []);
+    runsByArea.get(r.area_id)!.push(r);
+  }
+
+  const rows: HeatMapRow[] = [];
+
+  for (const a of areas) {
+    const group = (a.type ?? "").trim() || "Sin categoría";
+    const label = (a.name ?? "—").trim() || "—";
+    const areaRuns = runsByArea.get(a.id) ?? [];
+
+    // fila del área (agregado)
+    const areaCells = calcCellsForRuns(areaRuns);
+
+    // ahora children: templates que aparecen en esa área (solo los que existen en runs)
+    const tplIds = Array.from(new Set(areaRuns.map((r) => r.audit_template_id).filter(Boolean)));
+    const children = tplIds
+      .map((tplId) => {
+        const tplRuns = areaRuns.filter((r) => r.audit_template_id === tplId);
+        const months = calcCellsForRuns(tplRuns);
+        const name = tplNameById.get(tplId) ?? "Auditoría";
+        // si nunca tiene datos (count 0 en todo), no la mostramos
+        const hasAny = months.some((c) => c.count > 0);
+        return hasAny ? { templateId: tplId, label: name, months } : null;
+      })
+      .filter(Boolean) as any[];
+
+    // si el área no tiene datos, igual la mostramos (para que se vea la estructura)
+    rows.push({
+      group,
+      label,
+      rowId: a.id,
+      months: areaCells,
+      children: children.length ? children : [],
+    });
+  }
+
+  // orden estable por group y label
+  rows.sort((x, y) => (x.group + " " + x.label).localeCompare(y.group + " " + y.label, "es"));
+  return rows;
+}
+
+export function useDashboardData({
+  profile,
+  selectedHotelId,
+  setSelectedHotelId,
+}: {
   profile: Profile | null;
   selectedHotelId: string | null;
   setSelectedHotelId: (v: string | null) => void;
-};
-
-export function useDashboardData({ profile, selectedHotelId, setSelectedHotelId }: UseDashboardDataArgs) {
-  const [loading, setLoading] = useState(true);
+}) {
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const [hotels, setHotels] = useState<HotelRow[]>([]);
   const [areas, setAreas] = useState<AreaRow[]>([]);
   const [runs, setRuns] = useState<AuditRunRow[]>([]);
+  const [templates, setTemplates] = useState<TemplateRow[]>([]);
 
-  const [monthScore, setMonthScore] = useState<ScoreAgg>({ avg: null, count: 0 });
-  const [quarterScore, setQuarterScore] = useState<ScoreAgg>({ avg: null, count: 0 });
-  const [yearScore, setYearScore] = useState<ScoreAgg>({ avg: null, count: 0 });
-
-  const [heatMapData, setHeatMapData] = useState<any[]>([]);
-  const [top3Areas, setTop3Areas] = useState<AreaScore[]>([]);
-  const [worst3Areas, setWorst3Areas] = useState<AreaScore[]>([]);
-  const [worst3Audits, setWorst3Audits] = useState<WorstAudit[]>([]);
-
-  const canChooseHotel = profile?.role === "superadmin";
-
-  // ✅ Carga lista hoteles (solo superadmin) + hotel seleccionado (localStorage)
-  useEffect(() => {
-    let alive = true;
-
-    (async () => {
-      if (!profile) return;
-
-      try {
-        if (canChooseHotel) {
-          const stored = typeof window !== "undefined" ? localStorage.getItem(HOTEL_KEY) : null;
-          if (stored && !selectedHotelId) setSelectedHotelId(stored);
-
-          const { data: hData, error: hErr } = await supabase
-            .from("hotels")
-            .select("id,name,created_at")
-            .order("created_at", { ascending: false });
-
-          if (hErr) throw hErr;
-
-          if (!alive) return;
-          setHotels((hData ?? []) as HotelRow[]);
-        } else {
-          // no-superadmin: hotel viene del profile
-          if (!profile.hotel_id) {
-            setError("Tu usuario no tiene hotel asignado.");
-            setLoading(false);
-            return;
-          }
-          if (!selectedHotelId) {
-            setSelectedHotelId(profile.hotel_id);
-            if (typeof window !== "undefined") localStorage.setItem(HOTEL_KEY, profile.hotel_id);
-          }
-        }
-      } catch (e: any) {
-        setError(e?.message ?? "No se pudieron cargar hoteles.");
-      }
-    })();
-
-    return () => {
-      alive = false;
-    };
-  }, [profile, canChooseHotel]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // ✅ Carga principal dashboard (areas, runs, agregados)
-  useEffect(() => {
-    let alive = true;
-
-    (async () => {
-      if (!profile) return;
-      if (canChooseHotel && !selectedHotelId) {
-        setLoading(false);
-        return;
-      }
-      if (!selectedHotelId) return;
-
-      setLoading(true);
-      setError(null);
-
-      try {
-        const hotelIdToUse = selectedHotelId;
-        const isAdminLike = profile.role === "admin" || profile.role === "manager" || profile.role === "superadmin";
-
-        // 1) Areas
-        let areasList: AreaRow[] = [];
-
-        if (isAdminLike) {
-          const { data, error: aErr } = await supabase
-            .from("areas")
-            .select("id,name,type,hotel_id,sort_order")
-            .eq("hotel_id", hotelIdToUse)
-            .order("sort_order", { ascending: true, nullsFirst: false })
-            .order("name", { ascending: true });
-
-          if (aErr) throw aErr;
-          areasList = (data ?? []) as AreaRow[];
-        } else {
-          const { data: accessData, error: accessErr } = await supabase
-            .from("user_area_access")
-            .select("area_id")
-            .eq("user_id", profile.id)
-            .eq("hotel_id", hotelIdToUse);
-
-          if (accessErr) throw accessErr;
-
-          const allowedIds = (accessData ?? []).map((r: any) => r.area_id).filter(Boolean);
-
-          if (allowedIds.length > 0) {
-            const { data: areasData, error: areasErr } = await supabase
-              .from("areas")
-              .select("id,name,type,hotel_id,sort_order")
-              .eq("hotel_id", hotelIdToUse)
-              .in("id", allowedIds)
-              .order("sort_order", { ascending: true, nullsFirst: false })
-              .order("name", { ascending: true });
-
-            if (areasErr) throw areasErr;
-            areasList = (areasData ?? []) as AreaRow[];
-          }
-        }
-
-        if (!alive) return;
-        setAreas(areasList);
-
-        const areaIds = areasList.map((a) => a.id);
-        if (areaIds.length === 0) {
-          setRuns([]);
-          setMonthScore({ avg: null, count: 0 });
-          setQuarterScore({ avg: null, count: 0 });
-          setYearScore({ avg: null, count: 0 });
-          setHeatMapData([]);
-          setTop3Areas([]);
-          setWorst3Areas([]);
-          setWorst3Audits([]);
-          setLoading(false);
-          return;
-        }
-
-        // 2) Runs (últimos 12 meses)
-        const oneYearAgo = new Date();
-        oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
-
-        const { data: runsData, error: runsErr } = await supabase
-          .from("audit_runs")
-          .select("id,status,score,executed_at,area_id,audit_template_id")
-          .in("area_id", areaIds)
-          .eq("status", "submitted")
-          .gte("executed_at", oneYearAgo.toISOString())
-          .order("executed_at", { ascending: false });
-
-        if (runsErr) throw runsErr;
-
-        const runsList = (runsData ?? []) as AuditRunRow[];
-        if (!alive) return;
-        setRuns(runsList);
-
-        const now = new Date();
-        const currentYear = now.getFullYear();
-        const currentMonth = now.getMonth();
-        const currentQuarter = getCurrentQuarter();
-
-        setMonthScore(getMonthScore(runsList, currentYear, currentMonth));
-        setQuarterScore(getQuarterScore(runsList, currentYear, currentQuarter));
-        setYearScore(getYearScore(runsList, currentYear));
-
-        // 3) Heatmap: 12M + col Año + children por template
-        const heatData: any[] = [];
-        const yearNow = currentYear;
-
-        for (const area of areasList) {
-          const areaRuns = runsList.filter((r) => r.area_id === area.id);
-
-          const months: any[] = [];
-          for (let i = 11; i >= 0; i--) {
-            const d = new Date();
-            d.setMonth(d.getMonth() - i);
-            const y = d.getFullYear();
-            const m = d.getMonth();
-            const s = getMonthScore(areaRuns, y, m);
-            months.push({ value: s.avg, count: s.count });
-          }
-
-          const deptYear = getYearScore(areaRuns, yearNow);
-          months.push({ value: deptYear.avg, count: deptYear.count });
-
-          const templateIdsForArea = Array.from(new Set(areaRuns.map((r) => r.audit_template_id).filter(Boolean)));
-
-          const templateNameById = new Map<string, string>();
-          if (templateIdsForArea.length > 0) {
-            const { data: tData, error: tErr } = await supabase
-              .from("audit_templates")
-              .select("id,name")
-              .in("id", templateIdsForArea);
-
-            if (tErr) throw tErr;
-            (tData ?? []).forEach((t: any) => templateNameById.set(t.id, t.name));
-          }
-
-          const children: any[] = [];
-          for (const tid of templateIdsForArea) {
-            const tMonths: any[] = [];
-
-            for (let i = 11; i >= 0; i--) {
-              const d = new Date();
-              d.setMonth(d.getMonth() - i);
-              const y = d.getFullYear();
-              const m = d.getMonth();
-              const s = getMonthScoreForTemplate(areaRuns, tid, y, m);
-              tMonths.push({ value: s.avg, count: s.count });
-            }
-
-            const yAgg = getYearScoreForTemplate(areaRuns, tid, yearNow);
-            tMonths.push({ value: yAgg.avg, count: yAgg.count });
-
-            children.push({
-              label: templateNameById.get(tid) ?? "Auditoría",
-              months: tMonths,
-            });
-          }
-
-          children.sort((a, b) => {
-            const av = a.months?.[a.months.length - 1]?.value ?? 999;
-            const bv = b.months?.[b.months.length - 1]?.value ?? 999;
-            return (av ?? 999) - (bv ?? 999);
-          });
-
-          heatData.push({
-            group: area.type ?? "Sin categoría",
-            label: area.name,
-            sort_order: area.sort_order ?? null,
-            months,
-            children,
-          });
-        }
-
-        setHeatMapData(heatData);
-
-        // 4) Top/Worst áreas (año actual)
-        const areaScores = areasList.map((area) => {
-          const areaRuns = runsList.filter((r) => r.area_id === area.id);
-          const s = getYearScore(areaRuns, currentYear);
-          return { id: area.id, name: area.name, score: s.avg ?? 0, count: s.count };
-        });
-
-        const withData = areaScores.filter((a) => a.count > 0);
-
-        setTop3Areas([...withData].sort((a, b) => b.score - a.score).slice(0, 3));
-        setWorst3Areas([...withData].sort((a, b) => a.score - b.score).slice(0, 3));
-
-        // 5) Worst audits (por template promedio)
-        const templateIds = Array.from(new Set(runsList.map((r) => r.audit_template_id).filter(Boolean)));
-
-        const templateNameById = new Map<string, string>();
-        if (templateIds.length > 0) {
-          const { data: templatesData, error: tErr } = await supabase
-            .from("audit_templates")
-            .select("id,name")
-            .in("id", templateIds);
-
-          if (tErr) throw tErr;
-          (templatesData ?? []).forEach((t: any) => templateNameById.set(t.id, t.name));
-        }
-
-        const templateAgg = new Map<string, { sum: number; count: number }>();
-        for (const r of runsList) {
-          const sc = Number(r.score);
-          if (!Number.isFinite(sc) || sc < 0 || sc > 100) continue;
-
-          const key = r.audit_template_id;
-          const prev = templateAgg.get(key) ?? { sum: 0, count: 0 };
-          templateAgg.set(key, { sum: prev.sum + sc, count: prev.count + 1 });
-        }
-
-        const templateAreaById = new Map<string, string>();
-        for (const r of runsList) {
-          if (r.audit_template_id && r.area_id && !templateAreaById.has(r.audit_template_id)) {
-            templateAreaById.set(r.audit_template_id, r.area_id);
-          }
-        }
-
-        const worstAudits: WorstAudit[] = Array.from(templateAgg.entries())
-          .map(([id, v]) => ({
-            id,
-            areaId: templateAreaById.get(id) ?? "",
-            name: templateNameById.get(id) ?? "Auditoría",
-            avg: v.count > 0 ? v.sum / v.count : 0,
-            count: v.count,
-          }))
-          .filter((a) => a.count > 0)
-          .filter((a) => !!a.areaId)
-          .sort((a, b) => a.avg - b.avg)
-          .slice(0, 3);
-
-        setWorst3Audits(worstAudits);
-
-        setLoading(false);
-      } catch (e: any) {
-        setError(e?.message ?? "No se pudo cargar el dashboard.");
-        setLoading(false);
-      }
-    })();
-
-    return () => {
-      alive = false;
-    };
-  }, [profile, selectedHotelId, canChooseHotel, setSelectedHotelId]);
+  const canChooseHotel = useMemo(() => profile?.role === "superadmin", [profile?.role]);
 
   const selectedHotelName = useMemo(() => {
-    if (!selectedHotelId) return "Hotel";
-    return hotels.find((h) => h.id === selectedHotelId)?.name ?? "Hotel";
+    const h = hotels.find((x) => x.id === selectedHotelId);
+    return h?.name ?? "";
   }, [hotels, selectedHotelId]);
 
   const resetForHotelChange = () => {
     setAreas([]);
     setRuns([]);
-    setHeatMapData([]);
-    setTop3Areas([]);
-    setWorst3Areas([]);
-    setWorst3Audits([]);
-    setMonthScore({ avg: null, count: 0 });
-    setQuarterScore({ avg: null, count: 0 });
-    setYearScore({ avg: null, count: 0 });
+    setTemplates([]);
+    setError(null);
   };
+
+  // hoteles
+  useEffect(() => {
+    let alive = true;
+
+    async function loadHotels() {
+      if (!profile) return;
+
+      if (profile.role === "superadmin") {
+        setLoading(true);
+        setError(null);
+        try {
+          const { data, error } = await supabase.from("hotels").select("id,name,active").order("name");
+          if (error) throw error;
+          if (!alive) return;
+          setHotels((data ?? []) as any);
+        } catch (e: any) {
+          if (!alive) return;
+          setError(e?.message ?? "No se pudieron cargar hoteles.");
+        } finally {
+          if (alive) setLoading(false);
+        }
+      } else {
+        if (profile.hotel_id) {
+          setHotels([{ id: profile.hotel_id, name: "Hotel", active: true }]);
+          if (!selectedHotelId) setSelectedHotelId(profile.hotel_id);
+        }
+      }
+    }
+
+    loadHotels();
+    return () => {
+      alive = false;
+    };
+  }, [profile, selectedHotelId, setSelectedHotelId]);
+
+  // datos del hotel
+  useEffect(() => {
+    let alive = true;
+
+    async function loadHotelData(hotelId: string) {
+      setLoading(true);
+      setError(null);
+
+      try {
+        const { data: aData, error: aErr } = await supabase
+          .from("areas")
+          .select("id,hotel_id,name,type,active")
+          .eq("hotel_id", hotelId)
+          .order("name", { ascending: true });
+        if (aErr) throw aErr;
+
+        const from = new Date();
+        from.setMonth(from.getMonth() - 13);
+
+        const { data: rData, error: rErr } = await supabase
+          .from("audit_runs")
+          .select("id,hotel_id,area_id,audit_template_id,team_member_id,executed_by,executed_at,score,status")
+          .eq("hotel_id", hotelId)
+          .gte("executed_at", from.toISOString())
+          .order("executed_at", { ascending: false });
+        if (rErr) throw rErr;
+
+        // ojo: aquí puedes limitar SOLO a hotel_id = hotelId si tus templates son siempre por hotel
+        // si usas globales + hotel: lo mantenemos así
+        const { data: tData, error: tErr } = await supabase
+          .from("audit_templates")
+          .select("id,name,hotel_id")
+          .or(`hotel_id.is.null,hotel_id.eq.${hotelId}`)
+          .order("name", { ascending: true });
+        if (tErr) throw tErr;
+
+        if (!alive) return;
+        setAreas((aData ?? []) as any);
+        setRuns((rData ?? []) as any);
+        setTemplates((tData ?? []) as any);
+      } catch (e: any) {
+        if (!alive) return;
+        setError(e?.message ?? "No se pudieron cargar datos del hotel.");
+      } finally {
+        if (alive) setLoading(false);
+      }
+    }
+
+    if (selectedHotelId) loadHotelData(selectedHotelId);
+
+    return () => {
+      alive = false;
+    };
+  }, [selectedHotelId]);
+
+  // gauges
+  const monthScore: GaugeScore = useMemo(() => {
+    const from = startOfMonth(new Date());
+    const rows = runs.filter((r) => new Date(r.executed_at) >= from);
+    return avgScore(rows);
+  }, [runs]);
+
+  const quarterScore: GaugeScore = useMemo(() => {
+    const from = startOfQuarter(new Date());
+    const rows = runs.filter((r) => new Date(r.executed_at) >= from);
+    return avgScore(rows);
+  }, [runs]);
+
+  const yearScore: GaugeScore = useMemo(() => {
+    const from = startOfYear(new Date());
+    const rows = runs.filter((r) => new Date(r.executed_at) >= from);
+    return avgScore(rows);
+  }, [runs]);
+
+  // ✅ heatmap con desglose real por área -> templates usados en esa área
+  const heatMapData = useMemo(() => buildHeatMapWithBreakdown(runs, areas, templates), [runs, areas, templates]);
+
+  // rankings: mantenemos compat (score + avg) por si tu UI lo usa
+  const top3Areas = useMemo(() => {
+    const from = startOfYear(new Date());
+    const byArea = new Map<string, number[]>();
+
+    for (const r of runs) {
+      if (new Date(r.executed_at) < from) continue;
+      if (typeof r.score !== "number") continue;
+      if (!byArea.has(r.area_id)) byArea.set(r.area_id, []);
+      byArea.get(r.area_id)!.push(r.score);
+    }
+
+    return Array.from(byArea.entries())
+      .map(([area_id, scores]) => {
+        const avg = scores.reduce((a, b) => a + b, 0) / scores.length;
+        const area = areas.find((a) => a.id === area_id);
+        return { area_id, areaName: area?.name ?? "—", group: area?.type ?? "", score: avg, avg, count: scores.length };
+      })
+      .sort((a, b) => (b.score ?? 0) - (a.score ?? 0))
+      .slice(0, 3);
+  }, [runs, areas]);
+
+  const worst3Areas = useMemo(() => {
+    const from = startOfYear(new Date());
+    const byArea = new Map<string, number[]>();
+
+    for (const r of runs) {
+      if (new Date(r.executed_at) < from) continue;
+      if (typeof r.score !== "number") continue;
+      if (!byArea.has(r.area_id)) byArea.set(r.area_id, []);
+      byArea.get(r.area_id)!.push(r.score);
+    }
+
+    return Array.from(byArea.entries())
+      .map(([area_id, scores]) => {
+        const avg = scores.reduce((a, b) => a + b, 0) / scores.length;
+        const area = areas.find((a) => a.id === area_id);
+        return { area_id, areaName: area?.name ?? "—", group: area?.type ?? "", score: avg, avg, count: scores.length };
+      })
+      .sort((a, b) => (a.score ?? 0) - (b.score ?? 0))
+      .slice(0, 3);
+  }, [runs, areas]);
+
+  const worst3Audits = useMemo(() => {
+    const from = startOfMonth(new Date());
+    const keyMap = new Map<string, { area_id: string; template_id: string; scores: number[] }>();
+
+    for (const r of runs) {
+      if (new Date(r.executed_at) < from) continue;
+      if (typeof r.score !== "number") continue;
+      const key = `${r.area_id}__${r.audit_template_id}`;
+      if (!keyMap.has(key)) keyMap.set(key, { area_id: r.area_id, template_id: r.audit_template_id, scores: [] });
+      keyMap.get(key)!.scores.push(r.score);
+    }
+
+    return Array.from(keyMap.values())
+      .map((x) => {
+        const avg = x.scores.reduce((a, b) => a + b, 0) / x.scores.length;
+        const area = areas.find((a) => a.id === x.area_id);
+        const tpl = templates.find((t) => t.id === x.template_id);
+        return {
+          area_id: x.area_id,
+          template_id: x.template_id,
+          areaName: area?.name ?? "—",
+          templateName: tpl?.name ?? "Auditoría",
+          score: avg,
+          avg,
+          count: x.scores.length,
+        };
+      })
+      .sort((a, b) => (a.score ?? 0) - (b.score ?? 0))
+      .slice(0, 3);
+  }, [runs, areas, templates]);
 
   return {
     loading,
     error,
-    setError,
     hotels,
     areas,
     runs,

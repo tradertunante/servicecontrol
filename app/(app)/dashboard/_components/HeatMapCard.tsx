@@ -1,4 +1,3 @@
-// FILE: app/(app)/dashboard/_components/HeatMapCard.tsx
 "use client";
 
 import type { CSSProperties } from "react";
@@ -10,17 +9,23 @@ export default function HeatMapCard({
   monthLabels,
 }: {
   card: CSSProperties;
-  heatMapData: any[];
+  heatMapData: any[] | undefined | null;
   monthLabels: string[];
 }) {
+  const safe = Array.isArray(heatMapData) ? heatMapData : [];
+
   return (
     <div style={{ ...card, marginTop: 16 }} className="card">
       <div className="sectionTitle">Tendencia · 12M</div>
 
+      <div className="hint">
+        Tip: haz clic en un área (p. ej. <b>Housekeeping</b>) para ver el desglose por auditoría.
+      </div>
+
       <div className="heatWrap">
         <div className="heatInner">
-          {heatMapData.length > 0 ? (
-            <HeatMap data={heatMapData} monthLabels={monthLabels} />
+          {safe.length > 0 ? (
+            <HeatMap data={safe} monthLabels={monthLabels} />
           ) : (
             <div style={{ opacity: 0.7 }}>No hay datos suficientes.</div>
           )}
@@ -28,21 +33,27 @@ export default function HeatMapCard({
       </div>
 
       <style jsx>{`
+        .hint {
+          margin-top: -10px;
+          margin-bottom: 12px;
+          opacity: 0.75;
+          font-size: 13px;
+          line-height: 1.25;
+        }
+
         .heatWrap {
           position: relative;
           width: 100%;
-          overflow-x: auto; /* ✅ desktop + mobile */
+          overflow-x: auto;
           overflow-y: hidden;
           -webkit-overflow-scrolling: touch;
           padding-bottom: 8px;
         }
 
-        /* Deja que el contenido sea tan ancho como necesite */
         .heatInner {
           width: max-content;
         }
 
-        /* Indicador visual de que hay scroll a la derecha */
         .heatWrap:after {
           content: "";
           position: sticky;
