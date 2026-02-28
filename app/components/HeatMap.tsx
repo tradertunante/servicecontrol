@@ -1,3 +1,4 @@
+// FILE: app/components/HeatMap.tsx
 "use client";
 
 import React, { useMemo, useState } from "react";
@@ -5,155 +6,146 @@ import React, { useMemo, useState } from "react";
 type HeatCell = { value: number | null; count: number };
 
 export type HeatMapRow = {
-  group: string; // p.ej. "HK"
-  label: string; // p.ej. "Housekeeping"
-  months: HeatCell[]; // 12M + Año
-  rowId?: string; // estable (area_id)
-  children?: Array<{
-    label: string; // nombre del template
-    months: HeatCell[];
-    templateId?: string;
-  }>;
+  key: string;
+  group?: string;
+  label: string;
+  months: HeatCell[];
+  kind?: "area" | "audit";
+  parentKey?: string;
 };
 
-function pct(v: number) {
-  return `${Math.round(v)}%`;
+function bgForScore(score: number) {
+  // ✅ colores vienen de Globals.css
+  // Usamos color-mix para hacer pasteles sin hardcodear hex.
+  // Si el navegador no soporta color-mix, al menos se verá el borde/estado.
+  if (score < 60) return "color-mix(in srgb, var(--danger) 18%, white)";
+  if (score < 80) return "color-mix(in srgb, var(--warn) 18%, white)";
+  return "color-mix(in srgb, var(--ok) 18%, white)";
 }
 
-/**
- * ✅ Escala basada en globals.css (SIN colores hardcodeados)
- * Define en globals.css:
- * --heat-1..--heat-5 (de peor a mejor, o como lo tengas)
- * --heat-text, --heat-border
- */
-function heatToken(score: number) {
-  // Ajusta los cortes si quieres otra lógica
-  if (score < 55) return "var(--heat-1)";
-  if (score < 65) return "var(--heat-2)";
-  if (score < 75) return "var(--heat-3)";
-  if (score < 85) return "var(--heat-4)";
-  return "var(--heat-5)";
+function borderForScore(score: number) {
+  if (score < 60) return "color-mix(in srgb, var(--danger) 55%, rgba(0,0,0,0.10))";
+  if (score < 80) return "color-mix(in srgb, var(--warn) 55%, rgba(0,0,0,0.10))";
+  return "color-mix(in srgb, var(--ok) 55%, rgba(0,0,0,0.10))";
 }
 
 export default function HeatMap({ data, monthLabels }: { data: HeatMapRow[]; monthLabels: string[] }) {
   const rows = useMemo(() => {
-    return (data ?? []).map((r) => ({
-      group: (r.group ?? "").trim() || "Sin categoría",
-      label: (r.label ?? "—") as string,
+    const safe = Array.isArray(data) ? data : [];
+    return safe.map((r: any) => ({
+      key: String(r.key ?? `${r.parentKey ?? "x"}:${r.label}`),
+      group: (r.group ?? "—").trim() || "—",
+      label: String(r.label ?? "—"),
       months: (r.months ?? []) as HeatCell[],
-      rowId: (r.rowId ?? `${(r.group ?? "").trim()}__${(r.label ?? "").trim()}`) as string,
-      children: (r.children ?? []) as any[],
+      kind: (r.kind ?? (r.parentKey ? "audit" : "area")) as "area" | "audit",
+      parentKey: r.parentKey ? String(r.parentKey) : undefined,
     }));
   }, [data]);
 
-  // ✅ Quitamos filas grupo (HK/FO/F&B) -> simplemente ordenamos por label y listo
-  const sortedAreas = useMemo(() => {
-    const copy = [...rows];
-    copy.sort((a, b) => (a.label ?? "").localeCompare(b.label ?? "", "es"));
-    return copy;
+  // separamos parents y children
+  const parents = useMemo(() => rows.filter((r) => r.kind === "area"), [rows]);
+  const childrenByParent = useMemo(() => {
+    const map = new Map<string, HeatMapRow[]>();
+    for (const r of rows) {
+      if (r.kind !== "audit" || !r.parentKey) continue;
+      if (!map.has(r.parentKey)) map.set(r.parentKey, []);
+      map.get(r.parentKey)!.push(r);
+    }
+    // orden por label
+    for (const [k, arr] of map) {
+      arr.sort((a, b) => a.label.localeCompare(b.label, "es"));
+      map.set(k, arr);
+    }
+    return map;
   }, [rows]);
 
-  const [open, setOpen] = useState<Record<string, boolean>>({});
-  const toggle = (rowId: string) => setOpen((s) => ({ ...s, [rowId]: !s[rowId] }));
+  // expanded state por área
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+
+  const toggle = (key: string) => setExpanded((s) => ({ ...s, [key]: !s[key] }));
+
+  const flatToRender = useMemo(() => {
+    const out: Array<{ row: HeatMapRow; level: number }> = [];
+    for (const p of parents) {
+      out.push({ row: p, level: 0 });
+
+      const kids = childrenByParent.get(p.key) ?? [];
+      if (kids.length > 0 && expanded[p.key]) {
+        for (const c of kids) out.push({ row: c, level: 1 });
+      }
+    }
+    return out;
+  }, [parents, childrenByParent, expanded]);
 
   return (
     <div className="wrap">
       <div className="grid">
-        {/* Header */}
-        <div className="head leftHead">Departamento</div>
+        {/* header */}
+        <div className="h headLeft">Departamento</div>
         {monthLabels.map((m) => (
-          <div key={m} className="head">
+          <div key={m} className="h headCell">
             {m}
           </div>
         ))}
 
-        {/* Body (solo áreas, sin grupos) */}
-        {sortedAreas.map((area) => {
-          const hasChildren = (area.children ?? []).length > 0;
-          const isOpen = !!open[area.rowId!];
+        {/* rows */}
+        {flatToRender.map(({ row, level }) => {
+          const kids = row.kind === "area" ? childrenByParent.get(row.key) ?? [] : [];
+          const hasKids = row.kind === "area" && kids.length > 0;
 
           return (
-            <React.Fragment key={area.rowId}>
-              {/* Area label */}
+            <React.Fragment key={row.key}>
               <button
                 type="button"
-                className={`labelCell ${hasChildren ? "clickable" : ""}`}
-                onClick={() => hasChildren && toggle(area.rowId!)}
-                title={hasChildren ? "Ver desglose por auditoría" : ""}
+                className={`left ${row.kind === "audit" ? "child" : ""}`}
+                onClick={() => {
+                  if (hasKids) toggle(row.key);
+                }}
+                style={{
+                  paddingLeft: level === 1 ? 26 : 14,
+                  cursor: hasKids ? "pointer" : "default",
+                }}
               >
-                <span className="labelInner">
-                  {hasChildren ? <span className={`tri ${isOpen ? "open" : ""}`}>▶</span> : <span className="triGhost" />}
-                  <span className="labelText">{area.label}</span>
-                </span>
+                {hasKids ? (
+                  <span className={`caret ${expanded[row.key] ? "open" : ""}`} aria-hidden="true">
+                    ▶
+                  </span>
+                ) : (
+                  <span className="caret spacer" aria-hidden="true">
+                    ▶
+                  </span>
+                )}
+
+                <span className={`label ${row.kind === "audit" ? "labelChild" : ""}`}>{row.label}</span>
               </button>
 
-              {/* Area months */}
-              {area.months.map((c, i) => {
-                const key = `${area.rowId}-m-${i}`;
-                if (!c || c.count === 0 || c.value === null) {
+              {monthLabels.map((_, idx) => {
+                const cell = row.months?.[idx];
+                const v = cell?.value;
+
+                if (v == null || !Number.isFinite(v)) {
                   return (
-                    <div key={key} className="cell empty">
+                    <div key={`${row.key}:${idx}`} className="cell empty">
                       —
                     </div>
                   );
                 }
 
-                const bg = heatToken(c.value);
+                const pct = Math.round(v);
                 return (
-                  <div key={key} className="cell">
-                    <div
-                      className="pill"
-                      style={{
-                        background: bg,
-                        color: "var(--heat-text, var(--text))",
-                        boxShadow: "inset 0 0 0 1px var(--heat-border, rgba(0,0,0,0.08))",
-                      }}
-                    >
-                      <div className="val">{pct(c.value)}</div>
-                    </div>
+                  <div
+                    key={`${row.key}:${idx}`}
+                    className="cell pill"
+                    style={{
+                      background: bgForScore(pct),
+                      borderColor: borderForScore(pct),
+                    }}
+                    title={`${pct}% (${cell.count} auditorías)`}
+                  >
+                    {pct}%
                   </div>
                 );
               })}
-
-              {/* Children */}
-              {hasChildren && isOpen
-                ? area.children!.map((ch, idx) => (
-                    <React.Fragment key={`${area.rowId}-ch-${idx}`}>
-                      <div className="childLabelCell">
-                        <span className="childDot">•</span>
-                        <span className="childText">{ch.label}</span>
-                      </div>
-
-                      {(ch.months ?? []).map((c: HeatCell, i: number) => {
-                        const key = `${area.rowId}-ch-${idx}-m-${i}`;
-                        if (!c || c.count === 0 || c.value === null) {
-                          return (
-                            <div key={key} className="cell empty child">
-                              —
-                            </div>
-                          );
-                        }
-
-                        const bg = heatToken(c.value);
-                        return (
-                          <div key={key} className="cell child">
-                            <div
-                              className="pill childPill"
-                              style={{
-                                background: bg,
-                                color: "var(--heat-text, var(--text))",
-                                boxShadow: "inset 0 0 0 1px var(--heat-border, rgba(0,0,0,0.08))",
-                                opacity: 0.92,
-                              }}
-                            >
-                              <div className="val childVal">{pct(c.value)}</div>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </React.Fragment>
-                  ))
-                : null}
             </React.Fragment>
           );
         })}
@@ -166,132 +158,103 @@ export default function HeatMap({ data, monthLabels }: { data: HeatMapRow[]; mon
 
         .grid {
           display: grid;
-          grid-template-columns: 260px repeat(${monthLabels.length}, 72px);
+          grid-template-columns: 280px repeat(${monthLabels.length}, 72px);
           gap: 10px;
           align-items: center;
         }
 
-        .head {
-          font-weight: 950;
-          font-size: 14px;
-          opacity: 0.9;
-          text-align: center;
-          padding: 10px 8px;
+        .h {
+          background: rgba(255, 255, 255, 0.7);
+          border: 1px solid rgba(0, 0, 0, 0.08);
           border-radius: 12px;
-          background: var(--heat-head-bg, rgba(0, 0, 0, 0.04));
-          white-space: nowrap;
-        }
-
-        .leftHead {
-          text-align: left;
-          padding-left: 14px;
-        }
-
-        .labelCell {
-          border: 0;
-          background: var(--heat-label-bg, rgba(0, 0, 0, 0.03));
           padding: 10px 12px;
-          border-radius: 14px;
-          text-align: left;
-          cursor: default;
-        }
-
-        .labelCell.clickable {
-          cursor: pointer;
-        }
-
-        .labelCell.clickable:hover {
-          background: var(--heat-label-bg-hover, rgba(0, 0, 0, 0.06));
-        }
-
-        .labelInner {
-          display: flex;
-          align-items: center;
-          gap: 10px;
-          min-width: 0;
-        }
-
-        .tri {
-          display: inline-block;
-          transform: rotate(0deg);
-          transition: transform 0.12s ease;
-          font-size: 12px;
-          opacity: 0.7;
-          width: 12px;
-        }
-
-        .tri.open {
-          transform: rotate(90deg);
-        }
-
-        .triGhost {
-          width: 12px;
-        }
-
-        .labelText {
-          font-weight: 900;
+          font-weight: 950;
           font-size: 13px;
-          opacity: 0.95;
+          text-align: center;
           white-space: nowrap;
-          overflow: hidden;
-          text-overflow: ellipsis;
         }
 
-        .childLabelCell {
+        .headLeft {
+          text-align: left;
+        }
+
+        .headCell {
+          text-align: center;
+        }
+
+        .left {
+          border: 0;
+          background: rgba(255, 255, 255, 0.55);
+          border-radius: 12px;
+          padding: 10px 14px;
+          font-weight: 950;
+          font-size: 13px;
+          text-align: left;
           display: flex;
           align-items: center;
           gap: 10px;
-          padding: 8px 12px 8px 28px;
-          border-radius: 14px;
-          background: var(--heat-child-label-bg, rgba(0, 0, 0, 0.02));
-          text-align: left;
-          min-width: 0;
         }
 
-        .childDot {
-          opacity: 0.6;
-          flex-shrink: 0;
+        .left.child {
+          background: rgba(255, 255, 255, 0.42);
+          font-weight: 900;
         }
 
-        .childText {
-          font-size: 12px;
-          font-weight: 800;
-          opacity: 0.85;
-          white-space: nowrap;
-          overflow: hidden;
-          text-overflow: ellipsis;
-        }
-
-        .cell {
-          height: 38px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-        }
-
-        .cell.empty {
-          opacity: 0.6;
-          font-weight: 800;
-        }
-
-        .pill {
-          min-width: 56px;
-          padding: 8px 10px;
-          border-radius: 14px;
+        .caret {
+          width: 16px;
           display: inline-flex;
           align-items: center;
           justify-content: center;
-        }
-
-        .val {
-          font-weight: 950;
           font-size: 12px;
-          opacity: 0.95;
+          opacity: 0.8;
+          transform: rotate(0deg);
+          transition: transform 120ms ease;
         }
 
-        .childVal {
-          font-size: 11px;
-          opacity: 0.9;
+        .caret.open {
+          transform: rotate(90deg);
+        }
+
+        .caret.spacer {
+          opacity: 0;
+        }
+
+        .label {
+          min-width: 0;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+
+        .labelChild {
+          opacity: 0.92;
+        }
+
+        .cell {
+          height: 40px;
+          border-radius: 12px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-weight: 950;
+          font-size: 13px;
+          border: 1px solid rgba(0, 0, 0, 0.10);
+          background: rgba(255, 255, 255, 0.55);
+        }
+
+        .cell.empty {
+          opacity: 0.7;
+        }
+
+        .pill {
+          border-width: 1px;
+        }
+
+        @media (max-width: 720px) {
+          .grid {
+            grid-template-columns: 250px repeat(${monthLabels.length}, 70px);
+            gap: 8px;
+          }
         }
       `}</style>
     </div>
