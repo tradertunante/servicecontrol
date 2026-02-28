@@ -16,8 +16,8 @@ body {
    ========================= */
 :root {
   /* App */
-  --bg: #dde1ea;                /* fondo de la página */
-  --text: #060101;              /* texto base */
+  --bg: #dde1ea; /* fondo de la página */
+  --text: #060101; /* texto base */
   --muted: rgba(46, 58, 193, 0.7);
 
   /* Header (DISTINTO al fondo) */
@@ -42,6 +42,27 @@ body {
   --danger: #c62828;
   --warn: #ef6c00;
   --ok: #0f766e;
+
+  /* =========================
+     HEATMAP (escala por CSS)
+     ========================= */
+
+  /* Pills (texto y borde) */
+  --heat-text: var(--text);
+  --heat-border: rgba(0, 0, 0, 0.10);
+
+  /* Fondo cabeceras / labels */
+  --heat-head-bg: rgba(0, 0, 0, 0.04);
+  --heat-label-bg: rgba(0, 0, 0, 0.03);
+  --heat-label-bg-hover: rgba(0, 0, 0, 0.06);
+  --heat-child-label-bg: rgba(0, 0, 0, 0.02);
+
+  /* Escala (de peor a mejor) */
+  --heat-1: rgba(198, 40, 40, 0.22);  /* rojo suave */
+  --heat-2: rgba(239, 108, 0, 0.22);  /* naranja suave */
+  --heat-3: rgba(255, 193, 7, 0.22);  /* amarillo suave */
+  --heat-4: rgba(34, 197, 94, 0.20);  /* verde suave */
+  --heat-5: rgba(15, 118, 110, 0.22); /* verde/teal (ok) */
 }
 
 body {

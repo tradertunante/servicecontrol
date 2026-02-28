@@ -1,4 +1,3 @@
-// FILE: app/(app)/dashboard/page.tsx
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
@@ -99,7 +98,7 @@ export default function DashboardPage() {
     monthScore,
     quarterScore,
     yearScore,
-    heatMapData,
+    heatMapData, // ✅ IMPORTANTÍSIMO (antes era heatMapDataByTemplate)
     top3Areas,
     worst3Areas,
     worst3Audits,
@@ -187,6 +186,7 @@ export default function DashboardPage() {
 
       <GaugesRow card={card} monthScore={monthScore} quarterScore={quarterScore} yearScore={yearScore} />
 
+      {/* ✅ aquí ya no puede ser undefined */}
       <HeatMapCard card={card} heatMapData={heatMapData} monthLabels={monthLabels} />
 
       <AreaRankings
