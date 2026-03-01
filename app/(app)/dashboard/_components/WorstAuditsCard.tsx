@@ -1,7 +1,7 @@
 "use client";
 
 import type { CSSProperties } from "react";
-import type { WorstAuditItem } from "../_hooks/useDashboardData"; // ✅ IMPORTANTE
+import type { WorstAuditItem } from "../_hooks/useDashboardData";
 
 export default function WorstAuditsCard({
   card,
@@ -17,7 +17,7 @@ export default function WorstAuditsCard({
   border: string;
   fg: string;
   miniBtn: CSSProperties;
-  worst3Audits: WorstAuditItem[]; // ✅ MISMO TIPO QUE EL HOOK
+  worst3Audits: WorstAuditItem[];
   onGoWorstAuditDetail: (areaId: string, templateId: string) => void;
 }) {
   const formatPct = (n: number | null | undefined) => {
@@ -53,7 +53,7 @@ export default function WorstAuditsCard({
               </div>
 
               <div className="rowRight">
-                <div className="rowMeta">({a.count ?? 0} auditorías)</div>
+                {/* ✅ el hook NO tiene count → eliminamos */}
                 <div className="rowScore">{formatPct(a.avg)}</div>
 
                 <button
@@ -112,12 +112,6 @@ export default function WorstAuditsCard({
           align-items: center;
           gap: 12px;
           flex-shrink: 0;
-        }
-
-        .rowMeta {
-          font-size: 13px;
-          opacity: 0.7;
-          white-space: nowrap;
         }
 
         .rowScore {
