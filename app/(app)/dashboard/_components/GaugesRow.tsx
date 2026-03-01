@@ -49,7 +49,9 @@ export default function GaugesRow({
         return (
           <div key={idx} style={card} className="card gaugeCard">
             <div className="gaugeWrap">
-              <GaugeChart value={avgNum ?? 0} />
+              {/* ✅ FIX: GaugeChart requiere 'label' */}
+              <GaugeChart value={avgNum ?? 0} label={label} />
+
               <div className="gaugeText">
                 <div className="gaugePct">{label}</div>
                 <div className="gaugeCount">({count} auditorías)</div>
@@ -87,7 +89,6 @@ export default function GaugesRow({
         .gaugeWrap :global(svg text) {
           display: none !important;
         }
-        /* Por si GaugeChart usa <tspan> o grupos */
         .gaugeWrap :global(svg tspan) {
           display: none !important;
         }
