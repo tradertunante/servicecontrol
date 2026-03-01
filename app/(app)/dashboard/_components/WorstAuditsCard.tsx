@@ -1,13 +1,15 @@
-// FILE: app/(app)/dashboard/_components/WorstAuditsCard.tsx
 "use client";
 
 import type { CSSProperties } from "react";
-import type { WorstAudit } from "../_lib/dashboardTypes";
-import { scoreColor } from "../_lib/dashboardUtils";
 
-function isFiniteNumber(x: unknown): x is number {
-  return typeof x === "number" && Number.isFinite(x);
-}
+export type WorstAuditItem = {
+  areaId: string;
+  areaName: string;
+  templateId: string;
+  templateName: string;
+  avg: number | null;
+  count: number;
+};
 
 export default function WorstAuditsCard({
   card,
@@ -23,50 +25,131 @@ export default function WorstAuditsCard({
   border: string;
   fg: string;
   miniBtn: CSSProperties;
-  worst3Audits: WorstAudit[];
+  worst3Audits: WorstAuditItem[]; // ✅ CORREGIDO
   onGoWorstAuditDetail: (areaId: string, templateId: string) => void;
 }) {
-  if (!worst3Audits || worst3Audits.length === 0) return null;
+  const formatPct = (n: number | null | undefined) => {
+    if (n === null || n === undefined || !Number.isFinite(Number(n))) return "—";
+    return `${Number(n).toFixed(1)}%`;
+  };
 
   return (
-    <div style={{ ...card, marginTop: 16 }} className="card">
-      <div className="sectionTitle">Top 3 auditorías con peor resultado (promedio)</div>
+    <div style={card} className="card">
+      <div className="sectionTitle">Top 3 peores auditorías</div>
 
-      <div style={{ display: "grid", gap: 12 }}>
-        {worst3Audits.map((a, idx) => {
-          const avgNum = isFiniteNumber(a?.avg) ? a.avg : null;
-          const avgLabel = avgNum === null ? "—" : `${avgNum.toFixed(1)}%`;
-          const avgColor = avgNum === null ? "var(--text)" : scoreColor(avgNum);
-
-          return (
+      <div className="list">
+        {(worst3Audits ?? []).length === 0 ? (
+          <div style={{ opacity: 0.7 }}>No hay datos suficientes.</div>
+        ) : (
+          worst3Audits.slice(0, 3).map((a, i) => (
             <div
-              key={a.id}
+              key={`${a.areaId}-${a.templateId}-${i}`}
               className="rowCard"
-              style={{ background: rowBg, border: `1px solid ${border}`, color: fg }}
+              style={{
+                background: rowBg,
+                border: `1px solid ${border}`,
+              }}
             >
               <div className="rowLeft">
-                <span className="rowBadge">{idx === 0 ? "🚨" : "⚠️"}</span>
+                <div className="rowBadge">⚠️</div>
+
                 <div style={{ minWidth: 0 }}>
-                  <div className="rowTitle">{a.name}</div>
-                  <div style={{ marginTop: 4, fontSize: 12, opacity: 0.75 }}>
-                    {a.count} ejecución{a.count === 1 ? "" : "es"} · promedio del periodo
+                  <div className="rowTitle">
+                    {a.areaName} — {a.templateName}
                   </div>
                 </div>
               </div>
 
               <div className="rowRight">
-                <span className="rowScore" style={{ color: avgColor }}>
-                  {avgLabel}
-                </span>
+                <div className="rowMeta">({a.count ?? 0} auditorías)</div>
+                <div className="rowScore">{formatPct(a.avg)}</div>
 
-                <button onClick={() => onGoWorstAuditDetail(a.areaId, a.id)} style={miniBtn} className="rowBtn">
+                <button
+                  className="rowBtn"
+                  style={miniBtn}
+                  onClick={() =>
+                    onGoWorstAuditDetail(a.areaId, a.templateId)
+                  }
+                >
                   Ver detalle
                 </button>
               </div>
             </div>
-          );
-        })}
+          ))
+        )}
       </div>
+
+      <style jsx>{`
+        .list {
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+        }
+
+        .rowCard {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding: 14px 16px;
+          border-radius: 12px;
+          gap: 12px;
+        }
+
+        .rowLeft {
+          display: flex;
+          align-items: flex-start;
+          gap: 12px;
+          min-width: 0;
+          flex: 1;
+        }
+
+        .rowBadge {
+          font-size: 20px;
+          flex-shrink: 0;
+        }
+
+        .rowTitle {
+          font-weight: 950;
+          font-size: 15px;
+          word-break: break-word;
+          color: ${fg};
+        }
+
+        .rowRight {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          flex-shrink: 0;
+        }
+
+        .rowMeta {
+          font-size: 13px;
+          opacity: 0.7;
+          white-space: nowrap;
+        }
+
+        .rowScore {
+          font-weight: 950;
+          font-size: 18px;
+          white-space: nowrap;
+        }
+
+        @media (max-width: 720px) {
+          .rowCard {
+            flex-direction: column;
+            align-items: stretch;
+            gap: 10px;
+          }
+
+          .rowRight {
+            justify-content: space-between;
+          }
+
+          .rowBtn {
+            width: 100%;
+          }
+        }
+      `}</style>
     </div>
   );
 }
