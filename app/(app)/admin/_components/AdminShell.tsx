@@ -8,8 +8,10 @@ import { supabase } from "@/lib/supabaseClient";
 import DepartmentsModule from "../_modules/departments/DepartmentsModule";
 import UsersModule from "../_modules/users/UsersModule";
 import HotelInfoModule from "../_modules/hotel/HotelInfoModule";
-import AccessByAreaModule from "../_modules/access-by-area/AccessByAreaModule";
 import AreaAuditsModule from "../_modules/area-audits/AreaAuditsModule";
+
+// ✅ NUEVO: Builder embebido
+import BuilderShell from "@/app/(app)/builder/_components/BuilderShell";
 
 type AreaRow = {
   id: string;
@@ -20,7 +22,7 @@ type AreaRow = {
   sort_order: number | null;
 };
 
-type ViewMode = "hotel-info" | "departments" | "users" | "access-by-area" | "area-audits";
+type ViewMode = "hotel-info" | "departments" | "users" | "builder" | "area-audits";
 
 const HOTEL_KEY = "sc_hotel_id";
 const HOTEL_CHANGED_EVENT = "sc-hotel-changed";
@@ -107,8 +109,8 @@ export default function AdminShell() {
   }
 
   return (
-    <div style={{ padding: 18 }}>
-      <div style={{ display: "grid", gridTemplateColumns: "360px 1fr", gap: 18, alignItems: "start" }}>
+    <div style={{ padding: 18, width: "100%" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "360px 1fr", gap: 18, alignItems: "start", width: "100%" }}>
         {/* LEFT */}
         <aside style={leftCard}>
           <div style={{ padding: 16, borderBottom: "1px solid rgba(0,0,0,0.08)" }}>
@@ -117,11 +119,13 @@ export default function AdminShell() {
           </div>
 
           <div style={{ padding: 12 }}>
-            {/* 4 módulos principales */}
+            {/* módulos principales */}
             <NavTile title="Info del hotel" active={viewMode === "hotel-info"} onClick={() => setViewMode("hotel-info")} />
             <NavTile title="Departamentos" active={viewMode === "departments"} onClick={() => setViewMode("departments")} />
             <NavTile title="Usuarios" active={viewMode === "users"} onClick={() => setViewMode("users")} />
-            <NavTile title="Acceso por área" active={viewMode === "access-by-area"} onClick={() => setViewMode("access-by-area")} />
+
+            {/* ✅ NUEVO: Builder */}
+            <NavTile title="Builder" active={viewMode === "builder"} onClick={() => setViewMode("builder")} />
 
             {/* lista de áreas */}
             <div style={{ marginTop: 14, paddingTop: 14, borderTop: "1px solid rgba(0,0,0,0.10)" }}>
@@ -206,8 +210,11 @@ export default function AdminShell() {
             <DepartmentsModule />
           ) : viewMode === "users" ? (
             <UsersModule />
-          ) : viewMode === "access-by-area" ? (
-            <AccessByAreaModule />
+          ) : viewMode === "builder" ? (
+            // ✅ BUILDER EMBEBIDO DENTRO DE ADMIN
+            <div style={{ padding: 16 }}>
+              <BuilderShell hotelId={activeHotelId} embedded={true} showBackToDashboard={false} />
+            </div>
           ) : (
             <div style={{ padding: 16 }}>
               {/* ✅ Minimalista: el módulo SOLO lista auditorías del área seleccionada */}
@@ -278,6 +285,7 @@ const rightCard: CSSProperties = {
   boxShadow: "0 6px 20px rgba(0,0,0,0.06)",
   overflow: "hidden",
   minHeight: 520,
+  width: "100%",
 };
 
 const inputSmall: CSSProperties = {
