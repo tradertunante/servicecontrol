@@ -1,7 +1,14 @@
 "use client";
 
 import type { CSSProperties } from "react";
-import type { WorstAuditItem } from "../_hooks/useDashboardData";
+
+type WorstAuditItem = {
+  areaId: string;
+  areaName: string;
+  templateId: string;
+  templateName: string;
+  score: number | null; // ✅ el hook usa score, NO avg
+};
 
 export default function WorstAuditsCard({
   card,
@@ -53,8 +60,7 @@ export default function WorstAuditsCard({
               </div>
 
               <div className="rowRight">
-                {/* ✅ el hook NO tiene count → eliminamos */}
-                <div className="rowScore">{formatPct(a.avg)}</div>
+                <div className="rowScore">{formatPct(a.score)}</div>
 
                 <button
                   className="rowBtn"
