@@ -1,15 +1,7 @@
 "use client";
 
 import type { CSSProperties } from "react";
-
-export type WorstAuditItem = {
-  areaId: string;
-  areaName: string;
-  templateId: string;
-  templateName: string;
-  avg: number | null;
-  count: number;
-};
+import type { WorstAuditItem } from "../_hooks/useDashboardData"; // ✅ IMPORTANTE
 
 export default function WorstAuditsCard({
   card,
@@ -25,7 +17,7 @@ export default function WorstAuditsCard({
   border: string;
   fg: string;
   miniBtn: CSSProperties;
-  worst3Audits: WorstAuditItem[]; // ✅ CORREGIDO
+  worst3Audits: WorstAuditItem[]; // ✅ MISMO TIPO QUE EL HOOK
   onGoWorstAuditDetail: (areaId: string, templateId: string) => void;
 }) {
   const formatPct = (n: number | null | undefined) => {
