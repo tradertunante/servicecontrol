@@ -13,15 +13,9 @@ type AreaRankingRow = {
   areaId: string;
   areaName: string;
 
-  // 🔑 IMPORTANTE:
-  // En tu dashboard, los agregados suelen venir como:
-  //  - avg (media)
-  //  - count (nº auditorías)
-  // Si tú lo llamas distinto, cambia aquí el nombre.
   avg: number | null;
   count: number;
 
-  // Tendencia últimos 3 meses (para el texto bajo el título)
   trend3m?: TrendPoint[];
 };
 
@@ -33,8 +27,9 @@ export default function AreaRankings({
   miniBtn,
   top3Areas,
   worst3Areas,
-  runs, // lo mantenemos por compat, aunque aquí no lo usamos directamente
+  runs, // compat
   onGoAreaDetail,
+  selectedYear, // ✅ AÑADIDO
 }: {
   card: CSSProperties;
   rowBg: string;
@@ -45,6 +40,7 @@ export default function AreaRankings({
   worst3Areas: AreaRankingRow[];
   runs: any[];
   onGoAreaDetail: (areaId: string) => void;
+  selectedYear: number; // ✅ AÑADIDO
 }) {
   const formatPct = (n: number | null | undefined) => {
     if (n === null || n === undefined || !Number.isFinite(Number(n))) return "—";
@@ -101,7 +97,7 @@ export default function AreaRankings({
   return (
     <div className="gridTwo">
       <div style={card} className="card">
-        <div className="sectionTitle">Top 3 departamentos con mejor performance (2026)</div>
+        <div className="sectionTitle">Top 3 departamentos con mejor performance ({selectedYear})</div>
         <div className="list">
           {(top3Areas ?? []).length === 0 ? (
             <div style={{ opacity: 0.7 }}>No hay datos suficientes.</div>
@@ -112,7 +108,7 @@ export default function AreaRankings({
       </div>
 
       <div style={card} className="card">
-        <div className="sectionTitle">Top 3 departamentos con peor performance (2026)</div>
+        <div className="sectionTitle">Top 3 departamentos con peor performance ({selectedYear})</div>
         <div className="list">
           {(worst3Areas ?? []).length === 0 ? (
             <div style={{ opacity: 0.7 }}>No hay datos suficientes.</div>
