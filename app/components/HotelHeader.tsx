@@ -30,7 +30,7 @@ function getPageTitle(pathname: string | null): string {
 
 function getBackTarget(pathname: string | null): string | null {
   if (!pathname) return null;
-  const roots = new Set(["/dashboard","/admin","/areas","/builder","/profile","/users","/superadmin","/superadmin/hotels"]);
+  const roots = new Set(["/dashboard", "/admin", "/areas", "/builder", "/profile", "/users", "/superadmin", "/superadmin/hotels"]);
   if (roots.has(pathname)) return null;
   if (pathname.startsWith("/areas/")) return "/areas";
   if (pathname.startsWith("/builder/")) return "/builder";
@@ -43,6 +43,7 @@ export default function HotelHeader() {
   const router = useRouter();
   const pathname = usePathname();
   const headerRef = useRef<HTMLDivElement | null>(null);
+
   const [hotelName, setHotelName] = useState<string | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -57,32 +58,22 @@ export default function HotelHeader() {
       if (!el.contains(e.target as Node)) setMobileMenuOpen(false);
     };
     document.addEventListener("pointerdown", onPointerDown, true);
-    return () => document.removeEventListener("pointerdown", onPointerDown, true);
+    return () => { document.removeEventListener("pointerdown", onPointerDown, true); };
   }, []);
 
   useEffect(() => { setMobileMenuOpen(false); }, [pathname]);
 
   useEffect(() => {
-    const read = () => {
-      try { setLsHotelId(localStorage.getItem(HOTEL_KEY) || null); }
-      catch { setLsHotelId(null); }
-    };
+    const read = () => { try { const v = localStorage.getItem(HOTEL_KEY); setLsHotelId(v || null); } catch { setLsHotelId(null); } };
     read();
     const onStorage = (e: StorageEvent) => { if (e.key === HOTEL_KEY) read(); };
     const onCustom = () => read();
     window.addEventListener("storage", onStorage);
     window.addEventListener(HOTEL_CHANGED_EVENT, onCustom as EventListener);
     const t = window.setInterval(() => {
-      try {
-        const next = localStorage.getItem(HOTEL_KEY) || null;
-        setLsHotelId((prev) => (prev === next ? prev : next));
-      } catch {}
+      try { const v = localStorage.getItem(HOTEL_KEY); const next = v || null; setLsHotelId((prev) => (prev === next ? prev : next)); } catch {}
     }, 800);
-    return () => {
-      window.removeEventListener("storage", onStorage);
-      window.removeEventListener(HOTEL_CHANGED_EVENT, onCustom as EventListener);
-      window.clearInterval(t);
-    };
+    return () => { window.removeEventListener("storage", onStorage); window.removeEventListener(HOTEL_CHANGED_EVENT, onCustom as EventListener); window.clearInterval(t); };
   }, []);
 
   const pageTitle = useMemo(() => getPageTitle(pathname), [pathname]);
@@ -95,18 +86,34 @@ export default function HotelHeader() {
         const { data: userData, error: userErr } = await supabase.auth.getUser();
         if (!alive) return;
         if (userErr || !userData?.user) { setProfile(null); setHotelName(null); setLoading(false); return; }
+
         const uid = userData.user.id;
-        const { data: profileData, error: profileErr } = await supabase.from("profiles").select("hotel_id, role").eq("id", uid).single();
+
+        const { data: profileData, error: profileErr } = await supabase
+          .from("profiles")
+          .select("id, hotel_id, role")
+          .eq("id", uid)
+          .single();
+
         if (!alive) return;
         if (profileErr || !profileData) { setProfile(null); setHotelName(null); setLoading(false); return; }
+
         const role = String(profileData.role ?? "");
-        const prof: Profile = { role: role as Profile["role"], hotel_id: profileData.hotel_id ?? null };
+        const prof: Profile = {
+          id: uid,
+          role,
+          hotel_id: profileData.hotel_id ?? null,
+        };
         setProfile(prof);
+
         const hotelIdToUse = role === "superadmin" ? (lsHotelId ?? null) : (prof.hotel_id ?? null);
         if (!hotelIdToUse) { setHotelName(null); setLoading(false); return; }
+
         const { data: hotel, error: hotelErr } = await supabase.from("hotels").select("name").eq("id", hotelIdToUse).single();
         if (!alive) return;
-        setHotelName(hotelErr || !hotel ? null : hotel.name);
+        if (hotelErr || !hotel) { setHotelName(null); setLoading(false); return; }
+
+        setHotelName(hotel.name);
         setLoading(false);
       } catch (e) {
         if (!alive) return;
@@ -121,7 +128,7 @@ export default function HotelHeader() {
   const displayHotel = hotelName ?? (loading ? "Cargando…" : "Selecciona hotel");
   const backTarget = getBackTarget(pathname);
   const showBack = Boolean(backTarget);
-  const navTo = (path: string) => router.push(path);
+  const navTo = (path: string) => { router.push(path); };
 
   return (
     <>
@@ -137,6 +144,7 @@ export default function HotelHeader() {
             {pageTitle && <div className="pageTitle">{pageTitle}</div>}
           </div>
         </div>
+
         <div className="right">
           <div className="actionsDesktop">
             {isAdmin && <button className="pillBtn" onClick={() => navTo("/admin")} disabled={loading}>Admin</button>}
@@ -146,7 +154,7 @@ export default function HotelHeader() {
           <div className="actionsMobile">
             <button className="iconBtn" onClick={() => setMobileMenuOpen((v) => !v)} aria-label="Menú" title="Menú" disabled={loading}>☰</button>
             {mobileMenuOpen && (
-              <div className="dropdown" role="menu">
+              <div className="dropdown" role="menu" aria-label="Menú de navegación">
                 {isAdmin && <button className="dropItem" onClick={() => navTo("/admin")} disabled={loading}>Admin</button>}
                 <button className="dropItem" onClick={() => navTo("/areas")} disabled={loading}>Auditar</button>
                 <button className="dropItem" onClick={() => navTo("/profile")} disabled={loading}>Perfil</button>
@@ -155,6 +163,7 @@ export default function HotelHeader() {
           </div>
         </div>
       </div>
+
       <style jsx>{`
         .scHeader { position: fixed; top: 0; left: 0; right: 0; display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; background: var(--header-bg, rgba(255,255,255,0.92)); border-bottom: 1px solid var(--header-border, rgba(0,0,0,0.08)); box-shadow: 0 2px 8px rgba(0,0,0,0.05); z-index: 1000; backdrop-filter: blur(8px); gap: 12px; }
         .left { display: flex; align-items: center; gap: 10px; min-width: 0; flex: 1; }
