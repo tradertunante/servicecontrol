@@ -174,7 +174,9 @@ export default function StandardsPage() {
 
         <div style={card}>
           <div style={{ fontSize: 18, fontWeight: 950, marginBottom: 8 }}>🏨 En mi hotel</div>
-          <div style={{ opacity: 0.75, fontSize: 13, marginBottom: 12 }}>Aquí ves lo importado. Asigna un área a cada auditoría para que aparezca en el Builder. Usa "Duplicar" si necesitas varias instancias.</div>
+          <div style={{ opacity: 0.75, fontSize: 13, marginBottom: 12 }}>
+            Aquí ves lo importado. Asigna un área a cada auditoría para que aparezca en el Builder. Usa &quot;Duplicar&quot; si necesitas varias instancias (p. ej. varios restaurantes).
+          </div>
           {hotelTemplates.length === 0 ? <div style={{ opacity: 0.7 }}>Aún no hay auditorías importadas desde packs.</div> : (
             <div style={{ display: "grid", gap: 14 }}>
               {Array.from(templatesByPack.entries()).map(([packId, templates]) => {
@@ -194,7 +196,9 @@ export default function StandardsPage() {
                               <option value="">(Sin área)</option>
                               {areas.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
                             </select>
-                            <button style={btnWhite} onClick={() => duplicateHotelTemplate(t)} disabled={duplicatingTemplateId === t.id}>{duplicatingTemplateId === t.id ? "Duplicando…" : "Duplicar"}</button>
+                            <button style={btnWhite} onClick={() => duplicateHotelTemplate(t)} disabled={duplicatingTemplateId === t.id} title="Crea una copia de esta auditoría para asignarla a otro restaurante/área">
+                              {duplicatingTemplateId === t.id ? "Duplicando…" : "Duplicar"}
+                            </button>
                             <button style={btnWhite} onClick={() => router.push(`/builder/${t.id}`)} disabled={duplicatingTemplateId === t.id}>Editar</button>
                           </div>
                         </div>

@@ -88,7 +88,7 @@ export default function TeamImportPage() {
     if (raw.includes("·")) { const key = norm(raw.replace(/\s+/g, " ").trim()); const found = areaIndex.byKey.get(key); if (!found) return { id: null, err: `Área no encontrada: "${raw}"` }; return { id: found.id }; }
     const list = areaIndex.byName.get(norm(raw)) ?? [];
     if (list.length === 0) return { id: null, err: `Área no encontrada: "${raw}"` };
-    if (list.length > 1) return { id: null, err: `Área ambigua "${raw}". Usa "Nombre · Tipo" (por ejemplo: "${list[0].name} · ${list[0].type ?? "—"}").` };
+    if (list.length > 1) return { id: null, err: `Área ambigua "${raw}". Usa "Nombre · Tipo".` };
     return { id: list[0].id };
   }
 
@@ -150,11 +150,13 @@ export default function TeamImportPage() {
           </div>
         </div>
         {error && <div className="mt-4 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">{error}</div>}
+
         <section className="mt-6 rounded-2xl border bg-white p-5 shadow-sm">
           <div className="text-sm font-extrabold mb-2">1) Selecciona CSV</div>
           <input type="file" accept=".csv,text/csv" onChange={(e) => { const f = e.target.files?.[0]; if (f) onPickFile(f); }} className="block w-full text-sm" />
           {fileName && <div className="mt-2 text-xs font-semibold text-gray-500">Archivo: {fileName}</div>}
         </section>
+
         <section className="mt-6 rounded-2xl border bg-white p-5 shadow-sm">
           <div className="flex items-center justify-between gap-3">
             <div>
@@ -168,7 +170,16 @@ export default function TeamImportPage() {
           {preview.length ? (
             <div className="mt-4 overflow-auto rounded-2xl border">
               <table className="min-w-[900px] w-full text-sm">
-                <thead className="bg-gray-50"><tr className="text-left"><th className="p-3 font-extrabold">Fila</th><th className="p-3 font-extrabold">Nombre</th><th className="p-3 font-extrabold">Posición</th><th className="p-3 font-extrabold">Nº colaborador</th><th className="p-3 font-extrabold">Áreas</th><th className="p-3 font-extrabold">Estado</th></tr></thead>
+                <thead className="bg-gray-50">
+                  <tr className="text-left">
+                    <th className="p-3 font-extrabold">Fila</th>
+                    <th className="p-3 font-extrabold">Nombre</th>
+                    <th className="p-3 font-extrabold">Posición</th>
+                    <th className="p-3 font-extrabold">Nº colaborador</th>
+                    <th className="p-3 font-extrabold">Áreas</th>
+                    <th className="p-3 font-extrabold">Estado</th>
+                  </tr>
+                </thead>
                 <tbody>
                   {preview.map((r) => (
                     <tr key={r.rowIndex} className="border-t">
@@ -177,7 +188,12 @@ export default function TeamImportPage() {
                       <td className="p-3 font-semibold">{r.position || "—"}</td>
                       <td className="p-3 font-semibold">{r.employee_number ?? "—"}</td>
                       <td className="p-3 font-semibold text-gray-700">{r.areas.join(", ") || "—"}</td>
-                      <td className="p-3">{r.ok ? <span className="inline-flex rounded-full border border-green-200 bg-green-50 px-3 py-1 text-xs font-extrabold text-green-700">OK</span> : <span className="inline-flex rounded-full border border-red-200 bg-red-50 px-3 py-1 text-xs font-extrabold text-red-700">{r.error ?? "Error"}</span>}</td>
+                      <td className="p-3">
+                        {r.ok
+                          ? <span className="inline-flex rounded-full border border-green-200 bg-green-50 px-3 py-1 text-xs font-extrabold text-green-700">OK</span>
+                          : <span className="inline-flex rounded-full border border-red-200 bg-red-50 px-3 py-1 text-xs font-extrabold text-red-700">{r.error ?? "Error"}</span>
+                        }
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -185,10 +201,13 @@ export default function TeamImportPage() {
             </div>
           ) : <div className="mt-3 text-sm font-semibold text-gray-600">Sube un CSV para ver la previsualización.</div>}
         </section>
+
         <section className="mt-6 rounded-2xl border bg-white p-5 shadow-sm">
           <div className="text-sm font-extrabold mb-2">Formato de ejemplo (CSV)</div>
           <pre className="rounded-2xl border bg-gray-50 p-4 text-xs overflow-auto">{`full_name,position,employee_number,area_1,area_2,area_3\n"María López","Camarista","EMP-100","Housekeeping · ROOMS","",""\n"Juan Pérez","Mesero","","CAPELLA · A&B","SAL · A&B","CIELO · A&B"`}</pre>
-          <div className="mt-2 text-xs font-semibold text-gray-500">Nota: el nombre del área debe existir en tu tabla <span className="font-mono">areas</span> para ese hotel. Si hay duplicados por nombre, usa "Nombre · Tipo".</div>
+          <div className="mt-2 text-xs font-semibold text-gray-500">
+            Nota: el nombre del área debe existir en tu tabla <span className="font-mono">areas</span> para ese hotel. Si hay duplicados por nombre, usa &quot;Nombre · Tipo&quot;.
+          </div>
         </section>
       </div>
     </main>
