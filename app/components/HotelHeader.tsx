@@ -4,7 +4,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
-import type { Profile } from "@/lib/types";
+import type { Profile, Role } from "@/lib/types";
 
 const HOTEL_KEY = "sc_hotel_id";
 const HOTEL_CHANGED_EVENT = "sc-hotel-changed";
