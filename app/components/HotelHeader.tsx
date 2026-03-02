@@ -98,7 +98,7 @@ export default function HotelHeader() {
         if (!alive) return;
         if (profileErr || !profileData) { setProfile(null); setHotelName(null); setLoading(false); return; }
 
-        const role = String(profileData.role ?? "");
+        const role = String(profileData.role ?? "") as Role;
         const prof: Profile = {
           id: uid,
           role,
