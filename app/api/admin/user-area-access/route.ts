@@ -1,7 +1,7 @@
-// app/api/admin/user-area-access/get/route.ts
+// app/api/admin/user-area-access/route.ts
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
-import { supabaseConfig } from "@/lib/config";
+import { supabaseWithToken } from "@/lib/supabaseServer";
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
 type CallerRole = "admin" | "manager" | "auditor" | "superadmin";
 
@@ -9,14 +9,6 @@ export async function POST(req: NextRequest) {
   const reqId = Math.random().toString(16).slice(2, 8);
 
   try {
-    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-    if (!serviceRoleKey) {
-      return NextResponse.json(
-        { error: "Falta SUPABASE_SERVICE_ROLE_KEY en variables de entorno (server-only)." },
-        { status: 500 }
-      );
-    }
-
     const authHeader = req.headers.get("authorization") || "";
     const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : "";
     if (!token) return NextResponse.json({ error: "No autorizado (falta token)." }, { status: 401 });
@@ -28,11 +20,7 @@ export async function POST(req: NextRequest) {
     if (!user_id) return NextResponse.json({ error: "Falta user_id." }, { status: 400 });
     if (!hotel_id) return NextResponse.json({ error: "Falta hotel_id." }, { status: 400 });
 
-    // Cliente ANON para validar caller (con token)
-    const client = createClient(supabaseConfig.url, supabaseConfig.anonKey, {
-      global: { headers: { Authorization: `Bearer ${token}` } },
-      auth: { persistSession: false },
-    });
+    const client = supabaseWithToken(token);
 
     const { data: userData, error: userErr } = await client.auth.getUser(token);
     if (userErr || !userData?.user) {
@@ -53,13 +41,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Forbidden: solo admin/superadmin." }, { status: 403 });
     }
 
-    // Si es admin normal, obligamos a que el hotel coincida con su hotel_id
     if (callerRole === "admin" && callerProfile.hotel_id && String(callerProfile.hotel_id) !== hotel_id) {
       return NextResponse.json({ error: "Forbidden: hotel no coincide con tu perfil." }, { status: 403 });
     }
 
-    // Service role para leer accesos
-    const admin = createClient(supabaseConfig.url, serviceRoleKey, { auth: { persistSession: false } });
+    const admin = supabaseAdmin();
 
     const { data: rows, error: rowsErr } = await admin
       .from("user_area_access")
@@ -68,7 +54,7 @@ export async function POST(req: NextRequest) {
       .eq("user_id", user_id);
 
     if (rowsErr) {
-      console.error(`[uaa-get:${reqId}]`, rowsErr.message);
+      console.error(`[uaa:${reqId}]`, rowsErr.message);
       return NextResponse.json({ error: rowsErr.message }, { status: 400 });
     }
 
@@ -77,7 +63,7 @@ export async function POST(req: NextRequest) {
       area_ids: (rows ?? []).map((r: any) => r.area_id).filter(Boolean),
     });
   } catch (e: any) {
-    console.error(`[uaa-get:${reqId}] Unexpected`, e?.message);
+    console.error(`[uaa:${reqId}] Unexpected`, e?.message);
     return NextResponse.json({ error: e?.message ?? "Error inesperado." }, { status: 500 });
   }
 }

@@ -1,7 +1,6 @@
 // app/api/user-management/delete-user/route.ts
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
-import { supabaseConfig } from "@/lib/config";
+import { supabaseWithToken } from "@/lib/supabaseServer";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
 type Role = "admin" | "manager" | "auditor" | "superadmin";
@@ -12,10 +11,7 @@ export async function POST(req: NextRequest) {
     const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : "";
     if (!token) return NextResponse.json({ ok: false, error: "No autorizado (sin token)." }, { status: 401 });
 
-    const client = createClient(supabaseConfig.url, supabaseConfig.anonKey, {
-      global: { headers: { Authorization: `Bearer ${token}` } },
-      auth: { persistSession: false },
-    });
+    const client = supabaseWithToken(token);
 
     const { data: callerAuth } = await client.auth.getUser(token);
     if (!callerAuth?.user) return NextResponse.json({ ok: false, error: "No autorizado." }, { status: 401 });
@@ -45,7 +41,7 @@ export async function POST(req: NextRequest) {
     if (!hotelId) return NextResponse.json({ ok: false, error: "Falta hotel_id." }, { status: 400 });
 
     if (targetUserId === callerId) {
-      return NextResponse.json({ ok: false, error: "No puedes borrarte a ti misma." }, { status: 400 });
+      return NextResponse.json({ ok: false, error: "No puedes borrarte a ti mismo." }, { status: 400 });
     }
 
     if (callerRole !== "superadmin" && hotelId !== String(callerProfile.hotel_id)) {
@@ -77,7 +73,10 @@ export async function POST(req: NextRequest) {
 
     const { error: delAuthErr } = await admin.auth.admin.deleteUser(targetUserId);
     if (delAuthErr) {
-      return NextResponse.json({ ok: false, error: delAuthErr.message ?? "No se pudo borrar el usuario (Auth)." }, { status: 400 });
+      return NextResponse.json(
+        { ok: false, error: delAuthErr.message ?? "No se pudo borrar el usuario (Auth)." },
+        { status: 400 }
+      );
     }
 
     return NextResponse.json({ ok: true });
