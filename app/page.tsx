@@ -4,16 +4,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
-
-type Role = "admin" | "manager" | "auditor" | "superadmin";
-
-type Profile = {
-  id: string;
-  full_name: string | null;
-  role: Role;
-  hotel_id: string | null;
-  active?: boolean | null;
-};
+import type { Role, Profile } from "@/lib/types";
 
 function cleanRole(input: any): Role {
   const r = String(input ?? "")
@@ -25,7 +16,6 @@ function cleanRole(input: any): Role {
   if (r === "manager") return "manager";
   if (r === "auditor") return "auditor";
 
-  // Si llega algo raro, por defecto NO lo conviertas a admin; mejor auditor (o login)
   return "auditor";
 }
 
@@ -44,7 +34,6 @@ export default function HomePage() {
       setDebug("");
 
       try {
-        // 1) Espera corta a que la sesión esté lista (Safari / App Router)
         const start = Date.now();
         let session = null as any;
 
@@ -63,7 +52,6 @@ export default function HomePage() {
           return;
         }
 
-        // 2) Carga usuario y profile
         const { data: userData, error: userErr } = await supabase.auth.getUser();
         if (userErr) throw userErr;
         if (!userData?.user) {
@@ -98,10 +86,8 @@ export default function HomePage() {
           active: prof.active ?? null,
         };
 
-        // DEBUG visible (para que veas qué rol está leyendo)
         setDebug(`uid=${uid} role_raw=${String(prof.role)} role_clean=${role}`);
 
-        // 3) Redirección por rol
         if (profile.role === "superadmin") {
           router.replace("/superadmin");
           return;
@@ -146,17 +132,7 @@ export default function HomePage() {
         <p style={{ color: "crimson", marginTop: 12 }}>{error}</p>
 
         {!!debug && (
-          <pre
-            style={{
-              marginTop: 12,
-              padding: 12,
-              borderRadius: 12,
-              background: "rgba(0,0,0,0.05)",
-              border: "1px solid rgba(0,0,0,0.12)",
-              whiteSpace: "pre-wrap",
-              fontWeight: 700,
-            }}
-          >
+          <pre style={{ marginTop: 12, padding: 12, borderRadius: 12, background: "rgba(0,0,0,0.05)", border: "1px solid rgba(0,0,0,0.12)", whiteSpace: "pre-wrap", fontWeight: 700 }}>
             {debug}
           </pre>
         )}
@@ -166,15 +142,7 @@ export default function HomePage() {
             await supabase.auth.signOut();
             router.replace("/login");
           }}
-          style={{
-            marginTop: 14,
-            padding: "10px 14px",
-            borderRadius: 12,
-            border: "1px solid rgba(0,0,0,0.15)",
-            background: "#fff",
-            fontWeight: 900,
-            cursor: "pointer",
-          }}
+          style={{ marginTop: 14, padding: "10px 14px", borderRadius: 12, border: "1px solid rgba(0,0,0,0.15)", background: "#fff", fontWeight: 900, cursor: "pointer" }}
         >
           Volver a login
         </button>
@@ -182,7 +150,6 @@ export default function HomePage() {
     );
   }
 
-  // Si no hay error, esto se verá un instante (hasta que router.replace actúe)
   return (
     <main style={{ padding: 24 }}>
       <h1 style={{ fontSize: 28, fontWeight: 900 }}>ServiceControl</h1>

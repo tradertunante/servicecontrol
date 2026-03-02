@@ -4,11 +4,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
-
-type Profile = {
-  role: string;
-  hotel_id: string | null;
-};
+import type { Profile } from "@/lib/types";
 
 const HOTEL_KEY = "sc_hotel_id";
 const HOTEL_CHANGED_EVENT = "sc-hotel-changed";
@@ -32,107 +28,56 @@ function getPageTitle(pathname: string | null): string {
   return "";
 }
 
-// Atrás jerárquico (sin router.back)
 function getBackTarget(pathname: string | null): string | null {
   if (!pathname) return null;
-
-  // Raíces -> no mostrar atrás
-  const roots = new Set([
-    "/dashboard",
-    "/admin",
-    "/areas",
-    "/builder",
-    "/profile",
-    "/users",
-    "/superadmin",
-    "/superadmin/hotels",
-  ]);
+  const roots = new Set(["/dashboard","/admin","/areas","/builder","/profile","/users","/superadmin","/superadmin/hotels"]);
   if (roots.has(pathname)) return null;
-
-  // Jerarquía
   if (pathname.startsWith("/areas/")) return "/areas";
   if (pathname.startsWith("/builder/")) return "/builder";
   if (pathname.startsWith("/admin/hotel")) return "/admin";
-  if (pathname.startsWith("/audits/")) return "/areas"; // ajusta si prefieres /dashboard
-
-  // Default seguro
+  if (pathname.startsWith("/audits/")) return "/areas";
   return "/dashboard";
 }
 
 export default function HotelHeader() {
   const router = useRouter();
   const pathname = usePathname();
-
   const headerRef = useRef<HTMLDivElement | null>(null);
-
   const [hotelName, setHotelName] = useState<string | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const [isHoveringHotel, setIsHoveringHotel] = useState(false);
-
-  // ✅ Estado que refleja el hotel seleccionado en localStorage (para superadmin)
   const [lsHotelId, setLsHotelId] = useState<string | null>(null);
-
-  // Menú móvil
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  // Cerrar menú al tocar fuera (iOS friendly)
   useEffect(() => {
     const onPointerDown = (e: PointerEvent) => {
       const el = headerRef.current;
       if (!el) return;
-
-      if (!el.contains(e.target as Node)) {
-        setMobileMenuOpen(false);
-      }
+      if (!el.contains(e.target as Node)) setMobileMenuOpen(false);
     };
-
-    // Capture=true para que no “se pelee” con React en móvil
     document.addEventListener("pointerdown", onPointerDown, true);
-
-    return () => {
-      document.removeEventListener("pointerdown", onPointerDown, true);
-    };
+    return () => document.removeEventListener("pointerdown", onPointerDown, true);
   }, []);
 
-  // Cambia ruta => cierra menú
-  useEffect(() => {
-    setMobileMenuOpen(false);
-  }, [pathname]);
+  useEffect(() => { setMobileMenuOpen(false); }, [pathname]);
 
-  // Inicializa y detecta cambios de hotel (misma pestaña + otras pestañas)
   useEffect(() => {
     const read = () => {
-      try {
-        const v = localStorage.getItem(HOTEL_KEY);
-        setLsHotelId(v || null);
-      } catch {
-        setLsHotelId(null);
-      }
+      try { setLsHotelId(localStorage.getItem(HOTEL_KEY) || null); }
+      catch { setLsHotelId(null); }
     };
-
     read();
-
-    const onStorage = (e: StorageEvent) => {
-      if (e.key === HOTEL_KEY) read();
-    };
-
+    const onStorage = (e: StorageEvent) => { if (e.key === HOTEL_KEY) read(); };
     const onCustom = () => read();
-
     window.addEventListener("storage", onStorage);
     window.addEventListener(HOTEL_CHANGED_EVENT, onCustom as EventListener);
-
-    // Fallback: por si alguien cambia localStorage sin disparar el evento custom
     const t = window.setInterval(() => {
       try {
-        const v = localStorage.getItem(HOTEL_KEY);
-        const next = v || null;
+        const next = localStorage.getItem(HOTEL_KEY) || null;
         setLsHotelId((prev) => (prev === next ? prev : next));
-      } catch {
-        // nada
-      }
+      } catch {}
     }, 800);
-
     return () => {
       window.removeEventListener("storage", onStorage);
       window.removeEventListener(HOTEL_CHANGED_EVENT, onCustom as EventListener);
@@ -142,75 +87,26 @@ export default function HotelHeader() {
 
   const pageTitle = useMemo(() => getPageTitle(pathname), [pathname]);
 
-  // Carga profile + hotelName
   useEffect(() => {
     let alive = true;
-
     (async () => {
       try {
         setLoading(true);
-
         const { data: userData, error: userErr } = await supabase.auth.getUser();
         if (!alive) return;
-
-        if (userErr || !userData?.user) {
-          setProfile(null);
-          setHotelName(null);
-          setLoading(false);
-          return;
-        }
-
+        if (userErr || !userData?.user) { setProfile(null); setHotelName(null); setLoading(false); return; }
         const uid = userData.user.id;
-
-        const { data: profileData, error: profileErr } = await supabase
-          .from("profiles")
-          .select("hotel_id, role")
-          .eq("id", uid)
-          .single();
-
+        const { data: profileData, error: profileErr } = await supabase.from("profiles").select("hotel_id, role").eq("id", uid).single();
         if (!alive) return;
-
-        if (profileErr || !profileData) {
-          setProfile(null);
-          setHotelName(null);
-          setLoading(false);
-          return;
-        }
-
+        if (profileErr || !profileData) { setProfile(null); setHotelName(null); setLoading(false); return; }
         const role = String(profileData.role ?? "");
-        const prof: Profile = {
-          role,
-          hotel_id: profileData.hotel_id ?? null,
-        };
+        const prof: Profile = { role: role as Profile["role"], hotel_id: profileData.hotel_id ?? null };
         setProfile(prof);
-
-        // ✅ HOTEL A MOSTRAR
-        // - superadmin => localStorage sc_hotel_id (lsHotelId)
-        // - resto => profile.hotel_id
-        const hotelIdToUse =
-          role === "superadmin" ? (lsHotelId ?? null) : (prof.hotel_id ?? null);
-
-        if (!hotelIdToUse) {
-          setHotelName(null);
-          setLoading(false);
-          return;
-        }
-
-        const { data: hotel, error: hotelErr } = await supabase
-          .from("hotels")
-          .select("name")
-          .eq("id", hotelIdToUse)
-          .single();
-
+        const hotelIdToUse = role === "superadmin" ? (lsHotelId ?? null) : (prof.hotel_id ?? null);
+        if (!hotelIdToUse) { setHotelName(null); setLoading(false); return; }
+        const { data: hotel, error: hotelErr } = await supabase.from("hotels").select("name").eq("id", hotelIdToUse).single();
         if (!alive) return;
-
-        if (hotelErr || !hotel) {
-          setHotelName(null);
-          setLoading(false);
-          return;
-        }
-
-        setHotelName(hotel.name);
+        setHotelName(hotelErr || !hotel ? null : hotel.name);
         setLoading(false);
       } catch (e) {
         if (!alive) return;
@@ -218,275 +114,64 @@ export default function HotelHeader() {
         setLoading(false);
       }
     })();
-
-    return () => {
-      alive = false;
-    };
+    return () => { alive = false; };
   }, [pathname, lsHotelId]);
 
   const isAdmin = profile?.role === "admin" || profile?.role === "superadmin";
-
-  // ✅ Ya NO devolvemos null: el header siempre existe
   const displayHotel = hotelName ?? (loading ? "Cargando…" : "Selecciona hotel");
-
   const backTarget = getBackTarget(pathname);
   const showBack = Boolean(backTarget);
-
-  const navTo = (path: string) => {
-    router.push(path);
-  };
+  const navTo = (path: string) => router.push(path);
 
   return (
     <>
       <div ref={headerRef} className="scHeader">
-        {/* Left: back + hotel + title */}
         <div className="left">
           {showBack && (
-            <button
-              className="iconBtn"
-              onClick={() => navTo(backTarget!)}
-              aria-label="Atrás"
-              title="Atrás"
-              disabled={loading}
-            >
-              ←
-            </button>
+            <button className="iconBtn" onClick={() => navTo(backTarget!)} aria-label="Atrás" title="Atrás" disabled={loading}>←</button>
           )}
-
           <div className="titleBlock">
-            <button
-              onClick={() => navTo("/dashboard")}
-              onMouseEnter={() => setIsHoveringHotel(true)}
-              onMouseLeave={() => setIsHoveringHotel(false)}
-              className="hotelBtn"
-              title={displayHotel}
-              aria-label="Ir a dashboard"
-              disabled={loading}
-            >
+            <button onClick={() => navTo("/dashboard")} onMouseEnter={() => setIsHoveringHotel(true)} onMouseLeave={() => setIsHoveringHotel(false)} className="hotelBtn" title={displayHotel} aria-label="Ir a dashboard" disabled={loading}>
               {displayHotel}
             </button>
-
             {pageTitle && <div className="pageTitle">{pageTitle}</div>}
           </div>
         </div>
-
-        {/* Right: desktop buttons OR mobile menu */}
         <div className="right">
-          {/* Desktop actions */}
           <div className="actionsDesktop">
-            {isAdmin && (
-              <button className="pillBtn" onClick={() => navTo("/admin")} disabled={loading}>
-                Admin
-              </button>
-            )}
-
-            <button className="pillBtn" onClick={() => navTo("/areas")} disabled={loading}>
-              Auditar
-            </button>
-
-            <button className="pillBtn" onClick={() => navTo("/profile")} disabled={loading}>
-              Perfil
-            </button>
+            {isAdmin && <button className="pillBtn" onClick={() => navTo("/admin")} disabled={loading}>Admin</button>}
+            <button className="pillBtn" onClick={() => navTo("/areas")} disabled={loading}>Auditar</button>
+            <button className="pillBtn" onClick={() => navTo("/profile")} disabled={loading}>Perfil</button>
           </div>
-
-          {/* Mobile menu */}
           <div className="actionsMobile">
-            <button
-              className="iconBtn"
-              onClick={() => setMobileMenuOpen((v) => !v)}
-              aria-label="Menú"
-              title="Menú"
-              disabled={loading}
-            >
-              ☰
-            </button>
-
+            <button className="iconBtn" onClick={() => setMobileMenuOpen((v) => !v)} aria-label="Menú" title="Menú" disabled={loading}>☰</button>
             {mobileMenuOpen && (
-              <div className="dropdown" role="menu" aria-label="Menú de navegación">
-                {isAdmin && (
-                  <button className="dropItem" onClick={() => navTo("/admin")} disabled={loading}>
-                    Admin
-                  </button>
-                )}
-                <button className="dropItem" onClick={() => navTo("/areas")} disabled={loading}>
-                  Auditar
-                </button>
-                <button className="dropItem" onClick={() => navTo("/profile")} disabled={loading}>
-                  Perfil
-                </button>
+              <div className="dropdown" role="menu">
+                {isAdmin && <button className="dropItem" onClick={() => navTo("/admin")} disabled={loading}>Admin</button>}
+                <button className="dropItem" onClick={() => navTo("/areas")} disabled={loading}>Auditar</button>
+                <button className="dropItem" onClick={() => navTo("/profile")} disabled={loading}>Perfil</button>
               </div>
             )}
           </div>
         </div>
       </div>
-
       <style jsx>{`
-        .scHeader {
-          position: fixed;
-          top: 0;
-          left: 0;
-          right: 0;
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          padding: 12px 16px;
-          background: var(--header-bg, rgba(255, 255, 255, 0.92));
-          border-bottom: 1px solid var(--header-border, rgba(0, 0, 0, 0.08));
-          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-          z-index: 1000;
-          backdrop-filter: blur(8px);
-          gap: 12px;
-        }
-
-        .left {
-          display: flex;
-          align-items: center;
-          gap: 10px;
-          min-width: 0;
-          flex: 1;
-        }
-
-        .titleBlock {
-          display: flex;
-          flex-direction: column;
-          min-width: 0;
-          gap: 2px;
-        }
-
-        .hotelBtn {
-          font-size: 14px;
-          font-weight: 950;
-          letter-spacing: 0.3px;
-          background: none;
-          border: none;
-          cursor: pointer;
-          padding: 4px 6px;
-          border-radius: 8px;
-          opacity: ${loading ? 0.6 : isHoveringHotel ? 1 : 0.85};
-          transition: all 0.2s ease;
-          color: ${isHoveringHotel ? "#000" : "inherit"};
-          text-decoration: ${isHoveringHotel ? "underline" : "none"};
-
-          white-space: nowrap;
-          overflow: hidden;
-          text-overflow: ellipsis;
-          min-width: 0;
-        }
-
-        .pageTitle {
-          font-size: 12px;
-          font-weight: 900;
-          opacity: 0.6;
-
-          white-space: nowrap;
-          overflow: hidden;
-          text-overflow: ellipsis;
-          min-width: 0;
-        }
-
-        .right {
-          display: flex;
-          align-items: center;
-          gap: 10px;
-          flex-shrink: 0;
-          position: relative;
-        }
-
-        .actionsDesktop {
-          display: flex;
-          gap: 10px;
-          align-items: center;
-        }
-
-        .actionsMobile {
-          display: none;
-          position: relative;
-        }
-
-        .pillBtn {
-          padding: 8px 14px;
-          border-radius: 10px;
-          border: 1px solid rgba(0, 0, 0, 0.15);
-          background: #fff;
-          color: #000;
-          font-weight: 900;
-          cursor: pointer;
-          font-size: 13px;
-          white-space: nowrap;
-          transition: all 0.2s;
-          opacity: ${loading ? 0.6 : 1};
-        }
-
-        .pillBtn:hover:not(:disabled) {
-          background: #000;
-          color: #fff;
-        }
-
-        .iconBtn {
-          height: 40px;
-          min-width: 40px;
-          padding: 0 12px;
-          border-radius: 12px;
-          border: 1px solid rgba(0, 0, 0, 0.15);
-          background: #fff;
-          color: #000;
-          font-weight: 900;
-          cursor: pointer;
-          font-size: 16px;
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-          transition: all 0.2s;
-        }
-
-        .iconBtn:hover:not(:disabled) {
-          background: #000;
-          color: #fff;
-        }
-
-        .dropdown {
-          position: absolute;
-          top: 46px;
-          right: 0;
-          min-width: 180px;
-          background: #fff;
-          border: 1px solid rgba(0, 0, 0, 0.12);
-          border-radius: 12px;
-          box-shadow: 0 14px 40px rgba(0, 0, 0, 0.12);
-          padding: 6px;
-          overflow: hidden;
-          z-index: 2000;
-        }
-
-        .dropItem {
-          width: 100%;
-          text-align: left;
-          padding: 10px 12px;
-          border-radius: 10px;
-          border: none;
-          background: transparent;
-          cursor: pointer;
-          font-weight: 900;
-          font-size: 13px;
-          color: #000;
-          opacity: ${loading ? 0.6 : 1};
-        }
-
-        .dropItem:hover:not(:disabled) {
-          background: rgba(0, 0, 0, 0.06);
-        }
-
-        @media (max-width: 720px) {
-          .scHeader {
-            padding: 10px 12px;
-          }
-          .actionsDesktop {
-            display: none;
-          }
-          .actionsMobile {
-            display: block;
-          }
-        }
+        .scHeader { position: fixed; top: 0; left: 0; right: 0; display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; background: var(--header-bg, rgba(255,255,255,0.92)); border-bottom: 1px solid var(--header-border, rgba(0,0,0,0.08)); box-shadow: 0 2px 8px rgba(0,0,0,0.05); z-index: 1000; backdrop-filter: blur(8px); gap: 12px; }
+        .left { display: flex; align-items: center; gap: 10px; min-width: 0; flex: 1; }
+        .titleBlock { display: flex; flex-direction: column; min-width: 0; gap: 2px; }
+        .hotelBtn { font-size: 14px; font-weight: 950; letter-spacing: 0.3px; background: none; border: none; cursor: pointer; padding: 4px 6px; border-radius: 8px; opacity: ${loading ? 0.6 : isHoveringHotel ? 1 : 0.85}; transition: all 0.2s ease; color: ${isHoveringHotel ? "#000" : "inherit"}; text-decoration: ${isHoveringHotel ? "underline" : "none"}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+        .pageTitle { font-size: 12px; font-weight: 900; opacity: 0.6; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+        .right { display: flex; align-items: center; gap: 10px; flex-shrink: 0; position: relative; }
+        .actionsDesktop { display: flex; gap: 10px; align-items: center; }
+        .actionsMobile { display: none; position: relative; }
+        .pillBtn { padding: 8px 14px; border-radius: 10px; border: 1px solid rgba(0,0,0,0.15); background: #fff; color: #000; font-weight: 900; cursor: pointer; font-size: 13px; white-space: nowrap; transition: all 0.2s; opacity: ${loading ? 0.6 : 1}; }
+        .pillBtn:hover:not(:disabled) { background: #000; color: #fff; }
+        .iconBtn { height: 40px; min-width: 40px; padding: 0 12px; border-radius: 12px; border: 1px solid rgba(0,0,0,0.15); background: #fff; color: #000; font-weight: 900; cursor: pointer; font-size: 16px; display: inline-flex; align-items: center; justify-content: center; transition: all 0.2s; }
+        .iconBtn:hover:not(:disabled) { background: #000; color: #fff; }
+        .dropdown { position: absolute; top: 46px; right: 0; min-width: 180px; background: #fff; border: 1px solid rgba(0,0,0,0.12); border-radius: 12px; box-shadow: 0 14px 40px rgba(0,0,0,0.12); padding: 6px; overflow: hidden; z-index: 2000; }
+        .dropItem { width: 100%; text-align: left; padding: 10px 12px; border-radius: 10px; border: none; background: transparent; cursor: pointer; font-weight: 900; font-size: 13px; color: #000; opacity: ${loading ? 0.6 : 1}; }
+        .dropItem:hover:not(:disabled) { background: rgba(0,0,0,0.06); }
+        @media (max-width: 720px) { .scHeader { padding: 10px 12px; } .actionsDesktop { display: none; } .actionsMobile { display: block; } }
       `}</style>
     </>
   );
