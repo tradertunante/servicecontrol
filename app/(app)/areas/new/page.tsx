@@ -4,16 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { canManageAreas } from "@/lib/auth/permissions";
-
-type Role = "admin" | "manager" | "auditor";
-
-type Profile = {
-  id: string;
-  hotel_id: string;
-  role: Role;
-  active: boolean;
-  full_name?: string | null;
-};
+import type { Role, Profile } from "@/lib/types";
 
 export default function NewAreaPage() {
   const router = useRouter();
@@ -32,14 +23,9 @@ export default function NewAreaPage() {
     const init = async () => {
       setLoading(true);
 
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+      const { data: { user } } = await supabase.auth.getUser();
 
-      if (!user) {
-        router.push("/login");
-        return;
-      }
+      if (!user) { router.push("/login"); return; }
 
       const { data: profileData, error: profileError } = await supabase
         .from("profiles")
@@ -54,11 +40,7 @@ export default function NewAreaPage() {
 
       const p = profileData as Profile;
 
-      // 🔒 solo admin/manager
-      if (!canManageAreas(p.role)) {
-        router.push("/areas");
-        return;
-      }
+      if (!canManageAreas(p.role)) { router.push("/areas"); return; }
 
       if (!alive) return;
       setProfile(p);
@@ -66,22 +48,15 @@ export default function NewAreaPage() {
     };
 
     void init();
-
-    return () => {
-      alive = false;
-    };
+    return () => { alive = false; };
   }, [router]);
 
   const onCreate = async () => {
     if (!profile) return;
-
     setError(null);
 
     const cleanName = name.trim();
-    if (!cleanName) {
-      setError("Pon un nombre de área.");
-      return;
-    }
+    if (!cleanName) { setError("Pon un nombre de área."); return; }
 
     setSaving(true);
 
@@ -94,10 +69,7 @@ export default function NewAreaPage() {
 
     setSaving(false);
 
-    if (insertError) {
-      setError(insertError.message);
-      return;
-    }
+    if (insertError) { setError(insertError.message); return; }
 
     router.push("/areas");
   };
@@ -117,21 +89,12 @@ export default function NewAreaPage() {
       <div style={{ display: "grid", gap: 12 }}>
         <label style={{ display: "grid", gap: 6 }}>
           <span style={{ fontSize: 13, opacity: 0.8 }}>Nombre</span>
-          <input
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="Ej. Housekeeping"
-            style={{ padding: 10, borderRadius: 8, border: "1px solid #ddd" }}
-          />
+          <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Ej. Housekeeping" style={{ padding: 10, borderRadius: 8, border: "1px solid #ddd" }} />
         </label>
 
         <label style={{ display: "grid", gap: 6 }}>
           <span style={{ fontSize: 13, opacity: 0.8 }}>Tipo</span>
-          <select
-            value={type}
-            onChange={(e) => setType(e.target.value)}
-            style={{ padding: 10, borderRadius: 8, border: "1px solid #ddd" }}
-          >
+          <select value={type} onChange={(e) => setType(e.target.value)} style={{ padding: 10, borderRadius: 8, border: "1px solid #ddd" }}>
             <option value="HK">HK - Housekeeping</option>
             <option value="FO">FO - Front Office</option>
             <option value="F&B">F&B - Food & Beverage</option>
@@ -143,34 +106,10 @@ export default function NewAreaPage() {
         </label>
 
         <div style={{ display: "flex", gap: 10, marginTop: 6 }}>
-          <button
-            onClick={() => router.push("/areas")}
-            style={{
-              padding: "10px 14px",
-              borderRadius: 8,
-              border: "1px solid #ddd",
-              background: "#fff",
-              cursor: "pointer",
-              fontWeight: 600,
-            }}
-          >
+          <button onClick={() => router.push("/areas")} style={{ padding: "10px 14px", borderRadius: 8, border: "1px solid #ddd", background: "#fff", cursor: "pointer", fontWeight: 600 }}>
             Cancelar
           </button>
-
-          <button
-            onClick={onCreate}
-            disabled={saving}
-            style={{
-              padding: "10px 14px",
-              borderRadius: 8,
-              border: "1px solid #000",
-              background: "#000",
-              color: "#fff",
-              cursor: "pointer",
-              fontWeight: 700,
-              opacity: saving ? 0.6 : 1,
-            }}
-          >
+          <button onClick={onCreate} disabled={saving} style={{ padding: "10px 14px", borderRadius: 8, border: "1px solid #000", background: "#000", color: "#fff", cursor: "pointer", fontWeight: 700, opacity: saving ? 0.6 : 1 }}>
             {saving ? "Creando..." : "Crear área"}
           </button>
         </div>
