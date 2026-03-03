@@ -97,16 +97,21 @@ export default function HeatMap({
 
         {flatToRender.map(({ row, level }) => {
           const kids = row.kind === "area" ? childrenByParent.get(row.key) ?? [] : [];
-          // ✅ expand habilitado siempre, incluso en compareMode
           const hasKids = row.kind === "area" && kids.length > 0;
           const isQuality = row.compareTag === "quality";
           const isInternal = row.compareTag === "internal";
+          const isChild = row.kind === "audit";
 
           return (
             <React.Fragment key={row.key}>
               <button
                 type="button"
-                className={`left ${row.kind === "audit" ? "child" : ""} ${isQuality ? "qualityRow" : ""} ${isInternal ? "internalRow" : ""}`}
+                className={[
+                  "left",
+                  isChild ? "child" : "",
+                  isQuality ? (isChild ? "qualityChild" : "qualityRow") : "",
+                  isInternal ? "internalRow" : "",
+                ].filter(Boolean).join(" ")}
                 onClick={() => { if (hasKids) toggle(row.key); }}
                 style={{
                   paddingLeft: level === 1 ? 26 : 14,
@@ -119,7 +124,7 @@ export default function HeatMap({
                   <span className="caret spacer" aria-hidden="true">▶</span>
                 )}
 
-                <span className={`label ${row.kind === "audit" ? "labelChild" : ""}`}>
+                <span className={`label ${isChild ? "labelChild" : ""}`}>
                   {row.channelLabel ? (
                     <span>
                       <span className={`channelBadge ${isQuality ? "badgeQuality" : "badgeInternal"}`}>
@@ -138,21 +143,33 @@ export default function HeatMap({
                 const v = cell?.value;
 
                 if (v == null || !Number.isFinite(v)) {
-                  return <div key={`${row.key}:${idx}`} className="cell empty">—</div>;
+                  return (
+                    <div
+                      key={`${row.key}:${idx}`}
+                      className={`cell empty ${isQuality ? "qualityCellBg" : ""}`}
+                    >
+                      —
+                    </div>
+                  );
                 }
 
                 const pct = Math.round(v);
+                const count = cell?.count ?? 0;
+
                 return (
                   <div
                     key={`${row.key}:${idx}`}
-                    className={`cell pill ${isQuality ? "qualityCell" : ""}`}
+                    className={`cell pill ${isQuality ? "qualityCell qualityCellBg" : ""}`}
                     style={{
                       background: bgForScore(pct, row.compareTag),
                       borderColor: borderForScore(pct),
                     }}
-                    title={`${pct}% (${cell.count} auditorías)`}
+                    title={`${pct}% (${count} auditorías)`}
                   >
-                    {pct}%
+                    <span className="cellScore">{pct}%</span>
+                    {count > 0 && (
+                      <span className="cellCount">({count})</span>
+                    )}
                   </div>
                 );
               })}
@@ -166,7 +183,7 @@ export default function HeatMap({
 
         .grid {
           display: grid;
-          grid-template-columns: 280px repeat(${monthLabels.length}, 72px);
+          grid-template-columns: 280px repeat(${monthLabels.length}, 84px);
           gap: 10px;
           align-items: center;
         }
@@ -209,8 +226,17 @@ export default function HeatMap({
         }
 
         .left.qualityRow {
-          background: rgba(147,51,234,0.06);
-          border: 1px solid rgba(147,51,234,0.18);
+          background: var(--quality-bg);
+          border: 1px solid var(--quality-border);
+        }
+
+        .left.qualityChild {
+          background: var(--quality-bg-child);
+          border: 1px solid var(--quality-border);
+        }
+
+        .qualityCellBg {
+          background: var(--quality-bg) !important;
         }
 
         .channelBadge {
@@ -228,9 +254,9 @@ export default function HeatMap({
         }
 
         .badgeQuality {
-          background: rgba(147,51,234,0.12);
-          color: rgb(126,34,206);
-          border: 1px solid rgba(147,51,234,0.25);
+          background: var(--quality-badge-bg);
+          color: var(--quality-badge-text);
+          border: 1px solid var(--quality-badge-border);
         }
 
         .caret {
@@ -257,13 +283,13 @@ export default function HeatMap({
         .labelChild { opacity: 0.92; }
 
         .cell {
-          height: 40px;
+          height: 44px;
           border-radius: 12px;
           display: flex;
+          flex-direction: row;
           align-items: center;
           justify-content: center;
-          font-weight: 950;
-          font-size: 13px;
+          gap: 3px;
           border: 1px solid rgba(0,0,0,0.10);
           background: rgba(255,255,255,0.55);
         }
@@ -272,12 +298,26 @@ export default function HeatMap({
         .pill { border-width: 1px; }
 
         .qualityCell {
-          border-left: 3px solid rgba(147,51,234,0.35) !important;
+          border-left: 3px solid var(--quality-cell-accent) !important;
+        }
+
+        .cellScore {
+          font-weight: 950;
+          font-size: 13px;
+          line-height: 1;
+        }
+
+        .cellCount {
+          font-size: 10px;
+          font-weight: 700;
+          opacity: 0.65;
+          line-height: 1;
+          margin-top: 1px;
         }
 
         @media (max-width: 720px) {
           .grid {
-            grid-template-columns: 250px repeat(${monthLabels.length}, 70px);
+            grid-template-columns: 250px repeat(${monthLabels.length}, 82px);
             gap: 8px;
           }
         }
