@@ -45,13 +45,10 @@ export default function DashboardPage() {
 
   useEffect(() => {
     let alive = true;
-
     (async () => {
       setAuthLoading(true);
       setAuthError(null);
-
       try {
-        // ✅ cast correcto
         const p = (await requireRoleOrRedirect(
           router,
           ["admin", "manager", "auditor", "superadmin", "quality"],
@@ -78,10 +75,10 @@ export default function DashboardPage() {
         if (alive) setAuthLoading(false);
       }
     })();
-
     return () => { alive = false; };
   }, [router]);
 
+  // ✅ heatMapDataInternal y heatMapDataQuality añadidos
   const {
     loading,
     error,
@@ -92,6 +89,8 @@ export default function DashboardPage() {
     quarterScore,
     yearScore,
     heatMapData,
+    heatMapDataInternal,
+    heatMapDataQuality,
     monthLabels,
     availableYears,
     top3Areas,
@@ -184,9 +183,12 @@ export default function DashboardPage() {
 
       <GaugesRow card={card} monthScore={monthScore} quarterScore={quarterScore} yearScore={yearScore} />
 
+      {/* ✅ heatMapDataInternal y heatMapDataQuality pasados al componente */}
       <HeatMapCard
         card={card}
         heatMapData={heatMapData}
+        heatMapDataInternal={heatMapDataInternal}
+        heatMapDataQuality={heatMapDataQuality}
         monthLabels={monthLabels}
         heatMode={heatMode}
         setHeatMode={setHeatMode}
