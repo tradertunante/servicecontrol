@@ -1,6 +1,6 @@
 // FILE: app/(app)/dashboard/_lib/dashboardTypes.ts
 
-export type Role = "admin" | "manager" | "auditor" | "superadmin";
+export type Role = "admin" | "manager" | "auditor" | "superadmin" | "quality";
 
 export type Profile = {
   id: string;
@@ -19,7 +19,7 @@ export type HotelRow = {
 export type AreaRow = {
   id: string;
   name: string;
-  type: string | null; // Grupo
+  type: string | null;
   hotel_id: string | null;
   sort_order?: number | null;
 };
@@ -31,6 +31,11 @@ export type AuditRunRow = {
   executed_at: string | null;
   area_id: string;
   audit_template_id: string;
+  hotel_id?: string | null;
+  team_member_id?: string | null;
+  executed_by?: string | null;
+  notes?: string | null;
+  audit_channel?: "internal" | "quality" | null;  // ✅ este era el campo que faltaba
 };
 
 export type ScoreAgg = { avg: number | null; count: number };
@@ -51,7 +56,7 @@ export type TrendPoint = {
 };
 
 export type WorstAudit = {
-  id: string; // templateId
+  id: string;
   areaId: string;
   name: string;
   avg: number;

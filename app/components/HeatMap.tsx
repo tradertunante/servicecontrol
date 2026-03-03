@@ -12,12 +12,16 @@ export type HeatMapRow = {
   months: HeatCell[];
   kind?: "area" | "audit";
   parentKey?: string;
+  channelLabel?: string;
+  compareTag?: "internal" | "quality";
 };
 
-function bgForScore(score: number) {
-  // ✅ colores vienen de Globals.css
-  // Usamos color-mix para hacer pasteles sin hardcodear hex.
-  // Si el navegador no soporta color-mix, al menos se verá el borde/estado.
+function bgForScore(score: number, channel?: string) {
+  if (channel === "quality") {
+    if (score < 60) return "color-mix(in srgb, var(--danger) 22%, #f3e8ff)";
+    if (score < 80) return "color-mix(in srgb, var(--warn) 22%, #f3e8ff)";
+    return "color-mix(in srgb, var(--ok) 22%, #f3e8ff)";
+  }
   if (score < 60) return "color-mix(in srgb, var(--danger) 18%, white)";
   if (score < 80) return "color-mix(in srgb, var(--warn) 18%, white)";
   return "color-mix(in srgb, var(--ok) 18%, white)";
@@ -29,7 +33,15 @@ function borderForScore(score: number) {
   return "color-mix(in srgb, var(--ok) 55%, rgba(0,0,0,0.10))";
 }
 
-export default function HeatMap({ data, monthLabels }: { data: HeatMapRow[]; monthLabels: string[] }) {
+export default function HeatMap({
+  data,
+  monthLabels,
+  compareMode = false,
+}: {
+  data: HeatMapRow[];
+  monthLabels: string[];
+  compareMode?: boolean;
+}) {
   const rows = useMemo(() => {
     const safe = Array.isArray(data) ? data : [];
     return safe.map((r: any) => ({
@@ -39,11 +51,13 @@ export default function HeatMap({ data, monthLabels }: { data: HeatMapRow[]; mon
       months: (r.months ?? []) as HeatCell[],
       kind: (r.kind ?? (r.parentKey ? "audit" : "area")) as "area" | "audit",
       parentKey: r.parentKey ? String(r.parentKey) : undefined,
+      channelLabel: r.channelLabel as string | undefined,
+      compareTag: r.compareTag as "internal" | "quality" | undefined,
     }));
   }, [data]);
 
-  // separamos parents y children
   const parents = useMemo(() => rows.filter((r) => r.kind === "area"), [rows]);
+
   const childrenByParent = useMemo(() => {
     const map = new Map<string, HeatMapRow[]>();
     for (const r of rows) {
@@ -51,7 +65,6 @@ export default function HeatMap({ data, monthLabels }: { data: HeatMapRow[]; mon
       if (!map.has(r.parentKey)) map.set(r.parentKey, []);
       map.get(r.parentKey)!.push(r);
     }
-    // orden por label
     for (const [k, arr] of map) {
       arr.sort((a, b) => a.label.localeCompare(b.label, "es"));
       map.set(k, arr);
@@ -59,16 +72,13 @@ export default function HeatMap({ data, monthLabels }: { data: HeatMapRow[]; mon
     return map;
   }, [rows]);
 
-  // expanded state por área
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
-
   const toggle = (key: string) => setExpanded((s) => ({ ...s, [key]: !s[key] }));
 
   const flatToRender = useMemo(() => {
     const out: Array<{ row: HeatMapRow; level: number }> = [];
     for (const p of parents) {
       out.push({ row: p, level: 0 });
-
       const kids = childrenByParent.get(p.key) ?? [];
       if (kids.length > 0 && expanded[p.key]) {
         for (const c of kids) out.push({ row: c, level: 1 });
@@ -80,43 +90,47 @@ export default function HeatMap({ data, monthLabels }: { data: HeatMapRow[]; mon
   return (
     <div className="wrap">
       <div className="grid">
-        {/* header */}
         <div className="h headLeft">Departamento</div>
         {monthLabels.map((m) => (
-          <div key={m} className="h headCell">
-            {m}
-          </div>
+          <div key={m} className="h headCell">{m}</div>
         ))}
 
-        {/* rows */}
         {flatToRender.map(({ row, level }) => {
           const kids = row.kind === "area" ? childrenByParent.get(row.key) ?? [] : [];
+          // ✅ expand habilitado siempre, incluso en compareMode
           const hasKids = row.kind === "area" && kids.length > 0;
+          const isQuality = row.compareTag === "quality";
+          const isInternal = row.compareTag === "internal";
 
           return (
             <React.Fragment key={row.key}>
               <button
                 type="button"
-                className={`left ${row.kind === "audit" ? "child" : ""}`}
-                onClick={() => {
-                  if (hasKids) toggle(row.key);
-                }}
+                className={`left ${row.kind === "audit" ? "child" : ""} ${isQuality ? "qualityRow" : ""} ${isInternal ? "internalRow" : ""}`}
+                onClick={() => { if (hasKids) toggle(row.key); }}
                 style={{
                   paddingLeft: level === 1 ? 26 : 14,
                   cursor: hasKids ? "pointer" : "default",
                 }}
               >
                 {hasKids ? (
-                  <span className={`caret ${expanded[row.key] ? "open" : ""}`} aria-hidden="true">
-                    ▶
-                  </span>
+                  <span className={`caret ${expanded[row.key] ? "open" : ""}`} aria-hidden="true">▶</span>
                 ) : (
-                  <span className="caret spacer" aria-hidden="true">
-                    ▶
-                  </span>
+                  <span className="caret spacer" aria-hidden="true">▶</span>
                 )}
 
-                <span className={`label ${row.kind === "audit" ? "labelChild" : ""}`}>{row.label}</span>
+                <span className={`label ${row.kind === "audit" ? "labelChild" : ""}`}>
+                  {row.channelLabel ? (
+                    <span>
+                      <span className={`channelBadge ${isQuality ? "badgeQuality" : "badgeInternal"}`}>
+                        {row.channelLabel}
+                      </span>
+                      {" "}{row.label}
+                    </span>
+                  ) : (
+                    row.label
+                  )}
+                </span>
               </button>
 
               {monthLabels.map((_, idx) => {
@@ -124,20 +138,16 @@ export default function HeatMap({ data, monthLabels }: { data: HeatMapRow[]; mon
                 const v = cell?.value;
 
                 if (v == null || !Number.isFinite(v)) {
-                  return (
-                    <div key={`${row.key}:${idx}`} className="cell empty">
-                      —
-                    </div>
-                  );
+                  return <div key={`${row.key}:${idx}`} className="cell empty">—</div>;
                 }
 
                 const pct = Math.round(v);
                 return (
                   <div
                     key={`${row.key}:${idx}`}
-                    className="cell pill"
+                    className={`cell pill ${isQuality ? "qualityCell" : ""}`}
                     style={{
-                      background: bgForScore(pct),
+                      background: bgForScore(pct, row.compareTag),
                       borderColor: borderForScore(pct),
                     }}
                     title={`${pct}% (${cell.count} auditorías)`}
@@ -152,9 +162,7 @@ export default function HeatMap({ data, monthLabels }: { data: HeatMapRow[]; mon
       </div>
 
       <style jsx>{`
-        .wrap {
-          width: max-content;
-        }
+        .wrap { width: max-content; }
 
         .grid {
           display: grid;
@@ -164,8 +172,8 @@ export default function HeatMap({ data, monthLabels }: { data: HeatMapRow[]; mon
         }
 
         .h {
-          background: rgba(255, 255, 255, 0.7);
-          border: 1px solid rgba(0, 0, 0, 0.08);
+          background: rgba(255,255,255,0.7);
+          border: 1px solid rgba(0,0,0,0.08);
           border-radius: 12px;
           padding: 10px 12px;
           font-weight: 950;
@@ -174,17 +182,12 @@ export default function HeatMap({ data, monthLabels }: { data: HeatMapRow[]; mon
           white-space: nowrap;
         }
 
-        .headLeft {
-          text-align: left;
-        }
-
-        .headCell {
-          text-align: center;
-        }
+        .headLeft { text-align: left; }
+        .headCell { text-align: center; }
 
         .left {
           border: 0;
-          background: rgba(255, 255, 255, 0.55);
+          background: rgba(255,255,255,0.55);
           border-radius: 12px;
           padding: 10px 14px;
           font-weight: 950;
@@ -196,8 +199,38 @@ export default function HeatMap({ data, monthLabels }: { data: HeatMapRow[]; mon
         }
 
         .left.child {
-          background: rgba(255, 255, 255, 0.42);
+          background: rgba(255,255,255,0.42);
           font-weight: 900;
+        }
+
+        .left.internalRow {
+          background: rgba(59,130,246,0.06);
+          border: 1px solid rgba(59,130,246,0.18);
+        }
+
+        .left.qualityRow {
+          background: rgba(147,51,234,0.06);
+          border: 1px solid rgba(147,51,234,0.18);
+        }
+
+        .channelBadge {
+          font-size: 11px;
+          font-weight: 900;
+          padding: 2px 6px;
+          border-radius: 999px;
+          white-space: nowrap;
+        }
+
+        .badgeInternal {
+          background: rgba(59,130,246,0.12);
+          color: rgb(29,78,216);
+          border: 1px solid rgba(59,130,246,0.25);
+        }
+
+        .badgeQuality {
+          background: rgba(147,51,234,0.12);
+          color: rgb(126,34,206);
+          border: 1px solid rgba(147,51,234,0.25);
         }
 
         .caret {
@@ -211,13 +244,8 @@ export default function HeatMap({ data, monthLabels }: { data: HeatMapRow[]; mon
           transition: transform 120ms ease;
         }
 
-        .caret.open {
-          transform: rotate(90deg);
-        }
-
-        .caret.spacer {
-          opacity: 0;
-        }
+        .caret.open { transform: rotate(90deg); }
+        .caret.spacer { opacity: 0; }
 
         .label {
           min-width: 0;
@@ -226,9 +254,7 @@ export default function HeatMap({ data, monthLabels }: { data: HeatMapRow[]; mon
           white-space: nowrap;
         }
 
-        .labelChild {
-          opacity: 0.92;
-        }
+        .labelChild { opacity: 0.92; }
 
         .cell {
           height: 40px;
@@ -238,16 +264,15 @@ export default function HeatMap({ data, monthLabels }: { data: HeatMapRow[]; mon
           justify-content: center;
           font-weight: 950;
           font-size: 13px;
-          border: 1px solid rgba(0, 0, 0, 0.10);
-          background: rgba(255, 255, 255, 0.55);
+          border: 1px solid rgba(0,0,0,0.10);
+          background: rgba(255,255,255,0.55);
         }
 
-        .cell.empty {
-          opacity: 0.7;
-        }
+        .cell.empty { opacity: 0.7; }
+        .pill { border-width: 1px; }
 
-        .pill {
-          border-width: 1px;
+        .qualityCell {
+          border-left: 3px solid rgba(147,51,234,0.35) !important;
         }
 
         @media (max-width: 720px) {

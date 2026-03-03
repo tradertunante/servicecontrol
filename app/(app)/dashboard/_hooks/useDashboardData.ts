@@ -24,7 +24,6 @@ export const HOTEL_KEY = "sc_hotel_id";
 type HotelRow = { id: string; name: string; active: boolean | null; status: string | null };
 type AreaRow = { id: string; name: string; type: string | null; hotel_id: string | null; active?: boolean | null };
 type TemplateRow = { id: string; name: string; hotel_id: string | null };
-
 type HeatCell = { value: number | null; count: number };
 
 export type HeatRow = {
@@ -34,6 +33,7 @@ export type HeatRow = {
   months: HeatCell[];
   kind: "area" | "audit";
   parentKey?: string;
+  channel?: "internal" | "quality";
 };
 
 export type AreaRankingItem = {
@@ -53,8 +53,72 @@ export type WorstAuditItem = {
   executed_at: string | null;
 };
 
-// ✅ Tipo para el filtro de canal
-export type ChannelFilter = "all" | "internal" | "quality";
+function buildHeatRows(
+  areas: AreaRow[],
+  runsSlice: AuditRunRow[],
+  templates: TemplateRow[],
+  heatMode: HeatMode,
+  selectedYear: number,
+  channel?: "internal" | "quality"
+): HeatRow[] {
+  const slots = buildMonthSlots(heatMode, selectedYear);
+
+  const buildCells = (subRuns: AuditRunRow[]) => {
+    const cells = slots.map((s) => {
+      const sc = getMonthScore(subRuns, s.year, s.month);
+      return { value: sc.avg, count: sc.count };
+    });
+    const media = heatMode === "YEAR" ? getYearAverage(subRuns, selectedYear) : getRolling12MScore(subRuns);
+    cells.push({ value: media.avg, count: media.count });
+    return cells;
+  };
+
+  const tplById = new Map<string, TemplateRow>();
+  for (const t of templates) tplById.set(t.id, t);
+
+  const norm = (s: string) => (s ?? "").trim().replace(/\s+/g, " ").toLowerCase();
+  const rows: HeatRow[] = [];
+
+  for (const a of areas) {
+    const areaKey = channel ? `area:${a.id}:${channel}` : `area:${a.id}`;
+    const areaRuns = runsSlice.filter((r) => r.area_id === a.id);
+
+    rows.push({
+      key: areaKey,
+      group: a.type ?? "—",
+      label: a.name,
+      months: buildCells(areaRuns),
+      kind: "area",
+      channel,
+    });
+
+    const buckets = new Map<string, { name: string; runs: AuditRunRow[] }>();
+    for (const r of areaRuns) {
+      const tid = r.audit_template_id;
+      if (!tid) continue;
+      const t = tplById.get(tid);
+      const name = (t?.name ?? "Auditoría").trim() || "Auditoría";
+      const k = norm(name);
+      if (!buckets.has(k)) buckets.set(k, { name, runs: [] });
+      buckets.get(k)!.runs.push(r);
+    }
+
+    const children = Array.from(buckets.values()).sort((x, y) => x.name.localeCompare(y.name, "es"));
+    for (const c of children) {
+      rows.push({
+        key: `${areaKey}:audit:${norm(c.name)}`,
+        parentKey: areaKey,
+        group: a.type ?? "—",
+        label: c.name,
+        months: buildCells(c.runs),
+        kind: "audit",
+        channel,
+      });
+    }
+  }
+
+  return rows;
+}
 
 export function useDashboardData({
   profile,
@@ -62,14 +126,12 @@ export function useDashboardData({
   setSelectedHotelId,
   heatMode,
   selectedYear,
-  channelFilter = "all",
 }: {
   profile: Profile | null;
   selectedHotelId: string | null;
   setSelectedHotelId: (s: string | null) => void;
   heatMode: HeatMode;
   selectedYear: number;
-  channelFilter?: ChannelFilter;
 }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -137,7 +199,6 @@ export function useDashboardData({
         }
 
         {
-          // ✅ audit_channel incluido en el select
           const { data: r, error: re } = await supabase
             .from("audit_runs")
             .select("id,hotel_id,area_id,audit_template_id,team_member_id,executed_at,executed_by,score,status,notes,audit_channel")
@@ -145,6 +206,13 @@ export function useDashboardData({
 
           if (re) throw re;
           if (!alive) return;
+
+          // ✅ DEBUG — ver en consola si audit_channel llega con valor
+          console.log("🔍 RUNS DEBUG:", (r ?? []).slice(0, 5).map((x: any) => ({
+            id: x.id,
+            audit_channel: x.audit_channel,
+          })));
+
           setRuns((r ?? []) as any);
         }
       } catch (e: any) {
@@ -158,99 +226,51 @@ export function useDashboardData({
     return () => { alive = false; };
   }, [profile, selectedHotelId, canChooseHotel]);
 
-  // ✅ Runs filtrados por canal — los runs sin audit_channel se tratan como "internal"
-  const filteredRuns = useMemo(() => {
-    if (channelFilter === "all") return runs;
-    return runs.filter((r) => (r.audit_channel ?? "internal") === channelFilter);
-  }, [runs, channelFilter]);
-
-  // years disponibles
   const availableYears = useMemo(() => {
     const ys = new Set<number>();
-    for (const r of filteredRuns) {
+    for (const r of runs) {
       if (!r.executed_at) continue;
       ys.add(new Date(r.executed_at).getFullYear());
     }
     if (ys.size === 0) ys.add(new Date().getFullYear());
     return Array.from(ys).sort((a, b) => b - a);
-  }, [filteredRuns]);
+  }, [runs]);
 
   const now = new Date();
   const thisYear = now.getFullYear();
   const thisMonth = now.getMonth();
   const thisQuarter = getCurrentQuarter();
 
-  // ✅ Todos los scores usan filteredRuns
-  const monthScore   = useMemo(() => getMonthScore(filteredRuns, thisYear, thisMonth),     [filteredRuns, thisYear, thisMonth]);
-  const quarterScore = useMemo(() => getQuarterScore(filteredRuns, thisYear, thisQuarter), [filteredRuns, thisYear, thisQuarter]);
-  const yearScore    = useMemo(() => getYearScore(filteredRuns, thisYear),                 [filteredRuns, thisYear]);
+  const monthScore   = useMemo(() => getMonthScore(runs, thisYear, thisMonth),     [runs, thisYear, thisMonth]);
+  const quarterScore = useMemo(() => getQuarterScore(runs, thisYear, thisQuarter), [runs, thisYear, thisQuarter]);
+  const yearScore    = useMemo(() => getYearScore(runs, thisYear),                 [runs, thisYear]);
 
   const monthLabels = useMemo(() => {
     return heatMode === "YEAR" ? buildMonthLabelsForYear() : buildMonthLabelsRolling12M();
   }, [heatMode]);
 
-  const heatMapData = useMemo(() => {
-    const slots = buildMonthSlots(heatMode, selectedYear);
+  const heatMapData = useMemo(() =>
+    buildHeatRows(areas, runs, templates, heatMode, selectedYear),
+    [areas, runs, templates, heatMode, selectedYear]
+  );
 
-    const buildCells = (subRuns: AuditRunRow[]) => {
-      const cells = slots.map((s) => {
-        const sc = getMonthScore(subRuns, s.year, s.month);
-        return { value: sc.avg, count: sc.count };
-      });
-      const media = heatMode === "YEAR" ? getYearAverage(subRuns, selectedYear) : getRolling12MScore(subRuns);
-      cells.push({ value: media.avg, count: media.count });
-      return cells;
-    };
+  const heatMapDataInternal = useMemo(() => {
+    const internal = runs.filter((r) => (r.audit_channel ?? "internal") === "internal");
+    console.log("🔵 INTERNAL runs:", internal.length, "de", runs.length);
+    return buildHeatRows(areas, internal, templates, heatMode, selectedYear, "internal");
+  }, [areas, runs, templates, heatMode, selectedYear]);
 
-    const tplById = new Map<string, TemplateRow>();
-    for (const t of templates) tplById.set(t.id, t);
-
-    const norm = (s: string) => (s ?? "").trim().replace(/\s+/g, " ").toLowerCase();
-
-    const rows: HeatRow[] = [];
-
-    for (const a of areas) {
-      const areaKey = `area:${a.id}`;
-      const areaRuns = filteredRuns.filter((r) => r.area_id === a.id);
-
-      rows.push({ key: areaKey, group: a.type ?? "—", label: a.name, months: buildCells(areaRuns), kind: "area" });
-
-      const buckets = new Map<string, { name: string; runs: AuditRunRow[] }>();
-      for (const r of areaRuns) {
-        const tid = r.audit_template_id;
-        if (!tid) continue;
-        const t = tplById.get(tid);
-        const name = (t?.name ?? "Auditoría").trim() || "Auditoría";
-        const k = norm(name);
-        if (!buckets.has(k)) buckets.set(k, { name, runs: [] });
-        buckets.get(k)!.runs.push(r);
-      }
-
-      const children = Array.from(buckets.values()).sort((x, y) => x.name.localeCompare(y.name, "es"));
-      for (const c of children) {
-        rows.push({
-          key: `${areaKey}:audit:${norm(c.name)}`,
-          parentKey: areaKey,
-          group: a.type ?? "—",
-          label: c.name,
-          months: buildCells(c.runs),
-          kind: "audit",
-        });
-      }
-    }
-
-    return rows;
-  }, [areas, filteredRuns, templates, heatMode, selectedYear]);
+  const heatMapDataQuality = useMemo(() => {
+    const quality = runs.filter((r) => r.audit_channel === "quality");
+    console.log("🔍 QUALITY runs:", quality.length, "de", runs.length);
+    return buildHeatRows(areas, quality, templates, heatMode, selectedYear, "quality");
+  }, [areas, runs, templates, heatMode, selectedYear]);
 
   const { top3Areas, worst3Areas } = useMemo(() => {
     const items: AreaRankingItem[] = areas.map((a) => {
-      const aruns = filteredRuns.filter((r) => r.area_id === a.id);
+      const aruns = runs.filter((r) => r.area_id === a.id);
       const yr = getYearAverage(aruns, selectedYear);
-      const trend = build3MonthTrendFromRuns(filteredRuns, a.id).map((p) => ({
-        key: p.key,
-        avg: p.avg,
-        count: p.count,
-      }));
+      const trend = build3MonthTrendFromRuns(runs, a.id).map((p) => ({ key: p.key, avg: p.avg, count: p.count }));
       return { areaId: a.id, areaName: a.name, avg: yr.avg, count: yr.count, trend3m: trend };
     });
 
@@ -258,7 +278,7 @@ export function useDashboardData({
     const top   = [...withAvg].sort((a, b) => (b.avg ?? -1) - (a.avg ?? -1)).slice(0, 3);
     const worst = [...withAvg].sort((a, b) => (a.avg ?? 999) - (b.avg ?? 999)).slice(0, 3);
     return { top3Areas: top, worst3Areas: worst };
-  }, [areas, filteredRuns, selectedYear]);
+  }, [areas, runs, selectedYear]);
 
   const worst3Audits = useMemo(() => {
     const tplById = new Map<string, TemplateRow>();
@@ -270,7 +290,7 @@ export function useDashboardData({
     const y = m.getFullYear();
     const month = m.getMonth();
 
-    const monthRuns = filteredRuns
+    const monthRuns = runs
       .filter((r) => r.executed_at)
       .filter((r) => {
         const d = new Date(r.executed_at!);
@@ -294,19 +314,20 @@ export function useDashboardData({
           executed_at: r.executed_at ?? null,
         } as WorstAuditItem;
       });
-  }, [filteredRuns, templates, areas]);
+  }, [runs, templates, areas]);
 
   return {
     loading,
     error,
     hotels,
     areas,
-    runs,          // ✅ runs crudos (sin filtrar) — por si el dashboard los necesita para otras cosas
-    filteredRuns,  // ✅ runs filtrados por canal
+    runs,
     monthScore,
     quarterScore,
     yearScore,
     heatMapData,
+    heatMapDataInternal,
+    heatMapDataQuality,
     monthLabels,
     availableYears,
     top3Areas,
