@@ -5,8 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { CSSProperties } from "react";
 import { useRouter } from "next/navigation";
 import { requireRoleOrRedirect } from "@/lib/auth/RequireRole";
-
-import type { Profile } from "./_lib/dashboardTypes";
+import type { Profile } from "@/lib/types";
 
 import DashboardShell, { buildCardStyle, buildGhostBtnStyle, buildMiniBtnStyle } from "./_components/DashboardShell";
 import DashboardTopBar from "./_components/DashboardTopBar";
@@ -26,14 +25,10 @@ export default function DashboardPage() {
   const [authLoading, setAuthLoading] = useState(true);
   const [authError, setAuthError] = useState<string | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
-
   const [selectedHotelId, setSelectedHotelId] = useState<string | null>(null);
-
-  // ✅ Heat controls
   const [heatMode, setHeatMode] = useState<HeatMode>("YEAR");
   const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
 
-  // 🎨 tokens
   const fg = "var(--text)";
   const bg = "var(--bg)";
   const inputBg = "var(--input-bg)";
@@ -46,12 +41,8 @@ export default function DashboardPage() {
 
   const card = useMemo(() => buildCardStyle({ fg, border, cardBg, shadowLg }), [fg, border, cardBg, shadowLg]);
   const miniBtn: CSSProperties = useMemo(() => buildMiniBtnStyle({ fg, border, inputBg }), [fg, border, inputBg]);
-  const ghostBtn: CSSProperties = useMemo(
-    () => buildGhostBtnStyle({ fg, border, inputBg, shadowSm }),
-    [fg, border, inputBg, shadowSm]
-  );
+  const ghostBtn: CSSProperties = useMemo(() => buildGhostBtnStyle({ fg, border, inputBg, shadowSm }), [fg, border, inputBg, shadowSm]);
 
-  // ✅ Auth
   useEffect(() => {
     let alive = true;
 
@@ -60,9 +51,12 @@ export default function DashboardPage() {
       setAuthError(null);
 
       try {
-        const p = (await requireRoleOrRedirect(router, ["admin", "manager", "auditor", "superadmin"], "/login")) as
-          | Profile
-          | null;
+        // ✅ cast correcto
+        const p = (await requireRoleOrRedirect(
+          router,
+          ["admin", "manager", "auditor", "superadmin", "quality"],
+          "/login"
+        )) as Profile | null;
 
         if (!alive || !p) return;
         setProfile(p);
@@ -85,12 +79,9 @@ export default function DashboardPage() {
       }
     })();
 
-    return () => {
-      alive = false;
-    };
+    return () => { alive = false; };
   }, [router]);
 
-  // ✅ Data
   const {
     loading,
     error,
@@ -111,7 +102,6 @@ export default function DashboardPage() {
     resetForHotelChange,
   } = useDashboardData({ profile, selectedHotelId, setSelectedHotelId, heatMode, selectedYear });
 
-  // si cambian años disponibles, ajusta selectedYear a uno existente
   useEffect(() => {
     if (!availableYears?.length) return;
     if (!availableYears.includes(selectedYear)) setSelectedYear(availableYears[0]);
@@ -148,7 +138,6 @@ export default function DashboardPage() {
     );
   }
 
-  // ✅ Superadmin sin hotel: selector
   if (profile?.role === "superadmin" && !selectedHotelId) {
     return (
       <>
@@ -206,7 +195,6 @@ export default function DashboardPage() {
         availableYears={availableYears}
       />
 
-      {/* ✅ RESTAURADO: rankings */}
       <AreaRankings
         card={card}
         rowBg={rowBg}
@@ -220,7 +208,6 @@ export default function DashboardPage() {
         selectedYear={selectedYear}
       />
 
-      {/* ✅ RESTAURADO: peores auditorías */}
       <WorstAuditsCard
         card={card}
         rowBg={rowBg}

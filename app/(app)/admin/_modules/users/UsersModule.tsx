@@ -9,7 +9,9 @@ type AreaRow = { id: string; name: string; type: string | null; hotel_id: string
 
 const HOTEL_KEY = "sc_hotel_id";
 const HOTEL_CHANGED_EVENT = "sc-hotel-changed";
-const EDITABLE_ROLES = ["admin", "manager", "auditor"] as const;
+
+// ✅ quality incluido
+const EDITABLE_ROLES = ["admin", "manager", "auditor", "quality"] as const;
 type EditableRole = (typeof EDITABLE_ROLES)[number];
 function isEditableRole(x: any): x is EditableRole { return EDITABLE_ROLES.includes(x); }
 
@@ -27,7 +29,8 @@ export default function UsersModule() {
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [createRole, setCreateRole] = useState<"auditor" | "manager" | "admin">("auditor");
+  // ✅ quality como opción por defecto disponible
+  const [createRole, setCreateRole] = useState<EditableRole>("auditor");
   const [createLoading, setCreateLoading] = useState(false);
   const [areasOpen, setAreasOpen] = useState(false);
   const [areasLoading, setAreasLoading] = useState(false);
@@ -171,6 +174,12 @@ export default function UsersModule() {
 
   const s = { btn: { padding: "10px 14px", borderRadius: 12, border: "1px solid var(--border)", background: "var(--card-bg)", fontWeight: 900, cursor: "pointer" } as React.CSSProperties };
 
+  // ✅ Badge de color por canal
+  const roleBadgeStyle = (role: Role): React.CSSProperties => {
+    if (role === "quality") return { fontSize: 12, fontWeight: 900, padding: "4px 8px", borderRadius: 999, border: "1px solid rgba(147,51,234,0.3)", background: "rgba(147,51,234,0.08)", color: "rgb(126,34,206)" };
+    return { fontSize: 12, fontWeight: 900, padding: "4px 8px", borderRadius: 999, border: "1px solid var(--border)", background: "rgba(0,0,0,0.03)" };
+  };
+
   return (
     <div>
       <div style={{ padding: 14, borderRadius: 14, background: "rgba(0,0,0,0.03)", border: "1px solid var(--border)", display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
@@ -178,8 +187,19 @@ export default function UsersModule() {
         <button onClick={() => { setError(""); setMessage(""); setCreateOpen(true); }} style={{ ...s.btn, background: "black", color: "white" }}>+ Crear usuario</button>
         <button onClick={loadUsers} style={s.btn}>Recargar</button>
         <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Buscar por nombre, email, rol o ID..." style={{ flex: 1, minWidth: 260, padding: "10px 12px", borderRadius: 12, border: "1px solid var(--border)", background: "var(--card-bg)" }} />
-        <select value={roleFilter} onChange={(e) => setRoleFilter(e.target.value as any)} style={{ ...s.btn }}><option value="all">Todos los roles</option><option value="admin">admin</option><option value="manager">manager</option><option value="auditor">auditor</option></select>
-        <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as any)} style={{ ...s.btn }}><option value="all">Todos</option><option value="active">Activos</option><option value="inactive">Inactivos</option></select>
+        {/* ✅ quality en filtro */}
+        <select value={roleFilter} onChange={(e) => setRoleFilter(e.target.value as any)} style={{ ...s.btn }}>
+          <option value="all">Todos los roles</option>
+          <option value="admin">admin</option>
+          <option value="manager">manager</option>
+          <option value="auditor">auditor</option>
+          <option value="quality">quality</option>
+        </select>
+        <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as any)} style={{ ...s.btn }}>
+          <option value="all">Todos</option>
+          <option value="active">Activos</option>
+          <option value="inactive">Inactivos</option>
+        </select>
       </div>
 
       {error && <div style={{ marginTop: 14, padding: 12, borderRadius: 12, border: "1px solid rgba(220,0,0,0.35)", background: "rgba(220,0,0,0.06)", color: "crimson", fontWeight: 900 }}>{error}</div>}
@@ -199,7 +219,8 @@ export default function UsersModule() {
               <div style={{ minWidth: 260 }}>
                 <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
                   <div style={{ fontWeight: 900 }}>{u.full_name ?? "Sin nombre"}</div>
-                  <span style={{ fontSize: 12, fontWeight: 900, padding: "4px 8px", borderRadius: 999, border: "1px solid var(--border)", background: "rgba(0,0,0,0.03)" }}>{u.role}</span>
+                  {/* ✅ badge especial para quality */}
+                  <span style={roleBadgeStyle(u.role)}>{u.role}{u.role === "quality" ? " 🔍" : ""}</span>
                   <span style={{ fontSize: 12, fontWeight: 900, padding: "4px 8px", borderRadius: 999, border: "1px solid var(--border)", background: isActive ? "rgba(0,200,0,0.10)" : "rgba(0,0,0,0.04)", color: isActive ? "green" : "var(--muted)" }}>{isActive ? "ACTIVO" : "INACTIVO"}</span>
                 </div>
                 <div style={{ marginTop: 6, fontSize: 12, color: "var(--muted)" }}>ID: {u.id}{u.email ? <> · {u.email}</> : null}</div>
@@ -208,11 +229,17 @@ export default function UsersModule() {
                 {u.role === "superadmin" ? (
                   <span style={{ padding: "8px 10px", borderRadius: 10, border: "1px solid var(--border)", background: "rgba(0,0,0,0.03)", fontWeight: 900, opacity: 0.8 }}>superadmin 🔒</span>
                 ) : (
-                  <select value={isEditableRole(u.role) ? u.role : "admin"} disabled={disabled} onChange={(e) => { const next = e.target.value; if (!isEditableRole(next)) { setError("No se puede asignar superadmin."); return; } updateUserRole(u.id, next); }} style={{ ...s.btn, cursor: disabled ? "not-allowed" : "pointer", opacity: disabled ? 0.6 : 1 }}>
-                    <option value="admin">admin</option><option value="manager">manager</option><option value="auditor">auditor</option>
+                  <select value={isEditableRole(u.role) ? u.role : "auditor"} disabled={disabled} onChange={(e) => { const next = e.target.value; if (!isEditableRole(next)) { setError("Rol no válido."); return; } updateUserRole(u.id, next); }} style={{ ...s.btn, cursor: disabled ? "not-allowed" : "pointer", opacity: disabled ? 0.6 : 1 }}>
+                    <option value="admin">admin</option>
+                    <option value="manager">manager</option>
+                    <option value="auditor">auditor</option>
+                    <option value="quality">quality 🔍</option>
                   </select>
                 )}
-                {(u.role === "manager" || u.role === "auditor") && <button disabled={disabled} onClick={() => openAreasModal(u)} style={{ ...s.btn, cursor: disabled ? "not-allowed" : "pointer", opacity: disabled ? 0.6 : 1 }}>Áreas</button>}
+                {/* ✅ quality también puede tener acceso por áreas */}
+                {(u.role === "manager" || u.role === "auditor" || u.role === "quality") && (
+                  <button disabled={disabled} onClick={() => openAreasModal(u)} style={{ ...s.btn, cursor: disabled ? "not-allowed" : "pointer", opacity: disabled ? 0.6 : 1 }}>Áreas</button>
+                )}
                 <button disabled={disabled || u.role === "superadmin"} onClick={() => setActive(u.id, !isActive)} style={{ ...s.btn, cursor: disabled ? "not-allowed" : "pointer", opacity: disabled || u.role === "superadmin" ? 0.6 : 1 }}>{isActive ? "Desactivar" : "Activar"}</button>
                 <button disabled={disabled || u.role === "superadmin"} onClick={() => softDelete(u.id)} style={{ ...s.btn, border: "1px solid rgba(220,0,0,0.35)", background: "rgba(220,0,0,0.06)", color: "crimson", cursor: disabled ? "not-allowed" : "pointer", opacity: disabled || u.role === "superadmin" ? 0.6 : 1 }}>Borrar</button>
               </div>
@@ -235,9 +262,19 @@ export default function UsersModule() {
                 ))}
                 <div>
                   <label style={{ fontWeight: 800, fontSize: 13 }}>Rol</label>
-                  <select value={createRole} onChange={(e) => setCreateRole(e.target.value as any)} style={{ width: "100%", marginTop: 6, padding: 10, borderRadius: 10, border: "1px solid var(--border)", background: "var(--card-bg)", fontWeight: 900 }}>
-                    <option value="auditor">Auditor</option><option value="manager">Manager</option><option value="admin">Admin</option>
+                  <select value={createRole} onChange={(e) => setCreateRole(e.target.value as EditableRole)} style={{ width: "100%", marginTop: 6, padding: 10, borderRadius: 10, border: "1px solid var(--border)", background: "var(--card-bg)", fontWeight: 900 }}>
+                    <option value="auditor">Auditor — Equipo operativo</option>
+                    <option value="manager">Manager — Supervisor</option>
+                    <option value="admin">Admin — Administrador</option>
+                    {/* ✅ quality como opción */}
+                    <option value="quality">Quality 🔍 — Depto. de Calidad</option>
                   </select>
+                  {/* ✅ aviso contextual para quality */}
+                  {createRole === "quality" && (
+                    <div style={{ marginTop: 8, padding: "8px 12px", borderRadius: 10, background: "rgba(147,51,234,0.06)", border: "1px solid rgba(147,51,234,0.2)", fontSize: 12, fontWeight: 700, color: "rgb(126,34,206)" }}>
+                      Las auditorías de este usuario se registrarán como canal <strong>Quality</strong>, separadas de las auditorías internas.
+                    </div>
+                  )}
                 </div>
                 <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
                   <button type="button" disabled={createLoading} onClick={() => setCreateOpen(false)} style={{ ...s.btn, background: "rgba(0,0,0,0.03)", opacity: createLoading ? 0.6 : 1 }}>Cancelar</button>

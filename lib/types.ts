@@ -1,8 +1,4 @@
-// lib/types.ts
-// Tipos compartidos en toda la aplicación.
-// Importar desde aquí en lugar de definir localmente en cada página.
-
-export type Role = "superadmin" | "admin" | "manager" | "auditor";
+export type Role = "superadmin" | "admin" | "manager" | "auditor" | "quality";
 
 export type Profile = {
   id: string;

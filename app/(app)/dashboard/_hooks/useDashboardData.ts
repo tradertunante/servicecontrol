@@ -53,18 +53,23 @@ export type WorstAuditItem = {
   executed_at: string | null;
 };
 
+// ✅ Tipo para el filtro de canal
+export type ChannelFilter = "all" | "internal" | "quality";
+
 export function useDashboardData({
   profile,
   selectedHotelId,
   setSelectedHotelId,
   heatMode,
   selectedYear,
+  channelFilter = "all",
 }: {
   profile: Profile | null;
   selectedHotelId: string | null;
   setSelectedHotelId: (s: string | null) => void;
   heatMode: HeatMode;
   selectedYear: number;
+  channelFilter?: ChannelFilter;
 }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -88,10 +93,7 @@ export function useDashboardData({
 
     (async () => {
       if (!profile) return;
-      if (!selectedHotelId) {
-        setLoading(false);
-        return;
-      }
+      if (!selectedHotelId) { setLoading(false); return; }
 
       setLoading(true);
       setError(null);
@@ -135,9 +137,10 @@ export function useDashboardData({
         }
 
         {
+          // ✅ audit_channel incluido en el select
           const { data: r, error: re } = await supabase
             .from("audit_runs")
-            .select("id,hotel_id,area_id,audit_template_id,team_member_id,executed_at,executed_by,score,status,notes")
+            .select("id,hotel_id,area_id,audit_template_id,team_member_id,executed_at,executed_by,score,status,notes,audit_channel")
             .eq("hotel_id", selectedHotelId);
 
           if (re) throw re;
@@ -152,38 +155,40 @@ export function useDashboardData({
       }
     })();
 
-    return () => {
-      alive = false;
-    };
+    return () => { alive = false; };
   }, [profile, selectedHotelId, canChooseHotel]);
 
-  // years disponibles (por runs)
+  // ✅ Runs filtrados por canal — los runs sin audit_channel se tratan como "internal"
+  const filteredRuns = useMemo(() => {
+    if (channelFilter === "all") return runs;
+    return runs.filter((r) => (r.audit_channel ?? "internal") === channelFilter);
+  }, [runs, channelFilter]);
+
+  // years disponibles
   const availableYears = useMemo(() => {
     const ys = new Set<number>();
-    for (const r of runs) {
+    for (const r of filteredRuns) {
       if (!r.executed_at) continue;
       ys.add(new Date(r.executed_at).getFullYear());
     }
     if (ys.size === 0) ys.add(new Date().getFullYear());
     return Array.from(ys).sort((a, b) => b - a);
-  }, [runs]);
+  }, [filteredRuns]);
 
-  // scores top (siempre del año actual real, para las 3 gauges de arriba)
   const now = new Date();
   const thisYear = now.getFullYear();
   const thisMonth = now.getMonth();
   const thisQuarter = getCurrentQuarter();
 
-  const monthScore = useMemo(() => getMonthScore(runs, thisYear, thisMonth), [runs, thisYear, thisMonth]);
-  const quarterScore = useMemo(() => getQuarterScore(runs, thisYear, thisQuarter), [runs, thisYear, thisQuarter]);
-  const yearScore = useMemo(() => getYearScore(runs, thisYear), [runs, thisYear]);
+  // ✅ Todos los scores usan filteredRuns
+  const monthScore   = useMemo(() => getMonthScore(filteredRuns, thisYear, thisMonth),     [filteredRuns, thisYear, thisMonth]);
+  const quarterScore = useMemo(() => getQuarterScore(filteredRuns, thisYear, thisQuarter), [filteredRuns, thisYear, thisQuarter]);
+  const yearScore    = useMemo(() => getYearScore(filteredRuns, thisYear),                 [filteredRuns, thisYear]);
 
-  // labels según modo
   const monthLabels = useMemo(() => {
     return heatMode === "YEAR" ? buildMonthLabelsForYear() : buildMonthLabelsRolling12M();
   }, [heatMode]);
 
-  // ✅ heatMapData jerárquico: área (parent) + auditorías (children agrupadas por nombre)
   const heatMapData = useMemo(() => {
     const slots = buildMonthSlots(heatMode, selectedYear);
 
@@ -192,7 +197,6 @@ export function useDashboardData({
         const sc = getMonthScore(subRuns, s.year, s.month);
         return { value: sc.avg, count: sc.count };
       });
-
       const media = heatMode === "YEAR" ? getYearAverage(subRuns, selectedYear) : getRolling12MScore(subRuns);
       cells.push({ value: media.avg, count: media.count });
       return cells;
@@ -201,42 +205,28 @@ export function useDashboardData({
     const tplById = new Map<string, TemplateRow>();
     for (const t of templates) tplById.set(t.id, t);
 
-    const norm = (s: string) =>
-      (s ?? "")
-        .trim()
-        .replace(/\s+/g, " ")
-        .toLowerCase();
+    const norm = (s: string) => (s ?? "").trim().replace(/\s+/g, " ").toLowerCase();
 
     const rows: HeatRow[] = [];
 
     for (const a of areas) {
       const areaKey = `area:${a.id}`;
-      const areaRuns = runs.filter((r) => r.area_id === a.id);
+      const areaRuns = filteredRuns.filter((r) => r.area_id === a.id);
 
-      rows.push({
-        key: areaKey,
-        group: a.type ?? "—",
-        label: a.name,
-        months: buildCells(areaRuns),
-        kind: "area",
-      });
+      rows.push({ key: areaKey, group: a.type ?? "—", label: a.name, months: buildCells(areaRuns), kind: "area" });
 
       const buckets = new Map<string, { name: string; runs: AuditRunRow[] }>();
-
       for (const r of areaRuns) {
         const tid = r.audit_template_id;
         if (!tid) continue;
-
         const t = tplById.get(tid);
         const name = (t?.name ?? "Auditoría").trim() || "Auditoría";
         const k = norm(name);
-
         if (!buckets.has(k)) buckets.set(k, { name, runs: [] });
         buckets.get(k)!.runs.push(r);
       }
 
       const children = Array.from(buckets.values()).sort((x, y) => x.name.localeCompare(y.name, "es"));
-
       for (const c of children) {
         rows.push({
           key: `${areaKey}:audit:${norm(c.name)}`,
@@ -250,41 +240,29 @@ export function useDashboardData({
     }
 
     return rows;
-  }, [areas, runs, templates, heatMode, selectedYear]);
+  }, [areas, filteredRuns, templates, heatMode, selectedYear]);
 
-  // ✅ Rankings por ÁREA (basado en selectedYear)
   const { top3Areas, worst3Areas } = useMemo(() => {
     const items: AreaRankingItem[] = areas.map((a) => {
-      const aruns = runs.filter((r) => r.area_id === a.id);
+      const aruns = filteredRuns.filter((r) => r.area_id === a.id);
       const yr = getYearAverage(aruns, selectedYear);
-
-      const trend = build3MonthTrendFromRuns(runs, a.id).map((p) => ({
+      const trend = build3MonthTrendFromRuns(filteredRuns, a.id).map((p) => ({
         key: p.key,
         avg: p.avg,
         count: p.count,
       }));
-
-      return {
-        areaId: a.id,
-        areaName: a.name,
-        avg: yr.avg,
-        count: yr.count,
-        trend3m: trend,
-      };
+      return { areaId: a.id, areaName: a.name, avg: yr.avg, count: yr.count, trend3m: trend };
     });
 
     const withAvg = items.filter((x) => typeof x.avg === "number");
-    const top = [...withAvg].sort((a, b) => (b.avg ?? -1) - (a.avg ?? -1)).slice(0, 3);
+    const top   = [...withAvg].sort((a, b) => (b.avg ?? -1) - (a.avg ?? -1)).slice(0, 3);
     const worst = [...withAvg].sort((a, b) => (a.avg ?? 999) - (b.avg ?? 999)).slice(0, 3);
-
     return { top3Areas: top, worst3Areas: worst };
-  }, [areas, runs, selectedYear]);
+  }, [areas, filteredRuns, selectedYear]);
 
-  // ✅ Worst 3 audits (mes ACTUAL real)
   const worst3Audits = useMemo(() => {
     const tplById = new Map<string, TemplateRow>();
     for (const t of templates) tplById.set(t.id, t);
-
     const areaById = new Map<string, AreaRow>();
     for (const a of areas) areaById.set(a.id, a);
 
@@ -292,25 +270,21 @@ export function useDashboardData({
     const y = m.getFullYear();
     const month = m.getMonth();
 
-    const monthRuns = runs
+    const monthRuns = filteredRuns
       .filter((r) => r.executed_at)
       .filter((r) => {
         const d = new Date(r.executed_at!);
         return d.getFullYear() === y && d.getMonth() === month;
       })
-      .map((r) => ({
-        r,
-        score: Number(r.score),
-      }))
+      .map((r) => ({ r, score: Number(r.score) }))
       .filter((x) => Number.isFinite(x.score));
 
-    const worst = monthRuns
+    return monthRuns
       .sort((a, b) => a.score - b.score)
       .slice(0, 3)
       .map(({ r }) => {
         const a = areaById.get(r.area_id);
         const t = tplById.get(r.audit_template_id);
-
         return {
           areaId: r.area_id,
           areaName: a?.name ?? "Área",
@@ -320,16 +294,15 @@ export function useDashboardData({
           executed_at: r.executed_at ?? null,
         } as WorstAuditItem;
       });
-
-    return worst;
-  }, [runs, templates, areas]);
+  }, [filteredRuns, templates, areas]);
 
   return {
     loading,
     error,
     hotels,
     areas,
-    runs,
+    runs,          // ✅ runs crudos (sin filtrar) — por si el dashboard los necesita para otras cosas
+    filteredRuns,  // ✅ runs filtrados por canal
     monthScore,
     quarterScore,
     yearScore,
