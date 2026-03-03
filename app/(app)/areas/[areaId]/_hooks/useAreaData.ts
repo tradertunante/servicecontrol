@@ -54,7 +54,12 @@ export function useAreaData({
       setError(null);
 
       try {
-        const p = await requireRoleOrRedirect(router, ["admin", "manager", "auditor", "superadmin"], "/areas");
+        // ✅ quality incluido
+        const p = await requireRoleOrRedirect(
+          router,
+          ["admin", "manager", "auditor", "superadmin", "quality"],
+          "/areas"
+        );
         if (!p) return;
         setProfile(p);
 
@@ -113,9 +118,9 @@ export function useAreaData({
 
         // 4) Nombres templates
         if (templateIds.length) {
-          const { data: tplData, error: tplErr } = await supabase.from("audit_templates").select("id,name").in("id", templateIds);
+          const { data: tplData, error: tplErr } = await supabase
+            .from("audit_templates").select("id,name").in("id", templateIds);
           if (tplErr) throw tplErr;
-
           const map: Record<string, string> = {};
           for (const row of (tplData ?? []) as any[]) map[row.id] = row.name;
           setTemplateNameById(map);
@@ -123,7 +128,8 @@ export function useAreaData({
 
         // 5) Nombres ejecutores
         if (executorIds.length) {
-          const { data: pData, error: pErr } = await supabase.from("profiles").select("id,full_name").in("id", executorIds);
+          const { data: pData, error: pErr } = await supabase
+            .from("profiles").select("id,full_name").in("id", executorIds);
           if (!pErr && pData) {
             const map: Record<string, string> = {};
             for (const row of pData as any[]) map[row.id] = row.full_name ?? row.id;
@@ -135,8 +141,7 @@ export function useAreaData({
         if (templateIds.length) {
           const { data: qData, error: qErr } = await supabase
             .from("audit_questions")
-            .select(
-              `
+            .select(`
               id,
               active,
               audit_section_id,
@@ -145,8 +150,7 @@ export function useAreaData({
                 name,
                 audit_template_id
               )
-            `
-            )
+            `)
             .in("audit_sections.audit_template_id", templateIds)
             .eq("active", true);
 
@@ -169,7 +173,7 @@ export function useAreaData({
           setTotalsByTemplate(totals);
         }
 
-        // 7) Answers + meta preguntas (✅ ahora incluye tag/classification)
+        // 7) Answers + meta preguntas
         if (runIds.length) {
           const { data: aData, error: aErr } = await supabase
             .from("audit_answers")
@@ -193,8 +197,7 @@ export function useAreaData({
           if (questionIds.length) {
             const { data: q2Data, error: q2Err } = await supabase
               .from("audit_questions")
-              .select(
-                `
+              .select(`
                 id,
                 text,
                 tag,
@@ -204,8 +207,7 @@ export function useAreaData({
                   id,
                   name
                 )
-              `
-              )
+              `)
               .in("id", questionIds);
 
             if (q2Err) throw q2Err;
@@ -267,11 +269,13 @@ export function useAreaData({
       if (userErr || !user) throw userErr ?? new Error("No hay sesión activa.");
 
       const nowIso = new Date().toISOString();
-
       const hotelIdFromLocalStorage = typeof window !== "undefined" ? localStorage.getItem(HOTEL_KEY) : null;
       const hotelIdToUse = area?.hotel_id ?? profile?.hotel_id ?? hotelIdFromLocalStorage;
 
       if (!hotelIdToUse) throw new Error("No se pudo determinar el hotel_id para crear la auditoría.");
+
+      // ✅ canal según rol del usuario
+      const channel: "quality" | "internal" = profile.role === "quality" ? "quality" : "internal";
 
       const { data, error } = await supabase
         .from("audit_runs")
@@ -284,6 +288,7 @@ export function useAreaData({
           notes: null,
           executed_at: nowIso,
           executed_by: user.id,
+          audit_channel: channel,  // ✅ nuevo campo
         })
         .select("id")
         .single();
@@ -318,22 +323,16 @@ export function useAreaData({
     loading,
     error,
     starting,
-
     profile,
     area,
-
     templates,
     runs,
-
     templateNameById,
     executorNameById,
-
     totalsByTemplate,
     exceptionsByRun,
-
     answersByRun,
     questionMetaById,
-
     handleStart,
     removeRunEverywhere,
   };

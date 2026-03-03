@@ -78,11 +78,18 @@ export default function NewUserPage() {
         <button type="button" onClick={() => setShowPasswords((v) => !v)} style={{ padding: 12, fontWeight: 900 }}>{showPasswords ? "Ocultar contraseñas" : "Mostrar contraseñas"}</button>
         {!passwordStrongEnough && password.length > 0 && <div style={{ color: "#b00020", fontWeight: 800 }}>La contraseña debe tener al menos 8 caracteres.</div>}
         {password2.length > 0 && !passwordsMatch && <div style={{ color: "#b00020", fontWeight: 800 }}>Las contraseñas no coinciden.</div>}
+        {/* ✅ quality incluido */}
         <select value={role} onChange={(e) => setRole(e.target.value as Role)} style={{ padding: 12 }}>
-          <option value="auditor">auditor</option>
-          <option value="manager">manager</option>
-          <option value="admin">admin</option>
+          <option value="auditor">auditor — Equipo operativo</option>
+          <option value="manager">manager — Supervisor</option>
+          <option value="admin">admin — Administrador</option>
+          <option value="quality">quality 🔍 — Depto. de Calidad</option>
         </select>
+        {role === "quality" && (
+          <div style={{ padding: "8px 12px", borderRadius: 10, background: "rgba(147,51,234,0.06)", border: "1px solid rgba(147,51,234,0.2)", fontSize: 13, fontWeight: 700, color: "rgb(126,34,206)" }}>
+            Sus auditorías se registrarán como canal <strong>Quality</strong>, separadas de las auditorías internas del equipo.
+          </div>
+        )}
         <button onClick={handleCreate} disabled={!canSubmit} style={{ padding: 14, fontWeight: 900, opacity: canSubmit ? 1 : 0.5, cursor: canSubmit ? "pointer" : "not-allowed" }}>{busy ? "Creando..." : "Crear usuario"}</button>
         <BackButton />
       </div>

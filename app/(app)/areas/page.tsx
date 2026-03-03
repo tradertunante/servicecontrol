@@ -32,7 +32,12 @@ export default function AreasPage() {
     (async () => {
       setLoading(true); setError(null);
       try {
-        const p = (await requireRoleOrRedirect(router, ["admin", "manager", "auditor", "superadmin"], "/login")) as Profile | null;
+        // ✅ quality incluido
+        const p = (await requireRoleOrRedirect(
+          router,
+          ["admin", "manager", "auditor", "superadmin", "quality"],
+          "/login"
+        )) as Profile | null;
         if (!alive || !p) return;
         setProfile(p);
 
@@ -67,19 +72,36 @@ export default function AreasPage() {
       if (!profile || !hotelId) return;
       setLoading(true); setError(null);
       try {
-        const isAdminLike = profile.role === "admin" || profile.role === "manager" || profile.role === "superadmin";
+        // ✅ admin, manager, superadmin y quality ven todas las áreas
+        // auditor solo ve sus áreas asignadas
+        const isAdminLike = profile.role === "admin" || profile.role === "manager" ||
+                            profile.role === "superadmin" || profile.role === "quality";
         let areasList: AreaRow[] = [];
 
         if (isAdminLike) {
-          const { data, error: aErr } = await supabase.from("areas").select("id,name,type,hotel_id,created_at").eq("hotel_id", hotelId).order("created_at", { ascending: false });
+          const { data, error: aErr } = await supabase
+            .from("areas")
+            .select("id,name,type,hotel_id,created_at")
+            .eq("hotel_id", hotelId)
+            .order("created_at", { ascending: false });
           if (aErr) throw aErr;
           areasList = (data ?? []) as AreaRow[];
         } else {
-          const { data: accessData, error: accessErr } = await supabase.from("user_area_access").select("area_id").eq("user_id", profile.id).eq("hotel_id", hotelId);
+          // auditor: solo áreas asignadas
+          const { data: accessData, error: accessErr } = await supabase
+            .from("user_area_access")
+            .select("area_id")
+            .eq("user_id", profile.id)
+            .eq("hotel_id", hotelId);
           if (accessErr) throw accessErr;
           const allowedIds = (accessData ?? []).map((r: any) => r.area_id).filter(Boolean);
           if (allowedIds.length > 0) {
-            const { data: areasData, error: areasErr } = await supabase.from("areas").select("id,name,type,hotel_id,created_at").eq("hotel_id", hotelId).in("id", allowedIds).order("created_at", { ascending: false });
+            const { data: areasData, error: areasErr } = await supabase
+              .from("areas")
+              .select("id,name,type,hotel_id,created_at")
+              .eq("hotel_id", hotelId)
+              .in("id", allowedIds)
+              .order("created_at", { ascending: false });
             if (areasErr) throw areasErr;
             areasList = (areasData ?? []) as AreaRow[];
           }
@@ -114,12 +136,21 @@ export default function AreasPage() {
           </div>
           <div className="topActions">
             <button type="button" onClick={() => router.back()} className="btn">← Atrás</button>
-            {canManage && <button type="button" onClick={() => router.push("/admin/areas")} className="btn" title="Gestionar áreas">Gestionar</button>}
+            {canManage && (
+              <button type="button" onClick={() => router.push("/admin/areas")} className="btn" title="Gestionar áreas">
+                Gestionar
+              </button>
+            )}
           </div>
         </div>
 
         <div className="searchRow">
-          <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Buscar por nombre, tipo o ID…" className="searchInput" />
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Buscar por nombre, tipo o ID…"
+            className="searchInput"
+          />
         </div>
 
         {loading && <div style={{ marginTop: 14, opacity: 0.8 }}>Cargando…</div>}
@@ -130,7 +161,9 @@ export default function AreasPage() {
             {filtered.length === 0 ? (
               <div className="card">
                 <div style={{ fontWeight: 950 }}>No hay áreas</div>
-                <div style={{ marginTop: 6, opacity: 0.75 }}>{query.trim() ? "No hay resultados para tu búsqueda." : "Este hotel todavía no tiene áreas creadas."}</div>
+                <div style={{ marginTop: 6, opacity: 0.75 }}>
+                  {query.trim() ? "No hay resultados para tu búsqueda." : "Este hotel todavía no tiene áreas creadas."}
+                </div>
               </div>
             ) : (
               filtered.map((a) => (
@@ -140,7 +173,11 @@ export default function AreasPage() {
                     <div className="chips">
                       <span className="chip">{a.type ?? "Sin tipo"}</span>
                       <span className="metaSmall">ID: <span className="mono">{a.id}</span></span>
-                      {a.created_at ? <span className="metaSmall">Creada: <span>{new Date(a.created_at).toLocaleDateString("es-ES", { day: "2-digit", month: "short", year: "numeric" })}</span></span> : null}
+                      {a.created_at ? (
+                        <span className="metaSmall">
+                          Creada: <span>{new Date(a.created_at).toLocaleDateString("es-ES", { day: "2-digit", month: "short", year: "numeric" })}</span>
+                        </span>
+                      ) : null}
                     </div>
                   </div>
                   <div className="itemActions">

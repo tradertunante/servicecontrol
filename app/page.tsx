@@ -4,18 +4,24 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
-import type { Role, Profile } from "@/lib/types";
+
+type Role = "admin" | "manager" | "auditor" | "superadmin" | "quality";
+
+type Profile = {
+  id: string;
+  full_name: string | null;
+  role: Role;
+  hotel_id: string | null;
+  active?: boolean | null;
+};
 
 function cleanRole(input: any): Role {
-  const r = String(input ?? "")
-    .trim()
-    .toLowerCase();
-
+  const r = String(input ?? "").trim().toLowerCase();
   if (r === "superadmin") return "superadmin";
   if (r === "admin") return "admin";
   if (r === "manager") return "manager";
   if (r === "auditor") return "auditor";
-
+  if (r === "quality") return "quality";
   return "auditor";
 }
 
@@ -88,17 +94,21 @@ export default function HomePage() {
 
         setDebug(`uid=${uid} role_raw=${String(prof.role)} role_clean=${role}`);
 
+        // 3) Redirección por rol
         if (profile.role === "superadmin") {
           router.replace("/superadmin");
           return;
         }
 
+        // ✅ solo auditor va a /areas (filtra sus áreas asignadas ahí)
         if (profile.role === "auditor") {
-          router.replace("/audits");
+          router.replace("/areas");
           return;
         }
 
+        // ✅ admin, manager y quality van al dashboard
         router.replace("/dashboard");
+
       } catch (e: any) {
         console.error("[HOME] Error real:", e);
         if (!alive) return;
@@ -132,7 +142,17 @@ export default function HomePage() {
         <p style={{ color: "crimson", marginTop: 12 }}>{error}</p>
 
         {!!debug && (
-          <pre style={{ marginTop: 12, padding: 12, borderRadius: 12, background: "rgba(0,0,0,0.05)", border: "1px solid rgba(0,0,0,0.12)", whiteSpace: "pre-wrap", fontWeight: 700 }}>
+          <pre
+            style={{
+              marginTop: 12,
+              padding: 12,
+              borderRadius: 12,
+              background: "rgba(0,0,0,0.05)",
+              border: "1px solid rgba(0,0,0,0.12)",
+              whiteSpace: "pre-wrap",
+              fontWeight: 700,
+            }}
+          >
             {debug}
           </pre>
         )}
@@ -142,7 +162,15 @@ export default function HomePage() {
             await supabase.auth.signOut();
             router.replace("/login");
           }}
-          style={{ marginTop: 14, padding: "10px 14px", borderRadius: 12, border: "1px solid rgba(0,0,0,0.15)", background: "#fff", fontWeight: 900, cursor: "pointer" }}
+          style={{
+            marginTop: 14,
+            padding: "10px 14px",
+            borderRadius: 12,
+            border: "1px solid rgba(0,0,0,0.15)",
+            background: "#fff",
+            fontWeight: 900,
+            cursor: "pointer",
+          }}
         >
           Volver a login
         </button>
