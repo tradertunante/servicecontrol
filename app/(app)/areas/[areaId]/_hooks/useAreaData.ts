@@ -1,4 +1,3 @@
-// FILE: app/(app)/areas/[areaId]/_hooks/useAreaData.ts
 "use client";
 
 import { useEffect, useState } from "react";
@@ -41,7 +40,9 @@ export function useAreaData({
   const [templateNameById, setTemplateNameById] = useState<Record<string, string>>({});
   const [executorNameById, setExecutorNameById] = useState<Record<string, string>>({});
   const [totalsByTemplate, setTotalsByTemplate] = useState<Record<string, Record<string, SectionTotal>>>({});
-  const [exceptionsByRun, setExceptionsByRun] = useState<Record<string, Record<string, { fail: number; na: number }>>>({});
+  const [exceptionsByRun, setExceptionsByRun] = useState<Record<string, Record<string, { fail: number; na: number }>>>(
+    {}
+  );
 
   const [answersByRun, setAnswersByRun] = useState<Record<string, AnswerRow[]>>({});
   const [questionMetaById, setQuestionMetaById] = useState<Record<string, QuestionMeta>>({});
@@ -54,7 +55,7 @@ export function useAreaData({
       setError(null);
 
       try {
-        // ✅ quality incluido
+        // ✅ incluye quality
         const p = await requireRoleOrRedirect(
           router,
           ["admin", "manager", "auditor", "superadmin", "quality"],
@@ -63,7 +64,10 @@ export function useAreaData({
         if (!p) return;
         setProfile(p);
 
-        const allowed = p.role === "superadmin" ? true : canRunAudits(p.role);
+        // ✅ permitir quality aunque canRunAudits no lo contemple
+        const allowed =
+          p.role === "superadmin" ? true : canRunAudits(p.role) || p.role === "quality";
+
         if (!allowed) {
           setError("No tienes permisos para acceder a esta sección.");
           setLoading(false);
@@ -119,8 +123,12 @@ export function useAreaData({
         // 4) Nombres templates
         if (templateIds.length) {
           const { data: tplData, error: tplErr } = await supabase
-            .from("audit_templates").select("id,name").in("id", templateIds);
+            .from("audit_templates")
+            .select("id,name")
+            .in("id", templateIds);
+
           if (tplErr) throw tplErr;
+
           const map: Record<string, string> = {};
           for (const row of (tplData ?? []) as any[]) map[row.id] = row.name;
           setTemplateNameById(map);
@@ -129,7 +137,10 @@ export function useAreaData({
         // 5) Nombres ejecutores
         if (executorIds.length) {
           const { data: pData, error: pErr } = await supabase
-            .from("profiles").select("id,full_name").in("id", executorIds);
+            .from("profiles")
+            .select("id,full_name")
+            .in("id", executorIds);
+
           if (!pErr && pData) {
             const map: Record<string, string> = {};
             for (const row of pData as any[]) map[row.id] = row.full_name ?? row.id;
@@ -166,7 +177,13 @@ export function useAreaData({
             if (!tplId || !secId) continue;
 
             if (!totals[tplId]) totals[tplId] = {};
-            if (!totals[tplId][secId]) totals[tplId][secId] = { section_id: secId, section_name: secName, total_questions: 0 };
+            if (!totals[tplId][secId]) {
+              totals[tplId][secId] = {
+                section_id: secId,
+                section_name: secName,
+                total_questions: 0,
+              };
+            }
             totals[tplId][secId].total_questions += 1;
           }
 
@@ -254,6 +271,7 @@ export function useAreaData({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [areaId, router]);
 
+  // ✅ FIX: crear auditoría con audit_channel válido (internal | quality)
   async function handleStart(templateId: string) {
     if (!profile || !areaId) return;
 
@@ -270,11 +288,11 @@ export function useAreaData({
 
       const nowIso = new Date().toISOString();
       const hotelIdFromLocalStorage = typeof window !== "undefined" ? localStorage.getItem(HOTEL_KEY) : null;
+
       const hotelIdToUse = area?.hotel_id ?? profile?.hotel_id ?? hotelIdFromLocalStorage;
 
       if (!hotelIdToUse) throw new Error("No se pudo determinar el hotel_id para crear la auditoría.");
 
-      // ✅ canal según rol del usuario
       const channel: "quality" | "internal" = profile.role === "quality" ? "quality" : "internal";
 
       const { data, error } = await supabase
@@ -288,7 +306,7 @@ export function useAreaData({
           notes: null,
           executed_at: nowIso,
           executed_by: user.id,
-          audit_channel: channel,  // ✅ nuevo campo
+          audit_channel: channel, // ✅ CLAVE
         })
         .select("id")
         .single();
