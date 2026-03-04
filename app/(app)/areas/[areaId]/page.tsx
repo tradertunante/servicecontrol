@@ -67,7 +67,7 @@ export default function AreaPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [templateFilter, period, tab, areaId]);
 
-  // ✅ abre historial filtrado (para ver comentarios/fotos sobre qué falló)
+  // ✅ abre historial filtrado
   function openRunsByFail(opts: { questionId?: string; classification?: string }) {
     const qp = new URLSearchParams(searchParams.toString());
     qp.set("tab", "history");
@@ -140,7 +140,7 @@ export default function AreaPage() {
       <AreaTabs
         activeTab={tab}
         onChangeTab={(next) => {
-          // al cambiar tab, limpiamos filtros de fail para evitar “quedarse pegados”
+          // al cambiar tab, limpiamos filtros de fail
           const qp = new URLSearchParams(searchParams.toString());
           qp.set("tab", next);
           qp.delete("fail_q");
