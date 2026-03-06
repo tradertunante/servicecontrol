@@ -29,7 +29,7 @@ export default function AreaRankings({
   worst3Areas,
   runs, // compat
   onGoAreaDetail,
-  selectedYear, // ✅ AÑADIDO
+  selectedYear,
 }: {
   card: CSSProperties;
   rowBg: string;
@@ -40,17 +40,20 @@ export default function AreaRankings({
   worst3Areas: AreaRankingRow[];
   runs: any[];
   onGoAreaDetail: (areaId: string) => void;
-  selectedYear: number; // ✅ AÑADIDO
+  selectedYear: number;
 }) {
   const formatPct = (n: number | null | undefined) => {
     if (n === null || n === undefined || !Number.isFinite(Number(n))) return "—";
     return `${Number(n).toFixed(1)}%`;
   };
 
+  // ✅ Formato: "Ene (2) - Feb (4) - Mar (1)"
+  // (el guion va DESPUÉS del ")", no antes)
   const trendLabel = (t?: TrendPoint[]) => {
     if (!t || t.length === 0) return { label: "Tendencia 3 meses:", text: "—" };
-    const parts = t.map((p) => `${p.key} — (${p.count})`);
-    return { label: "Tendencia 3 meses:", text: parts.join("   ") };
+
+    const parts = t.map((p) => `${p.key} (${p.count ?? 0})`);
+    return { label: "Tendencia 3 meses:", text: parts.join(" - ") };
   };
 
   const renderRow = (a: AreaRankingRow, idx: number, badge: string) => {
@@ -171,21 +174,26 @@ export default function AreaRankings({
           flex-wrap: wrap;
           gap: 10px;
           opacity: 0.85;
+          align-items: center;
         }
 
         .rowTrendLabel {
           font-size: 12px;
           font-weight: 900;
+          white-space: nowrap;
         }
 
         .rowTrendItems {
           display: flex;
           gap: 10px;
           flex-wrap: wrap;
+          min-width: 0;
         }
 
         .rowTrendItem {
           font-size: 12px;
+          letter-spacing: 0.1px;
+          opacity: 0.9;
         }
 
         .rowRight {
