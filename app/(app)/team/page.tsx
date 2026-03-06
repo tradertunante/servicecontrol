@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 
 import { requireRoleOrRedirect } from "@/lib/auth/RequireRole";
 import { useTeamData } from "./_hooks/useTeamData";
+import TeamTargetAssignmentsCard from "./_components/TeamTargetAssignmentsCard";
 
 function buildCardStyle(): CSSProperties {
   return {
@@ -41,6 +42,8 @@ function getStatusLabel(progressPct: number) {
   return "Sin empezar";
 }
 
+const HOTEL_KEY = "sc_hotel_id";
+
 export default function TeamPage() {
   const router = useRouter();
 
@@ -50,6 +53,11 @@ export default function TeamPage() {
   const btn = useMemo(() => buildBtnStyle(), []);
 
   const { loading, error, profile, leaderboard, teamTargets, teamRecentRuns, summary } = useTeamData();
+
+  const hotelId = useMemo(() => {
+    if (typeof window === "undefined") return null;
+    return localStorage.getItem(HOTEL_KEY);
+  }, []);
 
   const groupedTargets = useMemo(() => {
     const map: Record<string, typeof teamTargets> = {};
@@ -63,7 +71,15 @@ export default function TeamPage() {
 
   return (
     <div style={{ padding: 18, width: "100%" }}>
-      <div style={{ display: "flex", gap: 12, alignItems: "flex-start", justifyContent: "space-between", flexWrap: "wrap" }}>
+      <div
+        style={{
+          display: "flex",
+          gap: 12,
+          alignItems: "flex-start",
+          justifyContent: "space-between",
+          flexWrap: "wrap",
+        }}
+      >
         <div>
           <div style={{ fontSize: 22, fontWeight: 700 }}>Equipo</div>
           <div style={{ opacity: 0.85, marginTop: 4 }}>
@@ -125,6 +141,15 @@ export default function TeamPage() {
             </div>
           </div>
 
+          {/* NUEVO: reparto persistente del objetivo */}
+          {hotelId ? (
+            <TeamTargetAssignmentsCard card={card} hotelId={hotelId} />
+          ) : (
+            <div style={card}>
+              <b>No hay hotel seleccionado.</b>
+            </div>
+          )}
+
           <div
             style={{
               display: "grid",
@@ -165,7 +190,13 @@ export default function TeamPage() {
                         </div>
                       </div>
 
-                      <div style={{ height: 8, borderRadius: 999, background: "rgba(255,255,255,0.10)" }}>
+                      <div
+                        style={{
+                          height: 8,
+                          borderRadius: 999,
+                          background: "rgba(255,255,255,0.10)",
+                        }}
+                      >
                         <div
                           style={{
                             height: "100%",
@@ -176,7 +207,16 @@ export default function TeamPage() {
                         />
                       </div>
 
-                      <div style={{ opacity: 0.9, fontSize: 13, display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
+                      <div
+                        style={{
+                          opacity: 0.9,
+                          fontSize: 13,
+                          display: "flex",
+                          justifyContent: "space-between",
+                          gap: 10,
+                          flexWrap: "wrap",
+                        }}
+                      >
                         <div>
                           <b>{x.targets_completed}</b> / {x.targets_total} · faltan <b>{x.remaining}</b>
                         </div>
@@ -184,7 +224,8 @@ export default function TeamPage() {
                           Audits: <b>{x.audits_done}</b>
                           {x.avg_score !== null ? (
                             <>
-                              {" "}· Score: <b>{Number(x.avg_score).toFixed(1)}%</b>
+                              {" "}
+                              · Score: <b>{Number(x.avg_score).toFixed(1)}%</b>
                             </>
                           ) : null}
                         </div>
@@ -251,7 +292,14 @@ export default function TeamPage() {
                                   gap: 10,
                                 }}
                               >
-                                <div style={{ minWidth: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                                <div
+                                  style={{
+                                    minWidth: 0,
+                                    whiteSpace: "nowrap",
+                                    overflow: "hidden",
+                                    textOverflow: "ellipsis",
+                                  }}
+                                >
                                   {t.template}
                                 </div>
                                 <div style={{ whiteSpace: "nowrap", opacity: 0.9 }}>
@@ -291,7 +339,14 @@ export default function TeamPage() {
                     >
                       <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
                         <div style={{ minWidth: 0 }}>
-                          <div style={{ fontWeight: 700, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                          <div
+                            style={{
+                              fontWeight: 700,
+                              whiteSpace: "nowrap",
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
+                            }}
+                          >
                             {r.template_name ?? "Auditoría"}
                           </div>
                           <div style={{ opacity: 0.8, fontSize: 13, marginTop: 4 }}>
@@ -300,7 +355,11 @@ export default function TeamPage() {
                         </div>
 
                         <div style={{ opacity: 0.85 }}>
-                          {r.score !== null && r.score !== undefined ? <b>{Number(r.score).toFixed(1)}%</b> : "—"}
+                          {r.score !== null && r.score !== undefined ? (
+                            <b>{Number(r.score).toFixed(1)}%</b>
+                          ) : (
+                            "—"
+                          )}
                         </div>
                       </div>
 
