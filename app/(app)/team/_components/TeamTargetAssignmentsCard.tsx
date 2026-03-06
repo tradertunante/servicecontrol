@@ -5,6 +5,8 @@ import { useEffect, useMemo, useState } from "react";
 import type { CSSProperties } from "react";
 import { supabase } from "@/lib/supabaseClient";
 
+type PeriodKey = "daily" | "weekly" | "monthly";
+
 type AreaRow = {
   id: string;
   name: string;
@@ -16,21 +18,28 @@ type TeamUserRow = {
   role: string | null;
 };
 
-type AreaTargetRow = {
+type AreaTemplateTargetRow = {
   id: string;
   hotel_id: string;
   area_id: string;
+  audit_template_id: string;
   period: string;
   target_count: number;
   active: boolean | null;
+  audit_templates?: {
+    name: string | null;
+  } | null;
 };
 
 type AssignmentRow = {
   id?: string;
+  area_template_target_id?: string | null;
   user_id: string;
   target_count: number;
   active: boolean;
 };
+
+type TemplateAssignmentMap = Record<string, Record<string, AssignmentRow>>;
 
 function buildBtn(): CSSProperties {
   return {
@@ -58,6 +67,23 @@ function buildSelect(): CSSProperties {
   return buildInput();
 }
 
+function getPeriodLabel(period: string) {
+  if (period === "daily") return "diario";
+  if (period === "weekly") return "semanal";
+  if (period === "monthly") return "mensual";
+  return period;
+}
+
+function getAssignmentStatus(targetCount: number, assignedTotal: number) {
+  if (assignedTotal === targetCount) return "complete";
+  if (assignedTotal < targetCount) return "pending";
+  return "over_assigned";
+}
+
+function getTemplateName(row: AreaTemplateTargetRow) {
+  return row.audit_templates?.name ?? "Template sin nombre";
+}
+
 export default function TeamTargetAssignmentsCard({
   card,
   hotelId,
@@ -76,10 +102,11 @@ export default function TeamTargetAssignmentsCard({
   const [managerId, setManagerId] = useState<string | null>(null);
   const [areas, setAreas] = useState<AreaRow[]>([]);
   const [selectedAreaId, setSelectedAreaId] = useState<string>("");
-  const [areaTarget, setAreaTarget] = useState<AreaTargetRow | null>(null);
+  const [selectedPeriod, setSelectedPeriod] = useState<PeriodKey>("daily");
 
   const [teamUsers, setTeamUsers] = useState<TeamUserRow[]>([]);
-  const [assignments, setAssignments] = useState<Record<string, AssignmentRow>>({});
+  const [templateTargets, setTemplateTargets] = useState<AreaTemplateTargetRow[]>([]);
+  const [assignmentsByTemplate, setAssignmentsByTemplate] = useState<TemplateAssignmentMap>({});
 
   useEffect(() => {
     loadInitial();
@@ -88,9 +115,9 @@ export default function TeamTargetAssignmentsCard({
 
   useEffect(() => {
     if (!selectedAreaId) return;
-    loadAreaContext(selectedAreaId);
+    loadAreaContext(selectedAreaId, selectedPeriod);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedAreaId]);
+  }, [selectedAreaId, selectedPeriod]);
 
   async function loadInitial() {
     setLoading(true);
@@ -106,7 +133,6 @@ export default function TeamTargetAssignmentsCard({
       return;
     }
 
-    // Áreas del manager en este hotel
     const a = await supabase
       .from("user_area_access")
       .select("area_id")
@@ -157,29 +183,39 @@ export default function TeamTargetAssignmentsCard({
     setLoading(false);
   }
 
-  async function loadAreaContext(areaId: string) {
+  async function loadAreaContext(areaId: string, period: PeriodKey) {
     setLoading(true);
     setError(null);
 
-    // 1) Objetivo del área (daily)
-    const t = await supabase
-      .from("area_targets")
-      .select("id, hotel_id, area_id, period, target_count, active")
+    // 1) Targets por template para el área + periodo
+    const targetsResp = await supabase
+      .from("area_template_targets")
+      .select(`
+        id,
+        hotel_id,
+        area_id,
+        audit_template_id,
+        period,
+        target_count,
+        active,
+        audit_templates(name)
+      `)
       .eq("hotel_id", hotelId)
       .eq("area_id", areaId)
-      .eq("period", "daily")
-      .maybeSingle();
+      .eq("period", period)
+      .eq("active", true)
+      .order("created_at", { ascending: true });
 
-    if (t.error) {
-      setError(t.error.message);
+    if (targetsResp.error) {
+      setError(targetsResp.error.message);
       setLoading(false);
       return;
     }
 
-    setAreaTarget((t.data as AreaTargetRow | null) ?? null);
+    const targetRows = (targetsResp.data ?? []) as AreaTemplateTargetRow[];
+    setTemplateTargets(targetRows);
 
-    // 2) Miembros del equipo de esa área:
-    // primero user_area_access
+    // 2) Usuarios del área
     const uaaResp = await supabase
       .from("user_area_access")
       .select("user_id")
@@ -195,20 +231,17 @@ export default function TeamTargetAssignmentsCard({
     const auth = await supabase.auth.getUser();
     const uid = auth.data.user?.id ?? null;
 
-    const areaUserIds = Array.from(
-      new Set((uaaResp.data ?? []).map((row: any) => row.user_id).filter(Boolean))
-    );
+    const areaUserIds = Array.from(new Set((uaaResp.data ?? []).map((row: any) => row.user_id).filter(Boolean)));
 
     const candidateUserIds = Array.from(new Set([...(areaUserIds ?? []), uid].filter(Boolean))) as string[];
 
     if (candidateUserIds.length === 0) {
       setTeamUsers([]);
-      setAssignments({});
+      setAssignmentsByTemplate({});
       setLoading(false);
       return;
     }
 
-    // luego profiles
     const profilesResp = await supabase
       .from("profiles")
       .select("id, full_name, role")
@@ -233,69 +266,117 @@ export default function TeamTargetAssignmentsCard({
 
     setTeamUsers(users);
 
-    // 3) Reparto actual (daily)
-    const ass = await supabase
-      .from("area_target_assignments")
-      .select("id, user_id, target_count, active")
-      .eq("hotel_id", hotelId)
-      .eq("area_id", areaId)
-      .eq("period", "daily");
+    // 3) Repartos guardados por template
+    const templateIds = targetRows.map((x) => x.audit_template_id).filter(Boolean);
 
-    if (ass.error) {
-      setError(ass.error.message);
+    if (templateIds.length === 0) {
+      setAssignmentsByTemplate({});
       setLoading(false);
       return;
     }
 
-    const map: Record<string, AssignmentRow> = {};
-    for (const row of ass.data ?? []) {
-      map[(row as any).user_id] = {
+    const assResp = await supabase
+      .from("area_template_target_assignments")
+      .select(`
+        id,
+        area_template_target_id,
+        area_id,
+        audit_template_id,
+        user_id,
+        period,
+        target_count,
+        active
+      `)
+      .eq("hotel_id", hotelId)
+      .eq("area_id", areaId)
+      .eq("period", period)
+      .in("audit_template_id", templateIds);
+
+    if (assResp.error) {
+      setError(assResp.error.message);
+      setLoading(false);
+      return;
+    }
+
+    const nextMap: TemplateAssignmentMap = {};
+
+    for (const target of targetRows) {
+      nextMap[target.audit_template_id] = {};
+    }
+
+    for (const row of assResp.data ?? []) {
+      const auditTemplateId = (row as any).audit_template_id as string;
+      const userId = (row as any).user_id as string;
+
+      if (!nextMap[auditTemplateId]) nextMap[auditTemplateId] = {};
+
+      nextMap[auditTemplateId][userId] = {
         id: (row as any).id,
-        user_id: (row as any).user_id,
+        area_template_target_id: (row as any).area_template_target_id ?? null,
+        user_id: userId,
         target_count: Number((row as any).target_count ?? 0),
         active: Boolean((row as any).active ?? true),
       };
     }
 
-    for (const user of users) {
-      if (!map[user.id]) {
-        map[user.id] = {
-          user_id: user.id,
-          target_count: 0,
-          active: true,
-        };
+    for (const target of targetRows) {
+      const templateId = target.audit_template_id;
+      if (!nextMap[templateId]) nextMap[templateId] = {};
+
+      for (const user of users) {
+        if (!nextMap[templateId][user.id]) {
+          nextMap[templateId][user.id] = {
+            area_template_target_id: target.id,
+            user_id: user.id,
+            target_count: 0,
+            active: true,
+          };
+        }
       }
     }
 
-    setAssignments(map);
+    setAssignmentsByTemplate(nextMap);
     setLoading(false);
   }
 
-  function updateAssignment(userId: string, value: number) {
-    setAssignments((prev) => ({
+  function updateAssignment(templateId: string, userId: string, value: number) {
+    const target = templateTargets.find((x) => x.audit_template_id === templateId);
+
+    setAssignmentsByTemplate((prev) => ({
       ...prev,
-      [userId]: {
-        ...(prev[userId] ?? { user_id: userId, active: true }),
-        user_id: userId,
-        target_count: Number.isFinite(value) ? value : 0,
-        active: true,
+      [templateId]: {
+        ...(prev[templateId] ?? {}),
+        [userId]: {
+          ...(prev[templateId]?.[userId] ?? {
+            user_id: userId,
+            active: true,
+            area_template_target_id: target?.id ?? null,
+          }),
+          user_id: userId,
+          target_count: Number.isFinite(value) ? value : 0,
+          active: true,
+          area_template_target_id: prev[templateId]?.[userId]?.area_template_target_id ?? target?.id ?? null,
+        },
       },
     }));
   }
 
-  const assignedTotal = useMemo(() => {
-    return Object.values(assignments).reduce((acc, row) => acc + Number(row.target_count ?? 0), 0);
-  }, [assignments]);
+  const overallSummary = useMemo(() => {
+    const totalTarget = templateTargets.reduce((acc, row) => acc + Number(row.target_count ?? 0), 0);
 
-  const areaTargetCount = Number(areaTarget?.target_count ?? 0);
-  const remainingToAssign = areaTargetCount - assignedTotal;
+    const totalAssigned = templateTargets.reduce((acc, row) => {
+      const tplMap = assignmentsByTemplate[row.audit_template_id] ?? {};
+      const tplAssigned = Object.values(tplMap).reduce((sum, x) => sum + Number(x.target_count ?? 0), 0);
+      return acc + tplAssigned;
+    }, 0);
 
-  const assignmentStatus = useMemo(() => {
-    if (!areaTarget) return "no_area_target";
-    if (assignedTotal === areaTargetCount) return "complete";
-    if (assignedTotal < areaTargetCount) return "pending";
-    return "over_assigned";
-  }, [areaTarget, assignedTotal, areaTargetCount]);
+    return {
+      totalTarget,
+      totalAssigned,
+      remaining: totalTarget - totalAssigned,
+      status: getAssignmentStatus(totalTarget, totalAssigned),
+    };
+  }, [templateTargets, assignmentsByTemplate]);
 
   async function saveAssignments() {
     if (!selectedAreaId) {
@@ -303,8 +384,8 @@ export default function TeamTargetAssignmentsCard({
       return;
     }
 
-    if (!areaTarget) {
-      setError("Primero debe existir un objetivo de área para esta área.");
+    if (templateTargets.length === 0) {
+      setError("Esta área no tiene objetivos por auditoría para este periodo.");
       return;
     }
 
@@ -314,33 +395,80 @@ export default function TeamTargetAssignmentsCard({
     const auth = await supabase.auth.getUser();
     const createdBy = auth.data.user?.id ?? null;
 
-    for (const row of Object.values(assignments)) {
-      const payload: any = {
-        id: row.id ?? undefined,
-        hotel_id: hotelId,
-        area_id: selectedAreaId,
-        user_id: row.user_id,
-        period: "daily",
-        target_count: Number(row.target_count ?? 0),
-        active: row.active,
-        created_by: createdBy,
-      };
+    for (const target of templateTargets) {
+      const templateId = target.audit_template_id;
+      const templateAssignments = assignmentsByTemplate[templateId] ?? {};
 
-      const up = await supabase
-        .from("area_target_assignments")
-        .upsert(payload, {
-          onConflict: "hotel_id,area_id,user_id,period",
-          ignoreDuplicates: false,
-        });
+      for (const row of Object.values(templateAssignments)) {
+        const payload: any = {
+          id: row.id ?? undefined,
+          hotel_id: hotelId,
+          area_id: selectedAreaId,
+          area_template_target_id: row.area_template_target_id ?? target.id,
+          audit_template_id: templateId,
+          user_id: row.user_id,
+          period: selectedPeriod,
+          target_count: Number(row.target_count ?? 0),
+          active: row.active,
+          created_by: createdBy,
+        };
 
-      if (up.error) {
-        setError(up.error.message);
-        setSaving(false);
-        return;
+        let up = await supabase
+          .from("area_template_target_assignments")
+          .upsert(payload, {
+            onConflict: "hotel_id,area_id,audit_template_id,user_id,period",
+            ignoreDuplicates: false,
+          });
+
+        if (up.error && String(up.error.message || "").includes("there is no unique or exclusion constraint")) {
+          const ex = await supabase
+            .from("area_template_target_assignments")
+            .select("id")
+            .eq("hotel_id", hotelId)
+            .eq("area_id", selectedAreaId)
+            .eq("audit_template_id", templateId)
+            .eq("user_id", row.user_id)
+            .eq("period", selectedPeriod)
+            .limit(1)
+            .maybeSingle();
+
+          if (ex.error) {
+            setError(ex.error.message);
+            setSaving(false);
+            return;
+          }
+
+          if (ex.data?.id) {
+            const u = await supabase
+              .from("area_template_target_assignments")
+              .update(payload)
+              .eq("id", ex.data.id);
+
+            if (u.error) {
+              setError(u.error.message);
+              setSaving(false);
+              return;
+            }
+          } else {
+            const i = await supabase
+              .from("area_template_target_assignments")
+              .insert(payload);
+
+            if (i.error) {
+              setError(i.error.message);
+              setSaving(false);
+              return;
+            }
+          }
+        } else if (up.error) {
+          setError(up.error.message);
+          setSaving(false);
+          return;
+        }
       }
     }
 
-    await loadAreaContext(selectedAreaId);
+    await loadAreaContext(selectedAreaId, selectedPeriod);
     setSaving(false);
   }
 
@@ -356,13 +484,17 @@ export default function TeamTargetAssignmentsCard({
         }}
       >
         <div>
-          <div style={{ fontSize: 18, fontWeight: 800 }}>Reparto del objetivo</div>
+          <div style={{ fontSize: 18, fontWeight: 800 }}>Reparto del objetivo por auditoría</div>
           <div style={{ opacity: 0.8, marginTop: 6, fontSize: 13 }}>
-            Reparte el objetivo del área entre los auditores de tu equipo. Este reparto se mantiene hasta que lo actualices.
+            Reparte el objetivo de cada template entre los auditores de tu equipo según el periodo seleccionado.
           </div>
         </div>
 
-        <button style={btn} onClick={() => selectedAreaId && loadAreaContext(selectedAreaId)} disabled={loading || saving}>
+        <button
+          style={btn}
+          onClick={() => selectedAreaId && loadAreaContext(selectedAreaId, selectedPeriod)}
+          disabled={loading || saving}
+        >
           Refrescar
         </button>
       </div>
@@ -404,80 +536,156 @@ export default function TeamTargetAssignmentsCard({
           </div>
 
           <div>
-            <div style={{ opacity: 0.8, fontSize: 12, marginBottom: 6 }}>Objetivo del área</div>
-            <div style={input}>{areaTarget ? areaTarget.target_count : "—"}</div>
+            <div style={{ opacity: 0.8, fontSize: 12, marginBottom: 6 }}>Periodo</div>
+            <select
+              style={select}
+              value={selectedPeriod}
+              onChange={(e) => setSelectedPeriod(e.target.value as PeriodKey)}
+            >
+              <option value="daily">Diario</option>
+              <option value="weekly">Semanal</option>
+              <option value="monthly">Mensual</option>
+            </select>
+          </div>
+
+          <div>
+            <div style={{ opacity: 0.8, fontSize: 12, marginBottom: 6 }}>Objetivo total</div>
+            <div style={input}>{templateTargets.length ? overallSummary.totalTarget : "—"}</div>
           </div>
 
           <div>
             <div style={{ opacity: 0.8, fontSize: 12, marginBottom: 6 }}>Asignado</div>
-            <div style={input}>{assignedTotal}</div>
+            <div style={input}>{templateTargets.length ? overallSummary.totalAssigned : "—"}</div>
           </div>
 
           <div>
             <div style={{ opacity: 0.8, fontSize: 12, marginBottom: 6 }}>Pendiente</div>
-            <div style={input}>{areaTarget ? remainingToAssign : "—"}</div>
+            <div style={input}>{templateTargets.length ? overallSummary.remaining : "—"}</div>
           </div>
 
           <div>
             <div style={{ opacity: 0.8, fontSize: 12, marginBottom: 6 }}>Estado</div>
-            <div style={input}>{assignmentStatus}</div>
+            <div style={input}>{templateTargets.length ? overallSummary.status : "—"}</div>
           </div>
         </div>
       </div>
 
       <div style={{ marginTop: 14 }}>
-        <div style={{ fontWeight: 800, marginBottom: 10 }}>Miembros del equipo</div>
+        <div style={{ fontWeight: 800, marginBottom: 10 }}>
+          Templates del área · periodo {getPeriodLabel(selectedPeriod)}
+        </div>
 
         {loading ? (
           <div style={{ padding: 12, opacity: 0.85 }}>Cargando…</div>
         ) : !selectedAreaId ? (
           <div style={{ padding: 12, opacity: 0.85 }}>Selecciona un área.</div>
-        ) : !areaTarget ? (
+        ) : templateTargets.length === 0 ? (
           <div style={{ padding: 12, opacity: 0.85 }}>
-            Esta área aún no tiene objetivo configurado por admin. Ve primero a Admin → Objetivos de área.
+            Esta área aún no tiene objetivos por template para este periodo. Ve primero a Admin → Objetivos de área por auditoría.
           </div>
         ) : teamUsers.length === 0 ? (
           <div style={{ padding: 12, opacity: 0.85 }}>No hay auditores asignados a esta área.</div>
         ) : (
-          <div style={{ display: "grid", gap: 10 }}>
-            {teamUsers.map((user) => {
-              const row = assignments[user.id] ?? {
-                user_id: user.id,
-                target_count: 0,
-                active: true,
-              };
+          <div style={{ display: "grid", gap: 12 }}>
+            {templateTargets.map((target) => {
+              const templateId = target.audit_template_id;
+              const templateAssignments = assignmentsByTemplate[templateId] ?? {};
+
+              const assignedTotal = Object.values(templateAssignments).reduce(
+                (acc, row) => acc + Number(row.target_count ?? 0),
+                0
+              );
+
+              const targetCount = Number(target.target_count ?? 0);
+              const remaining = targetCount - assignedTotal;
+              const status = getAssignmentStatus(targetCount, assignedTotal);
 
               return (
                 <div
-                  key={user.id}
+                  key={target.id}
                   style={{
                     border: "1px solid rgba(255,255,255,0.10)",
-                    borderRadius: 14,
-                    padding: 12,
+                    borderRadius: 16,
+                    padding: 14,
                     background: "rgba(0,0,0,0.12)",
-                    display: "grid",
-                    gridTemplateColumns: "minmax(220px, 1fr) 180px",
-                    gap: 12,
-                    alignItems: "center",
                   }}
                 >
-                  <div>
-                    <div style={{ fontWeight: 750 }}>{user.full_name ?? user.id.slice(0, 8)}</div>
-                    <div style={{ opacity: 0.8, marginTop: 4, fontSize: 13 }}>
-                      Rol: <b>{user.role ?? "—"}</b>
-                      {user.id === managerId ? " · tú" : ""}
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      gap: 12,
+                      alignItems: "flex-start",
+                      flexWrap: "wrap",
+                    }}
+                  >
+                    <div>
+                      <div style={{ fontSize: 16, fontWeight: 800 }}>{getTemplateName(target)}</div>
+                      <div style={{ opacity: 0.78, marginTop: 4, fontSize: 13 }}>
+                        Objetivo {getPeriodLabel(selectedPeriod)} para esta auditoría.
+                      </div>
+                    </div>
+
+                    <div
+                      style={{
+                        display: "grid",
+                        gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))",
+                        gap: 8,
+                        minWidth: 320,
+                        flex: 1,
+                      }}
+                    >
+                      <div style={input}>Meta: {targetCount}</div>
+                      <div style={input}>Asignado: {assignedTotal}</div>
+                      <div style={input}>Pendiente: {remaining}</div>
+                      <div style={input}>Estado: {status}</div>
                     </div>
                   </div>
 
-                  <div>
-                    <div style={{ opacity: 0.8, fontSize: 12, marginBottom: 6 }}>Objetivo asignado</div>
-                    <input
-                      style={input}
-                      type="number"
-                      min={0}
-                      value={row.target_count}
-                      onChange={(e) => updateAssignment(user.id, Number(e.target.value))}
-                    />
+                  <div style={{ marginTop: 12, display: "grid", gap: 10 }}>
+                    {teamUsers.map((user) => {
+                      const row = templateAssignments[user.id] ?? {
+                        user_id: user.id,
+                        target_count: 0,
+                        active: true,
+                        area_template_target_id: target.id,
+                      };
+
+                      return (
+                        <div
+                          key={`${templateId}_${user.id}`}
+                          style={{
+                            border: "1px solid rgba(255,255,255,0.10)",
+                            borderRadius: 14,
+                            padding: 12,
+                            background: "rgba(255,255,255,0.03)",
+                            display: "grid",
+                            gridTemplateColumns: "minmax(220px, 1fr) 180px",
+                            gap: 12,
+                            alignItems: "center",
+                          }}
+                        >
+                          <div>
+                            <div style={{ fontWeight: 750 }}>{user.full_name ?? user.id.slice(0, 8)}</div>
+                            <div style={{ opacity: 0.8, marginTop: 4, fontSize: 13 }}>
+                              Rol: <b>{user.role ?? "—"}</b>
+                              {user.id === managerId ? " · tú" : ""}
+                            </div>
+                          </div>
+
+                          <div>
+                            <div style={{ opacity: 0.8, fontSize: 12, marginBottom: 6 }}>Objetivo asignado</div>
+                            <input
+                              style={input}
+                              type="number"
+                              min={0}
+                              value={row.target_count}
+                              onChange={(e) => updateAssignment(templateId, user.id, Number(e.target.value))}
+                            />
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               );
@@ -487,7 +695,11 @@ export default function TeamTargetAssignmentsCard({
       </div>
 
       <div style={{ marginTop: 14, display: "flex", gap: 10, flexWrap: "wrap" }}>
-        <button style={btn} onClick={saveAssignments} disabled={saving || loading || !areaTarget}>
+        <button
+          style={btn}
+          onClick={saveAssignments}
+          disabled={saving || loading || !selectedAreaId || templateTargets.length === 0}
+        >
           {saving ? "Guardando…" : "Guardar reparto"}
         </button>
       </div>
