@@ -49,30 +49,50 @@ export default function MyDashboardPage() {
   const fullName = profile?.full_name ?? "—";
   const isAuditor = role === "auditor";
 
-  // ✅ Para roles no-auditor: agrupar por auditor para dirigir al equipo
   const targetsByAuditor = useMemo(() => {
     const map: Record<string, typeof myTargetsToday> = {};
+
     for (const t of myTargetsToday) {
       const key = (t.auditor ?? "—").trim() || "—";
       if (!map[key]) map[key] = [];
       map[key].push(t);
     }
-    // Orden: quien más “restantes” tenga arriba (más urgencia)
+
     const entries = Object.entries(map).map(([auditor, rows]) => {
       const remainingSum = rows.reduce((acc, r) => acc + Number(r.remaining ?? 0), 0);
       const targetSum = rows.reduce((acc, r) => acc + Number(r.target ?? 0), 0);
       const completedSum = rows.reduce((acc, r) => acc + Number(r.completed ?? 0), 0);
       const pct = targetSum > 0 ? (completedSum / targetSum) * 100 : 0;
-      return { auditor, rows, remainingSum, completedSum, targetSum, pct };
+
+      return {
+        auditor,
+        rows,
+        remainingSum,
+        completedSum,
+        targetSum,
+        pct,
+      };
     });
 
-    entries.sort((a, b) => b.remainingSum - a.remainingSum);
+    entries.sort((a, b) => {
+      if (b.remainingSum !== a.remainingSum) return b.remainingSum - a.remainingSum;
+      return String(a.auditor).localeCompare(String(b.auditor));
+    });
+
     return entries;
   }, [myTargetsToday]);
 
   return (
     <div style={{ padding: 18, width: "100%" }}>
-      <div style={{ display: "flex", gap: 12, alignItems: "flex-start", justifyContent: "space-between", flexWrap: "wrap" }}>
+      <div
+        style={{
+          display: "flex",
+          gap: 12,
+          alignItems: "flex-start",
+          justifyContent: "space-between",
+          flexWrap: "wrap",
+        }}
+      >
         <div>
           <div style={{ fontSize: 22, fontWeight: 700 }}>Mi panel</div>
           <div style={{ opacity: 0.85, marginTop: 4 }}>
@@ -93,25 +113,33 @@ export default function MyDashboardPage() {
       {loading ? (
         <div style={{ marginTop: 14, ...card }}>Cargando…</div>
       ) : (
-        <div style={{ marginTop: 14, display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 14 }}>
-          {/* Targets */}
+        <div
+          style={{
+            marginTop: 14,
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
+            gap: 14,
+          }}
+        >
           <div style={card}>
             <div style={{ fontWeight: 700, fontSize: 16 }}>
-              {isAuditor ? "Objetivos de hoy" : "Objetivos del equipo (hoy)"}
+              {isAuditor ? "Mis objetivos de hoy" : "Objetivos del equipo (hoy)"}
             </div>
+
             <div style={{ opacity: 0.8, marginTop: 6, fontSize: 13 }}>
               {isAuditor
-                ? "Basado en tus audit_targets (period=daily) y tus auditorías de hoy."
-                : "Basado en los audit_targets (period=daily) y auditorías ejecutadas hoy por cada auditor."}
+                ? "Basado en asignaciones por auditoría/template para periodo diario y en tus auditorías ejecutadas hoy."
+                : "Basado en asignaciones por auditoría/template para periodo diario y en las auditorías ejecutadas hoy por cada auditor."}
             </div>
 
             <div style={{ marginTop: 10, display: "grid", gap: 10 }}>
               {myTargetsToday.length === 0 ? (
                 <div style={{ opacity: 0.85 }}>
-                  {isAuditor ? "No tienes objetivos diarios configurados." : "No hay objetivos diarios configurados para el equipo."}
+                  {isAuditor
+                    ? "No tienes objetivos diarios asignados en el nuevo modelo."
+                    : "No hay objetivos diarios asignados para el equipo en el nuevo modelo."}
                 </div>
               ) : isAuditor ? (
-                // ✅ Vista auditor (como antes, pero sin confundir a manager)
                 myTargetsToday.map((t) => (
                   <div
                     key={t.target_id}
@@ -129,7 +157,14 @@ export default function MyDashboardPage() {
                       </div>
                     </div>
 
-                    <div style={{ marginTop: 8, height: 8, borderRadius: 999, background: "rgba(255,255,255,0.10)" }}>
+                    <div
+                      style={{
+                        marginTop: 8,
+                        height: 8,
+                        borderRadius: 999,
+                        background: "rgba(255,255,255,0.10)",
+                      }}
+                    >
                       <div
                         style={{
                           height: "100%",
@@ -155,14 +190,13 @@ export default function MyDashboardPage() {
                         Restantes: <b>{t.remaining}</b>
                       </div>
 
-                      <button style={btn} onClick={() => router.push("/templates")}>
+                      <button style={btn} onClick={() => router.push("/audits/new")}>
                         Auditar
                       </button>
                     </div>
                   </div>
                 ))
               ) : (
-                // ✅ Vista manager/quality/admin/superadmin: agrupado por auditor
                 targetsByAuditor.map((g) => (
                   <div
                     key={g.auditor}
@@ -173,16 +207,39 @@ export default function MyDashboardPage() {
                       background: "rgba(0,0,0,0.12)",
                     }}
                   >
-                    <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "baseline" }}>
-                      <div style={{ fontWeight: 700, minWidth: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        gap: 10,
+                        alignItems: "baseline",
+                      }}
+                    >
+                      <div
+                        style={{
+                          fontWeight: 700,
+                          minWidth: 0,
+                          whiteSpace: "nowrap",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                        }}
+                      >
                         {g.auditor}
                       </div>
+
                       <div style={{ opacity: 0.85 }}>
                         <b>{g.completedSum}</b> / {g.targetSum} · {formatPct(g.pct)}
                       </div>
                     </div>
 
-                    <div style={{ marginTop: 8, height: 8, borderRadius: 999, background: "rgba(255,255,255,0.10)" }}>
+                    <div
+                      style={{
+                        marginTop: 8,
+                        height: 8,
+                        borderRadius: 999,
+                        background: "rgba(255,255,255,0.10)",
+                      }}
+                    >
                       <div
                         style={{
                           height: "100%",
@@ -211,9 +268,17 @@ export default function MyDashboardPage() {
                             gap: 10,
                           }}
                         >
-                          <div style={{ minWidth: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                          <div
+                            style={{
+                              minWidth: 0,
+                              whiteSpace: "nowrap",
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
+                            }}
+                          >
                             {t.template}
                           </div>
+
                           <div style={{ opacity: 0.9, whiteSpace: "nowrap" }}>
                             <b>{t.completed}</b>/{t.target} · faltan <b>{t.remaining}</b>
                           </div>
@@ -222,8 +287,8 @@ export default function MyDashboardPage() {
                     </div>
 
                     <div style={{ marginTop: 10, display: "flex", justifyContent: "flex-end" }}>
-                      <button style={btn} onClick={() => router.push("/dashboard")}>
-                        Ver dashboard
+                      <button style={btn} onClick={() => router.push("/team")}>
+                        Ver equipo
                       </button>
                     </div>
                   </div>
@@ -232,7 +297,6 @@ export default function MyDashboardPage() {
             </div>
           </div>
 
-          {/* Tasks */}
           <div style={card}>
             <div style={{ fontWeight: 700, fontSize: 16 }}>Mis tareas</div>
             <div style={{ opacity: 0.8, marginTop: 6, fontSize: 13 }}>
@@ -258,13 +322,21 @@ export default function MyDashboardPage() {
                     }}
                   >
                     <div style={{ minWidth: 0 }}>
-                      <div style={{ fontWeight: 650, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                      <div
+                        style={{
+                          fontWeight: 650,
+                          whiteSpace: "nowrap",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                        }}
+                      >
                         {x.title}
                       </div>
                       <div style={{ opacity: 0.8, fontSize: 13, marginTop: 4 }}>
                         Estado: <b>{x.status}</b> · Vence: <b>{x.due_date?.slice(0, 10) ?? "—"}</b>
                       </div>
                     </div>
+
                     <button style={btn} onClick={() => router.push("/tasks")}>
                       Ver
                     </button>
@@ -274,7 +346,6 @@ export default function MyDashboardPage() {
             </div>
           </div>
 
-          {/* Recent activity */}
           <div style={card}>
             <div style={{ fontWeight: 700, fontSize: 16 }}>Mi actividad reciente</div>
             <div style={{ opacity: 0.8, marginTop: 6, fontSize: 13 }}>
@@ -296,13 +367,23 @@ export default function MyDashboardPage() {
                     }}
                   >
                     <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
-                      <div style={{ fontWeight: 650, minWidth: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                      <div
+                        style={{
+                          fontWeight: 650,
+                          minWidth: 0,
+                          whiteSpace: "nowrap",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                        }}
+                      >
                         {r.template_name ?? "Auditoría"}
                       </div>
+
                       <div style={{ opacity: 0.85 }}>
                         {r.score !== null && r.score !== undefined ? <b>{Number(r.score).toFixed(1)}%</b> : "—"}
                       </div>
                     </div>
+
                     <div style={{ opacity: 0.8, fontSize: 13, marginTop: 4 }}>
                       {r.executed_at ? r.executed_at.replace("T", " ").slice(0, 16) : "—"}
                     </div>
