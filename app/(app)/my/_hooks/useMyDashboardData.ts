@@ -14,7 +14,7 @@ type Profile = {
 
 type MyTargetRow = {
   target_id: string;
-  auditor: string | null; // ✅ para manager/quality/admin/superadmin
+  auditor: string | null; // para manager+/team view
   template: string;
   target: number;
   completed: number;
@@ -40,6 +40,21 @@ type RecentRunRow = {
   template_name: string | null;
 };
 
+type AssignmentRow = {
+  id: string;
+  area_id: string;
+  audit_template_id: string;
+  user_id: string;
+  period: string;
+  target_count: number;
+  active: boolean | null;
+};
+
+type TemplateRow = {
+  id: string;
+  name: string | null;
+};
+
 const HOTEL_KEY = "sc_hotel_id";
 
 function isAuditor(role: Role) {
@@ -48,6 +63,20 @@ function isAuditor(role: Role) {
 
 function isManagerPlus(role: Role) {
   return role === "manager" || role === "quality" || role === "admin" || role === "superadmin";
+}
+
+function getDayBounds() {
+  const start = new Date();
+  start.setHours(0, 0, 0, 0);
+
+  const end = new Date();
+  end.setHours(23, 59, 59, 999);
+
+  return {
+    startISO: start.toISOString(),
+    endISO: end.toISOString(),
+    dayISO: start.toISOString().slice(0, 10),
+  };
 }
 
 export function useMyDashboardData() {
@@ -59,7 +88,7 @@ export function useMyDashboardData() {
   const [myTargetTasks, setMyTargetTasks] = useState<TaskRow[]>([]);
   const [myRecentRuns, setMyRecentRuns] = useState<RecentRunRow[]>([]);
 
-  const todayISO = useMemo(() => new Date().toISOString().slice(0, 10), []);
+  const dayBounds = useMemo(() => getDayBounds(), []);
 
   useEffect(() => {
     let cancelled = false;
@@ -72,6 +101,7 @@ export function useMyDashboardData() {
         // 1) Usuario actual
         const { data: authData, error: authErr } = await supabase.auth.getUser();
         if (authErr) throw authErr;
+
         const uid = authData.user?.id;
         if (!uid) throw new Error("No hay usuario autenticado.");
 
@@ -83,40 +113,187 @@ export function useMyDashboardData() {
           .single();
 
         if (pErr) throw pErr;
-        const prof = p as Profile;
 
+        const prof = p as Profile;
         if (!cancelled) setProfile(prof);
 
-        // 3) Targets de hoy (según rol)
-        if (isAuditor(prof.role)) {
-          // ✅ auditor: solo sus objetivos
-          const { data: targets, error: tErr } = await supabase.rpc("get_my_daily_targets_progress", {
-            p_day: todayISO,
-          });
-          if (tErr) throw tErr;
+        const hotelId = typeof window !== "undefined" ? localStorage.getItem(HOTEL_KEY) : null;
 
-          if (!cancelled) setMyTargetsToday((targets ?? []) as MyTargetRow[]);
-        } else if (isManagerPlus(prof.role)) {
-          // ✅ manager+ : objetivos del equipo (por hotel)
-          const hotelId = localStorage.getItem(HOTEL_KEY);
-          if (!hotelId) {
+        // 3) Objetivos de hoy desde el modelo nuevo
+        if (!hotelId) {
+          if (!cancelled) setMyTargetsToday([]);
+        } else {
+          let assignments: AssignmentRow[] = [];
+          let relevantUserIds: string[] = [];
+
+          if (isAuditor(prof.role)) {
+            const assignmentsResp = await supabase
+              .from("area_template_target_assignments")
+              .select("id, area_id, audit_template_id, user_id, period, target_count, active")
+              .eq("hotel_id", hotelId)
+              .eq("period", "daily")
+              .eq("active", true)
+              .eq("user_id", uid);
+
+            if (assignmentsResp.error) throw assignmentsResp.error;
+
+            assignments = ((assignmentsResp.data ?? []) as any[]).map(
+              (row) =>
+                ({
+                  id: row.id,
+                  area_id: row.area_id,
+                  audit_template_id: row.audit_template_id,
+                  user_id: row.user_id,
+                  period: row.period,
+                  target_count: Number(row.target_count ?? 0),
+                  active: row.active,
+                }) as AssignmentRow
+            );
+
+            relevantUserIds = [uid];
+          } else if (isManagerPlus(prof.role)) {
+            const assignmentsResp = await supabase
+              .from("area_template_target_assignments")
+              .select("id, area_id, audit_template_id, user_id, period, target_count, active")
+              .eq("hotel_id", hotelId)
+              .eq("period", "daily")
+              .eq("active", true);
+
+            if (assignmentsResp.error) throw assignmentsResp.error;
+
+            assignments = ((assignmentsResp.data ?? []) as any[]).map(
+              (row) =>
+                ({
+                  id: row.id,
+                  area_id: row.area_id,
+                  audit_template_id: row.audit_template_id,
+                  user_id: row.user_id,
+                  period: row.period,
+                  target_count: Number(row.target_count ?? 0),
+                  active: row.active,
+                }) as AssignmentRow
+            );
+
+            relevantUserIds = Array.from(new Set(assignments.map((x) => x.user_id).filter(Boolean)));
+          } else {
+            assignments = [];
+            relevantUserIds = [];
+          }
+
+          if (assignments.length === 0 || relevantUserIds.length === 0) {
             if (!cancelled) setMyTargetsToday([]);
           } else {
-            const { data: targets, error: tErr } = await supabase.rpc("get_hotel_daily_targets_progress", {
-              p_hotel_id: hotelId,
-              p_day: todayISO,
-            });
-            if (tErr) throw tErr;
+            const templateIds = Array.from(new Set(assignments.map((x) => x.audit_template_id).filter(Boolean)));
 
-            // la RPC devuelve auditor + template, lo guardamos en el mismo estado
-            if (!cancelled) setMyTargetsToday((targets ?? []) as MyTargetRow[]);
+            // perfiles/nombres
+            const profilesResp = await supabase
+              .from("profiles")
+              .select("id, full_name, role")
+              .in("id", relevantUserIds);
+
+            if (profilesResp.error) throw profilesResp.error;
+
+            const userNameById = Object.fromEntries(
+              ((profilesResp.data ?? []) as Profile[]).map((row) => [row.id, row.full_name ?? row.id.slice(0, 8)])
+            );
+
+            // templates/nombres
+            let templateNameById: Record<string, string> = {};
+
+            if (templateIds.length > 0) {
+              const templatesResp = await supabase
+                .from("audit_templates")
+                .select("id, name")
+                .in("id", templateIds);
+
+              if (templatesResp.error) throw templatesResp.error;
+
+              templateNameById = Object.fromEntries(
+                ((templatesResp.data ?? []) as TemplateRow[]).map((row) => [row.id, row.name ?? "Auditoría"])
+              );
+            }
+
+            // runs de hoy para progreso
+            const runsResp = await supabase
+              .from("audit_runs")
+              .select("id, executed_at, score, audit_template_id, executed_by")
+              .eq("hotel_id", hotelId)
+              .in("executed_by", relevantUserIds)
+              .not("executed_at", "is", null)
+              .gte("executed_at", dayBounds.startISO)
+              .lte("executed_at", dayBounds.endISO);
+
+            if (runsResp.error) throw runsResp.error;
+
+            const runs = (runsResp.data ?? []) as any[];
+
+            const runCountByUserTemplate: Record<string, number> = {};
+            for (const run of runs) {
+              const runUserId = run.executed_by as string | null;
+              const runTemplateId = run.audit_template_id as string | null;
+              if (!runUserId || !runTemplateId) continue;
+
+              const key = `${runUserId}__${runTemplateId}`;
+              runCountByUserTemplate[key] = Number(runCountByUserTemplate[key] ?? 0) + 1;
+            }
+
+            // consolidar assignments por user+template
+            const groupedMap: Record<
+              string,
+              {
+                auditor_user_id: string;
+                auditor: string | null;
+                audit_template_id: string;
+                template: string;
+                target: number;
+                completedRaw: number;
+              }
+            > = {};
+
+            for (const row of assignments) {
+              const key = `${row.user_id}__${row.audit_template_id}`;
+
+              if (!groupedMap[key]) {
+                groupedMap[key] = {
+                  auditor_user_id: row.user_id,
+                  auditor: userNameById[row.user_id] ?? null,
+                  audit_template_id: row.audit_template_id,
+                  template: templateNameById[row.audit_template_id] ?? "Auditoría",
+                  target: 0,
+                  completedRaw: Number(runCountByUserTemplate[key] ?? 0),
+                };
+              }
+
+              groupedMap[key].target += Number(row.target_count ?? 0);
+            }
+
+            const targetRows: MyTargetRow[] = Object.entries(groupedMap)
+              .map(([key, row]) => {
+                const completed = Math.min(Number(row.completedRaw ?? 0), Number(row.target ?? 0));
+                const remaining = Math.max(0, Number(row.target ?? 0) - Number(completed ?? 0));
+                const progressPct = Number(row.target ?? 0) > 0 ? (completed / Number(row.target)) * 100 : 0;
+
+                return {
+                  target_id: key,
+                  auditor: isAuditor(prof.role) ? null : row.auditor,
+                  template: row.template,
+                  target: Number(row.target ?? 0),
+                  completed,
+                  remaining,
+                  progress_pct: progressPct,
+                };
+              })
+              .sort((a, b) => {
+                const auditorCmp = String(a.auditor ?? "").localeCompare(String(b.auditor ?? ""));
+                if (auditorCmp !== 0) return auditorCmp;
+                return String(a.template ?? "").localeCompare(String(b.template ?? ""));
+              });
+
+            if (!cancelled) setMyTargetsToday(targetRows);
           }
-        } else {
-          // otros roles raros/custom
-          if (!cancelled) setMyTargetsToday([]);
         }
 
-        // 4) Tareas "target" asignadas a mí (primero assignments, luego tasks)
+        // 4) Tareas target asignadas a mí
         const { data: assigns, error: assignsErr } = await supabase
           .from("task_assignments")
           .select("task_id, user_id")
@@ -148,9 +325,7 @@ export function useMyDashboardData() {
           if (!cancelled) setMyTargetTasks(mapped);
         }
 
-        // 5) Actividad reciente:
-        // - auditor: sus auditorías
-        // - manager+: también dejamos “las suyas” (cero si no ejecuta). Luego si quieres, lo cambiamos a “equipo”.
+        // 5) Actividad reciente propia
         const { data: runs, error: rErr } = await supabase
           .from("audit_runs")
           .select("id, executed_at, score, audit_template_id")
@@ -161,7 +336,6 @@ export function useMyDashboardData() {
 
         if (rErr) throw rErr;
 
-        // Nombre del template (2 pasos robusto)
         const templateIds = Array.from(new Set((runs ?? []).map((r: any) => r.audit_template_id).filter(Boolean)));
 
         let templateNameById: Record<string, string> = {};
@@ -173,7 +347,8 @@ export function useMyDashboardData() {
             .in("id", templateIds);
 
           if (tplsErr) throw tplsErr;
-          templateNameById = Object.fromEntries((tpls ?? []).map((t: any) => [t.id, t.name]));
+
+          templateNameById = Object.fromEntries((tpls ?? []).map((t: any) => [t.id, t.name ?? "Auditoría"]));
         }
 
         const enrichedRuns = (runs ?? []).map((r: any) => ({
@@ -190,10 +365,11 @@ export function useMyDashboardData() {
     }
 
     run();
+
     return () => {
       cancelled = true;
     };
-  }, [todayISO]);
+  }, [dayBounds.dayISO, dayBounds.endISO, dayBounds.startISO]);
 
   return { loading, error, profile, myTargetsToday, myTargetTasks, myRecentRuns };
 }
