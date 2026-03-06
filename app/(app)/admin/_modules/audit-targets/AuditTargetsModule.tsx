@@ -4,21 +4,32 @@ import { useEffect, useMemo, useState } from "react";
 import type { CSSProperties } from "react";
 import { supabase } from "@/lib/supabaseClient";
 
-type TemplateRow = { id: string; name: string };
-type AuditorRow = { id: string; full_name: string | null; role: string | null };
+type AreaRow = {
+  id: string;
+  name: string;
+  active: boolean | null;
+};
 
-type TargetRow = {
+type TemplateRow = {
+  id: string;
+  name: string;
+  area_id: string | null;
+};
+
+type AreaTemplateTargetRow = {
   id: string;
   hotel_id: string;
-  target_scope: string;
-  user_id: string | null;
+  area_id: string;
   audit_template_id: string;
   period: string;
   target_count: number;
   active: boolean | null;
-
+  areas?: { name: string | null } | null;
   audit_templates?: { name: string | null } | null;
-  profiles?: { full_name: string | null } | null;
+};
+
+type AssignmentAgg = {
+  assigned_target: number;
 };
 
 function buildBtn(): CSSProperties {
@@ -47,21 +58,10 @@ function buildSelect(): CSSProperties {
   return buildInput();
 }
 
-async function safeRefreshTargetTasks() {
-  const iso = new Date().toISOString();
-
-  // Dependiendo de cómo nombraste el parámetro en SQL, probamos varias opciones
-  let r = await supabase.rpc("refresh_target_tasks", { now: iso });
-  if (!r.error) return;
-
-  r = await supabase.rpc("refresh_target_tasks", { p_now: iso });
-  if (!r.error) return;
-
-  r = await supabase.rpc("refresh_target_tasks", { _now: iso });
-  if (!r.error) return;
-
-  // Si la función no tiene params
-  await supabase.rpc("refresh_target_tasks", {});
+function getAssignmentStatus(areaTarget: number, assigned: number) {
+  if (assigned === areaTarget) return "complete";
+  if (assigned < areaTarget) return "pending";
+  return "over_assigned";
 }
 
 export default function AuditTargetsModule({
@@ -79,21 +79,27 @@ export default function AuditTargetsModule({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const [areas, setAreas] = useState<AreaRow[]>([]);
   const [templates, setTemplates] = useState<TemplateRow[]>([]);
-  const [auditors, setAuditors] = useState<AuditorRow[]>([]);
-  const [targets, setTargets] = useState<TargetRow[]>([]);
+  const [targets, setTargets] = useState<AreaTemplateTargetRow[]>([]);
+  const [assignmentMap, setAssignmentMap] = useState<Record<string, AssignmentAgg>>({});
 
   // Form
   const [editId, setEditId] = useState<string | null>(null);
-  const [userId, setUserId] = useState<string>("");
+  const [areaId, setAreaId] = useState<string>("");
   const [templateId, setTemplateId] = useState<string>("");
   const [period, setPeriod] = useState<string>("daily");
   const [targetCount, setTargetCount] = useState<number>(3);
   const [active, setActive] = useState<boolean>(true);
 
+  const filteredTemplates = useMemo(() => {
+    if (!areaId) return templates;
+    return templates.filter((t) => t.area_id === areaId);
+  }, [templates, areaId]);
+
   function resetForm() {
     setEditId(null);
-    setUserId("");
+    setAreaId("");
     setTemplateId("");
     setPeriod("daily");
     setTargetCount(3);
@@ -104,47 +110,54 @@ export default function AuditTargetsModule({
     setLoading(true);
     setError(null);
 
-    // Templates
-    const t = await supabase
-      .from("audit_templates")
-      .select("id,name")
+    // 1) Áreas del hotel
+    const a = await supabase
+      .from("areas")
+      .select("id,name,active")
       .eq("hotel_id", hotelId)
+      .eq("active", true)
+      .order("sort_order", { ascending: true })
       .order("name", { ascending: true });
 
-    if (t.error) {
-      setError(t.error.message);
+    if (a.error) {
+      setError(a.error.message);
       setLoading(false);
       return;
     }
-    setTemplates((t.data ?? []) as TemplateRow[]);
 
-    // Auditors (si tu profiles tiene hotel_id; si no, ajustamos luego)
-    const a = await supabase
-      .from("profiles")
-      .select("id,full_name,role")
+    setAreas((a.data ?? []) as AreaRow[]);
+
+    // 2) Templates del hotel
+    // asumo que audit_templates tiene area_id
+    const tpls = await supabase
+      .from("audit_templates")
+      .select("id,name,area_id")
       .eq("hotel_id", hotelId)
-      .eq("role", "auditor")
-      .order("full_name", { ascending: true });
+      .order("name", { ascending: true });
 
-    if (a.error) {
-      // No rompemos; mostramos mensaje útil
-      setAuditors([]);
-    } else {
-      setAuditors((a.data ?? []) as AuditorRow[]);
+    if (tpls.error) {
+      setError(tpls.error.message);
+      setLoading(false);
+      return;
     }
 
-    // Targets (auditor_template)
+    setTemplates((tpls.data ?? []) as TemplateRow[]);
+
+    // 3) Objetivos de área por template
     const tg = await supabase
-      .from("audit_targets")
-      .select(
-        `
-        id, hotel_id, target_scope, user_id, audit_template_id, period, target_count, active,
-        audit_templates(name),
-        profiles(full_name)
-      `
-      )
+      .from("area_template_targets")
+      .select(`
+        id,
+        hotel_id,
+        area_id,
+        audit_template_id,
+        period,
+        target_count,
+        active,
+        areas(name),
+        audit_templates(name)
+      `)
       .eq("hotel_id", hotelId)
-      .eq("target_scope", "auditor_template")
       .order("created_at", { ascending: false });
 
     if (tg.error) {
@@ -153,7 +166,32 @@ export default function AuditTargetsModule({
       return;
     }
 
-    setTargets((tg.data ?? []) as TargetRow[]);
+    const targetRows = (tg.data ?? []) as AreaTemplateTargetRow[];
+    setTargets(targetRows);
+
+    // 4) Reparto agregado desde area_template_target_assignments
+    const ass = await supabase
+      .from("area_template_target_assignments")
+      .select("area_id, audit_template_id, period, target_count, active")
+      .eq("hotel_id", hotelId)
+      .eq("active", true);
+
+    if (ass.error) {
+      setError(ass.error.message);
+      setLoading(false);
+      return;
+    }
+
+    const agg: Record<string, AssignmentAgg> = {};
+    for (const row of ass.data ?? []) {
+      const key = `${(row as any).area_id}__${(row as any).audit_template_id}__${(row as any).period}`;
+      if (!agg[key]) {
+        agg[key] = { assigned_target: 0 };
+      }
+      agg[key].assigned_target += Number((row as any).target_count ?? 0);
+    }
+
+    setAssignmentMap(agg);
     setLoading(false);
   }
 
@@ -162,9 +200,9 @@ export default function AuditTargetsModule({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hotelId]);
 
-  function startEdit(row: TargetRow) {
+  function startEdit(row: AreaTemplateTargetRow) {
     setEditId(row.id);
-    setUserId(row.user_id ?? "");
+    setAreaId(row.area_id);
     setTemplateId(row.audit_template_id);
     setPeriod(row.period ?? "daily");
     setTargetCount(Number(row.target_count ?? 0) || 0);
@@ -172,20 +210,21 @@ export default function AuditTargetsModule({
   }
 
   async function remove(rowId: string) {
-    if (!confirm("¿Eliminar este objetivo?")) return;
+    if (!confirm("¿Eliminar este objetivo de área por template?")) return;
+
     setSaving(true);
     setError(null);
 
-    const d = await supabase.from("audit_targets").delete().eq("id", rowId);
+    const d = await supabase.from("area_template_targets").delete().eq("id", rowId);
+
     if (d.error) {
       setError(d.error.message);
       setSaving(false);
       return;
     }
 
-    // Regenerar tareas (para que desaparezcan si aplica)
-    await safeRefreshTargetTasks();
     await loadAll();
+    resetForm();
     setSaving(false);
   }
 
@@ -193,32 +232,38 @@ export default function AuditTargetsModule({
     setSaving(true);
     setError(null);
 
-    if (!userId) {
-      setError("Selecciona un auditor.");
+    if (!areaId) {
+      setError("Selecciona un área.");
       setSaving(false);
       return;
     }
+
     if (!templateId) {
       setError("Selecciona un template.");
       setSaving(false);
       return;
     }
+
     if (!Number.isFinite(Number(targetCount)) || Number(targetCount) < 0) {
       setError("El objetivo debe ser un número válido (>= 0).");
       setSaving(false);
       return;
     }
 
-    const auth = await supabase.auth.getUser();
-    const createdBy = auth.data.user?.id ?? null; // auth.uid()
+    const selectedTemplate = templates.find((t) => t.id === templateId);
+    if (selectedTemplate && selectedTemplate.area_id && selectedTemplate.area_id !== areaId) {
+      setError("El template seleccionado no pertenece a esa área.");
+      setSaving(false);
+      return;
+    }
 
-    // Si tu tabla audit_targets NO requiere created_by, esto no afecta.
-    // Si lo requiere, lo dejamos incluido.
+    const auth = await supabase.auth.getUser();
+    const createdBy = auth.data.user?.id ?? null;
+
     const payload: any = {
       id: editId ?? undefined,
       hotel_id: hotelId,
-      target_scope: "auditor_template",
-      user_id: userId,
+      area_id: areaId,
       audit_template_id: templateId,
       period,
       target_count: Number(targetCount),
@@ -226,25 +271,21 @@ export default function AuditTargetsModule({
       created_by: createdBy,
     };
 
-    // Intento 1: upsert con ON CONFLICT por columnas (si existe índice unique compatible)
     let up = await supabase
-      .from("audit_targets")
+      .from("area_template_targets")
       .upsert(payload, {
-        onConflict: "hotel_id,target_scope,user_id,audit_template_id,period",
+        onConflict: "hotel_id,area_id,audit_template_id,period",
         ignoreDuplicates: false,
       })
       .select("id")
       .maybeSingle();
 
-    // Si falla por falta de constraint (42P10), hacemos estrategia manual
     if (up.error && String(up.error.message || "").includes("there is no unique or exclusion constraint")) {
-      // Buscar si ya existe
       const ex = await supabase
-        .from("audit_targets")
+        .from("area_template_targets")
         .select("id")
         .eq("hotel_id", hotelId)
-        .eq("target_scope", "auditor_template")
-        .eq("user_id", userId)
+        .eq("area_id", areaId)
         .eq("audit_template_id", templateId)
         .eq("period", period)
         .limit(1)
@@ -257,14 +298,14 @@ export default function AuditTargetsModule({
       }
 
       if (ex.data?.id) {
-        const u = await supabase.from("audit_targets").update(payload).eq("id", ex.data.id);
+        const u = await supabase.from("area_template_targets").update(payload).eq("id", ex.data.id);
         if (u.error) {
           setError(u.error.message);
           setSaving(false);
           return;
         }
       } else {
-        const i = await supabase.from("audit_targets").insert(payload);
+        const i = await supabase.from("area_template_targets").insert(payload);
         if (i.error) {
           setError(i.error.message);
           setSaving(false);
@@ -277,23 +318,26 @@ export default function AuditTargetsModule({
       return;
     }
 
-    // ✅ Recalcular/generar tasks de objetivos
-    await safeRefreshTargetTasks();
-
     await loadAll();
     resetForm();
     setSaving(false);
   }
 
-  const hasAuditors = auditors.length > 0;
-
   return (
     <div style={card}>
-      <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", alignItems: "flex-start" }}>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          gap: 12,
+          flexWrap: "wrap",
+          alignItems: "flex-start",
+        }}
+      >
         <div>
-          <div style={{ fontSize: 18, fontWeight: 800 }}>Objetivos de auditoría</div>
+          <div style={{ fontSize: 18, fontWeight: 800 }}>Objetivos de área por auditoría</div>
           <div style={{ opacity: 0.8, marginTop: 6, fontSize: 13 }}>
-            Configura cuántas auditorías debe realizar cada auditor por template (por ejemplo “3 diarias”).
+            El admin define cuántas veces debe realizarse cada auditoría/template dentro de un área.
           </div>
         </div>
 
@@ -303,38 +347,65 @@ export default function AuditTargetsModule({
       </div>
 
       {error ? (
-        <div style={{ marginTop: 12, padding: 12, borderRadius: 14, border: "1px solid rgba(255,0,0,0.25)", background: "rgba(255,0,0,0.06)" }}>
+        <div
+          style={{
+            marginTop: 12,
+            padding: 12,
+            borderRadius: 14,
+            border: "1px solid rgba(255,0,0,0.25)",
+            background: "rgba(255,0,0,0.06)",
+          }}
+        >
           <b>Error:</b> {error}
         </div>
       ) : null}
 
       {/* FORM */}
-      <div style={{ marginTop: 14, padding: 14, borderRadius: 16, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(0,0,0,0.10)" }}>
-        <div style={{ fontWeight: 800, marginBottom: 10 }}>{editId ? "Editar objetivo" : "Crear objetivo"}</div>
+      <div
+        style={{
+          marginTop: 14,
+          padding: 14,
+          borderRadius: 16,
+          border: "1px solid rgba(255,255,255,0.10)",
+          background: "rgba(0,0,0,0.10)",
+        }}
+      >
+        <div style={{ fontWeight: 800, marginBottom: 10 }}>
+          {editId ? "Editar objetivo por auditoría" : "Crear objetivo por auditoría"}
+        </div>
 
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12 }}>
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+            gap: 12,
+          }}
+        >
           <div>
-            <div style={{ opacity: 0.8, fontSize: 12, marginBottom: 6 }}>Auditor</div>
-            <select style={select} value={userId} onChange={(e) => setUserId(e.target.value)}>
-              <option value="">{hasAuditors ? "Selecciona un auditor…" : "No se pudieron cargar auditores"}</option>
-              {auditors.map((u) => (
-                <option key={u.id} value={u.id}>
-                  {u.full_name ?? u.id.slice(0, 8)}
+            <div style={{ opacity: 0.8, fontSize: 12, marginBottom: 6 }}>Área</div>
+            <select
+              style={select}
+              value={areaId}
+              onChange={(e) => {
+                const nextAreaId = e.target.value;
+                setAreaId(nextAreaId);
+                setTemplateId("");
+              }}
+            >
+              <option value="">{areas.length ? "Selecciona un área…" : "No se pudieron cargar áreas"}</option>
+              {areas.map((a) => (
+                <option key={a.id} value={a.id}>
+                  {a.name}
                 </option>
               ))}
             </select>
-            {!hasAuditors ? (
-              <div style={{ marginTop: 6, opacity: 0.75, fontSize: 12 }}>
-                Si tu tabla <b>profiles</b> no tiene <b>hotel_id</b>, dime cómo asignas usuarios a hoteles y lo ajusto.
-              </div>
-            ) : null}
           </div>
 
           <div>
-            <div style={{ opacity: 0.8, fontSize: 12, marginBottom: 6 }}>Template</div>
-            <select style={select} value={templateId} onChange={(e) => setTemplateId(e.target.value)}>
-              <option value="">Selecciona un template…</option>
-              {templates.map((t) => (
+            <div style={{ opacity: 0.8, fontSize: 12, marginBottom: 6 }}>Auditoría / Template</div>
+            <select style={select} value={templateId} onChange={(e) => setTemplateId(e.target.value)} disabled={!areaId}>
+              <option value="">{areaId ? "Selecciona un template…" : "Primero elige un área"}</option>
+              {filteredTemplates.map((t) => (
                 <option key={t.id} value={t.id}>
                   {t.name}
                 </option>
@@ -345,18 +416,14 @@ export default function AuditTargetsModule({
           <div>
             <div style={{ opacity: 0.8, fontSize: 12, marginBottom: 6 }}>Periodo</div>
             <select style={select} value={period} onChange={(e) => setPeriod(e.target.value)}>
-              <option value="daily">Diario</option>
-              <option value="weekly" disabled>
-                Semanal (próximamente)
-              </option>
-              <option value="monthly" disabled>
-                Mensual (próximamente)
-              </option>
+             <option value="daily">Diario</option>
+             <option value="weekly">Semanal</option>
+             <option value="monthly">Mensual</option>
             </select>
           </div>
 
           <div>
-            <div style={{ opacity: 0.8, fontSize: 12, marginBottom: 6 }}>Objetivo</div>
+            <div style={{ opacity: 0.8, fontSize: 12, marginBottom: 6 }}>Objetivo total</div>
             <input
               style={input}
               type="number"
@@ -395,12 +462,17 @@ export default function AuditTargetsModule({
         {loading ? (
           <div style={{ padding: 12, opacity: 0.85 }}>Cargando…</div>
         ) : targets.length === 0 ? (
-          <div style={{ padding: 12, opacity: 0.85 }}>Aún no hay objetivos creados.</div>
+          <div style={{ padding: 12, opacity: 0.85 }}>Aún no hay objetivos configurados.</div>
         ) : (
           <div style={{ display: "grid", gap: 10 }}>
             {targets.map((t) => {
-              const auditorName = t.profiles?.full_name ?? (t.user_id ? t.user_id.slice(0, 8) : "—");
+              const areaName = t.areas?.name ?? t.area_id.slice(0, 8);
               const templateName = t.audit_templates?.name ?? t.audit_template_id.slice(0, 8);
+
+              const key = `${t.area_id}__${t.audit_template_id}__${t.period}`;
+              const assignedTarget = assignmentMap[key]?.assigned_target ?? 0;
+              const remainingToAssign = Number(t.target_count ?? 0) - assignedTarget;
+              const status = getAssignmentStatus(Number(t.target_count ?? 0), assignedTarget);
 
               return (
                 <div
@@ -417,12 +489,17 @@ export default function AuditTargetsModule({
                     alignItems: "center",
                   }}
                 >
-                  <div style={{ minWidth: 280 }}>
+                  <div style={{ minWidth: 320 }}>
                     <div style={{ fontWeight: 750 }}>
-                      {auditorName} · <span style={{ opacity: 0.9 }}>{templateName}</span>
+                      {areaName} · <span style={{ opacity: 0.95 }}>{templateName}</span>
                     </div>
+
                     <div style={{ opacity: 0.8, marginTop: 4, fontSize: 13 }}>
                       Periodo: <b>{t.period}</b> · Objetivo: <b>{t.target_count}</b> · Activo: <b>{t.active ? "sí" : "no"}</b>
+                    </div>
+
+                    <div style={{ opacity: 0.8, marginTop: 4, fontSize: 13 }}>
+                      Asignado: <b>{assignedTarget}</b> · Pendiente: <b>{remainingToAssign}</b> · Estado: <b>{status}</b>
                     </div>
                   </div>
 
