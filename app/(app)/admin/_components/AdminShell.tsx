@@ -22,15 +22,6 @@ type ViewMode =
 const HOTEL_KEY = "sc_hotel_id";
 const HOTEL_CHANGED_EVENT = "sc-hotel-changed";
 
-/**
- * ✅ Estética alineada con tu dashboard:
- * - Cards suaves
- * - Bordes sutiles
- * - Botones tipo pill
- * - Sidebar limpio (no “bloque enorme”)
- *
- * NOTA: uso CSS vars con fallback por si ya tienes tokens en globals.css.
- */
 function v(name: string, fallback: string) {
   return `var(${name}, ${fallback})`;
 }
@@ -64,11 +55,15 @@ function buildNavItemStyle(active: boolean): CSSProperties {
     width: "100%",
     textAlign: "left",
     border: `1px solid ${
-      active ? v("--sc-border-strong", "rgba(255,255,255,0.22)") : v("--sc-border", "rgba(255,255,255,0.10)")
+      active
+        ? v("--sc-border-strong", "rgba(255,255,255,0.22)")
+        : v("--sc-border", "rgba(255,255,255,0.10)")
     }`,
     borderRadius: 12,
     padding: "10px 12px",
-    background: active ? v("--sc-row-bg", "rgba(255,255,255,0.08)") : v("--sc-row-bg-soft", "rgba(255,255,255,0.03)"),
+    background: active
+      ? v("--sc-row-bg", "rgba(255,255,255,0.08)")
+      : v("--sc-row-bg-soft", "rgba(255,255,255,0.03)"),
     cursor: "pointer",
     fontWeight: active ? 800 : 650,
     opacity: active ? 1 : 0.92,
@@ -158,7 +153,6 @@ export default function AdminShell() {
   return (
     <div style={{ width: "100%", padding: 18 }}>
       <div style={layoutStyle}>
-        {/* Sidebar */}
         <aside style={sidebar}>
           <div style={headerRow}>
             <div>
@@ -168,8 +162,7 @@ export default function AdminShell() {
 
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
               <div style={buildPillStyle()}>
-                <b>Hotel:</b>{" "}
-                {activeHotelId ? activeHotelId.slice(0, 8) + "…" : "—"}
+                <b>Hotel:</b> {activeHotelId ? activeHotelId.slice(0, 8) + "…" : "—"}
               </div>
             </div>
           </div>
@@ -183,7 +176,6 @@ export default function AdminShell() {
                   style={buildNavItemStyle(active)}
                   onClick={() => setViewMode(it.key)}
                   onMouseDown={(e) => {
-                    // mini “click feel” sin cambiar estética
                     (e.currentTarget as HTMLButtonElement).style.transform = "scale(0.99)";
                   }}
                   onMouseUp={(e) => {
@@ -206,22 +198,23 @@ export default function AdminShell() {
           ) : null}
         </aside>
 
-        {/* Content */}
         <main style={{ width: "100%" }}>
           {!activeHotelId ? (
             <div style={card}>
               <b>Selecciona un hotel</b> (HotelPicker) para poder administrar módulos por hotel.
             </div>
           ) : viewMode === "hotel-info" ? (
-            <HotelInfoModule card={card} />
+            <HotelInfoModule />
           ) : viewMode === "departments" ? (
-            <DepartmentsModule card={card} />
+            <DepartmentsModule />
           ) : viewMode === "users" ? (
-            <UsersModule card={card} />
+            <UsersModule />
           ) : viewMode === "access-by-area" ? (
-            <AccessByAreaModule card={card} />
+            <AccessByAreaModule />
           ) : viewMode === "area-audits" ? (
-            <AreaAuditsModule card={card} />
+            <div style={card}>
+              <AreaAuditsModule hotelId={activeHotelId} areaId={null} areaName={null} />
+            </div>
           ) : (
             <AuditTargetsModule card={card} hotelId={activeHotelId} />
           )}
