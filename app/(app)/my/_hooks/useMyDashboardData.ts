@@ -1,4 +1,3 @@
-// FILE: app/(app)/my/_hooks/useMyDashboardData.ts
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
@@ -8,13 +7,26 @@ export type MyPeriodKey = "daily" | "weekly" | "monthly";
 
 type Role = "superadmin" | "admin" | "manager" | "quality" | "auditor" | string;
 
-type Profile = {
+export type MyProfile = {
   id: string;
   full_name: string | null;
   role: Role;
+  hotel_id: string | null;
+  email: string | null;
+  active: boolean | null;
 };
 
-type MyTargetRow = {
+type HotelRow = {
+  id: string;
+  name: string | null;
+};
+
+type AreaRow = {
+  id: string;
+  name: string | null;
+};
+
+export type MyTargetRow = {
   target_id: string;
   auditor_user_id: string;
   auditor: string | null;
@@ -25,7 +37,7 @@ type MyTargetRow = {
   progress_pct: number;
 };
 
-type RecentRunRow = {
+export type RecentRunRow = {
   id: string;
   executed_at: string | null;
   score: number | null;
@@ -48,12 +60,13 @@ type TemplateRow = {
   name: string | null;
 };
 
-type MySummary = {
+export type MySummary = {
   totalAuditsDone: number;
   totalTargets: number;
   totalCompletedTargets: number;
   totalRemaining: number;
   globalPct: number;
+  averageScore: number | null;
 };
 
 const HOTEL_KEY = "sc_hotel_id";
@@ -96,7 +109,9 @@ export function useMyDashboardData(selectedPeriod: MyPeriodKey) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const [profile, setProfile] = useState<Profile | null>(null);
+  const [profile, setProfile] = useState<MyProfile | null>(null);
+  const [hotelName, setHotelName] = useState<string | null>(null);
+  const [areaNames, setAreaNames] = useState<string[]>([]);
   const [myTargets, setMyTargets] = useState<MyTargetRow[]>([]);
   const [myRecentRuns, setMyRecentRuns] = useState<RecentRunRow[]>([]);
 
@@ -107,6 +122,14 @@ export function useMyDashboardData(selectedPeriod: MyPeriodKey) {
     const totalCompletedTargets = myTargets.reduce((acc, x) => acc + Number(x.completed ?? 0), 0);
     const totalRemaining = myTargets.reduce((acc, x) => acc + Number(x.remaining ?? 0), 0);
     const totalAuditsDone = myRecentRuns.length;
+
+    const scores = myRecentRuns
+      .map((x) => (x.score === null || x.score === undefined ? null : Number(x.score)))
+      .filter((x): x is number => x !== null && Number.isFinite(x));
+
+    const averageScore =
+      scores.length > 0 ? scores.reduce((acc, x) => acc + x, 0) / scores.length : null;
+
     const globalPct = totalTargets > 0 ? (totalCompletedTargets / totalTargets) * 100 : 0;
 
     return {
@@ -115,6 +138,7 @@ export function useMyDashboardData(selectedPeriod: MyPeriodKey) {
       totalCompletedTargets,
       totalRemaining,
       globalPct,
+      averageScore,
     };
   }, [myTargets, myRecentRuns]);
 
@@ -137,12 +161,60 @@ export function useMyDashboardData(selectedPeriod: MyPeriodKey) {
 
         const { data: p, error: pErr } = await supabase
           .from("profiles")
-          .select("id, full_name, role")
+          .select("id, full_name, role, hotel_id, email, active")
           .eq("id", uid)
           .single();
 
         if (pErr) throw pErr;
-        if (!cancelled) setProfile(p as Profile);
+        if (!cancelled) setProfile(p as MyProfile);
+
+        const hotelResp = await supabase
+          .from("hotels")
+          .select("id, name")
+          .eq("id", hotelId)
+          .maybeSingle();
+
+        if (hotelResp.error) throw hotelResp.error;
+        if (!cancelled) {
+          setHotelName(((hotelResp.data ?? null) as HotelRow | null)?.name ?? null);
+        }
+
+        const areaAccessResp = await supabase
+          .from("user_area_access")
+          .select("area_id")
+          .eq("hotel_id", hotelId)
+          .eq("user_id", uid);
+
+        if (areaAccessResp.error) throw areaAccessResp.error;
+
+        const areaIds = Array.from(
+          new Set(
+            (areaAccessResp.data ?? [])
+              .map((row: any) => row.area_id as string | null)
+              .filter(Boolean)
+          )
+        ) as string[];
+
+        if (areaIds.length > 0) {
+          const areasResp = await supabase
+            .from("areas")
+            .select("id, name")
+            .in("id", areaIds)
+            .order("sort_order", { ascending: true })
+            .order("name", { ascending: true });
+
+          if (areasResp.error) throw areasResp.error;
+
+          if (!cancelled) {
+            setAreaNames(
+              ((areasResp.data ?? []) as AreaRow[])
+                .map((x) => x.name ?? "Área")
+                .filter(Boolean)
+            );
+          }
+        } else if (!cancelled) {
+          setAreaNames([]);
+        }
 
         const assignmentsResp = await supabase
           .from("area_template_target_assignments")
@@ -167,7 +239,9 @@ export function useMyDashboardData(selectedPeriod: MyPeriodKey) {
             }) as AssignmentRow
         );
 
-        const templateIds = Array.from(new Set(assignments.map((x) => x.audit_template_id).filter(Boolean)));
+        const templateIds = Array.from(
+          new Set(assignments.map((x) => x.audit_template_id).filter(Boolean))
+        );
 
         let templateNameById: Record<string, string> = {};
 
@@ -180,7 +254,10 @@ export function useMyDashboardData(selectedPeriod: MyPeriodKey) {
           if (templatesResp.error) throw templatesResp.error;
 
           templateNameById = Object.fromEntries(
-            ((templatesResp.data ?? []) as TemplateRow[]).map((row) => [row.id, row.name ?? "Auditoría"])
+            ((templatesResp.data ?? []) as TemplateRow[]).map((row) => [
+              row.id,
+              row.name ?? "Auditoría",
+            ])
           );
         }
 
@@ -234,7 +311,8 @@ export function useMyDashboardData(selectedPeriod: MyPeriodKey) {
           .map((row) => {
             const completed = Math.min(Number(row.completedRaw ?? 0), Number(row.target ?? 0));
             const remaining = Math.max(0, Number(row.target ?? 0) - Number(completed ?? 0));
-            const progressPct = Number(row.target ?? 0) > 0 ? (completed / Number(row.target)) * 100 : 0;
+            const progressPct =
+              Number(row.target ?? 0) > 0 ? (completed / Number(row.target)) * 100 : 0;
 
             return {
               target_id: row.templateId,
@@ -282,6 +360,8 @@ export function useMyDashboardData(selectedPeriod: MyPeriodKey) {
     loading,
     error,
     profile,
+    hotelName,
+    areaNames,
     myTargets,
     myRecentRuns,
     summary,
