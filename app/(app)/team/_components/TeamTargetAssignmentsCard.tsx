@@ -18,6 +18,23 @@ type TeamUserRow = {
   role: string | null;
 };
 
+type NameRelation = {
+  name: string | null;
+};
+
+type MaybeRelation = NameRelation | NameRelation[] | null;
+
+type AreaTemplateTargetRowRaw = {
+  id: string;
+  hotel_id: string;
+  area_id: string;
+  audit_template_id: string;
+  period: string;
+  target_count: number;
+  active: boolean | null;
+  audit_templates?: MaybeRelation;
+};
+
 type AreaTemplateTargetRow = {
   id: string;
   hotel_id: string;
@@ -26,9 +43,7 @@ type AreaTemplateTargetRow = {
   period: string;
   target_count: number;
   active: boolean | null;
-  audit_templates?: {
-    name: string | null;
-  } | null;
+  audit_templates: NameRelation | null;
 };
 
 type AssignmentRow = {
@@ -48,6 +63,7 @@ function buildBtn(): CSSProperties {
     padding: "10px 12px",
     background: "rgba(255,255,255,0.06)",
     cursor: "pointer",
+    color: "white",
   };
 }
 
@@ -78,6 +94,12 @@ function getAssignmentStatus(targetCount: number, assignedTotal: number) {
   if (assignedTotal === targetCount) return "complete";
   if (assignedTotal < targetCount) return "pending";
   return "over_assigned";
+}
+
+function normalizeRelation(value: MaybeRelation): NameRelation | null {
+  if (!value) return null;
+  if (Array.isArray(value)) return value[0] ?? null;
+  return value;
 }
 
 function getTemplateName(row: AreaTemplateTargetRow) {
@@ -145,7 +167,9 @@ export default function TeamTargetAssignmentsCard({
       return;
     }
 
-    const areaIds = Array.from(new Set((a.data ?? []).map((row: any) => row.area_id).filter(Boolean)));
+    const areaIds = Array.from(
+      new Set((a.data ?? []).map((row: any) => row.area_id).filter(Boolean))
+    );
 
     if (areaIds.length === 0) {
       setAreas([]);
@@ -212,7 +236,19 @@ export default function TeamTargetAssignmentsCard({
       return;
     }
 
-    const targetRows = (targetsResp.data ?? []) as AreaTemplateTargetRow[];
+    const targetRowsRaw = (targetsResp.data ?? []) as AreaTemplateTargetRowRaw[];
+
+    const targetRows: AreaTemplateTargetRow[] = targetRowsRaw.map((row) => ({
+      id: row.id,
+      hotel_id: row.hotel_id,
+      area_id: row.area_id,
+      audit_template_id: row.audit_template_id,
+      period: row.period,
+      target_count: Number(row.target_count ?? 0),
+      active: row.active,
+      audit_templates: normalizeRelation(row.audit_templates ?? null),
+    }));
+
     setTemplateTargets(targetRows);
 
     // 2) Usuarios del área
@@ -231,9 +267,13 @@ export default function TeamTargetAssignmentsCard({
     const auth = await supabase.auth.getUser();
     const uid = auth.data.user?.id ?? null;
 
-    const areaUserIds = Array.from(new Set((uaaResp.data ?? []).map((row: any) => row.user_id).filter(Boolean)));
+    const areaUserIds = Array.from(
+      new Set((uaaResp.data ?? []).map((row: any) => row.user_id).filter(Boolean))
+    );
 
-    const candidateUserIds = Array.from(new Set([...(areaUserIds ?? []), uid].filter(Boolean))) as string[];
+    const candidateUserIds = Array.from(
+      new Set([...(areaUserIds ?? []), uid].filter(Boolean))
+    ) as string[];
 
     if (candidateUserIds.length === 0) {
       setTeamUsers([]);
@@ -355,18 +395,25 @@ export default function TeamTargetAssignmentsCard({
           user_id: userId,
           target_count: Number.isFinite(value) ? value : 0,
           active: true,
-          area_template_target_id: prev[templateId]?.[userId]?.area_template_target_id ?? target?.id ?? null,
+          area_template_target_id:
+            prev[templateId]?.[userId]?.area_template_target_id ?? target?.id ?? null,
         },
       },
     }));
   }
 
   const overallSummary = useMemo(() => {
-    const totalTarget = templateTargets.reduce((acc, row) => acc + Number(row.target_count ?? 0), 0);
+    const totalTarget = templateTargets.reduce(
+      (acc, row) => acc + Number(row.target_count ?? 0),
+      0
+    );
 
     const totalAssigned = templateTargets.reduce((acc, row) => {
       const tplMap = assignmentsByTemplate[row.audit_template_id] ?? {};
-      const tplAssigned = Object.values(tplMap).reduce((sum, x) => sum + Number(x.target_count ?? 0), 0);
+      const tplAssigned = Object.values(tplMap).reduce(
+        (sum, x) => sum + Number(x.target_count ?? 0),
+        0
+      );
       return acc + tplAssigned;
     }, 0);
 
@@ -413,14 +460,17 @@ export default function TeamTargetAssignmentsCard({
           created_by: createdBy,
         };
 
-        let up = await supabase
+        const up = await supabase
           .from("area_template_target_assignments")
           .upsert(payload, {
             onConflict: "hotel_id,area_id,audit_template_id,user_id,period",
             ignoreDuplicates: false,
           });
 
-        if (up.error && String(up.error.message || "").includes("there is no unique or exclusion constraint")) {
+        if (
+          up.error &&
+          String(up.error.message || "").includes("there is no unique or exclusion constraint")
+        ) {
           const ex = await supabase
             .from("area_template_target_assignments")
             .select("id")
@@ -484,9 +534,12 @@ export default function TeamTargetAssignmentsCard({
         }}
       >
         <div>
-          <div style={{ fontSize: 18, fontWeight: 800 }}>Reparto del objetivo por auditoría</div>
+          <div style={{ fontSize: 18, fontWeight: 800 }}>
+            Reparto del objetivo por auditoría
+          </div>
           <div style={{ opacity: 0.8, marginTop: 6, fontSize: 13 }}>
-            Reparte el objetivo de cada template entre los auditores de tu equipo según el periodo seleccionado.
+            Reparte el objetivo de cada template entre los auditores de tu equipo según
+            el periodo seleccionado.
           </div>
         </div>
 
@@ -522,11 +575,23 @@ export default function TeamTargetAssignmentsCard({
           background: "rgba(0,0,0,0.10)",
         }}
       >
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12 }}>
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+            gap: 12,
+          }}
+        >
           <div>
             <div style={{ opacity: 0.8, fontSize: 12, marginBottom: 6 }}>Área</div>
-            <select style={select} value={selectedAreaId} onChange={(e) => setSelectedAreaId(e.target.value)}>
-              <option value="">{areas.length ? "Selecciona un área…" : "No tienes áreas asignadas"}</option>
+            <select
+              style={select}
+              value={selectedAreaId}
+              onChange={(e) => setSelectedAreaId(e.target.value)}
+            >
+              <option value="">
+                {areas.length ? "Selecciona un área…" : "No tienes áreas asignadas"}
+              </option>
               {areas.map((a) => (
                 <option key={a.id} value={a.id}>
                   {a.name}
@@ -581,10 +646,13 @@ export default function TeamTargetAssignmentsCard({
           <div style={{ padding: 12, opacity: 0.85 }}>Selecciona un área.</div>
         ) : templateTargets.length === 0 ? (
           <div style={{ padding: 12, opacity: 0.85 }}>
-            Esta área aún no tiene objetivos por template para este periodo. Ve primero a Admin → Objetivos de área por auditoría.
+            Esta área aún no tiene objetivos por template para este periodo. Ve primero a
+            Admin → Objetivos de área por auditoría.
           </div>
         ) : teamUsers.length === 0 ? (
-          <div style={{ padding: 12, opacity: 0.85 }}>No hay auditores asignados a esta área.</div>
+          <div style={{ padding: 12, opacity: 0.85 }}>
+            No hay auditores asignados a esta área.
+          </div>
         ) : (
           <div style={{ display: "grid", gap: 12 }}>
             {templateTargets.map((target) => {
@@ -620,7 +688,9 @@ export default function TeamTargetAssignmentsCard({
                     }}
                   >
                     <div>
-                      <div style={{ fontSize: 16, fontWeight: 800 }}>{getTemplateName(target)}</div>
+                      <div style={{ fontSize: 16, fontWeight: 800 }}>
+                        {getTemplateName(target)}
+                      </div>
                       <div style={{ opacity: 0.78, marginTop: 4, fontSize: 13 }}>
                         Objetivo {getPeriodLabel(selectedPeriod)} para esta auditoría.
                       </div>
@@ -666,7 +736,9 @@ export default function TeamTargetAssignmentsCard({
                           }}
                         >
                           <div>
-                            <div style={{ fontWeight: 750 }}>{user.full_name ?? user.id.slice(0, 8)}</div>
+                            <div style={{ fontWeight: 750 }}>
+                              {user.full_name ?? user.id.slice(0, 8)}
+                            </div>
                             <div style={{ opacity: 0.8, marginTop: 4, fontSize: 13 }}>
                               Rol: <b>{user.role ?? "—"}</b>
                               {user.id === managerId ? " · tú" : ""}
@@ -674,13 +746,17 @@ export default function TeamTargetAssignmentsCard({
                           </div>
 
                           <div>
-                            <div style={{ opacity: 0.8, fontSize: 12, marginBottom: 6 }}>Objetivo asignado</div>
+                            <div style={{ opacity: 0.8, fontSize: 12, marginBottom: 6 }}>
+                              Objetivo asignado
+                            </div>
                             <input
                               style={input}
                               type="number"
                               min={0}
                               value={row.target_count}
-                              onChange={(e) => updateAssignment(templateId, user.id, Number(e.target.value))}
+                              onChange={(e) =>
+                                updateAssignment(templateId, user.id, Number(e.target.value))
+                              }
                             />
                           </div>
                         </div>
