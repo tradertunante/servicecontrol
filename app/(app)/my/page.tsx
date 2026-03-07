@@ -1,12 +1,11 @@
 // FILE: app/(app)/my/page.tsx
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import type { CSSProperties } from "react";
 import { useRouter } from "next/navigation";
-
 import { requireRoleOrRedirect } from "@/lib/auth/RequireRole";
-import { useMyDashboardData } from "./_hooks/useMyDashboardData";
+import { useMyDashboardData, type MyPeriodKey } from "./_hooks/useMyDashboardData";
 
 function buildCardStyle(): CSSProperties {
   return {
@@ -15,6 +14,18 @@ function buildCardStyle(): CSSProperties {
     padding: 16,
     background: "rgba(255,255,255,0.04)",
     boxShadow: "0 6px 18px rgba(0,0,0,0.20)",
+  };
+}
+
+function buildInputStyle(): CSSProperties {
+  return {
+    width: "100%",
+    padding: "10px 12px",
+    borderRadius: 12,
+    border: "1px solid rgba(255,255,255,0.14)",
+    background: "rgba(0,0,0,0.18)",
+    color: "white",
+    outline: "none",
   };
 }
 
@@ -28,6 +39,12 @@ function buildBtnStyle(): CSSProperties {
   };
 }
 
+function getPeriodLabel(period: MyPeriodKey) {
+  if (period === "daily") return "hoy";
+  if (period === "weekly") return "esta semana";
+  return "este mes";
+}
+
 function formatPct(n: number | null | undefined) {
   if (n === null || n === undefined) return "—";
   const x = Number(n);
@@ -37,50 +54,34 @@ function formatPct(n: number | null | undefined) {
 
 export default function MyDashboardPage() {
   const router = useRouter();
-
   requireRoleOrRedirect(["superadmin", "admin", "manager", "quality", "auditor"], router);
 
   const card = useMemo(() => buildCardStyle(), []);
+  const input = useMemo(() => buildInputStyle(), []);
   const btn = useMemo(() => buildBtnStyle(), []);
 
-  const { loading, profile, myTargetsToday, myTargetTasks, myRecentRuns, error } = useMyDashboardData();
+  const [selectedPeriod, setSelectedPeriod] = useState<MyPeriodKey>("monthly");
 
-  const role = profile?.role ?? "—";
-  const fullName = profile?.full_name ?? "—";
-  const isAuditor = role === "auditor";
+  const { loading, error, profile, myTargets, myRecentRuns, summary } =
+    useMyDashboardData(selectedPeriod);
 
-  const targetsByAuditor = useMemo(() => {
-    const map: Record<string, typeof myTargetsToday> = {};
+  const panelBodyStyle: CSSProperties = {
+    marginTop: 10,
+    display: "grid",
+    gap: 10,
+    maxHeight: 620,
+    overflowY: "auto",
+    paddingRight: 4,
+    alignContent: "start",
+  };
 
-    for (const t of myTargetsToday) {
-      const key = (t.auditor ?? "—").trim() || "—";
-      if (!map[key]) map[key] = [];
-      map[key].push(t);
-    }
-
-    const entries = Object.entries(map).map(([auditor, rows]) => {
-      const remainingSum = rows.reduce((acc, r) => acc + Number(r.remaining ?? 0), 0);
-      const targetSum = rows.reduce((acc, r) => acc + Number(r.target ?? 0), 0);
-      const completedSum = rows.reduce((acc, r) => acc + Number(r.completed ?? 0), 0);
-      const pct = targetSum > 0 ? (completedSum / targetSum) * 100 : 0;
-
-      return {
-        auditor,
-        rows,
-        remainingSum,
-        completedSum,
-        targetSum,
-        pct,
-      };
-    });
-
-    entries.sort((a, b) => {
-      if (b.remainingSum !== a.remainingSum) return b.remainingSum - a.remainingSum;
-      return String(a.auditor).localeCompare(String(b.auditor));
-    });
-
-    return entries;
-  }, [myTargetsToday]);
+  const progressTrackStyle: CSSProperties = {
+    marginTop: 10,
+    height: 5,
+    borderRadius: 999,
+    background: "rgba(255,255,255,0.10)",
+    overflow: "hidden",
+  };
 
   return (
     <div style={{ padding: 18, width: "100%" }}>
@@ -96,11 +97,24 @@ export default function MyDashboardPage() {
         <div>
           <div style={{ fontSize: 22, fontWeight: 700 }}>Mi panel</div>
           <div style={{ opacity: 0.85, marginTop: 4 }}>
-            Hola, <b>{fullName}</b> · Rol: <b>{role}</b>
+            Hola, <b>{profile?.full_name ?? "—"}</b> · Rol: <b>{profile?.role ?? "—"}</b>
           </div>
           <div style={{ opacity: 0.65, marginTop: 6, fontSize: 12 }}>
-            Usa el menú superior para navegar (Admin · Auditar · Perfil).
+            Resumen personal de auditorías y seguimiento de objetivos.
           </div>
+        </div>
+
+        <div style={{ minWidth: 220 }}>
+          <div style={{ opacity: 0.8, fontSize: 12, marginBottom: 6 }}>Periodo</div>
+          <select
+            style={input}
+            value={selectedPeriod}
+            onChange={(e) => setSelectedPeriod(e.target.value as MyPeriodKey)}
+          >
+            <option value="daily">Diario</option>
+            <option value="weekly">Semanal</option>
+            <option value="monthly">Mensual</option>
+          </select>
         </div>
       </div>
 
@@ -110,290 +124,177 @@ export default function MyDashboardPage() {
         </div>
       ) : null}
 
-      {loading ? (
-        <div style={{ marginTop: 14, ...card }}>Cargando…</div>
-      ) : (
-        <div
-          style={{
-            marginTop: 14,
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
-            gap: 14,
-          }}
-        >
-          <div style={card}>
-            <div style={{ fontWeight: 700, fontSize: 16 }}>
-              {isAuditor ? "Mis objetivos de hoy" : "Objetivos del equipo (hoy)"}
-            </div>
+      <div
+        style={{
+          marginTop: 14,
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+          gap: 14,
+        }}
+      >
+        <div style={card}>
+          <div style={{ opacity: 0.8, fontSize: 13 }}>Auditorías realizadas · {getPeriodLabel(selectedPeriod)}</div>
+          <div style={{ fontSize: 30, fontWeight: 800, marginTop: 8 }}>{summary.totalAuditsDone}</div>
+        </div>
 
-            <div style={{ opacity: 0.8, marginTop: 6, fontSize: 13 }}>
-              {isAuditor
-                ? "Basado en asignaciones por auditoría/template para periodo diario y en tus auditorías ejecutadas hoy."
-                : "Basado en asignaciones por auditoría/template para periodo diario y en las auditorías ejecutadas hoy por cada auditor."}
-            </div>
+        <div style={card}>
+          <div style={{ opacity: 0.8, fontSize: 13 }}>Mi objetivo · {getPeriodLabel(selectedPeriod)}</div>
+          <div style={{ fontSize: 30, fontWeight: 800, marginTop: 8 }}>
+            {summary.totalCompletedTargets} / {summary.totalTargets}
+          </div>
+        </div>
 
-            <div style={{ marginTop: 10, display: "grid", gap: 10 }}>
-              {myTargetsToday.length === 0 ? (
-                <div style={{ opacity: 0.85 }}>
-                  {isAuditor
-                    ? "No tienes objetivos diarios asignados en el nuevo modelo."
-                    : "No hay objetivos diarios asignados para el equipo en el nuevo modelo."}
-                </div>
-              ) : isAuditor ? (
-                myTargetsToday.map((t) => (
-                  <div
-                    key={t.target_id}
-                    style={{
-                      border: "1px solid rgba(255,255,255,0.10)",
-                      borderRadius: 14,
-                      padding: 12,
-                      background: "rgba(0,0,0,0.12)",
-                    }}
-                  >
-                    <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
-                      <div style={{ fontWeight: 650 }}>{t.template}</div>
-                      <div style={{ opacity: 0.85 }}>
-                        <b>{t.completed}</b> / {t.target} · {formatPct(t.progress_pct)}
-                      </div>
-                    </div>
+        <div style={card}>
+          <div style={{ opacity: 0.8, fontSize: 13 }}>Restantes · {getPeriodLabel(selectedPeriod)}</div>
+          <div style={{ fontSize: 30, fontWeight: 800, marginTop: 8 }}>{summary.totalRemaining}</div>
+        </div>
 
-                    <div
-                      style={{
-                        marginTop: 8,
-                        height: 8,
-                        borderRadius: 999,
-                        background: "rgba(255,255,255,0.10)",
-                      }}
-                    >
-                      <div
-                        style={{
-                          height: "100%",
-                          width: `${Math.max(0, Math.min(100, Number(t.progress_pct ?? 0)))}%`,
-                          borderRadius: 999,
-                          background: "rgba(255,255,255,0.45)",
-                        }}
-                      />
-                    </div>
+        <div style={card}>
+          <div style={{ opacity: 0.8, fontSize: 13 }}>Progreso</div>
+          <div style={{ fontSize: 30, fontWeight: 800, marginTop: 8 }}>{formatPct(summary.globalPct)}</div>
+        </div>
+      </div>
 
-                    <div
-                      style={{
-                        marginTop: 8,
-                        opacity: 0.85,
-                        fontSize: 13,
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "space-between",
-                        gap: 10,
-                      }}
-                    >
-                      <div>
-                        Restantes: <b>{t.remaining}</b>
-                      </div>
-
-                      <button style={btn} onClick={() => router.push("/audits/new")}>
-                        Auditar
-                      </button>
-                    </div>
-                  </div>
-                ))
-              ) : (
-                targetsByAuditor.map((g) => (
-                  <div
-                    key={g.auditor}
-                    style={{
-                      border: "1px solid rgba(255,255,255,0.10)",
-                      borderRadius: 14,
-                      padding: 12,
-                      background: "rgba(0,0,0,0.12)",
-                    }}
-                  >
-                    <div
-                      style={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        gap: 10,
-                        alignItems: "baseline",
-                      }}
-                    >
-                      <div
-                        style={{
-                          fontWeight: 700,
-                          minWidth: 0,
-                          whiteSpace: "nowrap",
-                          overflow: "hidden",
-                          textOverflow: "ellipsis",
-                        }}
-                      >
-                        {g.auditor}
-                      </div>
-
-                      <div style={{ opacity: 0.85 }}>
-                        <b>{g.completedSum}</b> / {g.targetSum} · {formatPct(g.pct)}
-                      </div>
-                    </div>
-
-                    <div
-                      style={{
-                        marginTop: 8,
-                        height: 8,
-                        borderRadius: 999,
-                        background: "rgba(255,255,255,0.10)",
-                      }}
-                    >
-                      <div
-                        style={{
-                          height: "100%",
-                          width: `${Math.max(0, Math.min(100, Number(g.pct ?? 0)))}%`,
-                          borderRadius: 999,
-                          background: "rgba(255,255,255,0.45)",
-                        }}
-                      />
-                    </div>
-
-                    <div style={{ marginTop: 8, opacity: 0.85, fontSize: 13 }}>
-                      Restantes hoy: <b>{g.remainingSum}</b>
-                    </div>
-
-                    <div style={{ marginTop: 10, display: "grid", gap: 8 }}>
-                      {g.rows.map((t) => (
-                        <div
-                          key={t.target_id}
-                          style={{
-                            border: "1px solid rgba(255,255,255,0.10)",
-                            borderRadius: 12,
-                            padding: 10,
-                            background: "rgba(255,255,255,0.04)",
-                            display: "flex",
-                            justifyContent: "space-between",
-                            gap: 10,
-                          }}
-                        >
-                          <div
-                            style={{
-                              minWidth: 0,
-                              whiteSpace: "nowrap",
-                              overflow: "hidden",
-                              textOverflow: "ellipsis",
-                            }}
-                          >
-                            {t.template}
-                          </div>
-
-                          <div style={{ opacity: 0.9, whiteSpace: "nowrap" }}>
-                            <b>{t.completed}</b>/{t.target} · faltan <b>{t.remaining}</b>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-
-                    <div style={{ marginTop: 10, display: "flex", justifyContent: "flex-end" }}>
-                      <button style={btn} onClick={() => router.push("/team")}>
-                        Ver equipo
-                      </button>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
+      <div
+        style={{
+          marginTop: 14,
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(340px, 1fr))",
+          gap: 14,
+        }}
+      >
+        <div style={card}>
+          <div style={{ fontWeight: 700, fontSize: 16 }}>Mis auditorías pendientes</div>
+          <div style={{ opacity: 0.8, marginTop: 6, fontSize: 13 }}>
+            Tus auditorías asignadas para cerrar {getPeriodLabel(selectedPeriod)}.
           </div>
 
-          <div style={card}>
-            <div style={{ fontWeight: 700, fontSize: 16 }}>Mis tareas</div>
-            <div style={{ opacity: 0.8, marginTop: 6, fontSize: 13 }}>
-              task_type = <b>target</b> y asignadas a ti.
-            </div>
-
-            <div style={{ marginTop: 10, display: "grid", gap: 10 }}>
-              {myTargetTasks.length === 0 ? (
-                <div style={{ opacity: 0.85 }}>No hay tareas pendientes ahora mismo.</div>
-              ) : (
-                myTargetTasks.map((x) => (
+          <div style={panelBodyStyle}>
+            {loading ? (
+              <div>Cargando…</div>
+            ) : myTargets.length === 0 ? (
+              <div style={{ opacity: 0.85 }}>No tienes objetivos para este periodo.</div>
+            ) : (
+              myTargets.map((row) => (
+                <div
+                  key={row.target_id}
+                  style={{
+                    border: "1px solid rgba(255,255,255,0.10)",
+                    borderRadius: 14,
+                    padding: 12,
+                    background: "rgba(0,0,0,0.12)",
+                  }}
+                >
                   <div
-                    key={x.id}
                     style={{
-                      border: "1px solid rgba(255,255,255,0.10)",
-                      borderRadius: 14,
-                      padding: 12,
-                      background: "rgba(0,0,0,0.12)",
                       display: "flex",
-                      alignItems: "center",
                       justifyContent: "space-between",
-                      gap: 10,
+                      gap: 12,
+                      alignItems: "flex-start",
                     }}
                   >
                     <div style={{ minWidth: 0 }}>
                       <div
                         style={{
-                          fontWeight: 650,
+                          fontWeight: 700,
+                          fontSize: 18,
                           whiteSpace: "nowrap",
                           overflow: "hidden",
                           textOverflow: "ellipsis",
                         }}
                       >
-                        {x.title}
+                        {row.template}
                       </div>
                       <div style={{ opacity: 0.8, fontSize: 13, marginTop: 4 }}>
-                        Estado: <b>{x.status}</b> · Vence: <b>{x.due_date?.slice(0, 10) ?? "—"}</b>
+                        <b>{row.completed}</b> / {row.target} completadas · faltan <b>{row.remaining}</b>
                       </div>
                     </div>
 
-                    <button style={btn} onClick={() => router.push("/tasks")}>
-                      Ver
+                    <div style={{ textAlign: "right", whiteSpace: "nowrap" }}>
+                      <div style={{ fontWeight: 800, fontSize: 20 }}>
+                        {formatPct(row.progress_pct)}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div style={progressTrackStyle}>
+                    <div
+                      style={{
+                        height: "100%",
+                        width: `${Math.max(0, Math.min(100, Number(row.progress_pct ?? 0)))}%`,
+                        borderRadius: 999,
+                        background: "rgba(255,255,255,0.7)",
+                      }}
+                    />
+                  </div>
+
+                  <div style={{ marginTop: 12, display: "flex", justifyContent: "flex-end" }}>
+                    <button
+                      style={btn}
+                      onClick={() =>
+                        router.push(`/audits/new?template=${encodeURIComponent(row.target_id)}`)
+                      }
+                    >
+                      Auditar
                     </button>
                   </div>
-                ))
-              )}
-            </div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+
+        <div style={card}>
+          <div style={{ fontWeight: 700, fontSize: 16 }}>Mis auditorías recientes</div>
+          <div style={{ opacity: 0.8, marginTop: 6, fontSize: 13 }}>
+            Últimas auditorías ejecutadas por ti en {getPeriodLabel(selectedPeriod)}.
           </div>
 
-          <div style={card}>
-            <div style={{ fontWeight: 700, fontSize: 16 }}>Mi actividad reciente</div>
-            <div style={{ opacity: 0.8, marginTop: 6, fontSize: 13 }}>
-              Últimas auditorías ejecutadas por ti.
-            </div>
-
-            <div style={{ marginTop: 10, display: "grid", gap: 10 }}>
-              {myRecentRuns.length === 0 ? (
-                <div style={{ opacity: 0.85 }}>Aún no hay auditorías recientes.</div>
-              ) : (
-                myRecentRuns.map((r) => (
-                  <div
-                    key={r.id}
-                    style={{
-                      border: "1px solid rgba(255,255,255,0.10)",
-                      borderRadius: 14,
-                      padding: 12,
-                      background: "rgba(0,0,0,0.12)",
-                    }}
-                  >
-                    <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
+          <div style={panelBodyStyle}>
+            {loading ? (
+              <div>Cargando…</div>
+            ) : myRecentRuns.length === 0 ? (
+              <div style={{ opacity: 0.85 }}>Aún no hay auditorías recientes.</div>
+            ) : (
+              myRecentRuns.map((run) => (
+                <div
+                  key={run.id}
+                  style={{
+                    border: "1px solid rgba(255,255,255,0.10)",
+                    borderRadius: 14,
+                    padding: 12,
+                    background: "rgba(0,0,0,0.12)",
+                  }}
+                >
+                  <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
+                    <div style={{ minWidth: 0 }}>
                       <div
                         style={{
-                          fontWeight: 650,
-                          minWidth: 0,
+                          fontWeight: 700,
                           whiteSpace: "nowrap",
                           overflow: "hidden",
                           textOverflow: "ellipsis",
                         }}
                       >
-                        {r.template_name ?? "Auditoría"}
+                        {run.template_name ?? "Auditoría"}
                       </div>
-
-                      <div style={{ opacity: 0.85 }}>
-                        {r.score !== null && r.score !== undefined ? <b>{Number(r.score).toFixed(1)}%</b> : "—"}
+                      <div style={{ opacity: 0.8, fontSize: 13, marginTop: 4 }}>
+                        {run.executed_at ? run.executed_at.replace("T", " ").slice(0, 16) : "—"}
                       </div>
                     </div>
 
-                    <div style={{ opacity: 0.8, fontSize: 13, marginTop: 4 }}>
-                      {r.executed_at ? r.executed_at.replace("T", " ").slice(0, 16) : "—"}
+                    <div style={{ textAlign: "right", whiteSpace: "nowrap" }}>
+                      <div style={{ fontWeight: 700 }}>
+                        {run.score !== null && run.score !== undefined ? `${Number(run.score).toFixed(1)}%` : "—"}
+                      </div>
                     </div>
                   </div>
-                ))
-              )}
-            </div>
+                </div>
+              ))
+            )}
           </div>
         </div>
-      )}
+      </div>
     </div>
   );
 }
