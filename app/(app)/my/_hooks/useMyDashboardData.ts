@@ -4,6 +4,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 
+export type MyPeriodKey = "daily" | "weekly" | "monthly";
+
 type Role = "superadmin" | "admin" | "manager" | "quality" | "auditor" | string;
 
 type Profile = {
@@ -14,22 +16,13 @@ type Profile = {
 
 type MyTargetRow = {
   target_id: string;
+  auditor_user_id: string;
   auditor: string | null;
   template: string;
   target: number;
   completed: number;
   remaining: number;
   progress_pct: number;
-};
-
-type TaskRow = {
-  id: string;
-  title: string | null;
-  status: string | null;
-  task_type: string | null;
-  period_key: string | null;
-  due_date: string | null;
-  assigned_user_id: string | null;
 };
 
 type RecentRunRow = {
@@ -55,44 +48,75 @@ type TemplateRow = {
   name: string | null;
 };
 
+type MySummary = {
+  totalAuditsDone: number;
+  totalTargets: number;
+  totalCompletedTargets: number;
+  totalRemaining: number;
+  globalPct: number;
+};
+
 const HOTEL_KEY = "sc_hotel_id";
 
-function isAuditor(role: Role) {
-  return role === "auditor";
+function getDateRange(period: MyPeriodKey) {
+  const now = new Date();
+
+  if (period === "daily") {
+    const start = new Date(now);
+    start.setHours(0, 0, 0, 0);
+
+    const end = new Date(now);
+    end.setHours(23, 59, 59, 999);
+
+    return { startISO: start.toISOString(), endISO: end.toISOString() };
+  }
+
+  if (period === "weekly") {
+    const day = now.getDay();
+    const diffToMonday = day === 0 ? 6 : day - 1;
+
+    const start = new Date(now);
+    start.setDate(now.getDate() - diffToMonday);
+    start.setHours(0, 0, 0, 0);
+
+    const end = new Date(start);
+    end.setDate(start.getDate() + 6);
+    end.setHours(23, 59, 59, 999);
+
+    return { startISO: start.toISOString(), endISO: end.toISOString() };
+  }
+
+  const start = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
+  const end = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+
+  return { startISO: start.toISOString(), endISO: end.toISOString() };
 }
 
-function isManager(role: Role) {
-  return role === "manager";
-}
-
-function isHotelWideRole(role: Role) {
-  return role === "quality" || role === "admin" || role === "superadmin";
-}
-
-function getDayBounds() {
-  const start = new Date();
-  start.setHours(0, 0, 0, 0);
-
-  const end = new Date();
-  end.setHours(23, 59, 59, 999);
-
-  return {
-    startISO: start.toISOString(),
-    endISO: end.toISOString(),
-    dayISO: start.toISOString().slice(0, 10),
-  };
-}
-
-export function useMyDashboardData() {
+export function useMyDashboardData(selectedPeriod: MyPeriodKey) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const [profile, setProfile] = useState<Profile | null>(null);
-  const [myTargetsToday, setMyTargetsToday] = useState<MyTargetRow[]>([]);
-  const [myTargetTasks, setMyTargetTasks] = useState<TaskRow[]>([]);
+  const [myTargets, setMyTargets] = useState<MyTargetRow[]>([]);
   const [myRecentRuns, setMyRecentRuns] = useState<RecentRunRow[]>([]);
 
-  const dayBounds = useMemo(() => getDayBounds(), []);
+  const range = useMemo(() => getDateRange(selectedPeriod), [selectedPeriod]);
+
+  const summary = useMemo<MySummary>(() => {
+    const totalTargets = myTargets.reduce((acc, x) => acc + Number(x.target ?? 0), 0);
+    const totalCompletedTargets = myTargets.reduce((acc, x) => acc + Number(x.completed ?? 0), 0);
+    const totalRemaining = myTargets.reduce((acc, x) => acc + Number(x.remaining ?? 0), 0);
+    const totalAuditsDone = myRecentRuns.length;
+    const globalPct = totalTargets > 0 ? (totalCompletedTargets / totalTargets) * 100 : 0;
+
+    return {
+      totalAuditsDone,
+      totalTargets,
+      totalCompletedTargets,
+      totalRemaining,
+      globalPct,
+    };
+  }, [myTargets, myRecentRuns]);
 
   useEffect(() => {
     let cancelled = false;
@@ -101,6 +125,9 @@ export function useMyDashboardData() {
       try {
         setLoading(true);
         setError(null);
+
+        const hotelId = typeof window !== "undefined" ? localStorage.getItem(HOTEL_KEY) : null;
+        if (!hotelId) throw new Error("No hay hotel seleccionado.");
 
         const { data: authData, error: authErr } = await supabase.auth.getUser();
         if (authErr) throw authErr;
@@ -115,285 +142,128 @@ export function useMyDashboardData() {
           .single();
 
         if (pErr) throw pErr;
+        if (!cancelled) setProfile(p as Profile);
 
-        const prof = p as Profile;
-        if (!cancelled) setProfile(prof);
-
-        const hotelId = typeof window !== "undefined" ? localStorage.getItem(HOTEL_KEY) : null;
-
-        if (!hotelId) {
-          if (!cancelled) setMyTargetsToday([]);
-        } else {
-          let assignments: AssignmentRow[] = [];
-          let relevantUserIds: string[] = [];
-
-          if (isAuditor(prof.role)) {
-            const assignmentsResp = await supabase
-              .from("area_template_target_assignments")
-              .select("id, area_id, audit_template_id, user_id, period, target_count, active")
-              .eq("hotel_id", hotelId)
-              .eq("period", "daily")
-              .eq("active", true)
-              .eq("user_id", uid);
-
-            if (assignmentsResp.error) throw assignmentsResp.error;
-
-            assignments = ((assignmentsResp.data ?? []) as any[]).map(
-              (row) =>
-                ({
-                  id: row.id,
-                  area_id: row.area_id,
-                  audit_template_id: row.audit_template_id,
-                  user_id: row.user_id,
-                  period: row.period,
-                  target_count: Number(row.target_count ?? 0),
-                  active: row.active,
-                }) as AssignmentRow
-            );
-
-            relevantUserIds = [uid];
-          } else if (isManager(prof.role)) {
-            const accessResp = await supabase
-              .from("user_area_access")
-              .select("area_id")
-              .eq("hotel_id", hotelId)
-              .eq("user_id", uid);
-
-            if (accessResp.error) throw accessResp.error;
-
-            const managerAreaIds = Array.from(
-              new Set((accessResp.data ?? []).map((row: any) => row.area_id).filter(Boolean))
-            );
-
-            if (managerAreaIds.length === 0) {
-              assignments = [];
-              relevantUserIds = [];
-            } else {
-              const assignmentsResp = await supabase
-                .from("area_template_target_assignments")
-                .select("id, area_id, audit_template_id, user_id, period, target_count, active")
-                .eq("hotel_id", hotelId)
-                .eq("period", "daily")
-                .eq("active", true)
-                .in("area_id", managerAreaIds);
-
-              if (assignmentsResp.error) throw assignmentsResp.error;
-
-              assignments = ((assignmentsResp.data ?? []) as any[]).map(
-                (row) =>
-                  ({
-                    id: row.id,
-                    area_id: row.area_id,
-                    audit_template_id: row.audit_template_id,
-                    user_id: row.user_id,
-                    period: row.period,
-                    target_count: Number(row.target_count ?? 0),
-                    active: row.active,
-                  }) as AssignmentRow
-              );
-
-              relevantUserIds = Array.from(new Set(assignments.map((x) => x.user_id).filter(Boolean)));
-            }
-          } else if (isHotelWideRole(prof.role)) {
-            const assignmentsResp = await supabase
-              .from("area_template_target_assignments")
-              .select("id, area_id, audit_template_id, user_id, period, target_count, active")
-              .eq("hotel_id", hotelId)
-              .eq("period", "daily")
-              .eq("active", true);
-
-            if (assignmentsResp.error) throw assignmentsResp.error;
-
-            assignments = ((assignmentsResp.data ?? []) as any[]).map(
-              (row) =>
-                ({
-                  id: row.id,
-                  area_id: row.area_id,
-                  audit_template_id: row.audit_template_id,
-                  user_id: row.user_id,
-                  period: row.period,
-                  target_count: Number(row.target_count ?? 0),
-                  active: row.active,
-                }) as AssignmentRow
-            );
-
-            relevantUserIds = Array.from(new Set(assignments.map((x) => x.user_id).filter(Boolean)));
-          } else {
-            assignments = [];
-            relevantUserIds = [];
-          }
-
-          if (assignments.length === 0 || relevantUserIds.length === 0) {
-            if (!cancelled) setMyTargetsToday([]);
-          } else {
-            const templateIds = Array.from(new Set(assignments.map((x) => x.audit_template_id).filter(Boolean)));
-
-            const profilesResp = await supabase
-              .from("profiles")
-              .select("id, full_name, role")
-              .in("id", relevantUserIds);
-
-            if (profilesResp.error) throw profilesResp.error;
-
-            const userNameById = Object.fromEntries(
-              ((profilesResp.data ?? []) as Profile[]).map((row) => [row.id, row.full_name ?? row.id.slice(0, 8)])
-            );
-
-            let templateNameById: Record<string, string> = {};
-
-            if (templateIds.length > 0) {
-              const templatesResp = await supabase
-                .from("audit_templates")
-                .select("id, name")
-                .in("id", templateIds);
-
-              if (templatesResp.error) throw templatesResp.error;
-
-              templateNameById = Object.fromEntries(
-                ((templatesResp.data ?? []) as TemplateRow[]).map((row) => [row.id, row.name ?? "Auditoría"])
-              );
-            }
-
-            const runsResp = await supabase
-              .from("audit_runs")
-              .select("id, executed_at, score, audit_template_id, executed_by")
-              .eq("hotel_id", hotelId)
-              .in("executed_by", relevantUserIds)
-              .not("executed_at", "is", null)
-              .gte("executed_at", dayBounds.startISO)
-              .lte("executed_at", dayBounds.endISO);
-
-            if (runsResp.error) throw runsResp.error;
-
-            const runs = (runsResp.data ?? []) as any[];
-
-            const runCountByUserTemplate: Record<string, number> = {};
-            for (const run of runs) {
-              const runUserId = run.executed_by as string | null;
-              const runTemplateId = run.audit_template_id as string | null;
-              if (!runUserId || !runTemplateId) continue;
-
-              const key = `${runUserId}__${runTemplateId}`;
-              runCountByUserTemplate[key] = Number(runCountByUserTemplate[key] ?? 0) + 1;
-            }
-
-            const groupedMap: Record<
-              string,
-              {
-                auditor_user_id: string;
-                auditor: string | null;
-                audit_template_id: string;
-                template: string;
-                target: number;
-                completedRaw: number;
-              }
-            > = {};
-
-            for (const row of assignments) {
-              const key = `${row.user_id}__${row.audit_template_id}`;
-
-              if (!groupedMap[key]) {
-                groupedMap[key] = {
-                  auditor_user_id: row.user_id,
-                  auditor: userNameById[row.user_id] ?? null,
-                  audit_template_id: row.audit_template_id,
-                  template: templateNameById[row.audit_template_id] ?? "Auditoría",
-                  target: 0,
-                  completedRaw: Number(runCountByUserTemplate[key] ?? 0),
-                };
-              }
-
-              groupedMap[key].target += Number(row.target_count ?? 0);
-            }
-
-            const targetRows: MyTargetRow[] = Object.entries(groupedMap)
-              .map(([key, row]) => {
-                const completed = Math.min(Number(row.completedRaw ?? 0), Number(row.target ?? 0));
-                const remaining = Math.max(0, Number(row.target ?? 0) - Number(completed ?? 0));
-                const progressPct = Number(row.target ?? 0) > 0 ? (completed / Number(row.target)) * 100 : 0;
-
-                return {
-                  target_id: key,
-                  auditor: isAuditor(prof.role) ? null : row.auditor,
-                  template: row.template,
-                  target: Number(row.target ?? 0),
-                  completed,
-                  remaining,
-                  progress_pct: progressPct,
-                };
-              })
-              .sort((a, b) => {
-                const auditorCmp = String(a.auditor ?? "").localeCompare(String(b.auditor ?? ""));
-                if (auditorCmp !== 0) return auditorCmp;
-                return String(a.template ?? "").localeCompare(String(b.template ?? ""));
-              });
-
-            if (!cancelled) setMyTargetsToday(targetRows);
-          }
-        }
-
-        const { data: assigns, error: assignsErr } = await supabase
-          .from("task_assignments")
-          .select("task_id, user_id")
+        const assignmentsResp = await supabase
+          .from("area_template_target_assignments")
+          .select("id, area_id, audit_template_id, user_id, period, target_count, active")
+          .eq("hotel_id", hotelId)
           .eq("user_id", uid)
-          .limit(100);
+          .eq("period", selectedPeriod)
+          .eq("active", true);
 
-        if (assignsErr) throw assignsErr;
+        if (assignmentsResp.error) throw assignmentsResp.error;
 
-        const myTaskIds = (assigns ?? []).map((a: any) => a.task_id).filter(Boolean);
+        const assignments = ((assignmentsResp.data ?? []) as any[]).map(
+          (row) =>
+            ({
+              id: row.id,
+              area_id: row.area_id,
+              audit_template_id: row.audit_template_id,
+              user_id: row.user_id,
+              period: row.period,
+              target_count: Number(row.target_count ?? 0),
+              active: row.active,
+            }) as AssignmentRow
+        );
 
-        if (myTaskIds.length === 0) {
-          if (!cancelled) setMyTargetTasks([]);
-        } else {
-          const { data: tasks, error: tasksErr } = await supabase
-            .from("tasks")
-            .select("id, title, status, task_type, period_key, due_date")
-            .in("id", myTaskIds)
-            .eq("task_type", "target")
-            .order("created_at", { ascending: false })
-            .limit(20);
-
-          if (tasksErr) throw tasksErr;
-
-          const mapped = (tasks ?? []).map((x: any) => ({
-            ...x,
-            assigned_user_id: uid,
-          })) as TaskRow[];
-
-          if (!cancelled) setMyTargetTasks(mapped);
-        }
-
-        const { data: runs, error: rErr } = await supabase
-          .from("audit_runs")
-          .select("id, executed_at, score, audit_template_id")
-          .eq("executed_by", uid)
-          .not("executed_at", "is", null)
-          .order("executed_at", { ascending: false })
-          .limit(10);
-
-        if (rErr) throw rErr;
-
-        const templateIds = Array.from(new Set((runs ?? []).map((r: any) => r.audit_template_id).filter(Boolean)));
+        const templateIds = Array.from(new Set(assignments.map((x) => x.audit_template_id).filter(Boolean)));
 
         let templateNameById: Record<string, string> = {};
 
-        if (templateIds.length) {
-          const { data: tpls, error: tplsErr } = await supabase
+        if (templateIds.length > 0) {
+          const templatesResp = await supabase
             .from("audit_templates")
             .select("id, name")
             .in("id", templateIds);
 
-          if (tplsErr) throw tplsErr;
+          if (templatesResp.error) throw templatesResp.error;
 
-          templateNameById = Object.fromEntries((tpls ?? []).map((t: any) => [t.id, t.name ?? "Auditoría"]));
+          templateNameById = Object.fromEntries(
+            ((templatesResp.data ?? []) as TemplateRow[]).map((row) => [row.id, row.name ?? "Auditoría"])
+          );
         }
 
-        const enrichedRuns = (runs ?? []).map((r: any) => ({
-          ...r,
-          template_name: templateNameById[r.audit_template_id] ?? null,
-        })) as RecentRunRow[];
+        const runsResp = await supabase
+          .from("audit_runs")
+          .select("id, executed_at, score, audit_template_id")
+          .eq("hotel_id", hotelId)
+          .eq("executed_by", uid)
+          .not("executed_at", "is", null)
+          .gte("executed_at", range.startISO)
+          .lte("executed_at", range.endISO)
+          .order("executed_at", { ascending: false });
 
-        if (!cancelled) setMyRecentRuns(enrichedRuns);
+        if (runsResp.error) throw runsResp.error;
+
+        const runs = (runsResp.data ?? []) as any[];
+
+        const runCountByTemplate: Record<string, number> = {};
+        for (const run of runs) {
+          const templateId = run.audit_template_id as string | null;
+          if (!templateId) continue;
+          runCountByTemplate[templateId] = Number(runCountByTemplate[templateId] ?? 0) + 1;
+        }
+
+        const groupedMap: Record<
+          string,
+          {
+            templateId: string;
+            template: string;
+            target: number;
+            completedRaw: number;
+          }
+        > = {};
+
+        for (const row of assignments) {
+          const key = row.audit_template_id;
+
+          if (!groupedMap[key]) {
+            groupedMap[key] = {
+              templateId: row.audit_template_id,
+              template: templateNameById[row.audit_template_id] ?? "Auditoría",
+              target: 0,
+              completedRaw: Number(runCountByTemplate[row.audit_template_id] ?? 0),
+            };
+          }
+
+          groupedMap[key].target += Number(row.target_count ?? 0);
+        }
+
+        const targetRows: MyTargetRow[] = Object.values(groupedMap)
+          .map((row) => {
+            const completed = Math.min(Number(row.completedRaw ?? 0), Number(row.target ?? 0));
+            const remaining = Math.max(0, Number(row.target ?? 0) - Number(completed ?? 0));
+            const progressPct = Number(row.target ?? 0) > 0 ? (completed / Number(row.target)) * 100 : 0;
+
+            return {
+              target_id: row.templateId,
+              auditor_user_id: uid,
+              auditor: p?.full_name ?? null,
+              template: row.template,
+              target: Number(row.target ?? 0),
+              completed,
+              remaining,
+              progress_pct: progressPct,
+            };
+          })
+          .sort((a, b) => {
+            const remDiff = Number(b.remaining ?? 0) - Number(a.remaining ?? 0);
+            if (remDiff !== 0) return remDiff;
+            return String(a.template ?? "").localeCompare(String(b.template ?? ""));
+          });
+
+        if (!cancelled) setMyTargets(targetRows);
+
+        const recentRuns: RecentRunRow[] = runs.slice(0, 10).map((r) => ({
+          id: r.id,
+          executed_at: r.executed_at ?? null,
+          score: r.score ?? null,
+          audit_template_id: r.audit_template_id,
+          template_name: templateNameById[r.audit_template_id] ?? "Auditoría",
+        }));
+
+        if (!cancelled) setMyRecentRuns(recentRuns);
       } catch (e: any) {
         if (!cancelled) setError(e?.message ?? "Error inesperado.");
       } finally {
@@ -406,7 +276,14 @@ export function useMyDashboardData() {
     return () => {
       cancelled = true;
     };
-  }, [dayBounds.dayISO, dayBounds.endISO, dayBounds.startISO]);
+  }, [range.endISO, range.startISO, selectedPeriod]);
 
-  return { loading, error, profile, myTargetsToday, myTargetTasks, myRecentRuns };
+  return {
+    loading,
+    error,
+    profile,
+    myTargets,
+    myRecentRuns,
+    summary,
+  };
 }

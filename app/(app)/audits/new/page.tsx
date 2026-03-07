@@ -1,82 +1,294 @@
+// FILE: app/(app)/audits/new/page.tsx
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
-import { canManageAreas } from "@/lib/auth/permissions";
-import type { Role, Profile } from "@/lib/types";
+import type { Profile } from "@/lib/types";
 
-export default function NewAreaPage() {
+const HOTEL_KEY = "sc_hotel_id";
+
+type AssignmentRow = {
+  id: string;
+  hotel_id?: string | null;
+  area_id: string;
+  audit_template_id: string;
+  user_id: string;
+  period: string;
+  target_count: number;
+  active: boolean | null;
+};
+
+type TemplateRow = {
+  id: string;
+  name: string | null;
+};
+
+type AreaRow = {
+  id: string;
+  name: string | null;
+  hotel_id: string | null;
+};
+
+export default function NewAuditPage() {
   const router = useRouter();
-  const [profile, setProfile] = useState<Profile | null>(null);
+  const searchParams = useSearchParams();
+
+  const templateId = searchParams.get("template");
+
   const [loading, setLoading] = useState(true);
-  const [name, setName] = useState("");
-  const [type, setType] = useState("HK");
-  const [saving, setSaving] = useState(false);
+  const [starting, setStarting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [template, setTemplate] = useState<TemplateRow | null>(null);
+  const [area, setArea] = useState<AreaRow | null>(null);
 
   useEffect(() => {
     let alive = true;
-    const init = async () => {
-      setLoading(true);
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) { router.push("/login"); return; }
-      const { data: profileData, error: profileError } = await supabase
-        .from("profiles").select("id, hotel_id, role, active, full_name").eq("id", user.id).single();
-      if (profileError || !profileData || profileData.active === false) { router.push("/login"); return; }
-      const p = profileData as Profile;
-      if (!canManageAreas(p.role)) { router.push("/areas"); return; }
-      if (!alive) return;
-      setProfile(p);
-      setLoading(false);
-    };
+
+    async function init() {
+      try {
+        setLoading(true);
+        setError(null);
+
+        const {
+          data: { user },
+          error: userErr,
+        } = await supabase.auth.getUser();
+
+        if (userErr || !user) {
+          router.replace("/login");
+          return;
+        }
+
+        const { data: profileData, error: profileError } = await supabase
+          .from("profiles")
+          .select("id, hotel_id, role, active, full_name")
+          .eq("id", user.id)
+          .single();
+
+        if (profileError || !profileData || profileData.active === false) {
+          router.replace("/login");
+          return;
+        }
+
+        if (!alive) return;
+        setProfile(profileData as Profile);
+
+        if (!templateId) {
+          setError("Falta el template de auditoría.");
+          setLoading(false);
+          return;
+        }
+
+        const hotelIdFromLocalStorage =
+          typeof window !== "undefined" ? localStorage.getItem(HOTEL_KEY) : null;
+
+        const hotelIdToUse =
+          (profileData as any)?.hotel_id ?? hotelIdFromLocalStorage ?? null;
+
+        if (!hotelIdToUse) {
+          throw new Error("No hay hotel seleccionado.");
+        }
+
+        // 1) Intentamos resolver el área desde las asignaciones del usuario
+        const { data: assignments, error: assignmentsErr } = await supabase
+          .from("area_template_target_assignments")
+          .select("id, hotel_id, area_id, audit_template_id, user_id, period, target_count, active")
+          .eq("hotel_id", hotelIdToUse)
+          .eq("user_id", user.id)
+          .eq("audit_template_id", templateId)
+          .eq("active", true);
+
+        if (assignmentsErr) throw assignmentsErr;
+
+        let resolvedAreaId: string | null =
+          ((assignments ?? []) as AssignmentRow[])[0]?.area_id ?? null;
+
+        // 2) Fallback para roles amplios: si no hay assignment del usuario,
+        // intentamos resolver el área desde area_template_targets
+        if (!resolvedAreaId) {
+          const { data: targets, error: targetsErr } = await supabase
+            .from("area_template_targets")
+            .select("area_id")
+            .eq("hotel_id", hotelIdToUse)
+            .eq("audit_template_id", templateId)
+            .eq("active", true)
+            .limit(1);
+
+          if (targetsErr) throw targetsErr;
+
+          resolvedAreaId = (targets?.[0] as any)?.area_id ?? null;
+        }
+
+        if (!resolvedAreaId) {
+          throw new Error(
+            "No se pudo determinar el área para esta auditoría. Revisa las asignaciones del template."
+          );
+        }
+
+        // 3) Cargamos info visual de template + área
+        const [{ data: tData, error: tErr }, { data: aData, error: aErr }] =
+          await Promise.all([
+            supabase.from("audit_templates").select("id, name").eq("id", templateId).single(),
+            supabase.from("areas").select("id, name, hotel_id").eq("id", resolvedAreaId).single(),
+          ]);
+
+        if (tErr || !tData) throw tErr ?? new Error("Template no encontrado.");
+        if (aErr || !aData) throw aErr ?? new Error("Área no encontrada.");
+
+        if (!alive) return;
+        setTemplate(tData as TemplateRow);
+        setArea(aData as AreaRow);
+        setLoading(false);
+      } catch (e: any) {
+        if (!alive) return;
+        setError(e?.message ?? "No se pudo preparar la auditoría.");
+        setLoading(false);
+      }
+    }
+
     void init();
-    return () => { alive = false; };
-  }, [router]);
 
-  const onCreate = async () => {
-    if (!profile) return;
+    return () => {
+      alive = false;
+    };
+  }, [router, templateId]);
+
+  async function handleStart() {
+    if (!profile || !templateId || !area) return;
+
+    setStarting(true);
     setError(null);
-    const cleanName = name.trim();
-    if (!cleanName) { setError("Pon un nombre de área."); return; }
-    setSaving(true);
-    const { error: insertError } = await supabase.from("areas").insert({ hotel_id: profile.hotel_id, name: cleanName, type, active: true });
-    setSaving(false);
-    if (insertError) { setError(insertError.message); return; }
-    router.push("/areas");
-  };
 
-  if (loading) return <p style={{ padding: 24 }}>Cargando...</p>;
+    try {
+      const {
+        data: { user },
+        error: userErr,
+      } = await supabase.auth.getUser();
+
+      if (userErr || !user) throw userErr ?? new Error("No hay sesión activa.");
+
+      const hotelIdFromLocalStorage =
+        typeof window !== "undefined" ? localStorage.getItem(HOTEL_KEY) : null;
+
+      const hotelIdToUse =
+        (profile as any)?.hotel_id ?? area.hotel_id ?? hotelIdFromLocalStorage ?? null;
+
+      if (!hotelIdToUse) {
+        throw new Error("No se pudo determinar el hotel para crear la auditoría.");
+      }
+
+      const nowIso = new Date().toISOString();
+
+      const { data, error } = await supabase
+        .from("audit_runs")
+        .insert({
+          hotel_id: hotelIdToUse,
+          area_id: area.id,
+          audit_template_id: templateId,
+          status: "draft",
+          score: null,
+          notes: null,
+          executed_at: nowIso,
+          executed_by: user.id,
+        })
+        .select("id")
+        .single();
+
+      if (error || !data) {
+        throw error ?? new Error("No se pudo crear la auditoría.");
+      }
+
+      router.replace(`/audits/${data.id}`);
+    } catch (e: any) {
+      setError(e?.message ?? "No se pudo iniciar la auditoría.");
+      setStarting(false);
+    }
+  }
+
+  if (loading) {
+    return <p style={{ padding: 24 }}>Preparando auditoría…</p>;
+  }
 
   return (
     <main style={{ padding: 24, fontFamily: "system-ui" }}>
-      <h1 style={{ fontSize: 22, fontWeight: 800, marginBottom: 18 }}>Nueva área</h1>
-      {error && <div style={{ padding: 12, border: "1px solid #f00", borderRadius: 8, marginBottom: 14 }}><b>Error:</b> {error}</div>}
-      <div style={{ display: "grid", gap: 12 }}>
-        <label style={{ display: "grid", gap: 6 }}>
-          <span style={{ fontSize: 13, opacity: 0.8 }}>Nombre</span>
-          <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Ej. Housekeeping" style={{ padding: 10, borderRadius: 8, border: "1px solid #ddd" }} />
-        </label>
-        <label style={{ display: "grid", gap: 6 }}>
-          <span style={{ fontSize: 13, opacity: 0.8 }}>Tipo</span>
-          <select value={type} onChange={(e) => setType(e.target.value)} style={{ padding: 10, borderRadius: 8, border: "1px solid #ddd" }}>
-            <option value="HK">HK - Housekeeping</option>
-            <option value="FO">FO - Front Office</option>
-            <option value="F&B">F&B - Food & Beverage</option>
-            <option value="SPA">SPA</option>
-            <option value="ENG">ENG - Engineering</option>
-            <option value="SEC">SEC - Security</option>
-            <option value="OTH">OTH - Other</option>
-          </select>
-        </label>
-        <div style={{ display: "flex", gap: 10, marginTop: 6 }}>
-          <button onClick={() => router.push("/areas")} style={{ padding: "10px 14px", borderRadius: 8, border: "1px solid #ddd", background: "#fff", cursor: "pointer", fontWeight: 600 }}>Cancelar</button>
-          <button onClick={onCreate} disabled={saving} style={{ padding: "10px 14px", borderRadius: 8, border: "1px solid #000", background: "#000", color: "#fff", cursor: "pointer", fontWeight: 700, opacity: saving ? 0.6 : 1 }}>
-            {saving ? "Creando..." : "Crear área"}
+      <h1 style={{ fontSize: 22, fontWeight: 800, marginBottom: 18 }}>
+        Nueva auditoría
+      </h1>
+
+      {error ? (
+        <div
+          style={{
+            padding: 12,
+            border: "1px solid rgba(255,0,0,0.35)",
+            borderRadius: 10,
+            marginBottom: 14,
+          }}
+        >
+          <b>Error:</b> {error}
+        </div>
+      ) : null}
+
+      <div
+        style={{
+          display: "grid",
+          gap: 12,
+          maxWidth: 720,
+          border: "1px solid rgba(255,255,255,0.10)",
+          borderRadius: 16,
+          padding: 16,
+          background: "rgba(255,255,255,0.04)",
+        }}
+      >
+        <div>
+          <div style={{ fontSize: 13, opacity: 0.75 }}>Template</div>
+          <div style={{ fontSize: 18, fontWeight: 700, marginTop: 4 }}>
+            {template?.name ?? "Auditoría"}
+          </div>
+        </div>
+
+        <div>
+          <div style={{ fontSize: 13, opacity: 0.75 }}>Área</div>
+          <div style={{ fontSize: 18, fontWeight: 700, marginTop: 4 }}>
+            {area?.name ?? "—"}
+          </div>
+        </div>
+
+        <div style={{ display: "flex", gap: 10, marginTop: 6, flexWrap: "wrap" }}>
+          <button
+            onClick={() => router.back()}
+            style={{
+              padding: "10px 14px",
+              borderRadius: 10,
+              border: "1px solid rgba(255,255,255,0.16)",
+              background: "transparent",
+              cursor: "pointer",
+              fontWeight: 600,
+            }}
+          >
+            Cancelar
+          </button>
+
+          <button
+            onClick={handleStart}
+            disabled={starting || !!error}
+            style={{
+              padding: "10px 14px",
+              borderRadius: 10,
+              border: "1px solid #000",
+              background: "#000",
+              color: "#fff",
+              cursor: starting || !!error ? "not-allowed" : "pointer",
+              fontWeight: 700,
+              opacity: starting || !!error ? 0.6 : 1,
+            }}
+          >
+            {starting ? "Iniciando…" : "Empezar auditoría"}
           </button>
         </div>
       </div>
-      {profile && <p style={{ marginTop: 18, fontSize: 12, opacity: 0.7 }}>Hotel: <span style={{ fontFamily: "monospace" }}>{profile.hotel_id}</span> · Rol: <b>{profile.role}</b></p>}
     </main>
   );
 }
