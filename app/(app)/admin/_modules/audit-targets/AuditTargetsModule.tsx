@@ -16,6 +16,21 @@ type TemplateRow = {
   area_id: string | null;
 };
 
+type NameRelation = { name: string | null };
+type MaybeRelation = NameRelation | NameRelation[] | null;
+
+type AreaTemplateTargetRowRaw = {
+  id: string;
+  hotel_id: string;
+  area_id: string;
+  audit_template_id: string;
+  period: string;
+  target_count: number;
+  active: boolean | null;
+  areas?: MaybeRelation;
+  audit_templates?: MaybeRelation;
+};
+
 type AreaTemplateTargetRow = {
   id: string;
   hotel_id: string;
@@ -24,8 +39,8 @@ type AreaTemplateTargetRow = {
   period: string;
   target_count: number;
   active: boolean | null;
-  areas?: { name: string | null } | null;
-  audit_templates?: { name: string | null } | null;
+  areas: NameRelation | null;
+  audit_templates: NameRelation | null;
 };
 
 type AssignmentAgg = {
@@ -39,6 +54,7 @@ function buildBtn(): CSSProperties {
     padding: "10px 12px",
     background: "rgba(255,255,255,0.06)",
     cursor: "pointer",
+    color: "white",
   };
 }
 
@@ -62,6 +78,12 @@ function getAssignmentStatus(areaTarget: number, assigned: number) {
   if (assigned === areaTarget) return "complete";
   if (assigned < areaTarget) return "pending";
   return "over_assigned";
+}
+
+function normalizeRelation(value: MaybeRelation): NameRelation | null {
+  if (!value) return null;
+  if (Array.isArray(value)) return value[0] ?? null;
+  return value;
 }
 
 export default function AuditTargetsModule({
@@ -128,7 +150,6 @@ export default function AuditTargetsModule({
     setAreas((a.data ?? []) as AreaRow[]);
 
     // 2) Templates del hotel
-    // asumo que audit_templates tiene area_id
     const tpls = await supabase
       .from("audit_templates")
       .select("id,name,area_id")
@@ -166,7 +187,20 @@ export default function AuditTargetsModule({
       return;
     }
 
-    const targetRows = (tg.data ?? []) as AreaTemplateTargetRow[];
+    const targetRowsRaw = (tg.data ?? []) as AreaTemplateTargetRowRaw[];
+
+    const targetRows: AreaTemplateTargetRow[] = targetRowsRaw.map((row) => ({
+      id: row.id,
+      hotel_id: row.hotel_id,
+      area_id: row.area_id,
+      audit_template_id: row.audit_template_id,
+      period: row.period,
+      target_count: Number(row.target_count ?? 0),
+      active: row.active,
+      areas: normalizeRelation(row.areas ?? null),
+      audit_templates: normalizeRelation(row.audit_templates ?? null),
+    }));
+
     setTargets(targetRows);
 
     // 4) Reparto agregado desde area_template_target_assignments
@@ -184,11 +218,20 @@ export default function AuditTargetsModule({
 
     const agg: Record<string, AssignmentAgg> = {};
     for (const row of ass.data ?? []) {
-      const key = `${(row as any).area_id}__${(row as any).audit_template_id}__${(row as any).period}`;
+      const r = row as {
+        area_id: string;
+        audit_template_id: string;
+        period: string;
+        target_count: number | null;
+      };
+
+      const key = `${r.area_id}__${r.audit_template_id}__${r.period}`;
+
       if (!agg[key]) {
         agg[key] = { assigned_target: 0 };
       }
-      agg[key].assigned_target += Number((row as any).target_count ?? 0);
+
+      agg[key].assigned_target += Number(r.target_count ?? 0);
     }
 
     setAssignmentMap(agg);
@@ -260,7 +303,16 @@ export default function AuditTargetsModule({
     const auth = await supabase.auth.getUser();
     const createdBy = auth.data.user?.id ?? null;
 
-    const payload: any = {
+    const payload: {
+      id?: string;
+      hotel_id: string;
+      area_id: string;
+      audit_template_id: string;
+      period: string;
+      target_count: number;
+      active: boolean;
+      created_by: string | null;
+    } = {
       id: editId ?? undefined,
       hotel_id: hotelId,
       area_id: areaId,
@@ -271,7 +323,7 @@ export default function AuditTargetsModule({
       created_by: createdBy,
     };
 
-    let up = await supabase
+    const up = await supabase
       .from("area_template_targets")
       .upsert(payload, {
         onConflict: "hotel_id,area_id,audit_template_id,period",
@@ -360,7 +412,6 @@ export default function AuditTargetsModule({
         </div>
       ) : null}
 
-      {/* FORM */}
       <div
         style={{
           marginTop: 14,
@@ -403,7 +454,12 @@ export default function AuditTargetsModule({
 
           <div>
             <div style={{ opacity: 0.8, fontSize: 12, marginBottom: 6 }}>Auditoría / Template</div>
-            <select style={select} value={templateId} onChange={(e) => setTemplateId(e.target.value)} disabled={!areaId}>
+            <select
+              style={select}
+              value={templateId}
+              onChange={(e) => setTemplateId(e.target.value)}
+              disabled={!areaId}
+            >
               <option value="">{areaId ? "Selecciona un template…" : "Primero elige un área"}</option>
               {filteredTemplates.map((t) => (
                 <option key={t.id} value={t.id}>
@@ -416,9 +472,9 @@ export default function AuditTargetsModule({
           <div>
             <div style={{ opacity: 0.8, fontSize: 12, marginBottom: 6 }}>Periodo</div>
             <select style={select} value={period} onChange={(e) => setPeriod(e.target.value)}>
-             <option value="daily">Diario</option>
-             <option value="weekly">Semanal</option>
-             <option value="monthly">Mensual</option>
+              <option value="daily">Diario</option>
+              <option value="weekly">Semanal</option>
+              <option value="monthly">Mensual</option>
             </select>
           </div>
 
@@ -455,7 +511,6 @@ export default function AuditTargetsModule({
         </div>
       </div>
 
-      {/* LIST */}
       <div style={{ marginTop: 14 }}>
         <div style={{ fontWeight: 800, marginBottom: 10 }}>Objetivos configurados</div>
 
