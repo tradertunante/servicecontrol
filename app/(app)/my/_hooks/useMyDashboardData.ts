@@ -14,7 +14,7 @@ type Profile = {
 
 type MyTargetRow = {
   target_id: string;
-  auditor: string | null; // para manager+/team view
+  auditor: string | null;
   template: string;
   target: number;
   completed: number;
@@ -61,8 +61,12 @@ function isAuditor(role: Role) {
   return role === "auditor";
 }
 
-function isManagerPlus(role: Role) {
-  return role === "manager" || role === "quality" || role === "admin" || role === "superadmin";
+function isManager(role: Role) {
+  return role === "manager";
+}
+
+function isHotelWideRole(role: Role) {
+  return role === "quality" || role === "admin" || role === "superadmin";
 }
 
 function getDayBounds() {
@@ -98,14 +102,12 @@ export function useMyDashboardData() {
         setLoading(true);
         setError(null);
 
-        // 1) Usuario actual
         const { data: authData, error: authErr } = await supabase.auth.getUser();
         if (authErr) throw authErr;
 
         const uid = authData.user?.id;
         if (!uid) throw new Error("No hay usuario autenticado.");
 
-        // 2) Perfil
         const { data: p, error: pErr } = await supabase
           .from("profiles")
           .select("id, full_name, role")
@@ -119,7 +121,6 @@ export function useMyDashboardData() {
 
         const hotelId = typeof window !== "undefined" ? localStorage.getItem(HOTEL_KEY) : null;
 
-        // 3) Objetivos de hoy desde el modelo nuevo
         if (!hotelId) {
           if (!cancelled) setMyTargetsToday([]);
         } else {
@@ -151,7 +152,49 @@ export function useMyDashboardData() {
             );
 
             relevantUserIds = [uid];
-          } else if (isManagerPlus(prof.role)) {
+          } else if (isManager(prof.role)) {
+            const accessResp = await supabase
+              .from("user_area_access")
+              .select("area_id")
+              .eq("hotel_id", hotelId)
+              .eq("user_id", uid);
+
+            if (accessResp.error) throw accessResp.error;
+
+            const managerAreaIds = Array.from(
+              new Set((accessResp.data ?? []).map((row: any) => row.area_id).filter(Boolean))
+            );
+
+            if (managerAreaIds.length === 0) {
+              assignments = [];
+              relevantUserIds = [];
+            } else {
+              const assignmentsResp = await supabase
+                .from("area_template_target_assignments")
+                .select("id, area_id, audit_template_id, user_id, period, target_count, active")
+                .eq("hotel_id", hotelId)
+                .eq("period", "daily")
+                .eq("active", true)
+                .in("area_id", managerAreaIds);
+
+              if (assignmentsResp.error) throw assignmentsResp.error;
+
+              assignments = ((assignmentsResp.data ?? []) as any[]).map(
+                (row) =>
+                  ({
+                    id: row.id,
+                    area_id: row.area_id,
+                    audit_template_id: row.audit_template_id,
+                    user_id: row.user_id,
+                    period: row.period,
+                    target_count: Number(row.target_count ?? 0),
+                    active: row.active,
+                  }) as AssignmentRow
+              );
+
+              relevantUserIds = Array.from(new Set(assignments.map((x) => x.user_id).filter(Boolean)));
+            }
+          } else if (isHotelWideRole(prof.role)) {
             const assignmentsResp = await supabase
               .from("area_template_target_assignments")
               .select("id, area_id, audit_template_id, user_id, period, target_count, active")
@@ -185,7 +228,6 @@ export function useMyDashboardData() {
           } else {
             const templateIds = Array.from(new Set(assignments.map((x) => x.audit_template_id).filter(Boolean)));
 
-            // perfiles/nombres
             const profilesResp = await supabase
               .from("profiles")
               .select("id, full_name, role")
@@ -197,7 +239,6 @@ export function useMyDashboardData() {
               ((profilesResp.data ?? []) as Profile[]).map((row) => [row.id, row.full_name ?? row.id.slice(0, 8)])
             );
 
-            // templates/nombres
             let templateNameById: Record<string, string> = {};
 
             if (templateIds.length > 0) {
@@ -213,7 +254,6 @@ export function useMyDashboardData() {
               );
             }
 
-            // runs de hoy para progreso
             const runsResp = await supabase
               .from("audit_runs")
               .select("id, executed_at, score, audit_template_id, executed_by")
@@ -237,7 +277,6 @@ export function useMyDashboardData() {
               runCountByUserTemplate[key] = Number(runCountByUserTemplate[key] ?? 0) + 1;
             }
 
-            // consolidar assignments por user+template
             const groupedMap: Record<
               string,
               {
@@ -293,7 +332,6 @@ export function useMyDashboardData() {
           }
         }
 
-        // 4) Tareas target asignadas a mí
         const { data: assigns, error: assignsErr } = await supabase
           .from("task_assignments")
           .select("task_id, user_id")
@@ -325,7 +363,6 @@ export function useMyDashboardData() {
           if (!cancelled) setMyTargetTasks(mapped);
         }
 
-        // 5) Actividad reciente propia
         const { data: runs, error: rErr } = await supabase
           .from("audit_runs")
           .select("id, executed_at, score, audit_template_id")

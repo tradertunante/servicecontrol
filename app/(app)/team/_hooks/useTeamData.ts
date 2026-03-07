@@ -6,6 +6,8 @@ import { supabase } from "@/lib/supabaseClient";
 
 const HOTEL_KEY = "sc_hotel_id";
 
+export type TeamPeriodKey = "daily" | "weekly" | "monthly";
+
 type Profile = {
   id: string;
   full_name: string | null;
@@ -52,11 +54,6 @@ type TeamSummary = {
   globalPct: number;
 };
 
-type UserAreaAccessRow = {
-  user_id: string;
-  area_id: string;
-};
-
 type AssignmentRow = {
   id: string;
   area_id: string;
@@ -76,20 +73,41 @@ function canAccessTeam(role: string | null | undefined) {
   return ["manager", "quality", "admin", "superadmin"].includes(role ?? "");
 }
 
-function getDayBounds() {
-  const start = new Date();
-  start.setHours(0, 0, 0, 0);
+function getDateRange(period: TeamPeriodKey) {
+  const now = new Date();
 
-  const end = new Date();
-  end.setHours(23, 59, 59, 999);
+  if (period === "daily") {
+    const start = new Date(now);
+    start.setHours(0, 0, 0, 0);
 
-  return {
-    startISO: start.toISOString(),
-    endISO: end.toISOString(),
-  };
+    const end = new Date(now);
+    end.setHours(23, 59, 59, 999);
+
+    return { startISO: start.toISOString(), endISO: end.toISOString() };
+  }
+
+  if (period === "weekly") {
+    const day = now.getDay(); // 0 domingo, 1 lunes...
+    const diffToMonday = day === 0 ? 6 : day - 1;
+
+    const start = new Date(now);
+    start.setDate(now.getDate() - diffToMonday);
+    start.setHours(0, 0, 0, 0);
+
+    const end = new Date(start);
+    end.setDate(start.getDate() + 6);
+    end.setHours(23, 59, 59, 999);
+
+    return { startISO: start.toISOString(), endISO: end.toISOString() };
+  }
+
+  const start = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
+  const end = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+
+  return { startISO: start.toISOString(), endISO: end.toISOString() };
 }
 
-export function useTeamData() {
+export function useTeamData(selectedPeriod: TeamPeriodKey) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -98,7 +116,7 @@ export function useTeamData() {
   const [teamTargets, setTeamTargets] = useState<TeamTargetRow[]>([]);
   const [teamRecentRuns, setTeamRecentRuns] = useState<TeamRecentRunRow[]>([]);
 
-  const dayBounds = useMemo(() => getDayBounds(), []);
+  const range = useMemo(() => getDateRange(selectedPeriod), [selectedPeriod]);
 
   const summary = useMemo<TeamSummary>(() => {
     const totalAuditsDone = leaderboard.reduce((acc, x) => acc + Number(x.audits_done ?? 0), 0);
@@ -149,7 +167,6 @@ export function useTeamData() {
 
         if (!cancelled) setProfile(prof);
 
-        // 1) Áreas visibles para esta pantalla
         let areaIds: string[] = [];
 
         if (["admin", "superadmin", "quality"].includes(prof.role ?? "")) {
@@ -183,12 +200,11 @@ export function useTeamData() {
           return;
         }
 
-        // 2) Reparto nuevo: assignments diarios por template/usuario
         const assignmentsResp = await supabase
           .from("area_template_target_assignments")
           .select("id, area_id, audit_template_id, user_id, period, target_count, active")
           .eq("hotel_id", hotelId)
-          .eq("period", "daily")
+          .eq("period", selectedPeriod)
           .eq("active", true)
           .in("area_id", areaIds);
 
@@ -219,7 +235,6 @@ export function useTeamData() {
         const assignedUserIds = Array.from(new Set(assignments.map((x) => x.user_id).filter(Boolean)));
         const templateIds = Array.from(new Set(assignments.map((x) => x.audit_template_id).filter(Boolean)));
 
-        // 3) Nombres de usuarios
         const profilesResp = await supabase
           .from("profiles")
           .select("id, full_name, role")
@@ -232,7 +247,6 @@ export function useTeamData() {
           profileRows.map((row) => [row.id, row.full_name ?? row.id.slice(0, 8)])
         );
 
-        // 4) Nombres de templates
         const templatesResp = await supabase
           .from("audit_templates")
           .select("id, name")
@@ -245,22 +259,20 @@ export function useTeamData() {
           templateRows.map((row) => [row.id, row.name ?? "Auditoría"])
         );
 
-        // 5) Auditorías ejecutadas hoy por usuarios asignados
         const runsResp = await supabase
           .from("audit_runs")
           .select("id, executed_at, score, audit_template_id, executed_by")
           .eq("hotel_id", hotelId)
           .in("executed_by", assignedUserIds)
           .not("executed_at", "is", null)
-          .gte("executed_at", dayBounds.startISO)
-          .lte("executed_at", dayBounds.endISO)
+          .gte("executed_at", range.startISO)
+          .lte("executed_at", range.endISO)
           .order("executed_at", { ascending: false });
 
         if (runsResp.error) throw runsResp.error;
 
         const runs = (runsResp.data ?? []) as any[];
 
-        // 6) Conteos por usuario/template
         const runCountByUserTemplate: Record<string, number> = {};
         const runCountByUser: Record<string, number> = {};
         const runScoresByUser: Record<string, number[]> = {};
@@ -268,7 +280,6 @@ export function useTeamData() {
         for (const run of runs) {
           const runUserId = run.executed_by as string | null;
           const runTemplateId = run.audit_template_id as string | null;
-
           if (!runUserId || !runTemplateId) continue;
 
           const key = `${runUserId}__${runTemplateId}`;
@@ -282,7 +293,6 @@ export function useTeamData() {
           }
         }
 
-        // 7) Consolidar targets por usuario/template
         const groupedTargetsMap: Record<
           string,
           {
@@ -338,7 +348,6 @@ export function useTeamData() {
 
         if (!cancelled) setTeamTargets(teamTargetRows);
 
-        // 8) Leaderboard agregado por usuario
         const userAggMap: Record<
           string,
           {
@@ -397,7 +406,6 @@ export function useTeamData() {
 
         if (!cancelled) setLeaderboard(leaderboardRows);
 
-        // 9) Actividad reciente del equipo
         const mappedRuns = runs.slice(0, 20).map((r) => ({
           id: r.id,
           executed_at: r.executed_at ?? null,
@@ -421,7 +429,7 @@ export function useTeamData() {
     return () => {
       cancelled = true;
     };
-  }, [dayBounds.endISO, dayBounds.startISO]);
+  }, [range.endISO, range.startISO, selectedPeriod]);
 
   return {
     loading,
