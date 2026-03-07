@@ -41,7 +41,7 @@ export default function LoginPage() {
       if (!session) throw new Error("No se pudo establecer la sesión. Intenta de nuevo.");
 
       // ✅ La home (app/page.tsx) redirige según rol
-      router.replace("/");
+      router.replace("/home");
       router.refresh();
     } catch (e: any) {
       setError(e?.message ?? "No se pudo iniciar sesión.");
