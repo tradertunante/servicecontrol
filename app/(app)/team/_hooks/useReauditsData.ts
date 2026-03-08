@@ -1,0 +1,265 @@
+"use client";
+
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { supabase } from "@/lib/supabaseClient";
+import type { Profile } from "@/lib/types";
+
+import type {
+  AreaRow,
+  AssignmentLogInfo,
+  EnrichedReauditRow,
+  ProfileLite,
+  ReauditAssignmentLogRow,
+  ReauditRow,
+  ReauditStats,
+  ReauditTrainingLogRow,
+  TeamMemberRow,
+  TemplateRow,
+  TrainingLogInfo,
+} from "../_lib/reauditTypes";
+
+export function useReauditsData({
+  profile,
+  hotelId,
+}: {
+  profile: Profile | null;
+  hotelId: string;
+}) {
+  const [loading, setLoading] = useState(true);
+  const [rows, setRows] = useState<EnrichedReauditRow[]>([]);
+  const [auditorOptions, setAuditorOptions] = useState<ProfileLite[]>([]);
+  const [error, setError] = useState("");
+
+  const [latestTrainingLogByRunId, setLatestTrainingLogByRunId] = useState<
+    Record<string, TrainingLogInfo>
+  >({});
+  const [latestAssignmentLogByRunId, setLatestAssignmentLogByRunId] = useState<
+    Record<string, AssignmentLogInfo>
+  >({});
+
+  const activeHotelId = hotelId || profile?.hotel_id || null;
+
+  const loadData = useCallback(async () => {
+    setLoading(true);
+    setError("");
+
+    try {
+      if (!activeHotelId) {
+        setRows([]);
+        setAuditorOptions([]);
+        setLatestTrainingLogByRunId({});
+        setLatestAssignmentLogByRunId({});
+        setLoading(false);
+        return;
+      }
+
+      const { data, error: runsErr } = await supabase
+        .from("audit_runs")
+        .select(
+          "id,hotel_id,area_id,audit_template_id,team_member_id,assigned_auditor_id,parent_audit_run_id,status,score,scheduled_for,requires_training,training_confirmed,ready_for_reaudit,blocking_issue_count,origin_type,notes,executed_at"
+        )
+        .eq("hotel_id", activeHotelId)
+        .eq("is_reaudit", true)
+        .order("scheduled_for", { ascending: true, nullsFirst: false });
+
+      if (runsErr) throw runsErr;
+
+      const baseRows = (data ?? []) as ReauditRow[];
+      const runIds = baseRows.map((x) => x.id);
+
+      const areaIds = Array.from(new Set(baseRows.map((x) => x.area_id).filter(Boolean)));
+      const templateIds = Array.from(
+        new Set(baseRows.map((x) => x.audit_template_id).filter(Boolean))
+      );
+      const teamMemberIds = Array.from(
+        new Set(baseRows.map((x) => x.team_member_id).filter(Boolean))
+      ) as string[];
+      const assignedAuditorIds = Array.from(
+        new Set(baseRows.map((x) => x.assigned_auditor_id).filter(Boolean))
+      ) as string[];
+
+      const [
+        areasRes,
+        templatesRes,
+        teamRes,
+        assignedAuditorsRes,
+        allProfilesRes,
+        trainingLogsRes,
+        assignmentLogsRes,
+      ] = await Promise.all([
+        areaIds.length
+          ? supabase.from("areas").select("id,name,type").in("id", areaIds)
+          : Promise.resolve({ data: [] as AreaRow[], error: null }),
+
+        templateIds.length
+          ? supabase.from("audit_templates").select("id,name").in("id", templateIds)
+          : Promise.resolve({ data: [] as TemplateRow[], error: null }),
+
+        teamMemberIds.length
+          ? supabase.from("team_members").select("id,full_name").in("id", teamMemberIds)
+          : Promise.resolve({ data: [] as TeamMemberRow[], error: null }),
+
+        assignedAuditorIds.length
+          ? supabase.from("profiles").select("id,full_name").in("id", assignedAuditorIds)
+          : Promise.resolve({ data: [] as ProfileLite[], error: null }),
+
+        supabase
+          .from("profiles")
+          .select("id,full_name,role,hotel_id,active")
+          .eq("hotel_id", activeHotelId)
+          .eq("active", true)
+          .in("role", ["auditor", "quality", "manager", "admin", "superadmin"]),
+
+        runIds.length
+          ? supabase
+              .from("reaudit_training_logs")
+              .select(
+                "id,hotel_id,reaudit_run_id,team_member_id,confirmed_by,confirmed_at,explanation,created_at"
+              )
+              .in("reaudit_run_id", runIds)
+              .order("confirmed_at", { ascending: false })
+          : Promise.resolve({ data: [] as ReauditTrainingLogRow[], error: null }),
+
+        runIds.length
+          ? supabase
+              .from("reaudit_assignment_logs")
+              .select(
+                "id,hotel_id,reaudit_run_id,previous_auditor_id,new_auditor_id,changed_by,changed_at,reason,note,created_at"
+              )
+              .in("reaudit_run_id", runIds)
+              .order("changed_at", { ascending: false })
+          : Promise.resolve({ data: [] as ReauditAssignmentLogRow[], error: null }),
+      ]);
+
+      if (areasRes.error) throw areasRes.error;
+      if (templatesRes.error) throw templatesRes.error;
+      if (teamRes.error) throw teamRes.error;
+      if (assignedAuditorsRes.error) throw assignedAuditorsRes.error;
+      if (allProfilesRes.error) throw allProfilesRes.error;
+      if (trainingLogsRes.error) throw trainingLogsRes.error;
+      if (assignmentLogsRes.error) throw assignmentLogsRes.error;
+
+      const allProfiles = (allProfilesRes.data ?? []) as ProfileLite[];
+      const assignedProfiles = (assignedAuditorsRes.data ?? []) as ProfileLite[];
+      const mergedProfiles = [...allProfiles, ...assignedProfiles];
+
+      const profileNameMap = new Map<string, string | null>();
+      for (const p of mergedProfiles) {
+        if (!profileNameMap.has(p.id)) {
+          profileNameMap.set(p.id, p.full_name ?? null);
+        }
+      }
+
+      const areaMap = new Map<string, AreaRow>();
+      for (const a of (areasRes.data ?? []) as AreaRow[]) {
+        areaMap.set(a.id, a);
+      }
+
+      const templateMap = new Map<string, string>();
+      for (const t of (templatesRes.data ?? []) as TemplateRow[]) {
+        templateMap.set(t.id, t.name);
+      }
+
+      const teamMap = new Map<string, string>();
+      for (const tm of (teamRes.data ?? []) as TeamMemberRow[]) {
+        teamMap.set(tm.id, tm.full_name);
+      }
+
+      const enriched: EnrichedReauditRow[] = baseRows.map((row) => ({
+        ...row,
+        area_name: areaMap.get(row.area_id)?.name ?? null,
+        area_type: areaMap.get(row.area_id)?.type ?? null,
+        template_name: templateMap.get(row.audit_template_id) ?? null,
+        team_member_name: row.team_member_id
+          ? teamMap.get(row.team_member_id) ?? null
+          : null,
+        assigned_auditor_name: row.assigned_auditor_id
+          ? profileNameMap.get(row.assigned_auditor_id) ?? null
+          : null,
+      }));
+
+      const options = allProfiles
+        .filter((p) => !!p.id)
+        .sort((a, b) =>
+          (a.full_name ?? "").localeCompare(b.full_name ?? "", "es", {
+            sensitivity: "base",
+          })
+        );
+
+      const trainingMap: Record<string, TrainingLogInfo> = {};
+      for (const log of (trainingLogsRes.data ?? []) as ReauditTrainingLogRow[]) {
+        if (!trainingMap[log.reaudit_run_id]) {
+          trainingMap[log.reaudit_run_id] = {
+            confirmedAt: log.confirmed_at,
+            confirmedByName: log.confirmed_by
+              ? profileNameMap.get(log.confirmed_by) ?? null
+              : null,
+            explanation: log.explanation,
+          };
+        }
+      }
+
+      const assignmentMap: Record<string, AssignmentLogInfo> = {};
+      for (const log of (assignmentLogsRes.data ?? []) as ReauditAssignmentLogRow[]) {
+        if (!assignmentMap[log.reaudit_run_id]) {
+          assignmentMap[log.reaudit_run_id] = {
+            changedAt: log.changed_at,
+            changedByName: log.changed_by
+              ? profileNameMap.get(log.changed_by) ?? null
+              : null,
+            previousAuditorName: log.previous_auditor_id
+              ? profileNameMap.get(log.previous_auditor_id) ?? null
+              : null,
+            newAuditorName: profileNameMap.get(log.new_auditor_id) ?? null,
+            reason: log.reason,
+            note: log.note ?? null,
+          };
+        }
+      }
+
+      setRows(enriched);
+      setAuditorOptions(options);
+      setLatestTrainingLogByRunId(trainingMap);
+      setLatestAssignmentLogByRunId(assignmentMap);
+      setLoading(false);
+    } catch (e: any) {
+      setError(e?.message || "Error cargando re-auditorías.");
+      setLoading(false);
+    }
+  }, [activeHotelId]);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
+  const stats = useMemo<ReauditStats>(() => {
+    let pendingTraining = 0;
+    let blocked = 0;
+    let ready = 0;
+
+    for (const r of rows) {
+      if (r.status === "pending_training") pendingTraining += 1;
+      if (r.status === "blocked_by_non_operational") blocked += 1;
+      if (r.ready_for_reaudit) ready += 1;
+    }
+
+    return {
+      total: rows.length,
+      pendingTraining,
+      blocked,
+      ready,
+    };
+  }, [rows]);
+
+  return {
+    loading,
+    error,
+    rows,
+    auditorOptions,
+    stats,
+    activeHotelId,
+    loadData,
+    latestTrainingLogByRunId,
+    latestAssignmentLogByRunId,
+  };
+}
