@@ -6,16 +6,17 @@ import type { Profile } from "@/lib/types";
 
 import type {
   AreaRow,
-  AssignmentLogInfo,
   EnrichedReauditRow,
   ProfileLite,
   ReauditAssignmentLogRow,
   ReauditRow,
   ReauditStats,
+  ReauditTimelineItem,
   ReauditTrainingLogRow,
   TeamMemberRow,
   TemplateRow,
-  TrainingLogInfo,
+  TrainingInfo,
+  ReassignmentInfo,
 } from "../_lib/reauditTypes";
 
 export function useReauditsData({
@@ -31,10 +32,13 @@ export function useReauditsData({
   const [error, setError] = useState("");
 
   const [latestTrainingLogByRunId, setLatestTrainingLogByRunId] = useState<
-    Record<string, TrainingLogInfo>
+    Record<string, TrainingInfo>
   >({});
   const [latestAssignmentLogByRunId, setLatestAssignmentLogByRunId] = useState<
-    Record<string, AssignmentLogInfo>
+    Record<string, ReassignmentInfo>
+  >({});
+  const [timelineByRunId, setTimelineByRunId] = useState<
+    Record<string, ReauditTimelineItem[]>
   >({});
 
   const activeHotelId = hotelId || profile?.hotel_id || null;
@@ -49,6 +53,7 @@ export function useReauditsData({
         setAuditorOptions([]);
         setLatestTrainingLogByRunId({});
         setLatestAssignmentLogByRunId({});
+        setTimelineByRunId({});
         setLoading(false);
         return;
       }
@@ -186,12 +191,12 @@ export function useReauditsData({
           })
         );
 
-      const trainingMap: Record<string, TrainingLogInfo> = {};
+      const trainingMap: Record<string, TrainingInfo> = {};
       for (const log of (trainingLogsRes.data ?? []) as ReauditTrainingLogRow[]) {
         if (!trainingMap[log.reaudit_run_id]) {
           trainingMap[log.reaudit_run_id] = {
             confirmedAt: log.confirmed_at,
-            confirmedByName: log.confirmed_by
+            confirmedBy: log.confirmed_by
               ? profileNameMap.get(log.confirmed_by) ?? null
               : null,
             explanation: log.explanation,
@@ -199,12 +204,12 @@ export function useReauditsData({
         }
       }
 
-      const assignmentMap: Record<string, AssignmentLogInfo> = {};
+      const assignmentMap: Record<string, ReassignmentInfo> = {};
       for (const log of (assignmentLogsRes.data ?? []) as ReauditAssignmentLogRow[]) {
         if (!assignmentMap[log.reaudit_run_id]) {
           assignmentMap[log.reaudit_run_id] = {
             changedAt: log.changed_at,
-            changedByName: log.changed_by
+            changedBy: log.changed_by
               ? profileNameMap.get(log.changed_by) ?? null
               : null,
             previousAuditorName: log.previous_auditor_id
@@ -217,10 +222,68 @@ export function useReauditsData({
         }
       }
 
+      const nextTimelineByRunId: Record<string, ReauditTimelineItem[]> = {};
+
+      for (const log of (trainingLogsRes.data ?? []) as ReauditTrainingLogRow[]) {
+        if (!nextTimelineByRunId[log.reaudit_run_id]) {
+          nextTimelineByRunId[log.reaudit_run_id] = [];
+        }
+
+        nextTimelineByRunId[log.reaudit_run_id].push({
+          id: `training-${log.id}`,
+          type: "training",
+          occurredAt: log.confirmed_at,
+          title: "Training confirmado",
+          actorName: log.confirmed_by
+            ? profileNameMap.get(log.confirmed_by) ?? null
+            : null,
+          detailLines: [log.explanation],
+        });
+      }
+
+      for (const log of (assignmentLogsRes.data ?? []) as ReauditAssignmentLogRow[]) {
+        if (!nextTimelineByRunId[log.reaudit_run_id]) {
+          nextTimelineByRunId[log.reaudit_run_id] = [];
+        }
+
+        const previousName = log.previous_auditor_id
+          ? profileNameMap.get(log.previous_auditor_id) ?? null
+          : null;
+        const nextName = profileNameMap.get(log.new_auditor_id) ?? null;
+
+        const detailLines = [
+          `${previousName || "—"} → ${nextName || "—"}`,
+          `Motivo: ${log.reason || "other"}`,
+        ];
+
+        if (log.note?.trim()) {
+          detailLines.push(log.note.trim());
+        }
+
+        nextTimelineByRunId[log.reaudit_run_id].push({
+          id: `assignment-${log.id}`,
+          type: "assignment",
+          occurredAt: log.changed_at,
+          title: "Auditor reasignado",
+          actorName: log.changed_by
+            ? profileNameMap.get(log.changed_by) ?? null
+            : null,
+          detailLines,
+        });
+      }
+
+      for (const runId of Object.keys(nextTimelineByRunId)) {
+        nextTimelineByRunId[runId].sort(
+          (a, b) =>
+            new Date(b.occurredAt).getTime() - new Date(a.occurredAt).getTime()
+        );
+      }
+
       setRows(enriched);
       setAuditorOptions(options);
       setLatestTrainingLogByRunId(trainingMap);
       setLatestAssignmentLogByRunId(assignmentMap);
+      setTimelineByRunId(nextTimelineByRunId);
       setLoading(false);
     } catch (e: any) {
       setError(e?.message || "Error cargando re-auditorías.");
@@ -261,5 +324,6 @@ export function useReauditsData({
     loadData,
     latestTrainingLogByRunId,
     latestAssignmentLogByRunId,
+    timelineByRunId,
   };
 }

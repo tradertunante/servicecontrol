@@ -7,11 +7,13 @@ import type {
   ProfileLite,
   ReassignReason,
   ReassignmentInfo,
+  ReauditTimelineItem,
   TrainingInfo,
 } from "../../_lib/reauditTypes";
 import { dayDiffFromNow, fmtDate } from "../../_lib/reauditUtils";
 import ReauditAssignmentSection from "./ReauditAssignmentSection";
 import ReauditTrainingSection from "./ReauditTrainingSection";
+import ReauditTimeline from "./ReauditTimeline";
 
 export default function ReauditCard({
   row,
@@ -24,6 +26,7 @@ export default function ReauditCard({
   reassignNoteValue,
   trainingInfo,
   reassignInfo,
+  timelineItems,
   onTrainingOpen,
   onTrainingCancel,
   onTrainingChange,
@@ -45,14 +48,15 @@ export default function ReauditCard({
   reassignNoteValue: string;
   trainingInfo: TrainingInfo | null;
   reassignInfo: ReassignmentInfo | null;
+  timelineItems: ReauditTimelineItem[];
   onTrainingOpen: () => void;
   onTrainingCancel: () => void;
   onTrainingChange: (value: string) => void;
-  onTrainingSave: () => void;
+  onTrainingSave: () => void | Promise<void>;
   onReassignAuditorChange: (value: string) => void;
   onReassignReasonChange: (value: ReassignReason) => void;
   onReassignNoteChange: (value: string) => void;
-  onReassignSave: () => void;
+  onReassignSave: () => void | Promise<void>;
   onReassignReset: () => void;
   isTrainingOpen: boolean;
 }) {
@@ -255,6 +259,8 @@ export default function ReauditCard({
           onSave={onTrainingSave}
           trainingInfo={trainingInfo}
         />
+
+        <ReauditTimeline items={timelineItems} />
 
         {row.notes ? (
           <div>

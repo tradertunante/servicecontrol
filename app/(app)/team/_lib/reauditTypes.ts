@@ -68,15 +68,48 @@ export type ReauditStats = {
 
 export type TrainingInfo = {
   confirmedAt: string;
-  confirmedBy: string;
+  confirmedBy: string | null;
   explanation: string;
 };
 
 export type ReassignmentInfo = {
   changedAt: string;
-  changedBy: string;
-  previousAuditorName: string;
-  newAuditorName: string;
+  changedBy: string | null;
+  previousAuditorName: string | null;
+  newAuditorName: string | null;
   reason: string;
-  note: string;
+  note: string | null;
+};
+
+export type ReauditTrainingLogRow = {
+  id: string;
+  hotel_id: string;
+  reaudit_run_id: string;
+  team_member_id: string | null;
+  confirmed_by: string | null;
+  confirmed_at: string;
+  explanation: string;
+  created_at: string | null;
+};
+
+export type ReauditAssignmentLogRow = {
+  id: string;
+  hotel_id: string;
+  reaudit_run_id: string;
+  previous_auditor_id: string | null;
+  new_auditor_id: string;
+  changed_by: string | null;
+  changed_at: string;
+  reason: string;
+  note: string | null;
+  created_at: string | null;
+};
+
+export type ReauditTimelineItem = {
+  id: string;
+  type: "training" | "assignment";
+  occurredAt: string;
+  title: string;
+  actorName: string | null;
+  detailLines: string[];
 };
