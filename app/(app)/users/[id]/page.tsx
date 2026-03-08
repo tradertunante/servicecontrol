@@ -150,25 +150,49 @@ export default function UserDetailPage() {
           <span style={{ fontWeight: 900 }}>Nombre</span>
           <input value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Nombre y apellidos" style={{ padding: 12, borderRadius: 10, border: "1px solid #ddd" }} />
         </label>
+
         <label style={{ display: "grid", gap: 6 }}>
           <span style={{ fontWeight: 900 }}>Rol</span>
           <select value={role} onChange={(e) => setRole(e.target.value as Role)} style={{ padding: 12, borderRadius: 10, border: "1px solid #ddd" }}>
             <option value="auditor">auditor</option>
             <option value="manager">manager</option>
             <option value="admin">admin</option>
+            <option value="quality">quality</option>
+            <option value="engineering">engineering</option>
+            <option value="systems">systems</option>
           </select>
+
+          {role === "quality" && (
+            <div style={{ marginTop: 8, padding: "8px 12px", borderRadius: 10, background: "rgba(147,51,234,0.06)", border: "1px solid rgba(147,51,234,0.2)", fontSize: 12, fontWeight: 700, color: "rgb(126,34,206)" }}>
+              Este usuario pertenece a <strong>Quality</strong>. Sus auditorías se separan del canal interno.
+            </div>
+          )}
+
+          {role === "engineering" && (
+            <div style={{ marginTop: 8, padding: "8px 12px", borderRadius: 10, background: "rgba(2,132,199,0.06)", border: "1px solid rgba(2,132,199,0.2)", fontSize: 12, fontWeight: 700, color: "rgb(3,105,161)" }}>
+              Este usuario gestionará incidencias técnicas del departamento <strong>Engineering</strong>.
+            </div>
+          )}
+
+          {role === "systems" && (
+            <div style={{ marginTop: 8, padding: "8px 12px", borderRadius: 10, background: "rgba(14,165,233,0.06)", border: "1px solid rgba(14,165,233,0.2)", fontSize: 12, fontWeight: 700, color: "rgb(2,132,199)" }}>
+              Este usuario gestionará incidencias técnicas del departamento <strong>Systems</strong>.
+            </div>
+          )}
         </label>
+
         <label style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <input type="checkbox" checked={active} onChange={(e) => setActive(e.target.checked)} />
           <span style={{ fontWeight: 900 }}>Usuario activo</span>
         </label>
+
         {me && userRow.id === me.id && <p style={{ margin: 0, fontSize: 12, opacity: 0.7 }}>Nota: no puedes desactivarte ni borrarte a ti mismo.</p>}
       </div>
 
       <div style={{ marginTop: 22 }}>
         <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
-          <h2 style={{ fontSize: 18, fontWeight: 950, margin: 0 }}>Áreas habilitadas para auditar</h2>
-          <div style={{ fontSize: 13, opacity: 0.75 }}>Marca las áreas que este usuario puede auditar.</div>
+          <h2 style={{ fontSize: 18, fontWeight: 950, margin: 0 }}>Áreas habilitadas</h2>
+          <div style={{ fontSize: 13, opacity: 0.75 }}>Marca las áreas a las que este usuario tendrá acceso.</div>
         </div>
         <div style={{ marginTop: 12 }}>
           {areasLoading ? <div style={{ opacity: 0.8 }}>Cargando áreas…</div> : areas.length === 0 ? <div style={{ opacity: 0.8 }}>No hay áreas activas en este hotel.</div> : (
@@ -185,7 +209,9 @@ export default function UserDetailPage() {
             </div>
           )}
         </div>
-        <div style={{ marginTop: 10, fontSize: 13, opacity: 0.8 }}>Si el rol es <b>auditor</b> y no marcas ninguna, ese auditor verá <b>0 áreas</b> (modo seguro).</div>
+        <div style={{ marginTop: 10, fontSize: 13, opacity: 0.8 }}>
+          Si el rol es <b>auditor</b>, <b>quality</b>, <b>engineering</b> o <b>systems</b> y no marcas ninguna, ese usuario verá <b>0 áreas</b> (modo seguro).
+        </div>
       </div>
     </main>
   );
