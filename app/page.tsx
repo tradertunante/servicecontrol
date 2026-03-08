@@ -1,11 +1,17 @@
-// app/page.tsx
 "use client";
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 
-type Role = "admin" | "manager" | "auditor" | "superadmin" | "quality";
+type Role =
+  | "admin"
+  | "manager"
+  | "auditor"
+  | "superadmin"
+  | "quality"
+  | "engineering"
+  | "systems";
 
 type Profile = {
   id: string;
@@ -17,11 +23,15 @@ type Profile = {
 
 function cleanRole(input: any): Role {
   const r = String(input ?? "").trim().toLowerCase();
+
   if (r === "superadmin") return "superadmin";
   if (r === "admin") return "admin";
   if (r === "manager") return "manager";
   if (r === "auditor") return "auditor";
   if (r === "quality") return "quality";
+  if (r === "engineering") return "engineering";
+  if (r === "systems") return "systems";
+
   return "auditor";
 }
 
@@ -94,21 +104,22 @@ export default function HomePage() {
 
         setDebug(`uid=${uid} role_raw=${String(prof.role)} role_clean=${role}`);
 
-        // 3) Redirección por rol
         if (profile.role === "superadmin") {
           router.replace("/superadmin");
           return;
         }
 
-        // ✅ solo auditor va a /areas (filtra sus áreas asignadas ahí)
         if (profile.role === "auditor") {
           router.replace("/areas");
           return;
         }
 
-        // ✅ admin, manager y quality van al dashboard
-        router.replace("/dashboard");
+        if (profile.role === "engineering" || profile.role === "systems") {
+          router.replace("/task");
+          return;
+        }
 
+        router.replace("/dashboard");
       } catch (e: any) {
         console.error("[HOME] Error real:", e);
         if (!alive) return;

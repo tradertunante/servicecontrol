@@ -1,12 +1,23 @@
-export type Role = "superadmin" | "admin" | "manager" | "auditor" | "quality";
+export type Role =
+  | "superadmin"
+  | "admin"
+  | "manager"
+  | "auditor"
+  | "quality"
+  | "engineering"
+  | "systems";
 
 export function normalizeRole(role: any): Role {
   const r = (role ?? "").toString().toLowerCase().trim();
+
   if (r === "superadmin") return "superadmin";
   if (r === "admin") return "admin";
   if (r === "manager") return "manager";
   if (r === "auditor") return "auditor";
   if (r === "quality") return "quality";
+  if (r === "engineering") return "engineering";
+  if (r === "systems") return "systems";
+
   return "auditor";
 }
 
@@ -43,14 +54,17 @@ export function canManageSetup(role: Role | string | null | undefined): boolean 
   return r === "superadmin" || r === "admin";
 }
 
-/** Devuelve true si el rol es del canal Quality */
 export function isQualityRole(role: Role | string | null | undefined): boolean {
   return norm(role) === "quality";
 }
 
-/** Canal de auditoría según el rol del usuario */
 export function auditChannel(role: Role | string | null | undefined): "quality" | "internal" {
   return norm(role) === "quality" ? "quality" : "internal";
+}
+
+export function isNonOperationalRole(role: Role | string | null | undefined): boolean {
+  const r = norm(role);
+  return r === "engineering" || r === "systems";
 }
 
 export const canEditAreas = canManageAreas;
