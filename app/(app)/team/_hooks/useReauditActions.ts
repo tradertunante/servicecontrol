@@ -8,7 +8,6 @@ import type { Profile } from "@/lib/types";
 import type {
   EnrichedReauditRow,
   ProfileLite,
-  ReassignReason,
 } from "../_lib/reauditTypes";
 
 import {
@@ -57,6 +56,21 @@ export function useReauditActions({
       return false;
     }
 
+    if (!profile?.id) {
+      setActionError(
+        "No se pudo identificar al usuario que confirma el training."
+      );
+      setMessage("");
+      return false;
+    }
+
+    const hotelId = row.hotel_id || profile.hotel_id || null;
+    if (!hotelId) {
+      setActionError("No se pudo identificar el hotel de la re-auditoría.");
+      setMessage("");
+      return false;
+    }
+
     setSavingId(row.id);
     setActionError("");
     setMessage("");
@@ -66,14 +80,16 @@ export function useReauditActions({
       const nextReady = blockingIssueCount === 0;
       const nextStatus = nextReady ? "draft" : "blocked_by_non_operational";
 
-      const confirmedBy = profile?.full_name?.trim() || profile?.id || "unknown";
+      const confirmedByName =
+        profile.full_name?.trim() || profile.id || "unknown";
 
       const trainingBlock = buildTrainingConfirmationBlock({
         explanation: cleanExplanation,
-        confirmedBy,
+        confirmedBy: confirmedByName,
       });
 
       const nextNotes = appendNoteBlock(row.notes, trainingBlock);
+      const confirmedAt = new Date().toISOString();
 
       const { error: updateErr } = await supabase
         .from("audit_runs")
@@ -87,6 +103,24 @@ export function useReauditActions({
         .eq("id", row.id);
 
       if (updateErr) throw updateErr;
+
+      const { error: logErr } = await supabase
+        .from("reaudit_training_logs")
+        .insert({
+          hotel_id: hotelId,
+          reaudit_run_id: row.id,
+          team_member_id: row.team_member_id ?? null,
+          confirmed_by: profile.id,
+          confirmed_at: confirmedAt,
+          explanation: cleanExplanation,
+        });
+
+      if (logErr) {
+        throw new Error(
+          logErr.message ||
+            "Se actualizó la re-auditoría, pero falló el guardado del log de training."
+        );
+      }
 
       setMessage(
         nextReady
@@ -108,13 +142,11 @@ export function useReauditActions({
   async function saveReassignment({
     row,
     nextAuditorId,
-    reason,
     note,
     onSuccess,
   }: {
     row: EnrichedReauditRow;
     nextAuditorId: string;
-    reason: ReassignReason;
     note: string;
     onSuccess?: () => void;
   }) {
@@ -122,7 +154,9 @@ export function useReauditActions({
     const cleanNote = note.trim();
 
     if (!cleanAuditorId) {
-      setActionError("Debes seleccionar un auditor para reasignar la re-auditoría.");
+      setActionError(
+        "Debes seleccionar un auditor para reasignar la re-auditoría."
+      );
       setMessage("");
       return false;
     }
@@ -133,8 +167,23 @@ export function useReauditActions({
       return false;
     }
 
-    if (row.executed_at) {
-      setActionError("No se puede reasignar una re-auditoría ya ejecutada.");
+    if (row.status === "submitted") {
+      setActionError("No se puede reasignar una re-auditoría ya cerrada.");
+      setMessage("");
+      return false;
+    }
+
+    if (!profile?.id) {
+      setActionError(
+        "No se pudo identificar al usuario que realiza la reasignación."
+      );
+      setMessage("");
+      return false;
+    }
+
+    const hotelId = row.hotel_id || profile.hotel_id || null;
+    if (!hotelId) {
+      setActionError("No se pudo identificar el hotel de la re-auditoría.");
       setMessage("");
       return false;
     }
@@ -145,19 +194,19 @@ export function useReauditActions({
 
     try {
       const newAuditor = auditorOptions.find((p) => p.id === cleanAuditorId);
-      const changedBy = profile?.full_name?.trim() || profile?.id || "unknown";
+      const changedByName = profile.full_name?.trim() || profile.id || "unknown";
 
       const reassignBlock = buildReassignmentBlock({
         previousAuditorId: row.assigned_auditor_id,
         previousAuditorName: row.assigned_auditor_name,
         newAuditorId: cleanAuditorId,
         newAuditorName: newAuditor?.full_name ?? null,
-        changedBy,
-        reason,
+        changedBy: changedByName,
         note: cleanNote,
       });
 
       const nextNotes = appendNoteBlock(row.notes, reassignBlock);
+      const changedAt = new Date().toISOString();
 
       const { error: updateErr } = await supabase
         .from("audit_runs")
@@ -168,6 +217,25 @@ export function useReauditActions({
         .eq("id", row.id);
 
       if (updateErr) throw updateErr;
+
+      const { error: logErr } = await supabase
+        .from("reaudit_assignment_logs")
+        .insert({
+          hotel_id: hotelId,
+          reaudit_run_id: row.id,
+          previous_auditor_id: row.assigned_auditor_id ?? null,
+          new_auditor_id: cleanAuditorId,
+          changed_by: profile.id,
+          changed_at: changedAt,
+          note: cleanNote || null,
+        });
+
+      if (logErr) {
+        throw new Error(
+          logErr.message ||
+            "Se actualizó la re-auditoría, pero falló el guardado del log de reasignación."
+        );
+      }
 
       setMessage("Auditor reasignado correctamente para la re-auditoría.");
 
