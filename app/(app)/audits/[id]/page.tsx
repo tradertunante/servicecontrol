@@ -502,11 +502,12 @@ export default function AuditRunPage() {
   async function createReauditRun(input: {
     originalRun: AuditRunRow;
     rules: HotelAuditRulesRow;
+    hotelId: string;
     score: number | null;
     blockingIssueCount: number;
     requiresTraining: boolean;
   }): Promise<AuditRunRow | null> {
-    const { originalRun, rules, score, blockingIssueCount, requiresTraining } = input;
+    const { originalRun, rules, hotelId, score, blockingIssueCount, requiresTraining } = input;
 
     const assignedAuditorId = originalRun.assigned_auditor_id ?? originalRun.executed_by ?? null;
     const scheduledFor = addDaysIso(rules.auto_reaudit_delay_days);
@@ -520,6 +521,7 @@ export default function AuditRunPage() {
           : "draft";
 
     const insertPayload = {
+      hotel_id: hotelId,
       area_id: originalRun.area_id,
       audit_template_id: originalRun.audit_template_id,
       team_member_id: originalRun.team_member_id,
@@ -771,6 +773,7 @@ export default function AuditRunPage() {
         reauditRun = await createReauditRun({
           originalRun: run,
           rules,
+          hotelId: area.hotel_id!,
           score,
           blockingIssueCount,
           requiresTraining,
