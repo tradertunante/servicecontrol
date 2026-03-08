@@ -27,6 +27,7 @@ export default function ReauditsPanel({
     loadData,
     latestTrainingLogByRunId,
     latestAssignmentLogByRunId,
+    timelineByRunId,
   } = useReauditsData({ profile, hotelId });
 
   const [statusFilter, setStatusFilter] = useState<
@@ -177,6 +178,7 @@ export default function ReauditsPanel({
                 reassignNoteValue={reassignNote[row.id] ?? ""}
                 trainingInfo={latestTrainingLogByRunId[row.id] ?? null}
                 reassignInfo={latestAssignmentLogByRunId[row.id] ?? null}
+                timelineItems={timelineByRunId[row.id] ?? []}
                 isTrainingOpen={openTrainingId === row.id}
                 onTrainingOpen={() => {
                   clearActionFeedback();
