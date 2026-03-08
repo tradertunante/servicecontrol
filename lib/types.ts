@@ -1,4 +1,11 @@
-export type Role = "superadmin" | "admin" | "manager" | "auditor" | "quality";
+export type Role =
+  | "superadmin"
+  | "admin"
+  | "manager"
+  | "auditor"
+  | "quality"
+  | "engineering"
+  | "systems";
 
 export type Profile = {
   id: string;

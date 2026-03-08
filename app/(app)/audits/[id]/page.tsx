@@ -14,15 +14,32 @@ type AuditRunRow = {
   executed_by: string | null;
   audit_template_id: string;
   area_id: string;
-  team_member_id: string | null; // ✅
+  team_member_id: string | null;
+
+  assigned_auditor_id: string | null;
+  is_reaudit: boolean;
+  parent_audit_run_id: string | null;
+  origin_type: string | null;
+  scheduled_for: string | null;
+  requires_training: boolean;
+  training_confirmed: boolean;
+  ready_for_reaudit: boolean;
+  blocking_issue_count: number;
 };
 
 type TemplateRow = { id: string; name: string };
 
-// ✅ OJO: añadimos hotel_id para filtrar team_members por hotel también
 type AreaRow = { id: string; name: string; type: string | null; hotel_id: string | null };
 
-type TeamMemberLite = { id: string; full_name: string; _outOfArea?: boolean }; // ✅
+type HotelAuditRulesRow = {
+  hotel_id: string;
+  auto_reaudit_enabled: boolean;
+  auto_reaudit_threshold: number;
+  auto_reaudit_delay_days: number;
+  require_training_before_reaudit: boolean;
+};
+
+type TeamMemberLite = { id: string; full_name: string; _outOfArea?: boolean };
 
 type SectionRow = {
   id: string;
@@ -32,6 +49,8 @@ type SectionRow = {
 };
 
 type RequirementType = "never" | "if_fail" | "always";
+type CorrectiveFlow = "training_only" | "non_operational" | "mixed";
+type ResponsibleDepartment = "engineering" | "systems" | null;
 
 type QuestionRow = {
   id: string;
@@ -46,6 +65,10 @@ type QuestionRow = {
   created_at: string | null;
   tag?: string | null;
   classification?: string | null;
+
+  corrective_flow: CorrectiveFlow;
+  responsible_department: ResponsibleDepartment;
+  blocks_reaudit_until_resolved: boolean;
 };
 
 type AnswerValue = "PASS" | "FAIL" | "NA";
@@ -58,6 +81,22 @@ type AnswerRow = {
   result: AnswerValue | null;
   comment: string | null;
   photo_path: string | null;
+};
+
+type CorrectiveActionInsert = {
+  hotel_id: string;
+  area_id: string;
+  audit_run_id: string;
+  reaudit_run_id?: string | null;
+  question_id: string;
+  team_member_id: string | null;
+  assigned_department: "engineering" | "systems";
+  status: "open" | "in_progress" | "resolved";
+  title: string;
+  description: string | null;
+  evidence_note?: string | null;
+  evidence_photo_path?: string | null;
+  blocks_reaudit: boolean;
 };
 
 function fmtDate(iso: string | null) {
@@ -100,9 +139,8 @@ export default function AuditRunPage() {
   const [questions, setQuestions] = useState<QuestionRow[]>([]);
   const [answersByQ, setAnswersByQ] = useState<Record<string, AnswerRow>>({});
 
-  // ✅ Team members (filtrados por área)
   const [teamMembers, setTeamMembers] = useState<TeamMemberLite[]>([]);
-  const [selectedMember, setSelectedMember] = useState<string>(""); // "" => auditoría general
+  const [selectedMember, setSelectedMember] = useState<string>("");
   const [savingMember, setSavingMember] = useState(false);
 
   const submitted = (run?.status ?? "") === "submitted";
@@ -127,10 +165,11 @@ export default function AuditRunPage() {
           return;
         }
 
-        // 1) RUN
         const { data: rData, error: rErr } = await supabase
           .from("audit_runs")
-          .select("id,status,score,notes,executed_at,executed_by,audit_template_id,area_id,team_member_id")
+          .select(
+            "id,status,score,notes,executed_at,executed_by,audit_template_id,area_id,team_member_id,assigned_auditor_id,is_reaudit,parent_audit_run_id,origin_type,scheduled_for,requires_training,training_confirmed,ready_for_reaudit,blocking_issue_count"
+          )
           .eq("id", runId)
           .single();
 
@@ -142,7 +181,6 @@ export default function AuditRunPage() {
         setRun(r);
         setSelectedMember(r.team_member_id ?? "");
 
-        // 2) Template + Área (IMPORTANTE: pedimos hotel_id)
         const [{ data: tData, error: tErr }, { data: aData, error: aErr }] = await Promise.all([
           supabase.from("audit_templates").select("id,name").eq("id", r.audit_template_id).single(),
           supabase.from("areas").select("id,name,type,hotel_id").eq("id", r.area_id).single(),
@@ -155,7 +193,6 @@ export default function AuditRunPage() {
         setTemplate(tData as TemplateRow);
         setArea(aData as AreaRow);
 
-        // 3) ✅ TEAM MEMBERS filtrados por esta área (team_member_areas)
         const { data: linkData, error: linkErr } = await supabase
           .from("team_member_areas")
           .select("team_member_id")
@@ -163,7 +200,9 @@ export default function AuditRunPage() {
 
         if (linkErr) throw linkErr;
 
-        const ids = Array.from(new Set((linkData ?? []).map((x: any) => x.team_member_id).filter(Boolean))) as string[];
+        const ids = Array.from(
+          new Set((linkData ?? []).map((x: any) => x.team_member_id).filter(Boolean))
+        ) as string[];
 
         let list: TeamMemberLite[] = [];
 
@@ -184,7 +223,6 @@ export default function AuditRunPage() {
           list = (tmData ?? []) as TeamMemberLite[];
         }
 
-        // Si ya había un colaborador guardado fuera de esta área, lo mostramos marcado
         if (r.team_member_id && !list.some((m) => m.id === r.team_member_id)) {
           const { data: one, error: oneErr } = await supabase
             .from("team_members")
@@ -200,7 +238,6 @@ export default function AuditRunPage() {
         if (!alive) return;
         setTeamMembers(list);
 
-        // 4) Secciones
         const { data: sData, error: sErr } = await supabase
           .from("audit_sections")
           .select("id,name,active,created_at")
@@ -217,13 +254,12 @@ export default function AuditRunPage() {
 
         const secIds = secs.map((s) => s.id);
 
-        // 5) Preguntas
         let qListLocal: QuestionRow[] = [];
         if (secIds.length) {
           const { data: qData, error: qErr } = await supabase
             .from("audit_questions")
             .select(
-              "id,audit_section_id,text,weight,photo_requirement,comment_requirement,signature_requirement,active,order,created_at,tag,classification"
+              "id,audit_section_id,text,weight,photo_requirement,comment_requirement,signature_requirement,active,order,created_at,tag,classification,corrective_flow,responsible_department,blocks_reaudit_until_resolved"
             )
             .in("audit_section_id", secIds)
             .eq("active", true)
@@ -239,6 +275,15 @@ export default function AuditRunPage() {
             photo_requirement: toRequirement(q.photo_requirement),
             comment_requirement: toRequirement(q.comment_requirement),
             signature_requirement: toRequirement(q.signature_requirement),
+            corrective_flow:
+              q.corrective_flow === "non_operational" || q.corrective_flow === "mixed"
+                ? q.corrective_flow
+                : "training_only",
+            responsible_department:
+              q.responsible_department === "engineering" || q.responsible_department === "systems"
+                ? q.responsible_department
+                : null,
+            blocks_reaudit_until_resolved: !!q.blocks_reaudit_until_resolved,
           })) as QuestionRow[];
 
           if (!alive) return;
@@ -249,7 +294,6 @@ export default function AuditRunPage() {
           qListLocal = [];
         }
 
-        // 6) Respuestas
         const { data: ansData, error: ansErr } = await supabase
           .from("audit_answers")
           .select("id,audit_run_id,question_id,answer,result,comment,photo_path")
@@ -271,7 +315,6 @@ export default function AuditRunPage() {
           };
         }
 
-        // Seed: crea faltantes como PASS
         const toUpsert: any[] = [];
         for (const q of qListLocal) {
           if (!map[q.id]) {
@@ -363,7 +406,153 @@ export default function AuditRunPage() {
     return false;
   }
 
-  // ✅ guardar team_member_id en audit_runs
+  async function loadHotelAuditRules(hotelId: string): Promise<HotelAuditRulesRow | null> {
+    const { data, error } = await supabase
+      .from("hotel_audit_rules")
+      .select(
+        "hotel_id,auto_reaudit_enabled,auto_reaudit_threshold,auto_reaudit_delay_days,require_training_before_reaudit"
+      )
+      .eq("hotel_id", hotelId)
+      .maybeSingle();
+
+    if (error) throw error;
+    return (data as HotelAuditRulesRow | null) ?? null;
+  }
+
+  function buildCorrectiveActionsFromFails(input: {
+    hotelId: string;
+    areaId: string;
+    auditRunId: string;
+    teamMemberId: string | null;
+    questions: QuestionRow[];
+    answersByQ: Record<string, AnswerRow>;
+  }): CorrectiveActionInsert[] {
+    const { hotelId, areaId, auditRunId, teamMemberId, questions, answersByQ } = input;
+
+    const rows: CorrectiveActionInsert[] = [];
+
+    for (const q of questions) {
+      const a = answersByQ[q.id];
+      const val = ((a?.answer ?? a?.result) ?? "PASS") as AnswerValue;
+
+      if (val !== "FAIL") continue;
+      if (q.corrective_flow !== "non_operational" && q.corrective_flow !== "mixed") continue;
+      if (q.responsible_department !== "engineering" && q.responsible_department !== "systems") continue;
+
+      rows.push({
+        hotel_id: hotelId,
+        area_id: areaId,
+        audit_run_id: auditRunId,
+        question_id: q.id,
+        team_member_id: teamMemberId,
+        assigned_department: q.responsible_department,
+        status: "open",
+        title: q.text,
+        description: a?.comment?.trim() ? a.comment.trim() : null,
+        evidence_note: a?.comment?.trim() ? a.comment.trim() : null,
+        evidence_photo_path: a?.photo_path ?? null,
+        blocks_reaudit: !!q.blocks_reaudit_until_resolved,
+      });
+    }
+
+    return rows;
+  }
+
+  function countBlockingIssuesFromFails(
+    questions: QuestionRow[],
+    answersByQ: Record<string, AnswerRow>
+  ): number {
+    let count = 0;
+
+    for (const q of questions) {
+      const a = answersByQ[q.id];
+      const val = ((a?.answer ?? a?.result) ?? "PASS") as AnswerValue;
+
+      if (val !== "FAIL") continue;
+      if (!q.blocks_reaudit_until_resolved) continue;
+      if (q.corrective_flow !== "non_operational" && q.corrective_flow !== "mixed") continue;
+      if (q.responsible_department !== "engineering" && q.responsible_department !== "systems") continue;
+
+      count += 1;
+    }
+
+    return count;
+  }
+
+  function hasTrainingFails(questions: QuestionRow[], answersByQ: Record<string, AnswerRow>): boolean {
+    for (const q of questions) {
+      const a = answersByQ[q.id];
+      const val = ((a?.answer ?? a?.result) ?? "PASS") as AnswerValue;
+
+      if (val !== "FAIL") continue;
+      if (q.corrective_flow === "training_only" || q.corrective_flow === "mixed") {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  function addDaysIso(days: number): string {
+    const d = new Date();
+    d.setDate(d.getDate() + days);
+    return d.toISOString();
+  }
+
+  async function createReauditRun(input: {
+    originalRun: AuditRunRow;
+    rules: HotelAuditRulesRow;
+    score: number | null;
+    blockingIssueCount: number;
+    requiresTraining: boolean;
+  }): Promise<AuditRunRow | null> {
+    const { originalRun, rules, score, blockingIssueCount, requiresTraining } = input;
+
+    const assignedAuditorId = originalRun.assigned_auditor_id ?? originalRun.executed_by ?? null;
+    const scheduledFor = addDaysIso(rules.auto_reaudit_delay_days);
+
+    const readyForReaudit = blockingIssueCount === 0 && !requiresTraining;
+    const nextStatus =
+      blockingIssueCount > 0
+        ? "blocked_by_non_operational"
+        : requiresTraining
+          ? "pending_training"
+          : "draft";
+
+    const insertPayload = {
+      area_id: originalRun.area_id,
+      audit_template_id: originalRun.audit_template_id,
+      team_member_id: originalRun.team_member_id,
+      assigned_auditor_id: assignedAuditorId,
+      executed_by: assignedAuditorId,
+      status: nextStatus,
+      score: null,
+      is_reaudit: true,
+      parent_audit_run_id: originalRun.id,
+      origin_type: "auto_below_threshold",
+      scheduled_for: scheduledFor,
+      requires_training: requiresTraining,
+      training_confirmed: false,
+      ready_for_reaudit: readyForReaudit,
+      blocking_issue_count: blockingIssueCount,
+      notes:
+        score === null
+          ? "Re-auditoría automática"
+          : `Re-auditoría automática por score ${score.toFixed(2)}%`,
+    };
+
+    const { data, error } = await supabase
+      .from("audit_runs")
+      .insert(insertPayload)
+      .select(
+        "id,status,score,notes,executed_at,executed_by,audit_template_id,area_id,team_member_id,assigned_auditor_id,is_reaudit,parent_audit_run_id,origin_type,scheduled_for,requires_training,training_confirmed,ready_for_reaudit,blocking_issue_count"
+      )
+      .single();
+
+    if (error) throw error;
+    return (data as AuditRunRow) ?? null;
+  }
+
   async function saveTeamMember(nextId: string) {
     if (!run) return;
     if (submitted) return;
@@ -520,7 +709,7 @@ export default function AuditRunPage() {
   }
 
   async function submitRun() {
-    if (!run) return;
+    if (!run || !area) return;
     if (submitted) return;
 
     for (const q of questions) {
@@ -529,13 +718,16 @@ export default function AuditRunPage() {
 
       const val = ((a.answer ?? a.result) ?? "PASS") as AnswerValue;
 
-      const shouldCheckComment = q.comment_requirement === "always" || (q.comment_requirement === "if_fail" && val === "FAIL");
-      const shouldCheckPhoto = q.photo_requirement === "always" || (q.photo_requirement === "if_fail" && val === "FAIL");
+      const shouldCheckComment =
+        q.comment_requirement === "always" || (q.comment_requirement === "if_fail" && val === "FAIL");
+      const shouldCheckPhoto =
+        q.photo_requirement === "always" || (q.photo_requirement === "if_fail" && val === "FAIL");
 
       if (shouldCheckComment && !(a.comment ?? "").trim()) {
         setError(`Falta comentario en: "${q.text}"`);
         return;
       }
+
       if (shouldCheckPhoto && !(a.photo_path ?? "").trim()) {
         setError(`Falta foto en: "${q.text}"`);
         return;
@@ -547,6 +739,56 @@ export default function AuditRunPage() {
 
     try {
       const score = totals.score === null ? null : clamp(totals.score, 0, 100);
+
+      const rules = area.hotel_id ? await loadHotelAuditRules(area.hotel_id) : null;
+
+      const correctiveActions = area.hotel_id
+        ? buildCorrectiveActionsFromFails({
+            hotelId: area.hotel_id,
+            areaId: run.area_id,
+            auditRunId: run.id,
+            teamMemberId: run.team_member_id,
+            questions,
+            answersByQ,
+          })
+        : [];
+
+      const blockingIssueCount = countBlockingIssuesFromFails(questions, answersByQ);
+
+      const requiresTraining =
+        !!rules?.require_training_before_reaudit && hasTrainingFails(questions, answersByQ);
+
+      let reauditRun: AuditRunRow | null = null;
+
+      const shouldCreateReaudit =
+        !!rules &&
+        !!rules.auto_reaudit_enabled &&
+        score !== null &&
+        score < Number(rules.auto_reaudit_threshold || 0) &&
+        !run.is_reaudit;
+
+      if (shouldCreateReaudit) {
+        reauditRun = await createReauditRun({
+          originalRun: run,
+          rules,
+          score,
+          blockingIssueCount,
+          requiresTraining,
+        });
+      }
+
+      if (correctiveActions.length > 0) {
+        const payload = correctiveActions.map((row) => ({
+          ...row,
+          reaudit_run_id: reauditRun?.id ?? null,
+        }));
+
+        const { error: correctiveErr } = await supabase
+          .from("audit_corrective_actions")
+          .insert(payload);
+
+        if (correctiveErr) throw correctiveErr;
+      }
 
       const { error: upErr } = await supabase
         .from("audit_runs")
@@ -590,7 +832,6 @@ export default function AuditRunPage() {
     );
   }
 
-  // ✅ FIX TS: a partir de aquí run NO puede ser null
   if (!run) {
     return (
       <main className="w-full min-h-screen bg-gray-50 overflow-x-hidden">
@@ -625,7 +866,6 @@ export default function AuditRunPage() {
           {error ? <div className="text-sm font-semibold text-red-600 mt-2">{error}</div> : null}
         </div>
 
-        {/* ✅ Colaborador auditado (FILTRADO por el área) */}
         <div className="mt-4 bg-white rounded-2xl border p-4">
           <div className="text-sm font-extrabold mb-2">Colaborador auditado</div>
 
@@ -667,7 +907,6 @@ export default function AuditRunPage() {
           )}
         </div>
 
-        {/* Secciones */}
         <div className="mt-4 space-y-4">
           {sections.map((s) => {
             const qs = grouped[s.id] ?? [];
