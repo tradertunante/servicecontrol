@@ -1,14 +1,8 @@
 // FILE: app/(app)/dashboard/_lib/dashboardTypes.ts
 
-export type Role = "admin" | "manager" | "auditor" | "superadmin" | "quality";
+import type { Profile, Role } from "@/lib/types";
 
-export type Profile = {
-  id: string;
-  full_name?: string | null;
-  role: Role;
-  hotel_id: string | null;
-  active?: boolean | null;
-};
+export type { Profile, Role };
 
 export type HotelRow = {
   id: string;
@@ -35,7 +29,7 @@ export type AuditRunRow = {
   team_member_id?: string | null;
   executed_by?: string | null;
   notes?: string | null;
-  audit_channel?: "internal" | "quality" | null;  // ✅ este era el campo que faltaba
+  audit_channel?: "internal" | "quality" | null;
 };
 
 export type ScoreAgg = { avg: number | null; count: number };
