@@ -142,7 +142,9 @@ export default function CorrectiveActionsPanel({
       for (const tm of (teamRes.data ?? []) as TeamMemberRow[]) teamMap.set(tm.id, tm.full_name);
 
       const profileMap = new Map<string, string | null>();
-      for (const p of (profRes.data ?? []) as ProfileLite[]) profileMap.set(p.id, p.full_name ?? null);
+      for (const p of (profRes.data ?? []) as ProfileLite[]) {
+        profileMap.set(p.id, p.full_name ?? null);
+      }
 
       const enriched: EnrichedRow[] = actions.map((row) => ({
         ...row,
@@ -343,7 +345,9 @@ export default function CorrectiveActionsPanel({
               boxShadow: "var(--shadow-sm)",
             }}
           >
-            <div style={{ fontSize: 13, color: "var(--muted)", fontWeight: 800 }}>{item.label}</div>
+            <div style={{ fontSize: 13, color: "var(--muted)", fontWeight: 800 }}>
+              {item.label}
+            </div>
             <div style={{ marginTop: 6, fontSize: 28, fontWeight: 950 }}>{item.value}</div>
           </div>
         ))}
@@ -364,7 +368,7 @@ export default function CorrectiveActionsPanel({
         <input
           value={q}
           onChange={(e) => setQ(e.target.value)}
-          placeholder="Buscar standard, comentario, área, colaborador..."
+          placeholder="Buscar título, área, colaborador, nota..."
           style={{
             flex: 1,
             minWidth: 260,
@@ -375,7 +379,7 @@ export default function CorrectiveActionsPanel({
           }}
         />
 
-        {canSeeAll && !forcedDepartment && (
+        {canSeeAll ? (
           <select
             value={deptFilter}
             onChange={(e) => setDeptFilter(e.target.value as any)}
@@ -385,7 +389,7 @@ export default function CorrectiveActionsPanel({
             <option value="engineering">engineering</option>
             <option value="systems">systems</option>
           </select>
-        )}
+        ) : null}
 
         <select
           value={statusFilter}
@@ -400,11 +404,14 @@ export default function CorrectiveActionsPanel({
 
         <label
           style={{
-            ...btnBase,
             display: "flex",
-            alignItems: "center",
             gap: 8,
-            cursor: "pointer",
+            alignItems: "center",
+            padding: "10px 12px",
+            borderRadius: 12,
+            border: "1px solid var(--border)",
+            background: "var(--card-bg)",
+            fontWeight: 800,
           }}
         >
           <input
@@ -440,8 +447,8 @@ export default function CorrectiveActionsPanel({
           style={{
             padding: 12,
             borderRadius: 12,
-            border: "1px solid var(--border)",
-            background: "rgba(0,200,0,0.10)",
+            border: "1px solid rgba(0,200,0,0.25)",
+            background: "rgba(0,200,0,0.08)",
             color: "green",
             fontWeight: 900,
           }}
@@ -452,7 +459,7 @@ export default function CorrectiveActionsPanel({
 
       <div style={{ display: "grid", gap: 12 }}>
         {loading ? (
-          <div style={{ fontWeight: 900 }}>Cargando acciones correctivas…</div>
+          <div style={{ fontWeight: 900 }}>Cargando corrective actions…</div>
         ) : filtered.length === 0 ? (
           <div
             style={{
@@ -477,7 +484,9 @@ export default function CorrectiveActionsPanel({
                 key={row.id}
                 style={{
                   background: "var(--card-bg)",
-                  border: "1px solid var(--border)",
+                  border: row.blocks_reaudit
+                    ? "1px solid rgba(220,0,0,0.20)"
+                    : "1px solid var(--border)",
                   borderRadius: 16,
                   boxShadow: "var(--shadow-sm)",
                   padding: 16,
@@ -503,12 +512,20 @@ export default function CorrectiveActionsPanel({
                         borderRadius: 999,
                         border: "1px solid var(--border)",
                         background:
-                          row.assigned_department === "engineering"
-                            ? "rgba(2,132,199,0.08)"
-                            : "rgba(14,165,233,0.08)",
+                          row.status === "resolved"
+                            ? "rgba(0,200,0,0.10)"
+                            : row.status === "in_progress"
+                              ? "rgba(255,180,0,0.12)"
+                              : "rgba(220,0,0,0.06)",
+                        color:
+                          row.status === "resolved"
+                            ? "green"
+                            : row.status === "in_progress"
+                              ? "#9a6700"
+                              : "crimson",
                       }}
                     >
-                      {row.assigned_department}
+                      {row.status}
                     </span>
 
                     <span
@@ -518,21 +535,10 @@ export default function CorrectiveActionsPanel({
                         padding: "5px 9px",
                         borderRadius: 999,
                         border: "1px solid var(--border)",
-                        background:
-                          row.status === "resolved"
-                            ? "rgba(0,200,0,0.10)"
-                            : row.status === "in_progress"
-                              ? "rgba(255,180,0,0.12)"
-                              : "rgba(0,0,0,0.04)",
-                        color:
-                          row.status === "resolved"
-                            ? "green"
-                            : row.status === "in_progress"
-                              ? "#9a6700"
-                              : "var(--text)",
+                        background: "rgba(255,255,255,0.04)",
                       }}
                     >
-                      {row.status}
+                      {row.assigned_department}
                     </span>
 
                     {row.blocks_reaudit ? (
@@ -547,35 +553,38 @@ export default function CorrectiveActionsPanel({
                           color: "crimson",
                         }}
                       >
-                        bloquea re-auditoría
+                        BLOCKS RE-AUDIT
                       </span>
                     ) : null}
                   </div>
 
                   <div style={{ fontSize: 12, color: "var(--muted)", fontWeight: 800 }}>
-                    Abierta: {fmtDate(row.opened_at)} · {openDays} días
+                    Open {openDays} día{openDays === 1 ? "" : "s"}
                   </div>
                 </div>
 
                 <div style={{ display: "grid", gap: 8 }}>
-                  <div>
-                    <div style={{ fontSize: 12, color: "var(--muted)", fontWeight: 800 }}>Área</div>
-                    <div style={{ fontWeight: 900 }}>{row.area_name ?? "—"}</div>
-                  </div>
+                  <div style={{ fontWeight: 900, fontSize: 18 }}>{row.title}</div>
 
-                  <div>
-                    <div style={{ fontSize: 12, color: "var(--muted)", fontWeight: 800 }}>
-                      Standard failed
-                    </div>
-                    <div style={{ fontWeight: 900, lineHeight: 1.4 }}>{row.title}</div>
-                  </div>
+                  <div style={{ opacity: 0.9 }}>{row.area_name ?? "—"}</div>
 
-                  <div>
-                    <div style={{ fontSize: 12, color: "var(--muted)", fontWeight: 800 }}>Comentario</div>
-                    <div style={{ whiteSpace: "pre-wrap" }}>
-                      {row.description?.trim() || row.evidence_note?.trim() || "—"}
+                  {row.description ? (
+                    <div>
+                      <div style={{ fontSize: 12, color: "var(--muted)", fontWeight: 800 }}>
+                        Description
+                      </div>
+                      <div>{row.description}</div>
                     </div>
-                  </div>
+                  ) : null}
+
+                  {row.evidence_note ? (
+                    <div>
+                      <div style={{ fontSize: 12, color: "var(--muted)", fontWeight: 800 }}>
+                        Evidence note
+                      </div>
+                      <div>{row.evidence_note}</div>
+                    </div>
+                  ) : null}
 
                   <div
                     style={{
@@ -593,55 +602,45 @@ export default function CorrectiveActionsPanel({
 
                     <div>
                       <div style={{ fontSize: 12, color: "var(--muted)", fontWeight: 800 }}>
-                        Re-audit linked
+                        Opened
                       </div>
-                      <div>{row.reaudit_run_id ?? "—"}</div>
+                      <div>{fmtDate(row.opened_at)}</div>
                     </div>
 
                     <div>
                       <div style={{ fontSize: 12, color: "var(--muted)", fontWeight: 800 }}>
-                        Resuelto por
-                      </div>
-                      <div>{row.resolved_by_name ?? "—"}</div>
-                    </div>
-
-                    <div>
-                      <div style={{ fontSize: 12, color: "var(--muted)", fontWeight: 800 }}>
-                        Resuelto el
+                        Resolved at
                       </div>
                       <div>{fmtDate(row.resolved_at)}</div>
                     </div>
-                  </div>
 
-                  {row.evidence_photo_path ? (
                     <div>
-                      <div style={{ fontSize: 12, color: "var(--muted)", fontWeight: 800, marginBottom: 8 }}>
-                        Evidencia
+                      <div style={{ fontSize: 12, color: "var(--muted)", fontWeight: 800 }}>
+                        Resolved by
                       </div>
-                      <img
-                        src={row.evidence_photo_path}
-                        alt="Evidencia"
-                        style={{
-                          width: "100%",
-                          maxHeight: 320,
-                          objectFit: "contain",
-                          borderRadius: 12,
-                          border: "1px solid var(--border)",
-                          background: "#fff",
-                        }}
-                      />
+                      <div>{row.resolved_by_name ?? "—"}</div>
                     </div>
-                  ) : null}
+                  </div>
                 </div>
 
                 <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                  {row.status !== "in_progress" && row.status !== "resolved" ? (
+                  {row.status !== "open" ? (
+                    <button
+                      disabled={busy}
+                      onClick={() => setActionStatus(row, "open")}
+                      style={{ ...btnBase, opacity: busy ? 0.6 : 1 }}
+                    >
+                      Reopen
+                    </button>
+                  ) : null}
+
+                  {row.status !== "in_progress" ? (
                     <button
                       disabled={busy}
                       onClick={() => setActionStatus(row, "in_progress")}
                       style={{ ...btnBase, opacity: busy ? 0.6 : 1 }}
                     >
-                      Marcar en progreso
+                      Mark In Progress
                     </button>
                   ) : null}
 
@@ -651,22 +650,14 @@ export default function CorrectiveActionsPanel({
                       onClick={() => setActionStatus(row, "resolved")}
                       style={{
                         ...btnBase,
+                        opacity: busy ? 0.6 : 1,
                         background: "black",
                         color: "white",
-                        opacity: busy ? 0.6 : 1,
                       }}
                     >
-                      Marcar resuelto
+                      {busy ? "Guardando..." : "Mark Resolved"}
                     </button>
-                  ) : (
-                    <button
-                      disabled={busy}
-                      onClick={() => setActionStatus(row, "open")}
-                      style={{ ...btnBase, opacity: busy ? 0.6 : 1 }}
-                    >
-                      Reabrir
-                    </button>
-                  )}
+                  ) : null}
                 </div>
               </div>
             );

@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import type { Profile } from "@/lib/types";
 
@@ -57,45 +56,6 @@ function dayDiffFromNow(iso: string | null) {
   return Math.floor((target - now) / (1000 * 60 * 60 * 24));
 }
 
-function buildTrainingConfirmationBlock({
-  explanation,
-  confirmedBy,
-}: {
-  explanation: string;
-  confirmedBy: string;
-}) {
-  const stamp = new Date().toISOString();
-  return [
-    "",
-    "--- TRAINING_CONFIRMATION ---",
-    `confirmed_at: ${stamp}`,
-    `confirmed_by: ${confirmedBy}`,
-    `explanation: ${explanation.trim()}`,
-    "--- /TRAINING_CONFIRMATION ---",
-  ].join("\n");
-}
-
-function extractLatestTrainingExplanation(notes: string | null) {
-  if (!notes) return null;
-
-  const regex =
-    /--- TRAINING_CONFIRMATION ---([\s\S]*?)--- \/TRAINING_CONFIRMATION ---/g;
-
-  const matches = Array.from(notes.matchAll(regex));
-  if (!matches.length) return null;
-
-  const lastBlock = matches[matches.length - 1]?.[1] ?? "";
-  const explanationMatch = lastBlock.match(/explanation:\s*([\s\S]*)/i);
-  const confirmedByMatch = lastBlock.match(/confirmed_by:\s*(.*)/i);
-  const confirmedAtMatch = lastBlock.match(/confirmed_at:\s*(.*)/i);
-
-  return {
-    explanation: explanationMatch?.[1]?.trim() ?? "",
-    confirmedBy: confirmedByMatch?.[1]?.trim() ?? "",
-    confirmedAt: confirmedAtMatch?.[1]?.trim() ?? "",
-  };
-}
-
 export default function ReauditsPanel({
   profile,
   hotelId,
@@ -103,12 +63,8 @@ export default function ReauditsPanel({
   profile: Profile | null;
   hotelId: string;
 }) {
-  const router = useRouter();
-
   const [loading, setLoading] = useState(true);
   const [savingId, setSavingId] = useState<string | null>(null);
-  const [openExplainId, setOpenExplainId] = useState<string | null>(null);
-  const [trainingExplanation, setTrainingExplanation] = useState<Record<string, string>>({});
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [rows, setRows] = useState<EnrichedReauditRow[]>([]);
@@ -261,20 +217,6 @@ export default function ReauditsPanel({
   }, [rows]);
 
   async function confirmTraining(row: EnrichedReauditRow) {
-    const explanation = (trainingExplanation[row.id] ?? "").trim();
-
-    if (!explanation) {
-      setError("Debes explicar qué formación o medida correctiva se realizó antes de confirmar el training.");
-      setMessage("");
-      return;
-    }
-
-    if (explanation.length < 12) {
-      setError("La explicación es demasiado corta. Añade suficiente detalle para que luego pueda analizarse.");
-      setMessage("");
-      return;
-    }
-
     setSavingId(row.id);
     setError("");
     setMessage("");
@@ -284,16 +226,6 @@ export default function ReauditsPanel({
       const nextReady = blockingIssueCount === 0;
       const nextStatus = nextReady ? "draft" : "blocked_by_non_operational";
 
-      const confirmedBy = profile?.full_name?.trim() || profile?.id || "unknown";
-      const notesBlock = buildTrainingConfirmationBlock({
-        explanation,
-        confirmedBy,
-      });
-
-      const nextNotes = [row.notes?.trim() ?? "", notesBlock]
-        .filter(Boolean)
-        .join("\n\n");
-
       const { error: updateErr } = await supabase
         .from("audit_runs")
         .update({
@@ -301,19 +233,15 @@ export default function ReauditsPanel({
           blocking_issue_count: blockingIssueCount,
           ready_for_reaudit: nextReady,
           status: nextStatus,
-          notes: nextNotes,
         })
         .eq("id", row.id);
 
       if (updateErr) throw updateErr;
 
-      setTrainingExplanation((prev) => ({ ...prev, [row.id]: "" }));
-      setOpenExplainId(null);
-
       setMessage(
         nextReady
-          ? "Training confirmado y documentado. La re-auditoría ya está lista para ejecutarse."
-          : "Training confirmado y documentado. La re-auditoría sigue bloqueada por incidencias no operativas."
+          ? "Training confirmado. La re-auditoría ya está lista para ejecutarse."
+          : "Training confirmado. La re-auditoría sigue bloqueada por incidencias no operativas."
       );
 
       await loadData();
@@ -337,13 +265,6 @@ export default function ReauditsPanel({
     ...btn,
     background: "black",
     color: "white",
-  };
-
-  const ghostGreenBtn: React.CSSProperties = {
-    ...btn,
-    background: "rgba(0,200,0,0.08)",
-    color: "green",
-    border: "1px solid rgba(0,200,0,0.2)",
   };
 
   return (
@@ -479,8 +400,6 @@ export default function ReauditsPanel({
               row.training_confirmed !== true;
 
             const busy = savingId === row.id;
-            const trainingInfo = extractLatestTrainingExplanation(row.notes);
-            const explanationOpen = openExplainId === row.id;
 
             return (
               <div
@@ -630,138 +549,42 @@ export default function ReauditsPanel({
                     <div>{row.parent_audit_run_id ?? "—"}</div>
                   </div>
 
-                  {trainingInfo?.explanation ? (
-                    <div
-                      style={{
-                        padding: 12,
-                        borderRadius: 12,
-                        border: "1px solid rgba(0,0,0,0.08)",
-                        background: "rgba(255,255,255,0.03)",
-                      }}
-                    >
-                      <div style={{ fontSize: 12, color: "var(--muted)", fontWeight: 800 }}>
-                        Training documentado
-                      </div>
-                      <div style={{ marginTop: 6, whiteSpace: "pre-wrap" }}>
-                        {trainingInfo.explanation}
-                      </div>
-                      {(trainingInfo.confirmedBy || trainingInfo.confirmedAt) && (
-                        <div style={{ marginTop: 8, fontSize: 12, color: "var(--muted)" }}>
-                          {trainingInfo.confirmedBy
-                            ? `Por: ${trainingInfo.confirmedBy}`
-                            : ""}
-                          {trainingInfo.confirmedBy && trainingInfo.confirmedAt ? " · " : ""}
-                          {trainingInfo.confirmedAt
-                            ? `Fecha: ${fmtDate(trainingInfo.confirmedAt)}`
-                            : ""}
-                        </div>
-                      )}
-                    </div>
-                  ) : null}
-
                   {row.notes ? (
                     <div>
                       <div style={{ fontSize: 12, color: "var(--muted)", fontWeight: 800 }}>
                         Notes
                       </div>
-                      <div style={{ whiteSpace: "pre-wrap" }}>{row.notes}</div>
+                      <div>{row.notes}</div>
                     </div>
                   ) : null}
                 </div>
 
-                {canConfirmTraining && explanationOpen ? (
-                  <div
-                    style={{
-                      display: "grid",
-                      gap: 10,
-                      padding: 12,
-                      borderRadius: 14,
-                      border: "1px solid rgba(255,180,0,0.25)",
-                      background: "rgba(255,180,0,0.08)",
-                    }}
-                  >
-                    <div style={{ fontWeight: 900 }}>
-                      Explica qué se hizo para dejar apto al colaborador para re-auditoría
-                    </div>
-
-                    <textarea
-                      value={trainingExplanation[row.id] ?? ""}
-                      onChange={(e) =>
-                        setTrainingExplanation((prev) => ({
-                          ...prev,
-                          [row.id]: e.target.value,
-                        }))
-                      }
-                      placeholder="Ejemplo: coaching 1:1 sobre estándar de limpieza, repaso práctico en habitación muestra, shadowing con supervisor, checklist reforzado y validación final del proceso..."
-                      rows={5}
-                      style={{
-                        width: "100%",
-                        resize: "vertical",
-                        padding: 12,
-                        borderRadius: 12,
-                        border: "1px solid var(--border)",
-                        background: "var(--card-bg)",
-                      }}
-                    />
-
-                    <div style={{ fontSize: 12, color: "var(--muted)" }}>
-                      Este texto quedará guardado para trazabilidad y análisis futuro de medidas de formación.
-                    </div>
-
-                    <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                      <button
-                        disabled={busy}
-                        onClick={() => confirmTraining(row)}
-                        style={{
-                          ...primaryBtn,
-                          opacity: busy ? 0.6 : 1,
-                        }}
-                      >
-                        {busy ? "Confirmando..." : "Guardar y confirmar training"}
-                      </button>
-
-                      <button
-                        disabled={busy}
-                        onClick={() => setOpenExplainId(null)}
-                        style={btn}
-                      >
-                        Cancelar
-                      </button>
-                    </div>
-                  </div>
-                ) : null}
-
                 <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                  {canConfirmTraining && !explanationOpen ? (
+                  {canConfirmTraining ? (
                     <button
                       disabled={busy}
-                      onClick={() => {
-                        setError("");
-                        setMessage("");
-                        setOpenExplainId(row.id);
-                      }}
+                      onClick={() => confirmTraining(row)}
                       style={{
                         ...primaryBtn,
                         opacity: busy ? 0.6 : 1,
                       }}
                     >
-                      Documentar training
+                      {busy ? "Confirmando..." : "Confirm Training"}
                     </button>
                   ) : null}
 
                   {isReady ? (
-                    <>
-                      <div style={{ ...ghostGreenBtn, cursor: "default" }}>
-                        Lista para re-auditar
-                      </div>
-
-                      <button
-                        onClick={() => router.push(`/audits/${row.id}`)}
-                        style={primaryBtn}
-                      >
-                        Open Re-audit
-                      </button>
-                    </>
+                    <div
+                      style={{
+                        ...btn,
+                        cursor: "default",
+                        background: "rgba(0,200,0,0.08)",
+                        color: "green",
+                        border: "1px solid rgba(0,200,0,0.2)",
+                      }}
+                    >
+                      Lista para re-auditar
+                    </div>
                   ) : null}
                 </div>
               </div>
