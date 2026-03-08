@@ -1,3 +1,4 @@
+// FILE: app/(app)/team/_components/ReauditsPanel.tsx
 "use client";
 
 import { useMemo, useState } from "react";
@@ -7,7 +8,6 @@ import ReauditStats from "./reaudits/ReauditStats";
 import ReauditFilters from "./reaudits/ReauditFilters";
 import ReauditCard from "./reaudits/ReauditCard";
 
-import type { ReassignReason } from "../_lib/reauditTypes";
 import { useReauditsData } from "../_hooks/useReauditsData";
 import { useReauditActions } from "../_hooks/useReauditActions";
 
@@ -23,10 +23,10 @@ export default function ReauditsPanel({
     error: dataError,
     rows,
     auditorOptions,
+    auditorOptionsByAreaId,
     stats,
     loadData,
     latestTrainingLogByRunId,
-    latestAssignmentLogByRunId,
     timelineByRunId,
   } = useReauditsData({ profile, hotelId });
 
@@ -41,9 +41,6 @@ export default function ReauditsPanel({
   );
 
   const [reassignAuditorId, setReassignAuditorId] = useState<Record<string, string>>(
-    {}
-  );
-  const [reassignReason, setReassignReason] = useState<Record<string, ReassignReason>>(
     {}
   );
   const [reassignNote, setReassignNote] = useState<Record<string, string>>({});
@@ -61,11 +58,12 @@ export default function ReauditsPanel({
     onReload: loadData,
   });
 
-  const canManageReauditAssignment =
-    profile?.role === "manager" ||
-    profile?.role === "quality" ||
-    profile?.role === "admin" ||
-    profile?.role === "superadmin";
+  const canManageReauditAssignment = [
+    "manager",
+    "quality",
+    "admin",
+    "superadmin",
+  ].includes((profile?.role ?? "").toLowerCase());
 
   const filtered = useMemo(() => {
     let list = [...rows];
@@ -167,17 +165,15 @@ export default function ReauditsPanel({
                 row={row}
                 busy={busy}
                 canManageReauditAssignment={canManageReauditAssignment}
-                auditorOptions={auditorOptions}
+                auditorOptions={auditorOptionsByAreaId[row.area_id] ?? []}
                 trainingValue={trainingExplanation[row.id] ?? ""}
                 reassignAuditorValue={
                   reassignAuditorId[row.id] !== undefined
                     ? reassignAuditorId[row.id]
                     : row.assigned_auditor_id ?? ""
                 }
-                reassignReasonValue={reassignReason[row.id] ?? "other"}
                 reassignNoteValue={reassignNote[row.id] ?? ""}
                 trainingInfo={latestTrainingLogByRunId[row.id] ?? null}
-                reassignInfo={latestAssignmentLogByRunId[row.id] ?? null}
                 timelineItems={timelineByRunId[row.id] ?? []}
                 isTrainingOpen={openTrainingId === row.id}
                 onTrainingOpen={() => {
@@ -211,12 +207,6 @@ export default function ReauditsPanel({
                     [row.id]: value,
                   }))
                 }
-                onReassignReasonChange={(value) =>
-                  setReassignReason((prev) => ({
-                    ...prev,
-                    [row.id]: value,
-                  }))
-                }
                 onReassignNoteChange={(value) =>
                   setReassignNote((prev) => ({
                     ...prev,
@@ -230,16 +220,11 @@ export default function ReauditsPanel({
                       reassignAuditorId[row.id] !== undefined
                         ? reassignAuditorId[row.id]
                         : row.assigned_auditor_id ?? "",
-                    reason: reassignReason[row.id] ?? "other",
                     note: reassignNote[row.id] ?? "",
                     onSuccess: () => {
                       setReassignAuditorId((prev) => ({
                         ...prev,
                         [row.id]: "",
-                      }));
-                      setReassignReason((prev) => ({
-                        ...prev,
-                        [row.id]: "other",
                       }));
                       setReassignNote((prev) => ({
                         ...prev,
@@ -253,10 +238,6 @@ export default function ReauditsPanel({
                   setReassignAuditorId((prev) => ({
                     ...prev,
                     [row.id]: row.assigned_auditor_id ?? "",
-                  }));
-                  setReassignReason((prev) => ({
-                    ...prev,
-                    [row.id]: "other",
                   }));
                   setReassignNote((prev) => ({
                     ...prev,

@@ -1,3 +1,4 @@
+// FILE: app/(app)/team/_hooks/useReauditsData.ts
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -19,6 +20,11 @@ import type {
   ReassignmentInfo,
 } from "../_lib/reauditTypes";
 
+type UserAreaAccessRow = {
+  user_id: string;
+  area_id: string;
+};
+
 export function useReauditsData({
   profile,
   hotelId,
@@ -29,6 +35,9 @@ export function useReauditsData({
   const [loading, setLoading] = useState(true);
   const [rows, setRows] = useState<EnrichedReauditRow[]>([]);
   const [auditorOptions, setAuditorOptions] = useState<ProfileLite[]>([]);
+  const [auditorOptionsByAreaId, setAuditorOptionsByAreaId] = useState<
+    Record<string, ProfileLite[]>
+  >({});
   const [error, setError] = useState("");
 
   const [latestTrainingLogByRunId, setLatestTrainingLogByRunId] = useState<
@@ -51,6 +60,7 @@ export function useReauditsData({
       if (!activeHotelId) {
         setRows([]);
         setAuditorOptions([]);
+        setAuditorOptionsByAreaId({});
         setLatestTrainingLogByRunId({});
         setLatestAssignmentLogByRunId({});
         setTimelineByRunId({});
@@ -89,6 +99,7 @@ export function useReauditsData({
         teamRes,
         assignedAuditorsRes,
         allProfilesRes,
+        userAreaAccessRes,
         trainingLogsRes,
         assignmentLogsRes,
       ] = await Promise.all([
@@ -115,6 +126,14 @@ export function useReauditsData({
           .eq("active", true)
           .in("role", ["auditor", "quality", "manager", "admin", "superadmin"]),
 
+        areaIds.length
+          ? supabase
+              .from("user_area_access")
+              .select("user_id,area_id")
+              .eq("hotel_id", activeHotelId)
+              .in("area_id", areaIds)
+          : Promise.resolve({ data: [] as UserAreaAccessRow[], error: null }),
+
         runIds.length
           ? supabase
               .from("reaudit_training_logs")
@@ -129,7 +148,7 @@ export function useReauditsData({
           ? supabase
               .from("reaudit_assignment_logs")
               .select(
-                "id,hotel_id,reaudit_run_id,previous_auditor_id,new_auditor_id,changed_by,changed_at,reason,note,created_at"
+                "id,hotel_id,reaudit_run_id,previous_auditor_id,new_auditor_id,changed_by,changed_at,note,created_at"
               )
               .in("reaudit_run_id", runIds)
               .order("changed_at", { ascending: false })
@@ -141,12 +160,20 @@ export function useReauditsData({
       if (teamRes.error) throw teamRes.error;
       if (assignedAuditorsRes.error) throw assignedAuditorsRes.error;
       if (allProfilesRes.error) throw allProfilesRes.error;
+      if (userAreaAccessRes.error) throw userAreaAccessRes.error;
       if (trainingLogsRes.error) throw trainingLogsRes.error;
       if (assignmentLogsRes.error) throw assignmentLogsRes.error;
 
       const allProfiles = (allProfilesRes.data ?? []) as ProfileLite[];
       const assignedProfiles = (assignedAuditorsRes.data ?? []) as ProfileLite[];
       const mergedProfiles = [...allProfiles, ...assignedProfiles];
+
+      const profileById = new Map<string, ProfileLite>();
+      for (const p of mergedProfiles) {
+        if (!profileById.has(p.id)) {
+          profileById.set(p.id, p);
+        }
+      }
 
       const profileNameMap = new Map<string, string | null>();
       for (const p of mergedProfiles) {
@@ -191,6 +218,30 @@ export function useReauditsData({
           })
         );
 
+      const accessRows = (userAreaAccessRes.data ?? []) as UserAreaAccessRow[];
+      const nextAuditorOptionsByAreaId: Record<string, ProfileLite[]> = {};
+
+      for (const areaId of areaIds) {
+        const allowedUserIds = Array.from(
+          new Set(
+            accessRows
+              .filter((x) => x.area_id === areaId)
+              .map((x) => x.user_id)
+              .filter(Boolean)
+          )
+        );
+
+        const allowedProfiles = allowedUserIds
+          .map((userId) => profileById.get(userId))
+          .filter(Boolean) as ProfileLite[];
+
+        nextAuditorOptionsByAreaId[areaId] = allowedProfiles.sort((a, b) =>
+          (a.full_name ?? "").localeCompare(b.full_name ?? "", "es", {
+            sensitivity: "base",
+          })
+        );
+      }
+
       const trainingMap: Record<string, TrainingInfo> = {};
       for (const log of (trainingLogsRes.data ?? []) as ReauditTrainingLogRow[]) {
         if (!trainingMap[log.reaudit_run_id]) {
@@ -216,7 +267,6 @@ export function useReauditsData({
               ? profileNameMap.get(log.previous_auditor_id) ?? null
               : null,
             newAuditorName: profileNameMap.get(log.new_auditor_id) ?? null,
-            reason: log.reason,
             note: log.note ?? null,
           };
         }
@@ -251,10 +301,7 @@ export function useReauditsData({
           : null;
         const nextName = profileNameMap.get(log.new_auditor_id) ?? null;
 
-        const detailLines = [
-          `${previousName || "—"} → ${nextName || "—"}`,
-          `Motivo: ${log.reason || "other"}`,
-        ];
+        const detailLines = [`${previousName || "—"} → ${nextName || "—"}`];
 
         if (log.note?.trim()) {
           detailLines.push(log.note.trim());
@@ -281,6 +328,7 @@ export function useReauditsData({
 
       setRows(enriched);
       setAuditorOptions(options);
+      setAuditorOptionsByAreaId(nextAuditorOptionsByAreaId);
       setLatestTrainingLogByRunId(trainingMap);
       setLatestAssignmentLogByRunId(assignmentMap);
       setTimelineByRunId(nextTimelineByRunId);
@@ -319,6 +367,7 @@ export function useReauditsData({
     error,
     rows,
     auditorOptions,
+    auditorOptionsByAreaId,
     stats,
     activeHotelId,
     loadData,

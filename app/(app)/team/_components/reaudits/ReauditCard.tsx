@@ -5,8 +5,6 @@ import { useRouter } from "next/navigation";
 import type {
   EnrichedReauditRow,
   ProfileLite,
-  ReassignReason,
-  ReassignmentInfo,
   ReauditTimelineItem,
   TrainingInfo,
 } from "../../_lib/reauditTypes";
@@ -22,17 +20,14 @@ export default function ReauditCard({
   auditorOptions,
   trainingValue,
   reassignAuditorValue,
-  reassignReasonValue,
   reassignNoteValue,
   trainingInfo,
-  reassignInfo,
   timelineItems,
   onTrainingOpen,
   onTrainingCancel,
   onTrainingChange,
   onTrainingSave,
   onReassignAuditorChange,
-  onReassignReasonChange,
   onReassignNoteChange,
   onReassignSave,
   onReassignReset,
@@ -44,17 +39,14 @@ export default function ReauditCard({
   auditorOptions: ProfileLite[];
   trainingValue: string;
   reassignAuditorValue: string;
-  reassignReasonValue: ReassignReason;
   reassignNoteValue: string;
   trainingInfo: TrainingInfo | null;
-  reassignInfo: ReassignmentInfo | null;
   timelineItems: ReauditTimelineItem[];
   onTrainingOpen: () => void;
   onTrainingCancel: () => void;
   onTrainingChange: (value: string) => void;
   onTrainingSave: () => void | Promise<void>;
   onReassignAuditorChange: (value: string) => void;
-  onReassignReasonChange: (value: ReassignReason) => void;
   onReassignNoteChange: (value: string) => void;
   onReassignSave: () => void | Promise<void>;
   onReassignReset: () => void;
@@ -77,14 +69,39 @@ export default function ReauditCard({
     color: "white",
   };
 
+  const panelStyle: React.CSSProperties = {
+    border: "1px solid var(--border)",
+    borderRadius: 14,
+    background: "rgba(255,255,255,0.03)",
+    padding: 12,
+    minWidth: 0,
+  };
+
+  const labelStyle: React.CSSProperties = {
+    fontSize: 12,
+    color: "var(--muted)",
+    fontWeight: 800,
+    lineHeight: 1.2,
+  };
+
+  const valueStyle: React.CSSProperties = {
+    fontSize: 14,
+    fontWeight: 800,
+    lineHeight: 1.25,
+    overflowWrap: "anywhere",
+  };
+
   const daysToDue = dayDiffFromNow(row.scheduled_for);
   const isOverdue = daysToDue !== null && daysToDue < 0;
   const isReady = !!row.ready_for_reaudit;
+
   const canConfirmTraining =
     row.status === "pending_training" &&
     row.requires_training === true &&
     row.training_confirmed !== true;
-  const canReassign = canManageReauditAssignment && !row.executed_at;
+
+  const isClosed = row.status === "submitted";
+  const canReassign = canManageReauditAssignment && !isClosed;
 
   return (
     <div
@@ -103,76 +120,93 @@ export default function ReauditCard({
           display: "flex",
           justifyContent: "space-between",
           gap: 12,
+          alignItems: "flex-start",
           flexWrap: "wrap",
-          alignItems: "center",
         }}
       >
-        <div
-          style={{
-            display: "flex",
-            gap: 8,
-            flexWrap: "wrap",
-            alignItems: "center",
-          }}
-        >
-          <span
+        <div style={{ display: "grid", gap: 8, minWidth: 0 }}>
+          <div
             style={{
-              fontSize: 12,
-              fontWeight: 900,
-              padding: "5px 9px",
-              borderRadius: 999,
-              border: "1px solid var(--border)",
-              background:
-                row.status === "draft"
-                  ? "rgba(0,200,0,0.10)"
-                  : row.status === "pending_training"
-                    ? "rgba(255,180,0,0.12)"
-                    : "rgba(220,0,0,0.06)",
-              color:
-                row.status === "draft"
-                  ? "green"
-                  : row.status === "pending_training"
-                    ? "#9a6700"
-                    : "crimson",
+              display: "flex",
+              gap: 8,
+              flexWrap: "wrap",
+              alignItems: "center",
             }}
           >
-            {row.status ?? "—"}
-          </span>
-
-          {isReady ? (
             <span
               style={{
                 fontSize: 12,
                 fontWeight: 900,
-                padding: "5px 9px",
+                padding: "4px 9px",
                 borderRadius: 999,
-                border: "1px solid rgba(0,200,0,0.2)",
-                background: "rgba(0,200,0,0.08)",
-                color: "green",
+                border: "1px solid var(--border)",
+                background:
+                  row.status === "draft"
+                    ? "rgba(0,200,0,0.10)"
+                    : row.status === "pending_training"
+                      ? "rgba(255,180,0,0.12)"
+                      : "rgba(220,0,0,0.06)",
+                color:
+                  row.status === "draft"
+                    ? "green"
+                    : row.status === "pending_training"
+                      ? "#9a6700"
+                      : "crimson",
               }}
             >
-              READY
+              {row.status ?? "—"}
             </span>
-          ) : null}
 
-          {isOverdue ? (
-            <span
-              style={{
-                fontSize: 12,
-                fontWeight: 900,
-                padding: "5px 9px",
-                borderRadius: 999,
-                border: "1px solid rgba(220,0,0,0.2)",
-                background: "rgba(220,0,0,0.06)",
-                color: "crimson",
-              }}
-            >
-              OVERDUE
-            </span>
-          ) : null}
+            {isReady ? (
+              <span
+                style={{
+                  fontSize: 12,
+                  fontWeight: 900,
+                  padding: "4px 9px",
+                  borderRadius: 999,
+                  border: "1px solid rgba(0,200,0,0.2)",
+                  background: "rgba(0,200,0,0.08)",
+                  color: "green",
+                }}
+              >
+                READY
+              </span>
+            ) : null}
+
+            {isOverdue ? (
+              <span
+                style={{
+                  fontSize: 12,
+                  fontWeight: 900,
+                  padding: "4px 9px",
+                  borderRadius: 999,
+                  border: "1px solid rgba(220,0,0,0.2)",
+                  background: "rgba(220,0,0,0.06)",
+                  color: "crimson",
+                }}
+              >
+                OVERDUE
+              </span>
+            ) : null}
+          </div>
+
+          <div style={{ fontWeight: 900, fontSize: 17, lineHeight: 1.15 }}>
+            {row.template_name ?? "Re-auditoría"}
+          </div>
+
+          <div style={{ opacity: 0.9 }}>
+            {row.area_name ?? "—"} {row.area_type ? `· ${row.area_type}` : ""}
+          </div>
         </div>
 
-        <div style={{ fontSize: 12, color: "var(--muted)", fontWeight: 800 }}>
+        <div
+          style={{
+            fontSize: 12,
+            color: "var(--muted)",
+            fontWeight: 800,
+            whiteSpace: "nowrap",
+          }}
+        >
           Programada: {fmtDate(row.scheduled_for)}
           {daysToDue !== null
             ? ` · ${Math.abs(daysToDue)} ${daysToDue < 0 ? "días tarde" : "días"}`
@@ -180,29 +214,49 @@ export default function ReauditCard({
         </div>
       </div>
 
-      <div style={{ display: "grid", gap: 8 }}>
-        <div style={{ fontWeight: 900, fontSize: 18 }}>
-          {row.template_name ?? "Re-auditoría"}
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
+          gap: 10,
+        }}
+      >
+        <div style={panelStyle}>
+          <div style={labelStyle}>Colaborador</div>
+          <div style={valueStyle}>{row.team_member_name ?? "—"}</div>
         </div>
 
-        <div style={{ opacity: 0.9 }}>
-          {row.area_name ?? "—"} {row.area_type ? `· ${row.area_type}` : ""}
+        <div style={panelStyle}>
+          <div style={labelStyle}>Auditor asignado</div>
+          <div style={valueStyle}>{row.assigned_auditor_name ?? "—"}</div>
         </div>
 
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-            gap: 10,
-          }}
-        >
-          <div>
-            <div style={{ fontSize: 12, color: "var(--muted)", fontWeight: 800 }}>
-              Colaborador
-            </div>
-            <div>{row.team_member_name ?? "—"}</div>
+        <div style={panelStyle}>
+          <div style={labelStyle}>Training</div>
+          <div style={valueStyle}>
+            {row.requires_training
+              ? row.training_confirmed
+                ? "confirmado"
+                : "pendiente"
+              : "no requerido"}
           </div>
+        </div>
 
+        <div style={panelStyle}>
+          <div style={labelStyle}>Blocking issues</div>
+          <div style={valueStyle}>{row.blocking_issue_count ?? 0}</div>
+        </div>
+      </div>
+
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "minmax(420px, 1.1fr) minmax(320px, 0.9fr)",
+          gap: 12,
+          alignItems: "start",
+        }}
+      >
+        <div style={{ display: "grid", gap: 12, minWidth: 0 }}>
           <ReauditAssignmentSection
             assignedAuditorName={row.assigned_auditor_name}
             assignedAuditorId={row.assigned_auditor_id}
@@ -210,66 +264,34 @@ export default function ReauditCard({
             busy={busy}
             auditorOptions={auditorOptions}
             selectedAuditorId={reassignAuditorValue}
-            selectedReason={reassignReasonValue}
             selectedNote={reassignNoteValue}
             onAuditorChange={onReassignAuditorChange}
-            onReasonChange={onReassignReasonChange}
             onNoteChange={onReassignNoteChange}
             onSave={onReassignSave}
             onReset={onReassignReset}
-            reassignInfo={reassignInfo}
           />
 
-          <div>
-            <div style={{ fontSize: 12, color: "var(--muted)", fontWeight: 800 }}>
-              Training
-            </div>
-            <div>
-              {row.requires_training
-                ? row.training_confirmed
-                  ? "confirmado"
-                  : "pendiente"
-                : "no requerido"}
-            </div>
+          <div style={panelStyle}>
+            <div style={labelStyle}>Auditoría origen</div>
+            <div style={valueStyle}>{row.parent_audit_run_id ?? "—"}</div>
           </div>
 
-          <div>
-            <div style={{ fontSize: 12, color: "var(--muted)", fontWeight: 800 }}>
-              Blocking issues
-            </div>
-            <div>{row.blocking_issue_count ?? 0}</div>
-          </div>
+          <ReauditTrainingSection
+            canConfirmTraining={canConfirmTraining}
+            isOpen={isTrainingOpen}
+            busy={busy}
+            value={trainingValue}
+            onChange={onTrainingChange}
+            onOpen={onTrainingOpen}
+            onCancel={onTrainingCancel}
+            onSave={onTrainingSave}
+            trainingInfo={trainingInfo}
+          />
         </div>
 
-        <div>
-          <div style={{ fontSize: 12, color: "var(--muted)", fontWeight: 800 }}>
-            Auditoría origen
-          </div>
-          <div>{row.parent_audit_run_id ?? "—"}</div>
+        <div style={{ minWidth: 0 }}>
+          <ReauditTimeline items={timelineItems} />
         </div>
-
-        <ReauditTrainingSection
-          canConfirmTraining={canConfirmTraining}
-          isOpen={isTrainingOpen}
-          busy={busy}
-          value={trainingValue}
-          onChange={onTrainingChange}
-          onOpen={onTrainingOpen}
-          onCancel={onTrainingCancel}
-          onSave={onTrainingSave}
-          trainingInfo={trainingInfo}
-        />
-
-        <ReauditTimeline items={timelineItems} />
-
-        {row.notes ? (
-          <div>
-            <div style={{ fontSize: 12, color: "var(--muted)", fontWeight: 800 }}>
-              Notes
-            </div>
-            <div style={{ whiteSpace: "pre-wrap" }}>{row.notes}</div>
-          </div>
-        ) : null}
       </div>
 
       <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>

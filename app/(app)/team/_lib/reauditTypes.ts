@@ -52,13 +52,6 @@ export type EnrichedReauditRow = ReauditRow & {
   assigned_auditor_name: string | null;
 };
 
-export type ReassignReason =
-  | "workload"
-  | "schedule"
-  | "absence"
-  | "objectivity"
-  | "other";
-
 export type ReauditStats = {
   total: number;
   pendingTraining: number;
@@ -77,7 +70,6 @@ export type ReassignmentInfo = {
   changedBy: string | null;
   previousAuditorName: string | null;
   newAuditorName: string | null;
-  reason: string;
   note: string | null;
 };
 
@@ -100,7 +92,6 @@ export type ReauditAssignmentLogRow = {
   new_auditor_id: string;
   changed_by: string | null;
   changed_at: string;
-  reason: string;
   note: string | null;
   created_at: string | null;
 };
