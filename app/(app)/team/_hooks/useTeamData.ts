@@ -3,16 +3,11 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
+import type { Profile } from "@/lib/types";
 
 const HOTEL_KEY = "sc_hotel_id";
 
 export type TeamPeriodKey = "daily" | "weekly" | "monthly";
-
-type Profile = {
-  id: string;
-  full_name: string | null;
-  role: "superadmin" | "admin" | "manager" | "quality" | "auditor" | string;
-};
 
 type LeaderboardRow = {
   auditor_user_id: string;
@@ -87,7 +82,7 @@ function getDateRange(period: TeamPeriodKey) {
   }
 
   if (period === "weekly") {
-    const day = now.getDay(); // 0 domingo, 1 lunes...
+    const day = now.getDay();
     const diffToMonday = day === 0 ? 6 : day - 1;
 
     const start = new Date(now);
@@ -121,7 +116,10 @@ export function useTeamData(selectedPeriod: TeamPeriodKey) {
   const summary = useMemo<TeamSummary>(() => {
     const totalAuditsDone = leaderboard.reduce((acc, x) => acc + Number(x.audits_done ?? 0), 0);
     const totalTargets = leaderboard.reduce((acc, x) => acc + Number(x.targets_total ?? 0), 0);
-    const totalCompletedTargets = leaderboard.reduce((acc, x) => acc + Number(x.targets_completed ?? 0), 0);
+    const totalCompletedTargets = leaderboard.reduce(
+      (acc, x) => acc + Number(x.targets_completed ?? 0),
+      0
+    );
     const totalRemaining = leaderboard.reduce((acc, x) => acc + Number(x.remaining ?? 0), 0);
     const globalPct = totalTargets > 0 ? (totalCompletedTargets / totalTargets) * 100 : 0;
 
@@ -153,7 +151,7 @@ export function useTeamData(selectedPeriod: TeamPeriodKey) {
 
         const { data: p, error: pErr } = await supabase
           .from("profiles")
-          .select("id, full_name, role")
+          .select("id, full_name, role, hotel_id, active")
           .eq("id", uid)
           .single();
 
@@ -178,7 +176,9 @@ export function useTeamData(selectedPeriod: TeamPeriodKey) {
 
           if (allAreasResp.error) throw allAreasResp.error;
 
-          areaIds = Array.from(new Set((allAreasResp.data ?? []).map((x: any) => x.id).filter(Boolean)));
+          areaIds = Array.from(
+            new Set((allAreasResp.data ?? []).map((x: any) => x.id).filter(Boolean))
+          );
         } else {
           const ownAreasResp = await supabase
             .from("user_area_access")
@@ -188,7 +188,9 @@ export function useTeamData(selectedPeriod: TeamPeriodKey) {
 
           if (ownAreasResp.error) throw ownAreasResp.error;
 
-          areaIds = Array.from(new Set((ownAreasResp.data ?? []).map((x: any) => x.area_id).filter(Boolean)));
+          areaIds = Array.from(
+            new Set((ownAreasResp.data ?? []).map((x: any) => x.area_id).filter(Boolean))
+          );
         }
 
         if (areaIds.length === 0) {
@@ -233,11 +235,13 @@ export function useTeamData(selectedPeriod: TeamPeriodKey) {
         }
 
         const assignedUserIds = Array.from(new Set(assignments.map((x) => x.user_id).filter(Boolean)));
-        const templateIds = Array.from(new Set(assignments.map((x) => x.audit_template_id).filter(Boolean)));
+        const templateIds = Array.from(
+          new Set(assignments.map((x) => x.audit_template_id).filter(Boolean))
+        );
 
         const profilesResp = await supabase
           .from("profiles")
-          .select("id, full_name, role")
+          .select("id, full_name, role, hotel_id, active")
           .in("id", assignedUserIds);
 
         if (profilesResp.error) throw profilesResp.error;
@@ -278,158 +282,123 @@ export function useTeamData(selectedPeriod: TeamPeriodKey) {
         const runScoresByUser: Record<string, number[]> = {};
 
         for (const run of runs) {
-          const runUserId = run.executed_by as string | null;
-          const runTemplateId = run.audit_template_id as string | null;
-          if (!runUserId || !runTemplateId) continue;
+          const executedBy = run.executed_by as string | null;
+          const templateId = run.audit_template_id as string | null;
+          const score = typeof run.score === "number" ? run.score : Number(run.score ?? NaN);
 
-          const key = `${runUserId}__${runTemplateId}`;
+          if (!executedBy) continue;
 
-          runCountByUserTemplate[key] = Number(runCountByUserTemplate[key] ?? 0) + 1;
-          runCountByUser[runUserId] = Number(runCountByUser[runUserId] ?? 0) + 1;
+          const key = `${executedBy}__${templateId ?? "unknown"}`;
+          runCountByUserTemplate[key] = (runCountByUserTemplate[key] ?? 0) + 1;
+          runCountByUser[executedBy] = (runCountByUser[executedBy] ?? 0) + 1;
 
-          if (run.score !== null && run.score !== undefined && Number.isFinite(Number(run.score))) {
-            if (!runScoresByUser[runUserId]) runScoresByUser[runUserId] = [];
-            runScoresByUser[runUserId].push(Number(run.score));
+          if (Number.isFinite(score)) {
+            if (!runScoresByUser[executedBy]) runScoresByUser[executedBy] = [];
+            runScoresByUser[executedBy].push(score);
           }
         }
 
-        const groupedTargetsMap: Record<
-          string,
-          {
-            auditor_user_id: string;
-            auditor: string | null;
-            audit_template_id: string;
-            template: string;
-            target: number;
-            completedRaw: number;
-          }
-        > = {};
+        const teamTargetsRows: TeamTargetRow[] = assignments.map((a) => {
+          const completed = runCountByUserTemplate[`${a.user_id}__${a.audit_template_id}`] ?? 0;
+          const remaining = Math.max(0, a.target_count - completed);
+          const progressPct = a.target_count > 0 ? (completed / a.target_count) * 100 : 0;
 
-        for (const row of assignments) {
-          const key = `${row.user_id}__${row.audit_template_id}`;
+          return {
+            target_id: a.id,
+            auditor_user_id: a.user_id,
+            auditor: userNameById[a.user_id] ?? null,
+            template: templateNameById[a.audit_template_id] ?? "Auditoría",
+            target: a.target_count,
+            completed,
+            remaining,
+            progress_pct: progressPct,
+          };
+        });
 
-          if (!groupedTargetsMap[key]) {
-            groupedTargetsMap[key] = {
-              auditor_user_id: row.user_id,
-              auditor: userNameById[row.user_id] ?? null,
-              audit_template_id: row.audit_template_id,
-              template: templateNameById[row.audit_template_id] ?? "Auditoría",
-              target: 0,
-              completedRaw: Number(runCountByUserTemplate[key] ?? 0),
-            };
-          }
+        const leaderboardMap = new Map<string, LeaderboardRow>();
 
-          groupedTargetsMap[key].target += Number(row.target_count ?? 0);
-        }
+        for (const a of assignments) {
+          const existing = leaderboardMap.get(a.user_id);
 
-        const teamTargetRows: TeamTargetRow[] = Object.entries(groupedTargetsMap)
-          .map(([key, row]) => {
-            const completed = Math.min(Number(row.completedRaw ?? 0), Number(row.target ?? 0));
-            const remaining = Math.max(0, Number(row.target ?? 0) - Number(completed ?? 0));
-            const progressPct = Number(row.target ?? 0) > 0 ? (completed / Number(row.target)) * 100 : 0;
-
-            return {
-              target_id: key,
-              auditor_user_id: row.auditor_user_id,
-              auditor: row.auditor,
-              template: row.template,
-              target: Number(row.target ?? 0),
-              completed,
-              remaining,
-              progress_pct: progressPct,
-            };
-          })
-          .sort((a, b) => {
-            if (a.auditor_user_id !== b.auditor_user_id) {
-              return String(a.auditor ?? "").localeCompare(String(b.auditor ?? ""));
-            }
-            return String(a.template ?? "").localeCompare(String(b.template ?? ""));
-          });
-
-        if (!cancelled) setTeamTargets(teamTargetRows);
-
-        const userAggMap: Record<
-          string,
-          {
-            auditor_user_id: string;
-            auditor_name: string;
-            targets_total: number;
-            targets_completed: number;
-            remaining: number;
-            audits_done: number;
-            avg_score: number | null;
-          }
-        > = {};
-
-        for (const row of teamTargetRows) {
-          if (!userAggMap[row.auditor_user_id]) {
-            const scores = runScoresByUser[row.auditor_user_id] ?? [];
+          if (!existing) {
+            const scores = runScoresByUser[a.user_id] ?? [];
             const avgScore =
-              scores.length > 0 ? scores.reduce((acc, x) => acc + Number(x ?? 0), 0) / scores.length : null;
+              scores.length > 0
+                ? scores.reduce((acc, n) => acc + n, 0) / scores.length
+                : null;
 
-            userAggMap[row.auditor_user_id] = {
-              auditor_user_id: row.auditor_user_id,
-              auditor_name: row.auditor ?? row.auditor_user_id.slice(0, 8),
-              targets_total: 0,
-              targets_completed: 0,
-              remaining: 0,
-              audits_done: Number(runCountByUser[row.auditor_user_id] ?? 0),
+            leaderboardMap.set(a.user_id, {
+              auditor_user_id: a.user_id,
+              auditor_name: userNameById[a.user_id] ?? a.user_id.slice(0, 8),
+              audits_done: runCountByUser[a.user_id] ?? 0,
               avg_score: avgScore,
-            };
-          }
+              targets_total: a.target_count,
+              targets_completed:
+                runCountByUserTemplate[`${a.user_id}__${a.audit_template_id}`] ?? 0,
+              remaining: Math.max(
+                0,
+                a.target_count -
+                  (runCountByUserTemplate[`${a.user_id}__${a.audit_template_id}`] ?? 0)
+              ),
+              progress_pct:
+                a.target_count > 0
+                  ? ((runCountByUserTemplate[`${a.user_id}__${a.audit_template_id}`] ?? 0) /
+                      a.target_count) *
+                    100
+                  : 0,
+            });
+          } else {
+            const completedForThisTemplate =
+              runCountByUserTemplate[`${a.user_id}__${a.audit_template_id}`] ?? 0;
 
-          userAggMap[row.auditor_user_id].targets_total += Number(row.target ?? 0);
-          userAggMap[row.auditor_user_id].targets_completed += Number(row.completed ?? 0);
-          userAggMap[row.auditor_user_id].remaining += Number(row.remaining ?? 0);
+            existing.targets_total += a.target_count;
+            existing.targets_completed += completedForThisTemplate;
+            existing.remaining += Math.max(0, a.target_count - completedForThisTemplate);
+            existing.progress_pct =
+              existing.targets_total > 0
+                ? (existing.targets_completed / existing.targets_total) * 100
+                : 0;
+          }
         }
 
-        const leaderboardRows: LeaderboardRow[] = Object.values(userAggMap)
-          .map((row) => ({
-            auditor_user_id: row.auditor_user_id,
-            auditor_name: row.auditor_name,
-            audits_done: row.audits_done,
-            avg_score: row.avg_score,
-            targets_total: row.targets_total,
-            targets_completed: row.targets_completed,
-            remaining: row.remaining,
-            progress_pct: row.targets_total > 0 ? (row.targets_completed / row.targets_total) * 100 : 0,
-          }))
-          .sort((a, b) => {
-            const pctDiff = Number(b.progress_pct ?? 0) - Number(a.progress_pct ?? 0);
-            if (pctDiff !== 0) return pctDiff;
+        const leaderboardRows = Array.from(leaderboardMap.values()).sort((a, b) => {
+          const pctDiff = (b.progress_pct ?? 0) - (a.progress_pct ?? 0);
+          if (pctDiff !== 0) return pctDiff;
+          return (b.audits_done ?? 0) - (a.audits_done ?? 0);
+        });
 
-            const auditsDiff = Number(b.audits_done ?? 0) - Number(a.audits_done ?? 0);
-            if (auditsDiff !== 0) return auditsDiff;
+        const recentRunsRows: TeamRecentRunRow[] = runs.slice(0, 12).map((run) => ({
+          id: run.id,
+          executed_at: run.executed_at ?? null,
+          score: typeof run.score === "number" ? run.score : Number(run.score ?? null),
+          audit_template_id: run.audit_template_id,
+          template_name: templateNameById[run.audit_template_id] ?? null,
+          executed_by: run.executed_by ?? null,
+          auditor_name: userNameById[run.executed_by] ?? null,
+        }));
 
-            return String(a.auditor_name ?? "").localeCompare(String(b.auditor_name ?? ""));
-          });
-
-        if (!cancelled) setLeaderboard(leaderboardRows);
-
-        const mappedRuns = runs.slice(0, 20).map((r) => ({
-          id: r.id,
-          executed_at: r.executed_at ?? null,
-          score: r.score ?? null,
-          audit_template_id: r.audit_template_id,
-          template_name: templateNameById[r.audit_template_id] ?? null,
-          executed_by: r.executed_by ?? null,
-          auditor_name: userNameById[r.executed_by] ?? null,
-        })) as TeamRecentRunRow[];
-
-        if (!cancelled) setTeamRecentRuns(mappedRuns);
+        if (!cancelled) {
+          setLeaderboard(leaderboardRows);
+          setTeamTargets(teamTargetsRows);
+          setTeamRecentRuns(recentRunsRows);
+        }
       } catch (e: any) {
-        if (!cancelled) setError(e?.message ?? "Error inesperado.");
+        if (!cancelled) {
+          setError(e?.message ?? "No se pudo cargar Team.");
+          setLeaderboard([]);
+          setTeamTargets([]);
+          setTeamRecentRuns([]);
+        }
       } finally {
         if (!cancelled) setLoading(false);
       }
     }
 
     run();
-
     return () => {
       cancelled = true;
     };
-  }, [range.endISO, range.startISO, selectedPeriod]);
+  }, [selectedPeriod, range.startISO, range.endISO]);
 
   return {
     loading,
