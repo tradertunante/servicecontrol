@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import type { CSSProperties } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { requireRoleOrRedirect } from "@/lib/auth/RequireRole";
@@ -21,8 +22,8 @@ type Template = { id: string; name: string };
 
 type AnswerRow = {
   question_id: string;
-  result: string | null; // en tu DB parece ser "FAIL" o "NA"
-  answer: string | null; // NOT NULL en tu DB (pero por seguridad lo tratamos como nullable)
+  result: string | null; // "FAIL" / "NA" / null
+  answer: string | null; // fallback por compatibilidad
   comment: string | null;
 };
 
@@ -47,11 +48,93 @@ type Item = {
   comment: string | null;
 };
 
+type GroupedSection = {
+  section_id: string;
+  section_name: string;
+  items: Item[];
+  fail: number;
+  na: number;
+  ok: number;
+};
+
 function normalizeStatus(a: AnswerRow | undefined): "FAIL" | "NA" | "OK" {
   const raw = (a?.result ?? a?.answer ?? "").toString().trim().toUpperCase();
   if (raw === "FAIL") return "FAIL";
   if (raw === "NA" || raw === "N/A") return "NA";
   return "OK";
+}
+
+function pageWrapStyle(): CSSProperties {
+  return {
+    padding: 24,
+    width: "100%",
+    maxWidth: "none",
+  };
+}
+
+function cardStyle(): CSSProperties {
+  return {
+    border: "1px solid rgba(255,255,255,0.10)",
+    borderRadius: 18,
+    background: "rgba(255,255,255,0.72)",
+    boxShadow: "0 10px 30px rgba(0,0,0,0.10)",
+    backdropFilter: "blur(10px)",
+  };
+}
+
+function softBtnStyle(isDark = false): CSSProperties {
+  return {
+    padding: "10px 14px",
+    borderRadius: 12,
+    border: "1px solid rgba(0,0,0,0.14)",
+    background: isDark ? "#111" : "#fff",
+    color: isDark ? "#fff" : "#111",
+    fontWeight: 900,
+    cursor: "pointer",
+    whiteSpace: "nowrap",
+  };
+}
+
+function pillStyle(active: boolean): CSSProperties {
+  return {
+    padding: "8px 12px",
+    borderRadius: 999,
+    border: "1px solid rgba(0,0,0,0.15)",
+    background: active ? "#111" : "#fff",
+    color: active ? "#fff" : "#111",
+    fontWeight: 900,
+    cursor: "pointer",
+  };
+}
+
+function statCardStyle(): CSSProperties {
+  return {
+    ...cardStyle(),
+    padding: 16,
+    minWidth: 160,
+  };
+}
+
+function badgeStyle(status: "FAIL" | "NA" | "OK"): CSSProperties {
+  if (status === "FAIL") {
+    return {
+      background: "rgba(220, 38, 38, 0.12)",
+      color: "#b91c1c",
+      border: "1px solid rgba(220, 38, 38, 0.20)",
+    };
+  }
+  if (status === "NA") {
+    return {
+      background: "rgba(55, 65, 81, 0.10)",
+      color: "#374151",
+      border: "1px solid rgba(55, 65, 81, 0.18)",
+    };
+  }
+  return {
+    background: "rgba(22, 163, 74, 0.12)",
+    color: "#15803d",
+    border: "1px solid rgba(22, 163, 74, 0.20)",
+  };
 }
 
 export default function AuditRunSectionDetailPage() {
@@ -92,7 +175,6 @@ export default function AuditRunSectionDetailPage() {
           return;
         }
 
-        // 1) audit_run
         const { data: runData, error: runErr } = await supabase
           .from("audit_runs")
           .select("id,area_id,audit_template_id,status,score,executed_at,created_at")
@@ -101,14 +183,12 @@ export default function AuditRunSectionDetailPage() {
 
         if (runErr || !runData) throw runErr ?? new Error("No se encontró la auditoría.");
 
-        // Seguridad: asegura que pertenece al área
         if (runData.area_id !== areaId) {
           throw new Error("Esta auditoría no pertenece a esta área.");
         }
 
         setRun(runData as AuditRun);
 
-        // 2) area + template
         const [{ data: areaData, error: areaErr }, { data: tplData, error: tplErr }] =
           await Promise.all([
             supabase.from("areas").select("id,name,type").eq("id", areaId).single(),
@@ -125,7 +205,6 @@ export default function AuditRunSectionDetailPage() {
         setArea(areaData as Area);
         setTemplate(tplData as Template);
 
-        // 3) answers (SIN EMBEDS para evitar el error de relaciones múltiples)
         const { data: ansData, error: ansErr } = await supabase
           .from("audit_answers")
           .select("question_id,result,answer,comment")
@@ -142,7 +221,6 @@ export default function AuditRunSectionDetailPage() {
           return;
         }
 
-        // 4) questions
         const { data: qData, error: qErr } = await supabase
           .from("audit_questions")
           .select("id,text,audit_section_id,weight")
@@ -152,7 +230,6 @@ export default function AuditRunSectionDetailPage() {
 
         const questions = (qData ?? []) as QuestionRow[];
 
-        // 5) sections
         const sectionIds = Array.from(
           new Set(
             questions
@@ -178,7 +255,6 @@ export default function AuditRunSectionDetailPage() {
         const ansByQid = new Map<string, AnswerRow>();
         for (const a of answers) ansByQid.set(a.question_id, a);
 
-        // 6) build items
         const built: Item[] = questions.map((q) => {
           const a = ansByQid.get(q.id);
           const section_id = q.audit_section_id ?? "no_section";
@@ -194,7 +270,6 @@ export default function AuditRunSectionDetailPage() {
           };
         });
 
-        // Orden: sección (A-Z) y luego texto
         built.sort((x, y) => {
           const sx = (x.section_name ?? "").toLowerCase();
           const sy = (y.section_name ?? "").toLowerCase();
@@ -204,7 +279,6 @@ export default function AuditRunSectionDetailPage() {
 
         setItems(built);
 
-        // Por defecto: abrir todas las secciones
         const opens: Record<string, boolean> = {};
         for (const it of built) opens[it.section_id] = true;
         setOpenSections(opens);
@@ -217,11 +291,8 @@ export default function AuditRunSectionDetailPage() {
     })();
   }, [areaId, runId, router]);
 
-  const grouped = useMemo(() => {
-    const map = new Map<
-      string,
-      { section_id: string; section_name: string; items: Item[]; fail: number; na: number; ok: number }
-    >();
+  const grouped = useMemo<GroupedSection[]>(() => {
+    const map = new Map<string, GroupedSection>();
 
     const filtered = items.filter((it) => (filter === "ALL" ? true : it.status === filter));
 
@@ -237,40 +308,68 @@ export default function AuditRunSectionDetailPage() {
           ok: 0,
         });
       }
+
       const bucket = map.get(key)!;
       bucket.items.push(it);
+
       if (it.status === "FAIL") bucket.fail += 1;
       else if (it.status === "NA") bucket.na += 1;
       else bucket.ok += 1;
     }
 
-    // orden por nombre de sección
     return Array.from(map.values()).sort((a, b) =>
       a.section_name.toLowerCase().localeCompare(b.section_name.toLowerCase())
     );
   }, [items, filter]);
 
   const totals = useMemo(() => {
-    let fail = 0,
-      na = 0,
-      ok = 0;
+    let fail = 0;
+    let na = 0;
+    let ok = 0;
+
     for (const it of items) {
       if (it.status === "FAIL") fail += 1;
       else if (it.status === "NA") na += 1;
       else ok += 1;
     }
+
     return { fail, na, ok, total: items.length };
   }, [items]);
 
-  function badgeStyle(status: "FAIL" | "NA" | "OK"): React.CSSProperties {
-    if (status === "FAIL") return { background: "crimson", color: "#fff" };
-    if (status === "NA") return { background: "#444", color: "#fff" };
-    return { background: "#0a0", color: "#fff" };
+  const displayedTotals = useMemo(() => {
+    let fail = 0;
+    let na = 0;
+    let ok = 0;
+    let total = 0;
+
+    for (const sec of grouped) {
+      fail += sec.fail;
+      na += sec.na;
+      ok += sec.ok;
+      total += sec.items.length;
+    }
+
+    return { fail, na, ok, total };
+  }, [grouped]);
+
+  const scoreLabel =
+    typeof run?.score === "number"
+      ? `${Number.isInteger(run.score) ? run.score : run.score.toFixed(1)}%`
+      : "-";
+
+  const executedAtLabel = run?.executed_at
+    ? new Date(run.executed_at).toLocaleString()
+    : "No ejecutada";
+
+  function toggleAllSections(nextOpen: boolean) {
+    const updated: Record<string, boolean> = {};
+    for (const sec of grouped) updated[sec.section_id] = nextOpen;
+    setOpenSections((prev) => ({ ...prev, ...updated }));
   }
 
   if (loading) {
     return (
-      <main style={{ padding: 24 }}>
+      <main style={pageWrapStyle()}>
         <h1 style={{ fontSize: 44, marginBottom: 8 }}>Detalle por sección</h1>
         <p>Cargando…</p>
       </main>
@@ -279,36 +378,21 @@ export default function AuditRunSectionDetailPage() {
 
   if (error) {
     return (
-      <main style={{ padding: 24 }}>
+      <main style={pageWrapStyle()}>
         <h1 style={{ fontSize: 44, marginBottom: 8 }}>Detalle por sección</h1>
         <p style={{ color: "crimson", fontWeight: 800 }}>{error}</p>
 
         <div style={{ display: "flex", gap: 10, marginTop: 16, flexWrap: "wrap" }}>
           <button
             onClick={() => router.push(`/areas/${areaId}`)}
-            style={{
-              padding: "10px 14px",
-              borderRadius: 12,
-              border: "1px solid rgba(0,0,0,0.2)",
-              background: "#fff",
-              fontWeight: 900,
-              cursor: "pointer",
-            }}
+            style={softBtnStyle(false)}
           >
             Volver al área
           </button>
 
           <button
             onClick={() => router.push(`/areas/${areaId}/history`)}
-            style={{
-              padding: "10px 14px",
-              borderRadius: 12,
-              border: "1px solid rgba(0,0,0,0.2)",
-              background: "#000",
-              color: "#fff",
-              fontWeight: 900,
-              cursor: "pointer",
-            }}
+            style={softBtnStyle(true)}
           >
             Volver al historial
           </button>
@@ -318,66 +402,156 @@ export default function AuditRunSectionDetailPage() {
   }
 
   return (
-    <main style={{ padding: 24 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
-        <div>
-          <h1 style={{ fontSize: 52, marginBottom: 6 }}>Detalle por sección</h1>
-          <div style={{ opacity: 0.85, lineHeight: 1.6 }}>
-            <div>
-              <strong>Área:</strong> {area?.name ?? areaId} {area?.type ? `(${area.type})` : ""}
-            </div>
-            <div>
-              <strong>Auditoría:</strong> {template?.name ?? run?.audit_template_id}
-            </div>
-            <div>
-              <strong>Run ID:</strong> {run?.id}
-            </div>
-            <div>
-              <strong>Estado:</strong> {run?.status ?? "-"}{" "}
-              {run?.executed_at ? `· Ejecutada: ${new Date(run.executed_at).toLocaleString()}` : ""}
-            </div>
-            <div>
-              <strong>Score:</strong> {typeof run?.score === "number" ? `${run.score}%` : "-"}
+    <main style={pageWrapStyle()}>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          gap: 16,
+          flexWrap: "wrap",
+          alignItems: "flex-start",
+        }}
+      >
+        <div style={{ minWidth: 300, flex: "1 1 560px" }}>
+          <div
+            style={{
+              fontSize: 13,
+              fontWeight: 900,
+              letterSpacing: 0.8,
+              textTransform: "uppercase",
+              opacity: 0.6,
+              marginBottom: 8,
+            }}
+          >
+            Audit review
+          </div>
+
+          <h1 style={{ fontSize: 48, lineHeight: 1.05, margin: 0 }}>Detalle por sección</h1>
+
+          <div style={{ marginTop: 16, ...cardStyle(), padding: 18 }}>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+                gap: 12,
+                lineHeight: 1.6,
+              }}
+            >
+              <div>
+                <div style={{ fontSize: 12, opacity: 0.6, fontWeight: 800 }}>Área</div>
+                <div style={{ fontWeight: 900 }}>
+                  {area?.name ?? areaId} {area?.type ? `(${area.type})` : ""}
+                </div>
+              </div>
+
+              <div>
+                <div style={{ fontSize: 12, opacity: 0.6, fontWeight: 800 }}>Auditoría</div>
+                <div style={{ fontWeight: 900 }}>{template?.name ?? run?.audit_template_id}</div>
+              </div>
+
+              <div>
+                <div style={{ fontSize: 12, opacity: 0.6, fontWeight: 800 }}>Estado</div>
+                <div style={{ fontWeight: 900 }}>{run?.status ?? "-"}</div>
+              </div>
+
+              <div>
+                <div style={{ fontSize: 12, opacity: 0.6, fontWeight: 800 }}>Score</div>
+                <div style={{ fontWeight: 900 }}>{scoreLabel}</div>
+              </div>
+
+              <div>
+                <div style={{ fontSize: 12, opacity: 0.6, fontWeight: 800 }}>Ejecutada</div>
+                <div style={{ fontWeight: 900 }}>{executedAtLabel}</div>
+              </div>
+
+              <div>
+                <div style={{ fontSize: 12, opacity: 0.6, fontWeight: 800 }}>Run ID</div>
+                <div style={{ fontWeight: 900, wordBreak: "break-all" }}>{run?.id}</div>
+              </div>
             </div>
           </div>
         </div>
 
-        <div style={{ display: "flex", gap: 10, alignItems: "flex-start", flexWrap: "wrap" }}>
+        <div
+          style={{
+            display: "flex",
+            gap: 10,
+            alignItems: "flex-start",
+            flexWrap: "wrap",
+            justifyContent: "flex-end",
+            flex: "0 0 auto",
+          }}
+        >
+          <button
+            onClick={() => router.push(`/reports/audit/${runId}`)}
+            style={softBtnStyle(true)}
+          >
+            Abrir reporte
+          </button>
+
+          <button
+            onClick={() => window.print()}
+            style={softBtnStyle(false)}
+          >
+            Imprimir
+          </button>
+
           <button
             onClick={() => router.push(`/areas/${areaId}/history`)}
-            style={{
-              padding: "10px 14px",
-              borderRadius: 12,
-              border: "1px solid rgba(0,0,0,0.2)",
-              background: "#fff",
-              fontWeight: 900,
-              cursor: "pointer",
-            }}
+            style={softBtnStyle(false)}
           >
             Volver al historial
           </button>
 
           <button
             onClick={() => router.push(`/areas/${areaId}`)}
-            style={{
-              padding: "10px 14px",
-              borderRadius: 12,
-              border: "1px solid rgba(0,0,0,0.2)",
-              background: "#000",
-              color: "#fff",
-              fontWeight: 900,
-              cursor: "pointer",
-            }}
+            style={softBtnStyle(false)}
           >
             Volver al área
           </button>
         </div>
       </div>
 
-      {/* Filtros */}
       <div
         style={{
           marginTop: 18,
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
+          gap: 12,
+        }}
+      >
+        <div style={statCardStyle()}>
+          <div style={{ fontSize: 12, opacity: 0.6, fontWeight: 800 }}>Total respuestas</div>
+          <div style={{ fontSize: 28, fontWeight: 900, marginTop: 4 }}>{totals.total}</div>
+        </div>
+
+        <div style={statCardStyle()}>
+          <div style={{ fontSize: 12, opacity: 0.6, fontWeight: 800 }}>FAIL</div>
+          <div style={{ fontSize: 28, fontWeight: 900, marginTop: 4, color: "#b91c1c" }}>
+            {totals.fail}
+          </div>
+        </div>
+
+        <div style={statCardStyle()}>
+          <div style={{ fontSize: 12, opacity: 0.6, fontWeight: 800 }}>NA</div>
+          <div style={{ fontSize: 28, fontWeight: 900, marginTop: 4, color: "#374151" }}>
+            {totals.na}
+          </div>
+        </div>
+
+        <div style={statCardStyle()}>
+          <div style={{ fontSize: 12, opacity: 0.6, fontWeight: 800 }}>OK</div>
+          <div style={{ fontSize: 28, fontWeight: 900, marginTop: 4, color: "#15803d" }}>
+            {totals.ok}
+          </div>
+        </div>
+      </div>
+
+      <div
+        style={{
+          marginTop: 18,
+          ...cardStyle(),
+          padding: 16,
           display: "flex",
           gap: 10,
           alignItems: "center",
@@ -390,38 +564,44 @@ export default function AuditRunSectionDetailPage() {
           <button
             key={f}
             onClick={() => setFilter(f)}
-            style={{
-              padding: "8px 12px",
-              borderRadius: 999,
-              border: "1px solid rgba(0,0,0,0.2)",
-              background: filter === f ? "#000" : "#fff",
-              color: filter === f ? "#fff" : "#000",
-              fontWeight: 900,
-              cursor: "pointer",
-            }}
+            style={pillStyle(filter === f)}
           >
             {f === "ALL" ? "Todos" : f}
           </button>
         ))}
 
-        <div style={{ marginLeft: 8, opacity: 0.85 }}>
-          Totales: <strong>{totals.total}</strong> · FAIL: <strong>{totals.fail}</strong> · NA:{" "}
-          <strong>{totals.na}</strong> · OK: <strong>{totals.ok}</strong>
+        <div style={{ width: 1, height: 28, background: "rgba(0,0,0,0.08)", margin: "0 6px" }} />
+
+        <button
+          onClick={() => toggleAllSections(true)}
+          style={softBtnStyle(false)}
+        >
+          Expandir todo
+        </button>
+
+        <button
+          onClick={() => toggleAllSections(false)}
+          style={softBtnStyle(false)}
+        >
+          Colapsar todo
+        </button>
+
+        <div style={{ marginLeft: "auto", opacity: 0.82, fontSize: 14 }}>
+          Mostrando: <strong>{displayedTotals.total}</strong> · FAIL:{" "}
+          <strong>{displayedTotals.fail}</strong> · NA: <strong>{displayedTotals.na}</strong> · OK:{" "}
+          <strong>{displayedTotals.ok}</strong>
         </div>
       </div>
 
-      {/* Secciones */}
       <div style={{ marginTop: 18, display: "grid", gap: 14 }}>
         {grouped.map((sec) => {
           const isOpen = openSections[sec.section_id] ?? true;
 
           return (
-            <div
+            <section
               key={sec.section_id}
               style={{
-                border: "1px solid rgba(0,0,0,0.10)",
-                borderRadius: 18,
-                background: "rgba(255,255,255,0.75)",
+                ...cardStyle(),
                 padding: 16,
               }}
             >
@@ -442,14 +622,7 @@ export default function AuditRunSectionDetailPage() {
                         [sec.section_id]: !isOpen,
                       }))
                     }
-                    style={{
-                      padding: "8px 12px",
-                      borderRadius: 12,
-                      border: "1px solid rgba(0,0,0,0.2)",
-                      background: "#fff",
-                      fontWeight: 900,
-                      cursor: "pointer",
-                    }}
+                    style={softBtnStyle(false)}
                   >
                     {isOpen ? "Ocultar" : "Ver"}
                   </button>
@@ -460,9 +633,9 @@ export default function AuditRunSectionDetailPage() {
                 <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                   <span
                     style={{
-                      padding: "4px 10px",
+                      padding: "5px 10px",
                       borderRadius: 999,
-                      border: "1px solid rgba(0,0,0,0.15)",
+                      border: "1px solid rgba(0,0,0,0.10)",
                       background: "#fff",
                       fontWeight: 900,
                       fontSize: 12,
@@ -470,36 +643,36 @@ export default function AuditRunSectionDetailPage() {
                   >
                     Total: {sec.items.length}
                   </span>
+
                   <span
                     style={{
-                      padding: "4px 10px",
+                      padding: "5px 10px",
                       borderRadius: 999,
-                      border: "1px solid rgba(0,0,0,0.15)",
-                      background: "#fff",
+                      ...badgeStyle("FAIL"),
                       fontWeight: 900,
                       fontSize: 12,
                     }}
                   >
                     FAIL: {sec.fail}
                   </span>
+
                   <span
                     style={{
-                      padding: "4px 10px",
+                      padding: "5px 10px",
                       borderRadius: 999,
-                      border: "1px solid rgba(0,0,0,0.15)",
-                      background: "#fff",
+                      ...badgeStyle("NA"),
                       fontWeight: 900,
                       fontSize: 12,
                     }}
                   >
                     NA: {sec.na}
                   </span>
+
                   <span
                     style={{
-                      padding: "4px 10px",
+                      padding: "5px 10px",
                       borderRadius: 999,
-                      border: "1px solid rgba(0,0,0,0.15)",
-                      background: "#fff",
+                      ...badgeStyle("OK"),
                       fontWeight: 900,
                       fontSize: 12,
                     }}
@@ -512,23 +685,32 @@ export default function AuditRunSectionDetailPage() {
               {isOpen ? (
                 <div style={{ marginTop: 12, display: "grid", gap: 10 }}>
                   {sec.items.map((it, idx) => (
-                    <div
+                    <article
                       key={it.question_id}
                       style={{
-                        border: "1px solid rgba(0,0,0,0.08)",
+                        border: "1px solid rgba(0,0,0,0.07)",
                         borderRadius: 14,
-                        padding: 12,
+                        padding: 14,
                         background: "#fff",
                       }}
                     >
-                      <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
-                        <div style={{ fontWeight: 900 }}>
+                      <div
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          gap: 12,
+                          alignItems: "flex-start",
+                          flexWrap: "wrap",
+                        }}
+                      >
+                        <div style={{ fontWeight: 900, flex: "1 1 620px", minWidth: 260 }}>
                           {idx + 1}. {it.question_text}
                         </div>
+
                         <span
                           style={{
                             ...badgeStyle(it.status),
-                            padding: "4px 10px",
+                            padding: "5px 10px",
                             borderRadius: 999,
                             fontWeight: 900,
                             fontSize: 12,
@@ -540,25 +722,33 @@ export default function AuditRunSectionDetailPage() {
                       </div>
 
                       {it.comment ? (
-                        <div style={{ marginTop: 8, opacity: 0.9 }}>
+                        <div
+                          style={{
+                            marginTop: 10,
+                            padding: 10,
+                            borderRadius: 12,
+                            background: "rgba(0,0,0,0.03)",
+                            lineHeight: 1.55,
+                          }}
+                        >
                           <strong>Comentario:</strong> {it.comment}
                         </div>
                       ) : (
-                        <div style={{ marginTop: 8, opacity: 0.55, fontSize: 13 }}>
+                        <div style={{ marginTop: 10, opacity: 0.5, fontSize: 13 }}>
                           Sin comentario.
                         </div>
                       )}
-                    </div>
+                    </article>
                   ))}
                 </div>
               ) : null}
-            </div>
+            </section>
           );
         })}
 
         {items.length === 0 ? (
-          <div style={{ opacity: 0.8, marginTop: 10 }}>
-            Esta auditoría no tiene respuestas (audit_answers) todavía.
+          <div style={{ ...cardStyle(), padding: 18, opacity: 0.82 }}>
+            Esta auditoría no tiene respuestas en <strong>audit_answers</strong> todavía.
           </div>
         ) : null}
       </div>
