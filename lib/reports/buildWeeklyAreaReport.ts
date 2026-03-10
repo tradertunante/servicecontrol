@@ -10,7 +10,6 @@ type AuditRunRow = {
   id: string;
   area_id: string;
   audit_template_id: string;
-  auditor_id: string | null;
   score: number | null;
   executed_at: string | null;
 };
@@ -30,12 +29,6 @@ type HotelRow = {
 type TemplateRow = {
   id: string;
   name: string;
-};
-
-type ProfileRow = {
-  id: string;
-  full_name?: string | null;
-  name?: string | null;
 };
 
 type AnswerRow = {
@@ -85,8 +78,8 @@ function formatRangeLabel(weekStart: string, weekEnd: string): string {
 
 export async function buildWeeklyAreaReport(args: {
   areaId: string;
-  weekStart: string; // YYYY-MM-DD
-  weekEnd: string;   // YYYY-MM-DD
+  weekStart: string;
+  weekEnd: string;
 }): Promise<WeeklyAreaReportData> {
   const { areaId, weekStart, weekEnd } = args;
 
@@ -98,28 +91,30 @@ export async function buildWeeklyAreaReport(args: {
     .from("areas")
     .select("id,name,type,hotel_id")
     .eq("id", areaId)
-    .single();
+    .maybeSingle();
 
-  if (areaErr || !areaData) {
-    throw areaErr ?? new Error("No se encontró el área.");
+  if (areaErr) throw areaErr;
+  if (!areaData) {
+    throw new Error(`No se encontró el área con id ${areaId}.`);
   }
 
   const area = areaData as AreaRow;
 
   let hotel: HotelRow | null = null;
   if (area.hotel_id) {
-    const { data: hotelData } = await supabase
+    const { data: hotelData, error: hotelErr } = await supabase
       .from("hotels")
       .select("id,name")
       .eq("id", area.hotel_id)
       .maybeSingle();
 
+    if (hotelErr) throw hotelErr;
     hotel = (hotelData as HotelRow | null) ?? null;
   }
 
   const { data: runData, error: runErr } = await supabase
     .from("audit_runs")
-    .select("id,area_id,audit_template_id,auditor_id,score,executed_at")
+    .select("id,area_id,audit_template_id,score,executed_at")
     .eq("area_id", areaId)
     .gte("executed_at", `${weekStart}T00:00:00`)
     .lt("executed_at", `${weekEndExclusiveStr}T00:00:00`)
@@ -130,24 +125,16 @@ export async function buildWeeklyAreaReport(args: {
   const runs = (runData ?? []) as AuditRunRow[];
   const runIds = runs.map((r) => r.id);
   const templateIds = Array.from(new Set(runs.map((r) => r.audit_template_id).filter(Boolean)));
-  const auditorIds = Array.from(new Set(runs.map((r) => r.auditor_id).filter(Boolean))) as string[];
 
   let templates: TemplateRow[] = [];
   if (templateIds.length > 0) {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("audit_templates")
       .select("id,name")
       .in("id", templateIds);
-    templates = (data ?? []) as TemplateRow[];
-  }
 
-  let auditors: ProfileRow[] = [];
-  if (auditorIds.length > 0) {
-    const { data } = await supabase
-      .from("profiles")
-      .select("id,full_name,name")
-      .in("id", auditorIds);
-    auditors = (data ?? []) as ProfileRow[];
+    if (error) throw error;
+    templates = (data ?? []) as TemplateRow[];
   }
 
   let answers: AnswerRow[] = [];
@@ -193,12 +180,9 @@ export async function buildWeeklyAreaReport(args: {
     sections = (data ?? []) as SectionRow[];
   }
 
-  const templateById = new Map(templates.map((t) => [t.id, t.name]));
-  const auditorById = new Map(
-    auditors.map((a) => [a.id, a.full_name ?? a.name ?? null])
-  );
-  const questionById = new Map(questions.map((q) => [q.id, q]));
-  const sectionNameById = new Map(sections.map((s) => [s.id, s.name]));
+  const templateById = new Map<string, string>(templates.map((t) => [t.id, t.name]));
+  const questionById = new Map<string, QuestionRow>(questions.map((q) => [q.id, q]));
+  const sectionNameById = new Map<string, string>(sections.map((s) => [s.id, s.name]));
 
   const answersByRunId = new Map<string, AnswerRow[]>();
   for (const answer of answers) {
@@ -226,7 +210,7 @@ export async function buildWeeklyAreaReport(args: {
       run_id: run.id,
       executed_at: run.executed_at,
       template_name: templateById.get(run.audit_template_id) ?? "Template",
-      auditor_name: run.auditor_id ? auditorById.get(run.auditor_id) ?? null : null,
+      auditor_name: null,
       score: run.score,
       fail,
       na,
@@ -265,19 +249,24 @@ export async function buildWeeklyAreaReport(args: {
     .sort((a, b) => b.fail_count - a.fail_count || a.question_text.localeCompare(b.question_text))
     .slice(0, 5);
 
+  // AGRUPAR POR NOMBRE DE SECCIÓN, NO POR ID
   const sectionSummaryMap = new Map<string, WeeklyAreaSectionRow>();
+
   for (const answer of answers) {
     const question = questionById.get(answer.question_id);
-    const sectionId = question?.audit_section_id ?? "no_section";
+
     const sectionName =
       question?.audit_section_id
         ? sectionNameById.get(question.audit_section_id) ?? "Sin sección"
         : "Sin sección";
 
-    if (!sectionSummaryMap.has(sectionId)) {
-      sectionSummaryMap.set(sectionId, {
-        section_id: sectionId,
-        section_name: sectionName,
+    const normalizedSectionName = sectionName.trim() || "Sin sección";
+    const sectionKey = normalizedSectionName.toLowerCase();
+
+    if (!sectionSummaryMap.has(sectionKey)) {
+      sectionSummaryMap.set(sectionKey, {
+        section_id: sectionKey,
+        section_name: normalizedSectionName,
         fail: 0,
         na: 0,
         ok: 0,
@@ -285,7 +274,7 @@ export async function buildWeeklyAreaReport(args: {
       });
     }
 
-    const row = sectionSummaryMap.get(sectionId)!;
+    const row = sectionSummaryMap.get(sectionKey)!;
     const status = normalizeStatus(answer);
 
     row.total += 1;
@@ -298,16 +287,11 @@ export async function buildWeeklyAreaReport(args: {
     (a, b) => b.fail - a.fail || a.section_name.localeCompare(b.section_name)
   );
 
+  const scoredAudits = audits.filter((a) => typeof a.score === "number");
   const auditCount = audits.length;
   const avgScore =
-    auditCount > 0
-      ? audits
-          .filter((a) => typeof a.score === "number")
-          .reduce((sum, a) => sum + (a.score ?? 0), 0) /
-        Math.max(
-          1,
-          audits.filter((a) => typeof a.score === "number").length
-        )
+    scoredAudits.length > 0
+      ? scoredAudits.reduce((sum, a) => sum + (a.score ?? 0), 0) / scoredAudits.length
       : null;
 
   const failCount = audits.reduce((sum, a) => sum + a.fail, 0);
