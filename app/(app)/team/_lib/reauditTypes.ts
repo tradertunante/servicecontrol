@@ -93,6 +93,7 @@ export type ReauditAssignmentLogRow = {
   new_auditor_id: string;
   changed_by: string | null;
   changed_at: string;
+  reason: string | null;
   note: string | null;
   created_at: string | null;
 };
