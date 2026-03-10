@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { requireRoleOrRedirect, type Profile as LoadedProfile } from "@/lib/auth/RequireRole";
-import type { Role } from "@/lib/auth/permissions";
+import { getDefaultHotelRouteByRole, type Role } from "@/lib/auth/permissions";
 
 type Hotel = {
   id: string;
@@ -92,7 +92,7 @@ export default function SuperadminHotelsPage() {
   const pickHotel = (hotelId: string) => {
     localStorage.setItem(HOTEL_KEY, hotelId);
     setActiveHotelId(hotelId);
-    router.replace("/dashboard");
+    router.replace(getDefaultHotelRouteByRole(profile?.role));
   };
 
   const logout = async () => {

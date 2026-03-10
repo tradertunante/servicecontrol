@@ -1,4 +1,4 @@
-# ServiceControl Architecture
+ # ServiceControl Architecture
 
 ## 1. System Overview
 
