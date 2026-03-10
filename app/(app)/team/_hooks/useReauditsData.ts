@@ -75,11 +75,19 @@ export function useReauditsData({
         )
         .eq("hotel_id", activeHotelId)
         .eq("is_reaudit", true)
+        .or(
+          "status.eq.pending_training,status.eq.blocked_by_non_operational,and(status.eq.draft,ready_for_reaudit.eq.true)"
+        )
         .order("scheduled_for", { ascending: true, nullsFirst: false });
 
       if (runsErr) throw runsErr;
 
-      const baseRows = (data ?? []) as ReauditRow[];
+      const baseRows = ((data ?? []) as ReauditRow[]).filter(
+        (row) =>
+          row.status === "pending_training" ||
+          row.status === "blocked_by_non_operational" ||
+          (row.status === "draft" && row.ready_for_reaudit === true)
+      );
       const runIds = baseRows.map((x) => x.id);
 
       const areaIds = Array.from(new Set(baseRows.map((x) => x.area_id).filter(Boolean)));

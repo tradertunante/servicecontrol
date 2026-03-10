@@ -83,6 +83,22 @@ type AnswerRow = {
   photo_path: string | null;
 };
 
+type SubmitAuditResponse = {
+  ok: boolean;
+  code: string;
+  message: string;
+  data?: {
+    run?: {
+      id: string;
+      status: string;
+      score: number | null;
+      is_reaudit: boolean;
+    };
+  } | null;
+  error?: unknown;
+  meta?: unknown;
+};
+
 type CorrectiveActionInsert = {
   hotel_id: string;
   area_id: string;
@@ -740,70 +756,32 @@ export default function AuditRunPage() {
     setError(null);
 
     try {
-      const score = totals.score === null ? null : clamp(totals.score, 0, 100);
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData?.session?.access_token;
 
-      const rules = area.hotel_id ? await loadHotelAuditRules(area.hotel_id) : null;
-
-      const correctiveActions = area.hotel_id
-        ? buildCorrectiveActionsFromFails({
-            hotelId: area.hotel_id,
-            areaId: run.area_id,
-            auditRunId: run.id,
-            teamMemberId: run.team_member_id,
-            questions,
-            answersByQ,
-          })
-        : [];
-
-      const blockingIssueCount = countBlockingIssuesFromFails(questions, answersByQ);
-
-      const requiresTraining =
-        !!rules?.require_training_before_reaudit && hasTrainingFails(questions, answersByQ);
-
-      let reauditRun: AuditRunRow | null = null;
-
-      const shouldCreateReaudit =
-        !!rules &&
-        !!rules.auto_reaudit_enabled &&
-        score !== null &&
-        score < Number(rules.auto_reaudit_threshold || 0) &&
-        !run.is_reaudit;
-
-      if (shouldCreateReaudit) {
-        reauditRun = await createReauditRun({
-          originalRun: run,
-          rules,
-          hotelId: area.hotel_id!,
-          score,
-          blockingIssueCount,
-          requiresTraining,
-        });
+      if (!accessToken) {
+        throw new Error("Sesion invalida.");
       }
 
-      if (correctiveActions.length > 0) {
-        const payload = correctiveActions.map((row) => ({
-          ...row,
-          reaudit_run_id: reauditRun?.id ?? null,
-        }));
+      const res = await fetch("/api/audits/submit", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({ run_id: run.id }),
+      });
 
-        const { error: correctiveErr } = await supabase
-          .from("audit_corrective_actions")
-          .insert(payload);
-
-        if (correctiveErr) throw correctiveErr;
+      const payload = (await res.json().catch(() => null)) as SubmitAuditResponse | null;
+      if (!res.ok || !payload?.ok) {
+        throw new Error(payload?.message || "No se pudo enviar la auditoria.");
       }
 
-      const { error: upErr } = await supabase
-        .from("audit_runs")
-        .update({
-          status: "submitted",
-          score,
-        })
-        .eq("id", run.id);
-
-      if (upErr) throw upErr;
-
-      setRun({ ...run, status: "submitted", score });
+      setRun({
+        ...run,
+        status: payload.data?.run?.status ?? "submitted",
+        score: payload.data?.run?.score ?? run.score,
+      });
       router.push(`/audits/${run.id}/view`);
     } catch (e: any) {
       setError(e?.message ?? "No se pudo enviar la auditoría.");

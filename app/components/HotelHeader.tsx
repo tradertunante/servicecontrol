@@ -138,7 +138,7 @@ export default function HotelHeader() {
             <button className="iconBtn" onClick={() => navTo(backTarget!)} aria-label="Atrás" title="Atrás" disabled={loading}>←</button>
           )}
           <div className="titleBlock">
-            <button onClick={() => navTo("/dashboard")} onMouseEnter={() => setIsHoveringHotel(true)} onMouseLeave={() => setIsHoveringHotel(false)} className="hotelBtn" title={displayHotel} aria-label="Ir a dashboard" disabled={loading}>
+            <button onClick={() => navTo("/home")} onMouseEnter={() => setIsHoveringHotel(true)} onMouseLeave={() => setIsHoveringHotel(false)} className="hotelBtn" title={displayHotel} aria-label="Ir al inicio del hotel" disabled={loading}>
               {displayHotel}
             </button>
             {pageTitle && <div className="pageTitle">{pageTitle}</div>}
