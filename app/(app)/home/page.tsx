@@ -4,6 +4,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
+import { getDefaultHotelRouteByRole } from "@/lib/auth/permissions";
 
 const HOTEL_KEY = "sc_hotel_id";
 
@@ -80,28 +81,13 @@ export default function HomeRedirectPage() {
 
         setMessage("Redirigiendo…");
 
-        switch (role) {
-          case "superadmin":
-            router.replace("/superadmin");
-            return;
-
-          case "admin":
-          case "quality":
-            router.replace("/dashboard");
-            return;
-
-          case "manager":
-            router.replace("/team");
-            return;
-
-          case "auditor":
-            router.replace("/my");
-            return;
-
-          default:
-            router.replace("/dashboard");
-            return;
+        if (role === "superadmin" && !resolvedHotelId) {
+          router.replace("/superadmin");
+          return;
         }
+
+        router.replace(getDefaultHotelRouteByRole(role));
+        return;
       } catch {
         if (!cancelled) {
           router.replace("/login");

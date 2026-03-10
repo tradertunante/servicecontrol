@@ -25,6 +25,31 @@ function norm(role: Role | string | null | undefined): string {
   return (role ?? "").toString().toLowerCase().trim();
 }
 
+export function getDefaultHotelRouteByRole(
+  role: Role | string | null | undefined
+): "/dashboard" | "/team" | "/my" {
+  const r = norm(role);
+
+  if (
+    r === "superadmin" ||
+    r === "admin" ||
+    r === "quality" ||
+    r === "general_manager"
+  ) {
+    return "/dashboard";
+  }
+
+  if (r === "manager") {
+    return "/team";
+  }
+
+  if (r === "auditor") {
+    return "/my";
+  }
+
+  return "/my";
+}
+
 export function canStartAudits(role: Role | string | null | undefined): boolean {
   const r = norm(role);
   return ["superadmin", "admin", "manager", "auditor", "quality"].includes(r);
