@@ -70,6 +70,7 @@ export type ReassignmentInfo = {
   changedBy: string | null;
   previousAuditorName: string | null;
   newAuditorName: string | null;
+  reason: string;
   note: string | null;
 };
 
