@@ -36,13 +36,13 @@ export default function ReauditsPanel({
   const [q, setQ] = useState("");
 
   const [openTrainingId, setOpenTrainingId] = useState<string | null>(null);
-  const [trainingExplanation, setTrainingExplanation] = useState<Record<string, string>>(
-    {}
-  );
+  const [trainingExplanation, setTrainingExplanation] = useState<
+    Record<string, string>
+  >({});
 
-  const [reassignAuditorId, setReassignAuditorId] = useState<Record<string, string>>(
-    {}
-  );
+  const [reassignAuditorId, setReassignAuditorId] = useState<
+    Record<string, string>
+  >({});
   const [reassignNote, setReassignNote] = useState<Record<string, string>>({});
 
   const {
@@ -188,7 +188,7 @@ export default function ReauditsPanel({
                   }))
                 }
                 onTrainingSave={async () => {
-                  const ok = await confirmTraining({
+                  await confirmTraining({
                     row,
                     explanation: trainingExplanation[row.id] ?? "",
                     onSuccess: () => {
@@ -199,7 +199,6 @@ export default function ReauditsPanel({
                       setOpenTrainingId(null);
                     },
                   });
-                  return ok;
                 }}
                 onReassignAuditorChange={(value) =>
                   setReassignAuditorId((prev) => ({
@@ -214,7 +213,7 @@ export default function ReauditsPanel({
                   }))
                 }
                 onReassignSave={async () => {
-                  const ok = await saveReassignment({
+                  await saveReassignment({
                     row,
                     nextAuditorId:
                       reassignAuditorId[row.id] !== undefined
@@ -232,7 +231,6 @@ export default function ReauditsPanel({
                       }));
                     },
                   });
-                  return ok;
                 }}
                 onReassignReset={() => {
                   setReassignAuditorId((prev) => ({
