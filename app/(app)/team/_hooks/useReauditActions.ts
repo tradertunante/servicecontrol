@@ -202,6 +202,7 @@ export function useReauditActions({
         newAuditorId: cleanAuditorId,
         newAuditorName: newAuditor?.full_name ?? null,
         changedBy: changedByName,
+        reason: cleanNote ?? "",
         note: cleanNote,
       });
 
