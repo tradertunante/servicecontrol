@@ -275,7 +275,8 @@ export function useReauditsData({
               ? profileNameMap.get(log.previous_auditor_id) ?? null
               : null,
             newAuditorName: profileNameMap.get(log.new_auditor_id) ?? null,
-            note: log.note ?? null,
+            reason: log.reason ?? "",
+            note: log.note ?? "",
           };
         }
       }
