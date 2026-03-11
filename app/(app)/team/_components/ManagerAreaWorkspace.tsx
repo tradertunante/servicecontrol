@@ -1,5 +1,6 @@
 "use client";
 
+import Card from "@/components/ui/Card";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import DashboardPanel from "@/app/(app)/areas/[areaId]/_components/DashboardPanel";
@@ -59,86 +60,50 @@ export default function ManagerAreaWorkspace({
 
   if (areasLoading) {
     return (
-      <div
-        style={{
-          padding: 14,
-          borderRadius: 14,
-          border: "1px solid var(--border)",
-          background: "var(--card-bg)",
-          boxShadow: "var(--shadow-sm)",
-          fontWeight: 900,
-        }}
-      >
+      <Card style={{ fontWeight: 900 }}>
         Cargando área asignada…
-      </div>
+      </Card>
     );
   }
 
   if (areasError) {
     return (
-      <div
+      <Card
         style={{
-          padding: 14,
-          borderRadius: 14,
           border: "1px solid rgba(220,0,0,0.35)",
           background: "rgba(220,0,0,0.06)",
-          boxShadow: "var(--shadow-sm)",
           color: "crimson",
           fontWeight: 900,
         }}
       >
         {areasError}
-      </div>
+      </Card>
     );
   }
 
   if (areaOptions.length === 0) {
     return (
-      <div
-        style={{
-          padding: 16,
-          borderRadius: 14,
-          border: "1px solid var(--border)",
-          background: "var(--card-bg)",
-          boxShadow: "var(--shadow-sm)",
-        }}
-      >
+      <Card padding={16}>
         <div style={{ fontWeight: 900 }}>No tienes áreas asignadas.</div>
         <div style={{ marginTop: 6, opacity: 0.8 }}>
           Pide a un administrador que te asigne al menos un área para usar este espacio.
         </div>
-      </div>
+      </Card>
     );
   }
 
   if (!selectedAreaId) {
     return (
-      <div
-        style={{
-          padding: 16,
-          borderRadius: 14,
-          border: "1px solid var(--border)",
-          background: "var(--card-bg)",
-          boxShadow: "var(--shadow-sm)",
-        }}
-      >
+      <Card padding={16}>
         <div style={{ fontWeight: 900 }}>Selecciona un área.</div>
-      </div>
+      </Card>
     );
   }
 
   return (
     <div style={{ display: "grid", gap: 14 }}>
       {areaOptions.length > 1 ? (
-        <div
-          style={{
-            padding: 14,
-            borderRadius: 14,
-            border: "1px solid var(--border)",
-            background: "var(--card-bg)",
-            boxShadow: "var(--shadow-sm)",
-          }}
-        >
+        <Card>
           <div style={{ fontSize: 12, fontWeight: 900, opacity: 0.8, marginBottom: 6 }}>
             Área activa
           </div>
@@ -162,15 +127,13 @@ export default function ManagerAreaWorkspace({
               </option>
             ))}
           </select>
-        </div>
+        </Card>
       ) : null}
 
       {data.loading ? <div style={{ fontWeight: 900 }}>Cargando información del área…</div> : null}
       {data.error ? (
-        <div
+        <Card
           style={{
-            padding: 14,
-            borderRadius: 14,
             border: "1px solid rgba(220,0,0,0.35)",
             background: "rgba(220,0,0,0.06)",
             color: "crimson",
@@ -178,7 +141,7 @@ export default function ManagerAreaWorkspace({
           }}
         >
           {data.error}
-        </div>
+        </Card>
       ) : null}
 
       {!data.loading && !data.error ? (

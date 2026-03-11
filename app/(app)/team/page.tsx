@@ -1,5 +1,6 @@
 "use client";
 
+import Card from "@/components/ui/Card";
 import { useEffect, useMemo, useState } from "react";
 import type { CSSProperties } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -14,35 +15,6 @@ import ManagerAreaWorkspace, {
   type ManagerAreaHistoryFilters,
   type ManagerAreaOption,
 } from "./_components/ManagerAreaWorkspace";
-
-function buildCardStyle(): CSSProperties {
-  return {
-    border: "1px solid var(--border)",
-    borderRadius: 14,
-    padding: 14,
-    background: "var(--card-bg)",
-    boxShadow: "var(--shadow-sm)",
-  };
-}
-
-function buildInnerCardStyle(): CSSProperties {
-  return {
-    border: "1px solid var(--border)",
-    borderRadius: 14,
-    padding: 12,
-    background: "var(--card-bg)",
-    boxShadow: "var(--shadow-sm)",
-  };
-}
-
-function buildInnerRowStyle(): CSSProperties {
-  return {
-    border: "1px solid var(--border)",
-    borderRadius: 12,
-    padding: 10,
-    background: "var(--card-bg)",
-  };
-}
 
 function buildBtnStyle(): CSSProperties {
   return {
@@ -94,9 +66,6 @@ export default function TeamPage() {
     router
   );
 
-  const card = useMemo(() => buildCardStyle(), []);
-  const innerCard = useMemo(() => buildInnerCardStyle(), []);
-  const innerRow = useMemo(() => buildInnerRowStyle(), []);
   const btn = useMemo(() => buildBtnStyle(), []);
   const input = useMemo(() => buildInputStyle(), []);
 
@@ -498,9 +467,9 @@ export default function TeamPage() {
       </div>
 
       {error && activeTab === "summary" ? (
-        <div style={{ marginTop: 14, ...card, border: "1px solid rgba(255,0,0,0.25)" }}>
+        <Card style={{ marginTop: 14, border: "1px solid rgba(255,0,0,0.25)" }}>
           <b>Error:</b> {error}
-        </div>
+        </Card>
       ) : null}
 
       {activeTab === "actions" ? (
@@ -585,43 +554,43 @@ export default function TeamPage() {
               gap: 12,
             }}
           >
-            <div style={card}>
+            <Card>
               <div style={{ opacity: 0.8, fontSize: 13 }}>
                 Auditorías equipo · {getPeriodLabel(selectedPeriod)}
               </div>
               <div style={{ fontSize: 26, fontWeight: 800, marginTop: 6 }}>
                 {summary.totalAuditsDone}
               </div>
-            </div>
+            </Card>
 
-            <div style={card}>
+            <Card>
               <div style={{ opacity: 0.8, fontSize: 13 }}>
                 Objetivo total · {getPeriodLabel(selectedPeriod)}
               </div>
               <div style={{ fontSize: 26, fontWeight: 800, marginTop: 6 }}>
                 {summary.totalCompletedTargets} / {summary.totalTargets}
               </div>
-            </div>
+            </Card>
 
-            <div style={card}>
+            <Card>
               <div style={{ opacity: 0.8, fontSize: 13 }}>
                 Restantes · {getPeriodLabel(selectedPeriod)}
               </div>
               <div style={{ fontSize: 26, fontWeight: 800, marginTop: 6 }}>
                 {summary.totalRemaining}
               </div>
-            </div>
+            </Card>
 
-            <div style={card}>
+            <Card>
               <div style={{ opacity: 0.8, fontSize: 13 }}>Progreso global</div>
               <div style={{ fontSize: 26, fontWeight: 800, marginTop: 6 }}>
                 {formatPct(summary.globalPct)}
               </div>
-            </div>
+            </Card>
           </div>
 
           {insights.length > 0 && (
-            <div style={{ ...card, marginTop: 14 }}>
+            <Card style={{ marginTop: 14 }}>
               <div style={{ fontWeight: 700, fontSize: 16 }}>Insights del sistema</div>
 
               <div
@@ -666,7 +635,7 @@ export default function TeamPage() {
                   </div>
                 ))}
               </div>
-            </div>
+            </Card>
           )}
 
           <div
@@ -677,7 +646,7 @@ export default function TeamPage() {
               gap: 12,
             }}
           >
-            <div style={card}>
+            <Card>
               <div style={{ fontWeight: 700, fontSize: 16 }}>
                 Leaderboard auditores (
                 {selectedPeriod === "daily"
@@ -698,10 +667,7 @@ export default function TeamPage() {
                   <div style={{ opacity: 0.85 }}>No hay datos para este periodo.</div>
                 ) : (
                   leaderboard.map((row, idx) => (
-                    <div
-                      key={row.auditor_user_id}
-                      style={innerCard}
-                    >
+                    <Card key={row.auditor_user_id} padding={12}>
                       <div
                         style={{
                           display: "flex",
@@ -755,13 +721,13 @@ export default function TeamPage() {
                           }}
                         />
                       </div>
-                    </div>
+                    </Card>
                   ))
                 )}
               </div>
-            </div>
+            </Card>
 
-            <div style={card}>
+            <Card>
               <div style={{ fontWeight: 700, fontSize: 16 }}>Objetivos por auditor</div>
               <div style={{ opacity: 0.8, marginTop: 6, fontSize: 13 }}>
                 Resumen por persona y detalle por auditoría para cerrar{" "}
@@ -775,10 +741,7 @@ export default function TeamPage() {
                   <div style={{ opacity: 0.85 }}>No hay objetivos para este periodo.</div>
                 ) : (
                   groupedTargetsByAuditor.map((group) => (
-                    <div
-                      key={group.auditorUserId}
-                      style={innerCard}
-                    >
+                    <Card key={group.auditorUserId} padding={12}>
                       <div
                         style={{
                           display: "flex",
@@ -828,10 +791,12 @@ export default function TeamPage() {
 
                       <div style={{ marginTop: 12, display: "grid", gap: 8 }}>
                         {group.rows.map((row) => (
-                          <div
+                          <Card
                             key={row.target_id}
+                            padding={10}
+                            radius={12}
+                            shadow="none"
                             style={{
-                              ...innerRow,
                               display: "flex",
                               justifyContent: "space-between",
                               gap: 10,
@@ -864,16 +829,16 @@ export default function TeamPage() {
                                 faltan <b>{row.remaining}</b>
                               </div>
                             </div>
-                          </div>
+                          </Card>
                         ))}
                       </div>
-                    </div>
+                    </Card>
                   ))
                 )}
               </div>
-            </div>
+            </Card>
 
-            <div style={card}>
+            <Card>
               <div style={{ fontWeight: 700, fontSize: 16 }}>Actividad reciente del equipo</div>
               <div style={{ opacity: 0.8, marginTop: 6, fontSize: 13 }}>
                 Últimas auditorías ejecutadas en {getPeriodLabel(selectedPeriod)} por tu equipo.
@@ -888,10 +853,7 @@ export default function TeamPage() {
                   </div>
                 ) : (
                   teamRecentRuns.map((run) => (
-                    <div
-                      key={run.id}
-                      style={innerCard}
-                    >
+                    <Card key={run.id} padding={12}>
                       <div
                         style={{
                           display: "flex",
@@ -935,16 +897,16 @@ export default function TeamPage() {
                               ? run.executed_at.replace("T", " ").slice(0, 16)
                               : "—"}
                           </div>
+                          </div>
                         </div>
-                      </div>
-                    </div>
+                    </Card>
                   ))
                 )}
               </div>
-            </div>
+            </Card>
           </div>
 
-          <div style={{ marginTop: 14, ...card }}>
+          <Card style={{ marginTop: 14 }}>
             <div
               style={{
                 display: "flex",
@@ -974,10 +936,19 @@ export default function TeamPage() {
 
             {showAssignmentsConfig ? (
               <div style={{ marginTop: 14 }}>
-                <TeamTargetAssignmentsCard card={card} hotelId={hotelId} />
+                <TeamTargetAssignmentsCard
+                  card={{
+                    border: "1px solid var(--border)",
+                    borderRadius: 14,
+                    padding: 14,
+                    background: "var(--card-bg)",
+                    boxShadow: "var(--shadow-sm)",
+                  }}
+                  hotelId={hotelId}
+                />
               </div>
             ) : null}
-          </div>
+          </Card>
         </>
       ) : null}
     </div>
