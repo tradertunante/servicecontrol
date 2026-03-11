@@ -188,7 +188,7 @@ export default function HotelHeader() {
           )}
           <div className="titleBlock">
             <button onClick={() => navTo(hotelHomeTarget)} onMouseEnter={() => setIsHoveringHotel(true)} onMouseLeave={() => setIsHoveringHotel(false)} className="hotelBtn" title={displayHotel} aria-label="Ir al inicio del hotel" disabled={loading}>
-              {displayHotel}
+|              {displayHotel}
             </button>
             {pageTitle && <div className="pageTitle">{pageTitle}</div>}
           </div>

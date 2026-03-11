@@ -234,6 +234,9 @@ export function useAreaData({
             for (const q of (q2Data ?? []) as any[]) {
               const secId = (q.audit_sections?.id ?? q.audit_section_id ?? "unknown") as string;
               const secName = (q.audit_sections?.name ?? "Sin sección") as string;
+              const classification =
+                String(q.classification ?? "")
+                  .trim() || secName;
 
               qMetaMap[q.id] = {
                 id: q.id,
@@ -241,7 +244,7 @@ export function useAreaData({
                 audit_section_id: secId,
                 section_name: secName,
                 tag: q.tag ?? null,
-                classification: q.classification ?? null,
+                classification,
               };
             }
           }

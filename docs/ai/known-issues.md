@@ -187,3 +187,33 @@ Si el issue quedó resuelto:
 - actualizar “solución aplicada”
 - indicar claramente qué cambió
 - dejar aprendizaje para futuros agentes
+
+---
+
+## Issue 6
+
+### Fecha
+2026-03-11
+
+### Síntoma
+En el dashboard de área, el panel "Clasificaciones con más FAIL" aparecía vacío o incompleto mientras "Estándares con más FAIL" sí mostraba resultados.
+
+### Causa raíz
+El ranking por clasificación en `app/(app)/areas/[areaId]/_components/DashboardPanel.tsx` dependía de `audit_questions.classification`, pero el builder/importador del sistema usa `CLASSIFICATION` para resolver la sección (`audit_sections`) y no persiste ese valor en la pregunta. Como resultado, muchas preguntas quedaban con `classification` nula aunque sí tenían sección válida.
+
+### Solución aplicada
+Se alineó el dashboard de área con el modelo efectivo actual del sistema:
+
+- en `app/(app)/areas/[areaId]/_hooks/useAreaData.ts`, la clasificación de cada pregunta ahora usa `audit_questions.classification` si existe y, si no, hace fallback a `audit_sections.name`
+- en `app/(app)/areas/[areaId]/_components/HistoryPanel.tsx`, el filtro por clasificación usa la misma regla para que el click desde el ranking abra las auditorías correctas
+
+### Cómo evitarlo en el futuro
+- no duplicar el concepto de clasificación entre columna de pregunta y nombre de sección sin definir una fuente de verdad única
+- si se vuelve a introducir `audit_questions.classification` como dato formal, poblarla y mantenerla de forma consistente en importación, edición y reporting
+- cuando un panel agregue por clasificación, reutilizar una "clasificación efectiva" común en vez de leer columnas opcionales de forma directa
+
+### Archivos relacionados
+- `app/(app)/areas/[areaId]/_hooks/useAreaData.ts`
+- `app/(app)/areas/[areaId]/_components/DashboardPanel.tsx`
+- `app/(app)/areas/[areaId]/_components/HistoryPanel.tsx`
+- `app/(app)/builder/[templateId]/import/page.tsx`
