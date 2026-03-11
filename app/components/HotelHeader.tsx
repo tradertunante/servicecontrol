@@ -30,13 +30,43 @@ function getPageTitle(pathname: string | null): string {
 
 function getBackTarget(pathname: string | null): string | null {
   if (!pathname) return null;
-  const roots = new Set(["/dashboard", "/admin", "/areas", "/builder", "/profile", "/users", "/superadmin", "/superadmin/hotels"]);
+  const roots = new Set(["/dashboard", "/admin", "/areas", "/builder", "/profile", "/users", "/superadmin", "/superadmin/hotels", "/team"]);
   if (roots.has(pathname)) return null;
   if (pathname.startsWith("/areas/")) return "/areas";
   if (pathname.startsWith("/builder/")) return "/builder";
   if (pathname.startsWith("/admin/hotel")) return "/admin";
   if (pathname.startsWith("/audits/")) return "/areas";
   return "/dashboard";
+}
+
+async function resolveAuditTarget() {
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
+
+  if (userError || !user) {
+    throw new Error("No se pudo identificar tu usuario para abrir el área de auditoría.");
+  }
+
+  const { data, error } = await supabase
+    .from("user_area_access")
+    .select("area_id")
+    .eq("user_id", user.id);
+
+  if (error) throw error;
+
+  const areaIds = Array.from(
+    new Set(
+      (data ?? [])
+        .map((row: { area_id: string | null }) => row.area_id)
+        .filter((areaId): areaId is string => !!areaId)
+    )
+  );
+
+  if (areaIds.length === 0) return null;
+  if (areaIds.length === 1) return `/areas/${areaIds[0]}?tab=dashboard`;
+  return "/areas";
 }
 
 export default function HotelHeader() {
@@ -129,6 +159,25 @@ export default function HotelHeader() {
   const backTarget = getBackTarget(pathname);
   const showBack = Boolean(backTarget);
   const navTo = (path: string) => { router.push(path); };
+  const hotelHomeTarget = profile?.role === "manager" ? "/team?tab=area" : "/home";
+  const openAuditArea = async () => {
+    try {
+      if (profile?.role === "manager") {
+        router.push("/team?tab=templates");
+        return;
+      }
+
+      const target = await resolveAuditTarget();
+      if (!target) {
+        alert("No tienes ningún área asignada para auditar.");
+        return;
+      }
+      router.push(target);
+    } catch (error) {
+      console.error("Error resolving audit area access:", error);
+      alert("No se pudo abrir el área de auditoría.");
+    }
+  };
 
   return (
     <>
@@ -138,7 +187,7 @@ export default function HotelHeader() {
             <button className="iconBtn" onClick={() => navTo(backTarget!)} aria-label="Atrás" title="Atrás" disabled={loading}>←</button>
           )}
           <div className="titleBlock">
-            <button onClick={() => navTo("/home")} onMouseEnter={() => setIsHoveringHotel(true)} onMouseLeave={() => setIsHoveringHotel(false)} className="hotelBtn" title={displayHotel} aria-label="Ir al inicio del hotel" disabled={loading}>
+            <button onClick={() => navTo(hotelHomeTarget)} onMouseEnter={() => setIsHoveringHotel(true)} onMouseLeave={() => setIsHoveringHotel(false)} className="hotelBtn" title={displayHotel} aria-label="Ir al inicio del hotel" disabled={loading}>
               {displayHotel}
             </button>
             {pageTitle && <div className="pageTitle">{pageTitle}</div>}
@@ -148,7 +197,7 @@ export default function HotelHeader() {
         <div className="right">
           <div className="actionsDesktop">
             {isAdmin && <button className="pillBtn" onClick={() => navTo("/admin")} disabled={loading}>Admin</button>}
-            <button className="pillBtn" onClick={() => navTo("/areas")} disabled={loading}>Auditar</button>
+            <button className="pillBtn" onClick={() => void openAuditArea()} disabled={loading}>Auditar</button>
             <button className="pillBtn" onClick={() => navTo("/profile")} disabled={loading}>Perfil</button>
           </div>
           <div className="actionsMobile">
@@ -156,7 +205,7 @@ export default function HotelHeader() {
             {mobileMenuOpen && (
               <div className="dropdown" role="menu" aria-label="Menú de navegación">
                 {isAdmin && <button className="dropItem" onClick={() => navTo("/admin")} disabled={loading}>Admin</button>}
-                <button className="dropItem" onClick={() => navTo("/areas")} disabled={loading}>Auditar</button>
+                <button className="dropItem" onClick={() => void openAuditArea()} disabled={loading}>Auditar</button>
                 <button className="dropItem" onClick={() => navTo("/profile")} disabled={loading}>Perfil</button>
               </div>
             )}

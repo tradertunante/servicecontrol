@@ -17,10 +17,10 @@ export default function ReauditStats({
       }}
     >
       {[
-        { label: "Total Re-audits", value: stats.total },
-        { label: "Pending Training", value: stats.pendingTraining },
-        { label: "Blocked", value: stats.blocked },
-        { label: "Ready", value: stats.ready },
+        { label: "Total", value: stats.total },
+        { label: "Formación pendiente", value: stats.pendingTraining },
+        { label: "Bloqueadas", value: stats.blocked },
+        { label: "Listas", value: stats.ready },
       ].map((item) => (
         <div
           key={item.label}

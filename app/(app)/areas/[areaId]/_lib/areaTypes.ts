@@ -1,5 +1,11 @@
 // FILE: app/(app)/areas/[areaId]/_lib/areaTypes.ts
-export type Role = "admin" | "manager" | "auditor" | "superadmin";
+export type Role =
+  | "admin"
+  | "general_manager"
+  | "manager"
+  | "auditor"
+  | "quality"
+  | "superadmin";
 
 export type TabKey = "history" | "templates" | "dashboard";
 export type PeriodKey = "THIS_MONTH" | "LAST_3_MONTHS" | "THIS_YEAR";

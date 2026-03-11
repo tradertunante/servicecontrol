@@ -1,6 +1,7 @@
 export type Role =
   | "superadmin"
   | "admin"
+  | "general_manager"
   | "manager"
   | "auditor"
   | "quality"
@@ -12,6 +13,7 @@ export function normalizeRole(role: any): Role {
 
   if (r === "superadmin") return "superadmin";
   if (r === "admin") return "admin";
+  if (r === "general_manager") return "general_manager";
   if (r === "manager") return "manager";
   if (r === "auditor") return "auditor";
   if (r === "quality") return "quality";

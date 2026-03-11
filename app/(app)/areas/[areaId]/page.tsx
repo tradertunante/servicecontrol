@@ -40,6 +40,25 @@ export default function AreaPage() {
     setTemplateFilter,
   });
 
+  useEffect(() => {
+    const role = String(data.profile?.role ?? "").toLowerCase().trim();
+    if (!role) return;
+
+    if (role === "manager") {
+      router.replace("/team");
+      return;
+    }
+
+    if (role === "auditor") {
+      router.replace("/my");
+      return;
+    }
+
+    if (!["general_manager", "admin", "quality"].includes(role)) {
+      router.replace("/dashboard");
+    }
+  }, [data.profile?.role, router]);
+
   // ✅ si vienen sin tab, lo fijamos a dashboard
   useEffect(() => {
     if (!areaId) return;
@@ -129,6 +148,15 @@ export default function AreaPage() {
         <p style={{ color: "crimson", fontWeight: 800 }}>{data.error}</p>
       </main>
     );
+  }
+
+  const standaloneAllowed =
+    data.profile?.role === "general_manager" ||
+    data.profile?.role === "admin" ||
+    data.profile?.role === "quality";
+
+  if (data.profile && !standaloneAllowed) {
+    return null;
   }
 
   return (
