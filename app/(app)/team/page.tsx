@@ -17,21 +17,42 @@ import ManagerAreaWorkspace, {
 
 function buildCardStyle(): CSSProperties {
   return {
-    border: "1px solid rgba(255,255,255,0.10)",
+    border: "1px solid var(--border)",
     borderRadius: 14,
     padding: 14,
-    background: "rgba(255,255,255,0.04)",
-    boxShadow: "0 6px 18px rgba(0,0,0,0.20)",
+    background: "var(--card-bg)",
+    boxShadow: "var(--shadow-sm)",
+  };
+}
+
+function buildInnerCardStyle(): CSSProperties {
+  return {
+    border: "1px solid var(--border)",
+    borderRadius: 14,
+    padding: 12,
+    background: "var(--card-bg)",
+    boxShadow: "var(--shadow-sm)",
+  };
+}
+
+function buildInnerRowStyle(): CSSProperties {
+  return {
+    border: "1px solid var(--border)",
+    borderRadius: 12,
+    padding: 10,
+    background: "var(--card-bg)",
   };
 }
 
 function buildBtnStyle(): CSSProperties {
   return {
-    border: "1px solid rgba(255,255,255,0.14)",
+    border: "1px solid var(--border)",
     borderRadius: 10,
     padding: "9px 11px",
-    background: "rgba(255,255,255,0.06)",
+    background: "var(--card-bg)",
+    color: "rgba(15,23,42,0.82)",
     cursor: "pointer",
+    transition: "background 140ms ease, border-color 140ms ease, color 140ms ease, box-shadow 140ms ease",
   };
 }
 
@@ -74,12 +95,15 @@ export default function TeamPage() {
   );
 
   const card = useMemo(() => buildCardStyle(), []);
+  const innerCard = useMemo(() => buildInnerCardStyle(), []);
+  const innerRow = useMemo(() => buildInnerRowStyle(), []);
   const btn = useMemo(() => buildBtnStyle(), []);
   const input = useMemo(() => buildInputStyle(), []);
 
   const [selectedPeriod, setSelectedPeriod] = useState<TeamPeriodKey>("monthly");
   const [showAssignmentsConfig, setShowAssignmentsConfig] = useState(false);
   const [activeTab, setActiveTab] = useState<TeamTabKey>("area");
+  const [hoveredTab, setHoveredTab] = useState<TeamTabKey | null>(null);
   const [managerAreasLoading, setManagerAreasLoading] = useState(false);
   const [managerAreasError, setManagerAreasError] = useState<string | null>(null);
   const [managerAreaOptions, setManagerAreaOptions] = useState<ManagerAreaOption[]>([]);
@@ -231,7 +255,7 @@ export default function TeamPage() {
     marginTop: 10,
     height: 5,
     borderRadius: 999,
-    background: "rgba(255,255,255,0.10)",
+    background: "rgba(15,23,42,0.08)",
     overflow: "hidden",
   };
 
@@ -351,10 +375,20 @@ export default function TeamPage() {
     profile?.role === "quality";
 
   const showManagerAreaTabs = profile?.role === "manager";
+  const activeManagerArea =
+    showManagerAreaTabs && selectedManagerAreaId
+      ? managerAreaOptions.find((area) => area.id === selectedManagerAreaId) ?? null
+      : null;
+  const showManagerAreaLabel =
+    Boolean(activeManagerArea) &&
+    (activeTab === "area" || activeTab === "history" || activeTab === "templates");
 
-  const tabStyle = (isActive: boolean): CSSProperties => ({
+  const tabStyle = (tabKey: TeamTabKey, isActive: boolean): CSSProperties => ({
     ...btn,
-    background: isActive ? "rgba(255,255,255,0.14)" : "rgba(255,255,255,0.06)",
+    background: isActive ? "#dbeafe" : hoveredTab === tabKey ? "#f3f4f6" : "var(--card-bg)",
+    color: isActive ? "#1e3a8a" : "rgba(15,23,42,0.82)",
+    border: isActive ? "1px solid #bfdbfe" : "1px solid var(--border)",
+    boxShadow: isActive ? "0 0 0 1px rgba(59,130,246,0.08)" : "none",
     fontWeight: isActive ? 800 : 600,
   });
 
@@ -374,6 +408,12 @@ export default function TeamPage() {
           <div style={{ opacity: 0.85, marginTop: 4 }}>
             Hola, <b>{profile?.full_name ?? "—"}</b> · Rol: <b>{profile?.role ?? "—"}</b>
           </div>
+          {showManagerAreaLabel ? (
+            <div style={{ opacity: 0.78, marginTop: 4, fontSize: 13, fontWeight: 700 }}>
+              {activeManagerArea?.name ?? "—"}
+              {activeManagerArea?.type ? ` · ${activeManagerArea.type}` : ""}
+            </div>
+          ) : null}
           <div style={{ opacity: 0.65, marginTop: 4, fontSize: 12 }}>
             Panel operativo del equipo, acciones correctivas y seguimiento de objetivos.
           </div>
@@ -404,15 +444,22 @@ export default function TeamPage() {
         }}
       >
         {showManagerAreaTabs ? (
-          <button style={tabStyle(activeTab === "area")} onClick={() => setActiveTab("area")}>
+          <button
+            style={tabStyle("area", activeTab === "area")}
+            onClick={() => setActiveTab("area")}
+            onMouseEnter={() => setHoveredTab("area")}
+            onMouseLeave={() => setHoveredTab((prev) => (prev === "area" ? null : prev))}
+          >
             General
           </button>
         ) : null}
 
         {showSummaryTab ? (
           <button
-            style={tabStyle(activeTab === "summary")}
+            style={tabStyle("summary", activeTab === "summary")}
             onClick={() => setActiveTab("summary")}
+            onMouseEnter={() => setHoveredTab("summary")}
+            onMouseLeave={() => setHoveredTab((prev) => (prev === "summary" ? null : prev))}
           >
             Follow up
           </button>
@@ -420,22 +467,31 @@ export default function TeamPage() {
 
         {showReauditsTab ? (
           <button
-            style={tabStyle(activeTab === "reaudits")}
+            style={tabStyle("reaudits", activeTab === "reaudits")}
             onClick={() => setActiveTab("reaudits")}
+            onMouseEnter={() => setHoveredTab("reaudits")}
+            onMouseLeave={() => setHoveredTab((prev) => (prev === "reaudits" ? null : prev))}
           >
             Recuperación
           </button>
         ) : null}
 
         {showManagerAreaTabs ? (
-          <button style={tabStyle(activeTab === "history")} onClick={() => setActiveTab("history")}>
+          <button
+            style={tabStyle("history", activeTab === "history")}
+            onClick={() => setActiveTab("history")}
+            onMouseEnter={() => setHoveredTab("history")}
+            onMouseLeave={() => setHoveredTab((prev) => (prev === "history" ? null : prev))}
+          >
             Historial
           </button>
         ) : null}
 
         <button
-          style={tabStyle(activeTab === "actions")}
+          style={tabStyle("actions", activeTab === "actions")}
           onClick={() => setActiveTab("actions")}
+          onMouseEnter={() => setHoveredTab("actions")}
+          onMouseLeave={() => setHoveredTab((prev) => (prev === "actions" ? null : prev))}
         >
           Corrective actions
         </button>
@@ -579,13 +635,13 @@ export default function TeamPage() {
                   <div
                     key={idx}
                     style={{
-                      border: "1px solid rgba(255,255,255,0.10)",
+                      border: "1px solid var(--border)",
                       borderRadius: 12,
                       padding: 12,
                       background:
                         insight.type === "warning"
                           ? "rgba(255,180,0,0.08)"
-                          : "rgba(255,255,255,0.04)",
+                          : "var(--card-bg)",
                     }}
                   >
                     <div
@@ -644,12 +700,7 @@ export default function TeamPage() {
                   leaderboard.map((row, idx) => (
                     <div
                       key={row.auditor_user_id}
-                      style={{
-                        border: "1px solid rgba(255,255,255,0.10)",
-                        borderRadius: 14,
-                        padding: 12,
-                        background: "rgba(0,0,0,0.12)",
-                      }}
+                      style={innerCard}
                     >
                       <div
                         style={{
@@ -700,7 +751,7 @@ export default function TeamPage() {
                               Math.min(100, Number(row.progress_pct ?? 0))
                             )}%`,
                             borderRadius: 999,
-                            background: "rgba(255,255,255,0.45)",
+                            background: "linear-gradient(90deg,#60a5fa,#38bdf8)",
                           }}
                         />
                       </div>
@@ -726,12 +777,7 @@ export default function TeamPage() {
                   groupedTargetsByAuditor.map((group) => (
                     <div
                       key={group.auditorUserId}
-                      style={{
-                        border: "1px solid rgba(255,255,255,0.10)",
-                        borderRadius: 14,
-                        padding: 12,
-                        background: "rgba(0,0,0,0.12)",
-                      }}
+                      style={innerCard}
                     >
                       <div
                         style={{
@@ -775,7 +821,7 @@ export default function TeamPage() {
                               Math.min(100, Number(group.progressPct ?? 0))
                             )}%`,
                             borderRadius: 999,
-                            background: "rgba(255,255,255,0.45)",
+                            background: "linear-gradient(90deg,#60a5fa,#38bdf8)",
                           }}
                         />
                       </div>
@@ -785,10 +831,7 @@ export default function TeamPage() {
                           <div
                             key={row.target_id}
                             style={{
-                              border: "1px solid rgba(255,255,255,0.08)",
-                              borderRadius: 12,
-                              padding: 10,
-                              background: "rgba(255,255,255,0.04)",
+                              ...innerRow,
                               display: "flex",
                               justifyContent: "space-between",
                               gap: 10,
@@ -847,12 +890,7 @@ export default function TeamPage() {
                   teamRecentRuns.map((run) => (
                     <div
                       key={run.id}
-                      style={{
-                        border: "1px solid rgba(255,255,255,0.10)",
-                        borderRadius: 14,
-                        padding: 12,
-                        background: "rgba(0,0,0,0.12)",
-                      }}
+                      style={innerCard}
                     >
                       <div
                         style={{
