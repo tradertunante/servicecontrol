@@ -14,7 +14,7 @@ export default function ReauditFilters({
   onStatusFilterChange: (
     value: "all" | "pending_training" | "blocked_by_non_operational" | "draft"
   ) => void;
-  onReload: () => void;
+  onReload: () => void | Promise<void>;
 }) {
   const btn: React.CSSProperties = {
     padding: "10px 14px",

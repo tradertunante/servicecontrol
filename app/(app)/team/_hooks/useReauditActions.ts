@@ -228,6 +228,7 @@ export function useReauditActions({
           new_auditor_id: cleanAuditorId,
           changed_by: profile.id,
           changed_at: changedAt,
+          reason: cleanNote || null,
           note: cleanNote || null,
         });
 

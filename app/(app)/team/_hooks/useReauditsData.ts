@@ -89,6 +89,9 @@ export function useReauditsData({
           (row.status === "draft" && row.ready_for_reaudit === true)
       );
       const runIds = baseRows.map((x) => x.id);
+      const parentRunIds = Array.from(
+        new Set(baseRows.map((x) => x.parent_audit_run_id).filter(Boolean))
+      ) as string[];
 
       const areaIds = Array.from(new Set(baseRows.map((x) => x.area_id).filter(Boolean)));
       const templateIds = Array.from(
@@ -105,6 +108,7 @@ export function useReauditsData({
         areasRes,
         templatesRes,
         teamRes,
+        parentRunsRes,
         assignedAuditorsRes,
         allProfilesRes,
         userAreaAccessRes,
@@ -122,6 +126,10 @@ export function useReauditsData({
         teamMemberIds.length
           ? supabase.from("team_members").select("id,full_name").in("id", teamMemberIds)
           : Promise.resolve({ data: [] as TeamMemberRow[], error: null }),
+
+        parentRunIds.length
+          ? supabase.from("audit_runs").select("id,score").in("id", parentRunIds)
+          : Promise.resolve({ data: [] as { id: string; score: number | null }[], error: null }),
 
         assignedAuditorIds.length
           ? supabase.from("profiles").select("id,full_name").in("id", assignedAuditorIds)
@@ -156,7 +164,7 @@ export function useReauditsData({
           ? supabase
               .from("reaudit_assignment_logs")
               .select(
-                "id,hotel_id,reaudit_run_id,previous_auditor_id,new_auditor_id,changed_by,changed_at,note,created_at"
+                "id,hotel_id,reaudit_run_id,previous_auditor_id,new_auditor_id,changed_by,changed_at,reason,note,created_at"
               )
               .in("reaudit_run_id", runIds)
               .order("changed_at", { ascending: false })
@@ -166,6 +174,7 @@ export function useReauditsData({
       if (areasRes.error) throw areasRes.error;
       if (templatesRes.error) throw templatesRes.error;
       if (teamRes.error) throw teamRes.error;
+      if (parentRunsRes.error) throw parentRunsRes.error;
       if (assignedAuditorsRes.error) throw assignedAuditorsRes.error;
       if (allProfilesRes.error) throw allProfilesRes.error;
       if (userAreaAccessRes.error) throw userAreaAccessRes.error;
@@ -205,6 +214,11 @@ export function useReauditsData({
         teamMap.set(tm.id, tm.full_name);
       }
 
+      const parentRunScoreMap = new Map<string, number | null>();
+      for (const run of (parentRunsRes.data ?? []) as { id: string; score: number | null }[]) {
+        parentRunScoreMap.set(run.id, run.score ?? null);
+      }
+
       const enriched: EnrichedReauditRow[] = baseRows.map((row) => ({
         ...row,
         area_name: areaMap.get(row.area_id)?.name ?? null,
@@ -215,6 +229,9 @@ export function useReauditsData({
           : null,
         assigned_auditor_name: row.assigned_auditor_id
           ? profileNameMap.get(row.assigned_auditor_id) ?? null
+          : null,
+        original_audit_score: row.parent_audit_run_id
+          ? parentRunScoreMap.get(row.parent_audit_run_id) ?? null
           : null,
       }));
 
@@ -311,6 +328,10 @@ export function useReauditsData({
         const nextName = profileNameMap.get(log.new_auditor_id) ?? null;
 
         const detailLines = [`${previousName || "—"} → ${nextName || "—"}`];
+
+        if (log.reason?.trim()) {
+          detailLines.push(`Motivo: ${log.reason.trim()}`);
+        }
 
         if (log.note?.trim()) {
           detailLines.push(log.note.trim());

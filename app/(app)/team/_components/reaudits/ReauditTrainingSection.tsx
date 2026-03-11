@@ -22,7 +22,7 @@ export default function ReauditTrainingSection({
   onChange: (value: string) => void;
   onOpen: () => void;
   onCancel: () => void;
-  onSave: () => void;
+  onSave: () => void | Promise<void>;
   trainingInfo: TrainingInfo | null;
 }) {
   const btn: React.CSSProperties = {
