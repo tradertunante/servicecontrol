@@ -43,24 +43,24 @@ export default function AuditQuestionCard({
 
   return (
     <article
-      className={`scroll-mt-48 rounded-3xl border bg-white p-4 shadow-sm transition ${
+      className={`scroll-mt-44 rounded-2xl border bg-white p-3.5 shadow-sm transition lg:rounded-3xl lg:p-4 ${
         active ? "border-slate-900 ring-2 ring-slate-900/10" : "border-slate-200"
       }`}
     >
-      <div className="flex flex-col gap-4">
-        <div className="flex flex-wrap items-start justify-between gap-3">
+      <div className="flex flex-col gap-3">
+        <div className="flex flex-wrap items-start justify-between gap-2.5">
           <div className="min-w-0 flex-1">
             <div className="text-sm font-extrabold leading-snug text-slate-900">{question.text}</div>
           </div>
 
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-1.5">
             {question.comment_requirement !== "never" ? (
-              <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[11px] font-extrabold uppercase tracking-wide text-slate-600">
+              <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wide text-slate-600">
                 Comentario
               </span>
             ) : null}
             {question.photo_requirement !== "never" ? (
-              <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[11px] font-extrabold uppercase tracking-wide text-slate-600">
+              <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wide text-slate-600">
                 Foto
               </span>
             ) : null}

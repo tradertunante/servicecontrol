@@ -352,21 +352,21 @@ export default function AuditRunViewPage() {
   const headerBoxStyle: React.CSSProperties = {
     background: "rgba(255,255,255,0.85)",
     border: "1px solid rgba(0,0,0,0.08)",
-    borderRadius: 18,
-    padding: 18,
-    maxWidth: 1100,
+    borderRadius: 14,
+    padding: 14,
+    width: "100%",
   };
 
   const cardStyle: React.CSSProperties = {
-    borderRadius: 18,
+    borderRadius: 14,
     border: "1px solid rgba(0,0,0,0.08)",
     background: "rgba(255,255,255,0.85)",
-    padding: 18,
-    maxWidth: 1100,
+    padding: 14,
+    width: "100%",
   };
 
   const thBase: React.CSSProperties = {
-    padding: "10px 8px",
+    padding: "8px 6px",
     borderBottom: "1px solid rgba(0,0,0,0.15)",
     whiteSpace: "nowrap",
     fontWeight: 900,
@@ -375,7 +375,7 @@ export default function AuditRunViewPage() {
   };
 
   const tdBase: React.CSSProperties = {
-    padding: "10px 8px",
+    padding: "8px 6px",
     borderBottom: "1px solid rgba(0,0,0,0.08)",
     verticalAlign: "top",
     fontSize: 14,
@@ -385,8 +385,8 @@ export default function AuditRunViewPage() {
 
   if (loading) {
     return (
-      <main style={{ padding: 24 }}>
-        <h1 style={{ fontSize: 44, marginBottom: 10 }}>Detalle de auditoría</h1>
+      <main style={{ padding: "14px 14px 20px" }}>
+        <h1 style={{ fontSize: 26, marginBottom: 8, lineHeight: 1.1 }}>Detalle de auditoría</h1>
         <p>Cargando…</p>
       </main>
     );
@@ -394,8 +394,8 @@ export default function AuditRunViewPage() {
 
   if (error) {
     return (
-      <main style={{ padding: 24 }}>
-        <h1 style={{ fontSize: 44, marginBottom: 10 }}>Detalle de auditoría</h1>
+      <main style={{ padding: "14px 14px 20px" }}>
+        <h1 style={{ fontSize: 26, marginBottom: 8, lineHeight: 1.1 }}>Detalle de auditoría</h1>
         <p style={{ color: "crimson", fontWeight: 900 }}>{error}</p>
         <button
           onClick={() => router.push("/areas")}
@@ -417,17 +417,17 @@ export default function AuditRunViewPage() {
 
   if (!run) {
     return (
-      <main style={{ padding: 24 }}>
-        <h1 style={{ fontSize: 44, marginBottom: 10 }}>Detalle de auditoría</h1>
+      <main style={{ padding: "14px 14px 20px" }}>
+        <h1 style={{ fontSize: 26, marginBottom: 8, lineHeight: 1.1 }}>Detalle de auditoría</h1>
         <p>No se encontró la auditoría.</p>
       </main>
     );
   }
 
   return (
-    <main style={{ padding: 24 }}>
+    <main style={{ padding: "14px 14px 20px", width: "100%" }}>
       {/* Breadcrumb */}
-      <div style={{ opacity: 0.85, marginBottom: 12 }}>
+      <div style={{ opacity: 0.85, marginBottom: 10, fontSize: 13, overflowWrap: "anywhere" }}>
         <span style={crumbLink} onClick={() => router.push("/areas")}>
           Áreas
         </span>
@@ -442,11 +442,11 @@ export default function AuditRunViewPage() {
         <span style={{ fontWeight: 900 }}>Detalle auditoría</span>
       </div>
 
-      <h1 style={{ fontSize: 52, marginBottom: 14 }}>Detalle de auditoría</h1>
+      <h1 style={{ fontSize: 28, marginBottom: 12, lineHeight: 1.05 }}>Detalle de auditoría</h1>
 
       <div style={headerBoxStyle}>
         <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
-          <div style={{ lineHeight: 1.8 }}>
+          <div style={{ lineHeight: 1.55, minWidth: 0, overflowWrap: "anywhere" }}>
             <div>
               <strong>ID:</strong> {run.id}
             </div>
@@ -468,23 +468,23 @@ export default function AuditRunViewPage() {
             <div>
               <strong>Score:</strong>{" "}
               <span style={{ color: scoreColor(run.score), fontWeight: 950 }}>
-                {run.score ?? "—"}
+                {run.score === null ? "—" : `${run.score.toFixed(1)}%`}
               </span>
             </div>
           </div>
 
-          <div style={{ display: "flex", gap: 10, alignItems: "flex-start", flexWrap: "wrap" }}>
+          <div style={{ display: "flex", gap: 8, alignItems: "stretch", flexWrap: "wrap" }}>
             <button
               onClick={() => router.push(`/areas/${run.area_id}?tab=history`)}
               style={{
-                padding: "10px 14px",
-                borderRadius: 12,
+                padding: "9px 12px",
+                borderRadius: 10,
                 border: "1px solid rgba(0,0,0,0.2)",
                 background: "#000",
                 color: "#fff",
                 fontWeight: 900,
                 cursor: "pointer",
-                height: 44,
+                minHeight: 44,
               }}
             >
               ← Volver al historial
@@ -493,13 +493,13 @@ export default function AuditRunViewPage() {
             <button
               onClick={() => router.push("/areas")}
               style={{
-                padding: "10px 14px",
-                borderRadius: 12,
+                padding: "9px 12px",
+                borderRadius: 10,
                 border: "1px solid rgba(0,0,0,0.2)",
                 background: "#fff",
                 fontWeight: 900,
                 cursor: "pointer",
-                height: 44,
+                minHeight: 44,
               }}
             >
               Volver a áreas
@@ -508,13 +508,13 @@ export default function AuditRunViewPage() {
         </div>
 
         {run.notes ? (
-          <div style={{ marginTop: 12 }}>
+          <div style={{ marginTop: 10, overflowWrap: "anywhere", whiteSpace: "pre-wrap" }}>
             <strong>Notas:</strong> {run.notes}
           </div>
         ) : null}
       </div>
 
-      <div style={{ height: 14 }} />
+      <div style={{ height: 10 }} />
 
       <div style={cardStyle}>
         <div style={{ fontWeight: 950, fontSize: 18, marginBottom: 10 }}>
@@ -522,7 +522,7 @@ export default function AuditRunViewPage() {
         </div>
 
         <div style={{ overflowX: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 920 }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 640 }}>
             <colgroup>
               <col style={{ width: "44%" }} />
               <col style={{ width: "10%" }} />
@@ -581,7 +581,7 @@ export default function AuditRunViewPage() {
 
                     {isOpen ? (
                       <tr>
-                        <td colSpan={6} style={{ padding: "10px 8px" }}>
+                      <td colSpan={6} style={{ padding: "8px 6px" }}>
                           <div
                             style={{
                               background: "rgba(0,0,0,0.04)",
@@ -595,7 +595,7 @@ export default function AuditRunViewPage() {
                                 No hay hallazgos en esta sección (todo PASS implícito).
                               </div>
                             ) : (
-                              <div style={{ display: "grid", gap: 10 }}>
+                              <div style={{ display: "grid", gap: 8 }}>
                                 {s.items.map((it) => (
                                   <div
                                     key={it.question_id}
@@ -610,11 +610,12 @@ export default function AuditRunViewPage() {
                                       style={{
                                         display: "flex",
                                         justifyContent: "space-between",
-                                        gap: 10,
-                                        alignItems: "flex-start",
-                                      }}
-                                    >
-                                      <div style={{ fontWeight: 950 }}>{it.question_text}</div>
+                                      gap: 8,
+                                      alignItems: "flex-start",
+                                      flexWrap: "wrap",
+                                    }}
+                                  >
+                                      <div style={{ fontWeight: 950, minWidth: 0, overflowWrap: "anywhere" }}>{it.question_text}</div>
                                       {chip(it.result, it.result)}
                                     </div>
 

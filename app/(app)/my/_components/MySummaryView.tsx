@@ -12,7 +12,7 @@ function miniCard(): CSSProperties {
   return {
     border: "1px solid var(--border)",
     borderRadius: 14,
-    padding: 14,
+    padding: 12,
     background: "var(--card-bg)",
     width: "100%",
   };
@@ -21,8 +21,8 @@ function miniCard(): CSSProperties {
 function buildBtnStyle(): CSSProperties {
   return {
     border: "1px solid var(--input-border)",
-    borderRadius: 12,
-    padding: "10px 12px",
+    borderRadius: 10,
+    padding: "9px 11px",
     background: "rgba(0, 0, 0, 0.04)",
     cursor: "pointer",
     color: "var(--text)",
@@ -83,19 +83,19 @@ export default function MySummaryView({
   };
 
   return (
-    <div style={{ display: "grid", gap: 14 }}>
+    <div style={{ display: "grid", gap: 12 }}>
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-          gap: 14,
+          gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
+          gap: 12,
         }}
       >
         <div style={card}>
           <div style={{ opacity: 0.8, fontSize: 13 }}>
             Auditorías realizadas · {getPeriodLabel(selectedPeriod)}
           </div>
-          <div style={{ fontSize: 34, fontWeight: 900, marginTop: 8 }}>
+          <div style={{ fontSize: 28, fontWeight: 900, marginTop: 6 }}>
             {summary.totalAuditsDone}
           </div>
         </div>
@@ -104,7 +104,7 @@ export default function MySummaryView({
           <div style={{ opacity: 0.8, fontSize: 13 }}>
             Mi objetivo · {getPeriodLabel(selectedPeriod)}
           </div>
-          <div style={{ fontSize: 34, fontWeight: 900, marginTop: 8 }}>
+          <div style={{ fontSize: 28, fontWeight: 900, marginTop: 6 }}>
             {summary.totalCompletedTargets} / {summary.totalTargets}
           </div>
         </div>
@@ -113,14 +113,14 @@ export default function MySummaryView({
           <div style={{ opacity: 0.8, fontSize: 13 }}>
             Restantes · {getPeriodLabel(selectedPeriod)}
           </div>
-          <div style={{ fontSize: 34, fontWeight: 900, marginTop: 8 }}>
+          <div style={{ fontSize: 28, fontWeight: 900, marginTop: 6 }}>
             {summary.totalRemaining}
           </div>
         </div>
 
         <div style={card}>
           <div style={{ opacity: 0.8, fontSize: 13 }}>Progreso</div>
-          <div style={{ fontSize: 34, fontWeight: 900, marginTop: 8 }}>
+          <div style={{ fontSize: 28, fontWeight: 900, marginTop: 6 }}>
             {formatPct(summary.globalPct)}
           </div>
         </div>
@@ -129,8 +129,8 @@ export default function MySummaryView({
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(340px, 1fr))",
-          gap: 14,
+          gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
+          gap: 12,
         }}
       >
         <div style={card}>
@@ -181,7 +181,7 @@ export default function MySummaryView({
                     }}
                   >
                     <div style={{ minWidth: 0 }}>
-                      <div style={{ fontWeight: 800, fontSize: 16 }}>{row.template}</div>
+                      <div style={{ fontWeight: 800, fontSize: 15 }}>{row.template}</div>
                       <div style={{ opacity: 0.8, fontSize: 13, marginTop: 4 }}>
                         {row.completed} / {row.target} · faltan {row.remaining}
                       </div>

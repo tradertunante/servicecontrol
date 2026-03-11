@@ -12,8 +12,8 @@ export default function ReauditStats({
     <div
       style={{
         display: "grid",
-        gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
-        gap: 12,
+        gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
+        gap: 10,
       }}
     >
       {[
@@ -27,15 +27,15 @@ export default function ReauditStats({
           style={{
             background: "var(--card-bg)",
             border: "1px solid var(--border)",
-            borderRadius: 16,
-            padding: 16,
+            borderRadius: 14,
+            padding: 12,
             boxShadow: "var(--shadow-sm)",
           }}
         >
           <div style={{ fontSize: 13, color: "var(--muted)", fontWeight: 800 }}>
             {item.label}
           </div>
-          <div style={{ marginTop: 6, fontSize: 28, fontWeight: 950 }}>
+          <div style={{ marginTop: 4, fontSize: 24, fontWeight: 950 }}>
             {item.value}
           </div>
         </div>

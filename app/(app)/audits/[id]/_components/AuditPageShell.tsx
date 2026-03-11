@@ -102,13 +102,13 @@ export default function AuditPageShell({
   }, [activeQuestionId]);
 
   const header = (
-    <div className="space-y-3 bg-slate-50">
+    <div className="space-y-2 bg-slate-50">
       <AuditHeader
         title={template?.name ?? "Auditoría"}
         subtitle={`${area?.name ?? "—"}${area?.type ? ` · ${area.type}` : ""}`}
         meta={`Fecha: ${fmtDate(run.executed_at ?? null)}`}
       />
-      <div className="px-4 pb-4 lg:px-6">
+      <div className="px-4 pb-3 lg:px-6 lg:pb-4">
         <AuditProgressBar answered={answeredCount} total={totalQuestions} />
       </div>
     </div>
@@ -123,20 +123,20 @@ export default function AuditPageShell({
   );
 
   const content = (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-3">
       {error ? (
-        <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-extrabold text-rose-700">
+        <div className="rounded-2xl border border-rose-200 bg-rose-50 px-3 py-2.5 text-sm font-extrabold text-rose-700">
           {error}
         </div>
       ) : null}
 
-      <div className="rounded-3xl border border-slate-200 bg-white p-4">
+      <div className="rounded-2xl border border-slate-200 bg-white p-3.5 lg:rounded-3xl lg:p-4">
         <div className="mb-2 text-sm font-extrabold text-slate-900">Colaborador auditado</div>
         <select
           value={selectedMember}
           disabled={submitted || savingMember}
           onChange={(event) => onSelectMember(event.target.value)}
-          className="min-h-[48px] w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-900 disabled:opacity-60"
+          className="min-h-[48px] w-full rounded-xl border border-slate-200 bg-white px-3.5 text-sm font-semibold text-slate-900 disabled:opacity-60"
         >
           <option value="">Auditoría general (sin colaborador)</option>
           {teamMembers.map((member) => (
@@ -153,7 +153,7 @@ export default function AuditPageShell({
         if (!questions.length) return null;
 
         return (
-          <section key={section.id} className="flex flex-col gap-3">
+          <section key={section.id} className="flex flex-col gap-2.5">
             <div className="flex items-center justify-between gap-3">
               <h2 className="text-sm font-black uppercase tracking-wide text-slate-500">
                 {section.name}
@@ -171,7 +171,7 @@ export default function AuditPageShell({
               </button>
             </div>
 
-            <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-3">
               {questions.map((question) => (
                 <div
                   key={question.id}
@@ -198,7 +198,7 @@ export default function AuditPageShell({
       })}
 
       {totalQuestions === 0 ? (
-        <div className="rounded-3xl border border-slate-200 bg-white p-4 text-sm font-semibold text-slate-700">
+        <div className="rounded-2xl border border-slate-200 bg-white p-3.5 text-sm font-semibold text-slate-700">
           No hay preguntas activas en esta auditoría.
         </div>
       ) : null}

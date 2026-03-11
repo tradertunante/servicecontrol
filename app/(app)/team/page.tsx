@@ -13,8 +13,8 @@ import ReauditsPanel from "./_components/ReauditsPanel";
 function buildCardStyle(): CSSProperties {
   return {
     border: "1px solid rgba(255,255,255,0.10)",
-    borderRadius: 16,
-    padding: 16,
+    borderRadius: 14,
+    padding: 14,
     background: "rgba(255,255,255,0.04)",
     boxShadow: "0 6px 18px rgba(0,0,0,0.20)",
   };
@@ -23,8 +23,8 @@ function buildCardStyle(): CSSProperties {
 function buildBtnStyle(): CSSProperties {
   return {
     border: "1px solid rgba(255,255,255,0.14)",
-    borderRadius: 12,
-    padding: "10px 12px",
+    borderRadius: 10,
+    padding: "9px 11px",
     background: "rgba(255,255,255,0.06)",
     cursor: "pointer",
   };
@@ -33,8 +33,8 @@ function buildBtnStyle(): CSSProperties {
 function buildInputStyle(): CSSProperties {
   return {
     width: "100%",
-    padding: "10px 12px",
-    borderRadius: 12,
+    padding: "9px 11px",
+    borderRadius: 10,
     border: "1px solid rgba(255,255,255,0.14)",
     background: "rgba(0,0,0,0.18)",
     color: "white",
@@ -230,7 +230,7 @@ export default function TeamPage() {
   });
 
   return (
-    <div style={{ padding: 18, width: "100%" }}>
+    <div style={{ padding: "12px 14px 18px", width: "100%" }}>
       <div
         style={{
           display: "flex",
@@ -241,17 +241,17 @@ export default function TeamPage() {
         }}
       >
         <div>
-          <div style={{ fontSize: 22, fontWeight: 700 }}>Equipo</div>
+          <div style={{ fontSize: 18, fontWeight: 800, lineHeight: 1.1 }}>Equipo</div>
           <div style={{ opacity: 0.85, marginTop: 4 }}>
             Hola, <b>{profile?.full_name ?? "—"}</b> · Rol: <b>{profile?.role ?? "—"}</b>
           </div>
-          <div style={{ opacity: 0.65, marginTop: 6, fontSize: 12 }}>
+          <div style={{ opacity: 0.65, marginTop: 4, fontSize: 12 }}>
             Panel operativo del equipo, acciones correctivas y seguimiento de objetivos.
           </div>
         </div>
 
         {showSummaryTab && activeTab === "summary" ? (
-          <div style={{ minWidth: 220 }}>
+          <div style={{ minWidth: 180, flex: "1 1 180px", maxWidth: 240 }}>
             <div style={{ opacity: 0.8, fontSize: 12, marginBottom: 6 }}>Periodo global</div>
             <select
               style={input}
@@ -268,9 +268,9 @@ export default function TeamPage() {
 
       <div
         style={{
-          marginTop: 14,
+          marginTop: 12,
           display: "flex",
-          gap: 10,
+          gap: 8,
           flexWrap: "wrap",
         }}
       >
@@ -307,13 +307,13 @@ export default function TeamPage() {
       ) : null}
 
       {activeTab === "actions" ? (
-        <div style={{ marginTop: 14 }}>
+        <div style={{ marginTop: 12 }}>
           <CorrectiveActionsPanel profile={profile} hotelId={hotelId} />
         </div>
       ) : null}
 
       {activeTab === "reaudits" && showReauditsTab ? (
-        <div style={{ marginTop: 14 }}>
+        <div style={{ marginTop: 12 }}>
           <ReauditsPanel profile={profile} hotelId={hotelId} />
         </div>
       ) : null}
@@ -324,15 +324,15 @@ export default function TeamPage() {
             style={{
               marginTop: 14,
               display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-              gap: 14,
+              gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
+              gap: 12,
             }}
           >
             <div style={card}>
               <div style={{ opacity: 0.8, fontSize: 13 }}>
                 Auditorías equipo · {getPeriodLabel(selectedPeriod)}
               </div>
-              <div style={{ fontSize: 30, fontWeight: 800, marginTop: 8 }}>
+              <div style={{ fontSize: 26, fontWeight: 800, marginTop: 6 }}>
                 {summary.totalAuditsDone}
               </div>
             </div>
@@ -341,7 +341,7 @@ export default function TeamPage() {
               <div style={{ opacity: 0.8, fontSize: 13 }}>
                 Objetivo total · {getPeriodLabel(selectedPeriod)}
               </div>
-              <div style={{ fontSize: 30, fontWeight: 800, marginTop: 8 }}>
+              <div style={{ fontSize: 26, fontWeight: 800, marginTop: 6 }}>
                 {summary.totalCompletedTargets} / {summary.totalTargets}
               </div>
             </div>
@@ -350,14 +350,14 @@ export default function TeamPage() {
               <div style={{ opacity: 0.8, fontSize: 13 }}>
                 Restantes · {getPeriodLabel(selectedPeriod)}
               </div>
-              <div style={{ fontSize: 30, fontWeight: 800, marginTop: 8 }}>
+              <div style={{ fontSize: 26, fontWeight: 800, marginTop: 6 }}>
                 {summary.totalRemaining}
               </div>
             </div>
 
             <div style={card}>
               <div style={{ opacity: 0.8, fontSize: 13 }}>Progreso global</div>
-              <div style={{ fontSize: 30, fontWeight: 800, marginTop: 8 }}>
+              <div style={{ fontSize: 26, fontWeight: 800, marginTop: 6 }}>
                 {formatPct(summary.globalPct)}
               </div>
             </div>
@@ -416,8 +416,8 @@ export default function TeamPage() {
             style={{
               marginTop: 14,
               display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
-              gap: 14,
+              gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
+              gap: 12,
             }}
           >
             <div style={card}>
