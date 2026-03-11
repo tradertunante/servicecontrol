@@ -55,7 +55,7 @@ export default function ReauditCard({
   const router = useRouter();
 
   const btn: React.CSSProperties = {
-    padding: "8px 12px",
+    padding: "7px 11px",
     borderRadius: 10,
     border: "1px solid var(--border)",
     background: "var(--card-bg)",
@@ -73,7 +73,7 @@ export default function ReauditCard({
     border: "1px solid var(--border)",
     borderRadius: 12,
     background: "rgba(255,255,255,0.03)",
-    padding: 10,
+    padding: 9,
     minWidth: 0,
   };
 
@@ -85,7 +85,7 @@ export default function ReauditCard({
   };
 
   const valueStyle: React.CSSProperties = {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: 800,
     lineHeight: 1.25,
     overflowWrap: "anywhere",
@@ -123,11 +123,11 @@ export default function ReauditCard({
       style={{
         background: "var(--card-bg)",
         border: isReady ? "1px solid rgba(0,200,0,0.30)" : "1px solid var(--border)",
-        borderRadius: 16,
+        borderRadius: 14,
         boxShadow: "var(--shadow-sm)",
-        padding: 14,
+        padding: 12,
         display: "grid",
-        gap: 10,
+        gap: 8,
       }}
     >
       <div
@@ -143,16 +143,16 @@ export default function ReauditCard({
           <div
             style={{
               display: "flex",
-              gap: 8,
+              gap: 6,
               flexWrap: "wrap",
               alignItems: "center",
             }}
           >
             <span
               style={{
-                fontSize: 12,
+                fontSize: 11,
                 fontWeight: 900,
-                padding: "4px 9px",
+                padding: "4px 8px",
                 borderRadius: 999,
                 border: "1px solid var(--border)",
                 background:
@@ -175,9 +175,9 @@ export default function ReauditCard({
             {isReady ? (
               <span
                 style={{
-                  fontSize: 12,
+                  fontSize: 11,
                   fontWeight: 900,
-                  padding: "4px 9px",
+                  padding: "4px 8px",
                   borderRadius: 999,
                   border: "1px solid rgba(0,200,0,0.2)",
                   background: "rgba(0,200,0,0.08)",
@@ -191,9 +191,9 @@ export default function ReauditCard({
             {isOverdue ? (
               <span
                 style={{
-                  fontSize: 12,
+                  fontSize: 11,
                   fontWeight: 900,
-                  padding: "4px 9px",
+                  padding: "4px 8px",
                   borderRadius: 999,
                   border: "1px solid rgba(220,0,0,0.2)",
                   background: "rgba(220,0,0,0.06)",
@@ -205,11 +205,11 @@ export default function ReauditCard({
             ) : null}
           </div>
 
-          <div style={{ fontWeight: 900, fontSize: 17, lineHeight: 1.15 }}>
+          <div style={{ fontWeight: 900, fontSize: 15, lineHeight: 1.15 }}>
             {row.template_name ?? "Re-auditoría"}
           </div>
 
-          <div style={{ opacity: 0.9 }}>
+          <div style={{ opacity: 0.9, overflowWrap: "anywhere" }}>
             {row.area_name ?? "—"} {row.area_type ? `· ${row.area_type}` : ""}
           </div>
         </div>
@@ -219,7 +219,9 @@ export default function ReauditCard({
             fontSize: 12,
             color: "var(--muted)",
             fontWeight: 800,
-            whiteSpace: "nowrap",
+            whiteSpace: "normal",
+            textAlign: "left",
+            overflowWrap: "anywhere",
           }}
         >
           Programada: {fmtDate(row.scheduled_for)}
@@ -232,7 +234,7 @@ export default function ReauditCard({
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
+          gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
           gap: 8,
         }}
       >
@@ -267,13 +269,13 @@ export default function ReauditCard({
         style={{
           ...panelStyle,
           display: "flex",
-          gap: 12,
+          gap: 10,
           flexWrap: "wrap",
           alignItems: "center",
           justifyContent: "space-between",
         }}
       >
-        <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
           <div style={{ display: "flex", gap: 6, alignItems: "baseline" }}>
             <span style={labelStyle}>Score original</span>
             <span style={valueStyle}>{formatScore(row.original_audit_score)}</span>
@@ -292,7 +294,7 @@ export default function ReauditCard({
             style={{
               ...valueStyle,
               color: improvement > 0 ? "green" : improvement < 0 ? "crimson" : "inherit",
-              whiteSpace: "nowrap",
+              whiteSpace: "normal",
             }}
           >
             Mejora: {improvement > 0 ? "+" : ""}
@@ -304,12 +306,12 @@ export default function ReauditCard({
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: "minmax(420px, 1.1fr) minmax(320px, 0.9fr)",
-          gap: 10,
+          gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
+          gap: 8,
           alignItems: "start",
         }}
       >
-        <div style={{ display: "grid", gap: 10, minWidth: 0 }}>
+        <div style={{ display: "grid", gap: 8, minWidth: 0 }}>
           <ReauditAssignmentSection
             assignedAuditorName={row.assigned_auditor_name}
             assignedAuditorId={row.assigned_auditor_id}

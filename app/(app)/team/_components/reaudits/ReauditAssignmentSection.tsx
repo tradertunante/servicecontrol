@@ -36,9 +36,9 @@ export default function ReauditAssignmentSection({
     border: "1px solid var(--border)",
     borderRadius: 12,
     background: "rgba(255,255,255,0.03)",
-    padding: 10,
+    padding: 9,
     display: "grid",
-    gap: 8,
+    gap: 6,
     minWidth: 0,
   };
 
@@ -50,14 +50,14 @@ export default function ReauditAssignmentSection({
   };
 
   const btn: React.CSSProperties = {
-    padding: "8px 12px",
+    padding: "7px 11px",
     borderRadius: 10,
     border: "1px solid var(--border)",
     background: "var(--card-bg)",
     fontWeight: 900,
     cursor: "pointer",
     whiteSpace: "nowrap",
-    minHeight: 42,
+    minHeight: 40,
   };
 
   return (
@@ -87,9 +87,7 @@ export default function ReauditAssignmentSection({
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: hasPendingChange
-              ? "minmax(180px, 240px) minmax(180px, 1fr) auto"
-              : "minmax(180px, 240px) auto",
+            gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
             gap: 8,
             alignItems: "center",
           }}
@@ -98,7 +96,7 @@ export default function ReauditAssignmentSection({
             value={selectedAuditorId}
             onChange={(e) => onAuditorChange(e.target.value)}
             style={{
-              padding: "10px 12px",
+              padding: "9px 11px",
               borderRadius: 10,
               border: "1px solid var(--border)",
               background: "var(--card-bg)",
@@ -121,7 +119,7 @@ export default function ReauditAssignmentSection({
               placeholder="Nota opcional..."
               style={{
                 width: "100%",
-                padding: "10px 12px",
+                padding: "9px 11px",
                 borderRadius: 10,
                 border: "1px solid var(--border)",
                 background: "var(--card-bg)",

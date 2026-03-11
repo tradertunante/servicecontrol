@@ -97,7 +97,7 @@ export default function ReauditsPanel({
   const visibleError = actionError || dataError;
 
   return (
-    <div style={{ display: "grid", gap: 16 }}>
+    <div style={{ display: "grid", gap: 12 }}>
       <ReauditStats stats={stats} />
 
       <ReauditFilters
@@ -146,8 +146,8 @@ export default function ReauditsPanel({
             style={{
               background: "var(--card-bg)",
               border: "1px solid var(--border)",
-              borderRadius: 16,
-              padding: 18,
+              borderRadius: 14,
+              padding: 14,
             }}
           >
             <div style={{ fontWeight: 900 }}>No hay re-auditorías</div>

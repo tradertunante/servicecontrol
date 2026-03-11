@@ -12,13 +12,13 @@ export default function AuditHeader({
   meta: string;
 }) {
   return (
-    <div className="flex flex-col gap-3 border-b border-slate-200 bg-white px-4 py-4">
-      <div className="flex items-center gap-3">
+    <div className="flex flex-col gap-2 border-b border-slate-200 bg-white px-4 py-3 lg:px-6 lg:py-4">
+      <div className="flex items-center gap-2.5">
         <BackButton fallback="/areas" />
         <div className="min-w-0 flex-1">
-          <h1 className="truncate text-lg font-black tracking-tight text-slate-950">{title}</h1>
-          <div className="text-sm font-semibold text-slate-700">{subtitle}</div>
-          <div className="text-xs font-medium text-slate-500">{meta}</div>
+          <h1 className="truncate text-base font-black tracking-tight text-slate-950 lg:text-lg">{title}</h1>
+          <div className="truncate text-xs font-semibold text-slate-700 sm:text-sm">{subtitle}</div>
+          <div className="truncate text-[11px] font-medium text-slate-500 sm:text-xs">{meta}</div>
         </div>
       </div>
     </div>
