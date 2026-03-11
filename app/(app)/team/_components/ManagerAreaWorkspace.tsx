@@ -5,7 +5,6 @@ import { useEffect, useState } from "react";
 import DashboardPanel from "@/app/(app)/areas/[areaId]/_components/DashboardPanel";
 import HistoryPanel from "@/app/(app)/areas/[areaId]/_components/HistoryPanel";
 import TemplatesPanel from "@/app/(app)/areas/[areaId]/_components/TemplatesPanel";
-import AreaHeader from "@/app/(app)/areas/[areaId]/_components/AreaHeader";
 import { useAreaData } from "@/app/(app)/areas/[areaId]/_hooks/useAreaData";
 import type { PeriodKey } from "@/app/(app)/areas/[areaId]/_lib/areaTypes";
 
@@ -184,8 +183,6 @@ export default function ManagerAreaWorkspace({
 
       {!data.loading && !data.error ? (
         <>
-          <AreaHeader area={data.area} role={(profileRole ?? null) as any} />
-
           {mode === "dashboard" ? (
             <DashboardPanel
               period={period}

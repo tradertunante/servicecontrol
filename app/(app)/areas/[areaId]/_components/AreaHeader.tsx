@@ -14,22 +14,31 @@ export default function AreaHeader({
     <div
       style={{
         marginBottom: 12,
-        padding: 12,
+        padding: "10px 12px",
         borderRadius: 14,
         border: "1px solid var(--border)",
         background: "var(--card-bg)",
         boxShadow: "var(--shadow-sm)",
       }}
     >
-      <div style={{ fontSize: 12, fontWeight: 900, color: "var(--muted)" }}>
-        Área activa
-      </div>
-      <div style={{ marginTop: 4, fontWeight: 900 }}>
-        {area?.name ?? "—"}
-        {area?.type ? ` · ${area.type}` : ""}
-      </div>
-      <div style={{ marginTop: 4, opacity: 0.8, fontSize: 13 }}>
-        Rol: <strong>{role ?? "—"}</strong>
+      <div
+        style={{
+          fontWeight: 900,
+          display: "flex",
+          alignItems: "center",
+          gap: 6,
+          flexWrap: "wrap",
+          lineHeight: 1.25,
+        }}
+      >
+        <span>
+          {area?.name ?? "—"}
+          {area?.type ? ` · ${area.type}` : ""}
+        </span>
+        <span style={{ opacity: 0.55 }}>·</span>
+        <span style={{ opacity: 0.8, fontSize: 13 }}>
+          Rol: <strong>{role ?? "—"}</strong>
+        </span>
       </div>
     </div>
   );
