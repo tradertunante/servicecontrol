@@ -218,6 +218,35 @@ La fuente de verdad del score final será backend/server-side.
 
 ### Impacto esperado
 - consistencia entre resultado mostrado y resultado persistido
+
+---
+
+## Decisión 8
+
+### Fecha
+2026-03-11
+
+### Decisión
+En el dashboard e historial de área, tratar la clasificación efectiva del estándar como `audit_questions.classification` con fallback a `audit_sections.name`.
+
+### Contexto
+El área dashboard necesitaba rankear FAIL por clasificación, pero el flujo real de builder/importación usa `CLASSIFICATION` para mapear secciones y no persiste ese valor en `audit_questions.classification` de forma confiable. Eso dejaba paneles agregados incompletos cuando la columna de pregunta venía nula.
+
+### Alternativas consideradas
+- seguir leyendo solo `audit_questions.classification`
+- migrar inmediatamente todo el sistema para persistir clasificación explícita en preguntas
+- usar una clasificación efectiva compatible con el modelo actual
+
+### Decisión final
+Para reporting de área, resolver clasificación con esta prioridad:
+
+- `audit_questions.classification` si viene poblada
+- `audit_sections.name` como fallback operativo
+
+### Impacto esperado
+- ranking de FAIL por clasificación consistente con el builder y la importación actuales
+- filtros de historial coherentes al navegar desde el dashboard
+- menor riesgo de paneles vacíos mientras no exista una migración formal del modelo
 - menor superficie de errores de negocio
 - base más sólida para reporting y reauditorías
 

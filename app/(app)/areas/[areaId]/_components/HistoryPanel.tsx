@@ -204,13 +204,23 @@ export default function HistoryPanel({
 
         const { data: qData, error: qErr } = await supabase
           .from("audit_questions")
-          .select("id,classification")
+          .select(`
+            id,
+            classification,
+            audit_section_id,
+            audit_sections (
+              name
+            )
+          `)
           .in("id", qIds);
 
         if (qErr) throw qErr;
 
         const clsByQ: Record<string, string> = {};
-        for (const row of (qData ?? []) as any[]) clsByQ[row.id] = String(row.classification ?? "");
+        for (const row of (qData ?? []) as any[]) {
+          const sectionName = String(row.audit_sections?.name ?? "Sin sección");
+          clsByQ[row.id] = String(row.classification ?? "").trim() || sectionName;
+        }
 
         for (const a of answers) {
           const cls = (clsByQ[a.question_id] ?? "").trim() || "Sin clasificación";
