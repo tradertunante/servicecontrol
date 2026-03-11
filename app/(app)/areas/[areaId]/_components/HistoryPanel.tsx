@@ -1,6 +1,7 @@
 // FILE: app/(app)/areas/[areaId]/_components/HistoryPanel.tsx
 "use client";
 
+import Card from "@/components/ui/Card";
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
@@ -15,14 +16,6 @@ import {
   safePeriod,
   scoreColor,
 } from "../_lib/areaUtils";
-
-const card: React.CSSProperties = {
-  borderRadius: 14,
-  border: "1px solid var(--border)",
-  background: "var(--card-bg)",
-  padding: 14,
-  boxShadow: "var(--shadow-sm)",
-};
 
 const inputStyle: React.CSSProperties = {
   padding: "10px 12px",
@@ -321,7 +314,7 @@ export default function HistoryPanel({
 
   return (
     <div style={{ display: "grid", gap: 14 }}>
-      <div style={card}>
+      <Card>
         <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
           <div style={{ fontSize: 20, fontWeight: 950 }}>Historial</div>
 
@@ -424,9 +417,9 @@ export default function HistoryPanel({
         )}
 
         {histError ? <div style={{ marginTop: 12, color: "crimson", fontWeight: 900 }}>{histError}</div> : null}
-      </div>
+      </Card>
 
-      <div style={card}>
+      <Card>
         <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", alignItems: "baseline" }}>
           <div style={{ fontWeight: 950, marginBottom: 10 }}>Resultados</div>
           {histLoading ? (
@@ -495,7 +488,7 @@ export default function HistoryPanel({
             ))}
           </div>
         )}
-      </div>
+      </Card>
     </div>
   );
 }

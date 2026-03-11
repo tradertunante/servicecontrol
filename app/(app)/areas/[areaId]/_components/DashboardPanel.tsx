@@ -1,6 +1,7 @@
 // FILE: app/(app)/areas/[areaId]/_components/DashboardPanel.tsx
 "use client";
 
+import Card from "@/components/ui/Card";
 import type {
   AnswerRow,
   AuditRunRow,
@@ -11,14 +12,6 @@ import type {
 } from "../_lib/areaTypes";
 import { clamp, fmtDate, getPeriodRange, periodLabel, scoreColor } from "../_lib/areaUtils";
 import Sparkline from "./Sparkline";
-
-const card: React.CSSProperties = {
-  borderRadius: 14,
-  border: "1px solid var(--border)",
-  background: "var(--card-bg)",
-  padding: 14,
-  boxShadow: "var(--shadow-sm)",
-};
 
 function pillStyle(): React.CSSProperties {
   return {
@@ -248,7 +241,7 @@ export default function DashboardPanel({
 
       {/* Cards resumen */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 12 }}>
-        <div style={card}>
+        <Card>
           <div style={{ fontWeight: 950, marginBottom: 6 }}>Score promedio (últimas {lastN.length || 0})</div>
           <div style={{ fontSize: 34, fontWeight: 950, color: scoreColor(avgScore) }}>
             {avgScore === null ? "—" : `${avgScore.toFixed(2)}%`}
@@ -264,9 +257,9 @@ export default function DashboardPanel({
           <div style={{ marginTop: 8, fontSize: 12.5, opacity: 0.75 }}>
             Vista: <strong>{filterLabel}</strong> · Periodo: <strong>{periodLabel(period)}</strong>
           </div>
-        </div>
+        </Card>
 
-        <div style={card}>
+        <Card>
           <div style={{ fontWeight: 950, marginBottom: 6 }}>Última auditoría</div>
           {lastRun ? (
             <>
@@ -300,9 +293,9 @@ export default function DashboardPanel({
           ) : (
             <div style={{ opacity: 0.8 }}>No hay auditorías enviadas todavía.</div>
           )}
-        </div>
+        </Card>
 
-        <div style={card}>
+        <Card>
           <div style={{ fontWeight: 950, marginBottom: 6 }}>Sección más débil</div>
           {worstSection?.avg_score !== null ? (
             <>
@@ -321,9 +314,9 @@ export default function DashboardPanel({
           ) : (
             <div style={{ opacity: 0.8 }}>—</div>
           )}
-        </div>
+        </Card>
 
-        <div style={card}>
+        <Card>
           <div style={{ fontWeight: 950, marginBottom: 6 }}>Sección más fuerte</div>
           {bestSection?.avg_score !== null ? (
             <>
@@ -342,11 +335,11 @@ export default function DashboardPanel({
           ) : (
             <div style={{ opacity: 0.8 }}>—</div>
           )}
-        </div>
+        </Card>
       </div>
 
       {/* ✅ Ranking FAIL */}
-      <div style={card}>
+      <Card>
         <div
           style={{
             display: "flex",
@@ -476,7 +469,7 @@ export default function DashboardPanel({
             Tip: haz click en un estándar o clasificación para ver las auditorías relacionadas (y revisar comentarios/fotos).
           </div>
         ) : null}
-      </div>
+      </Card>
 
       <div style={{ opacity: 0.75, fontSize: 13 }}>
         Nota: el dashboard se calcula con auditorías <strong>submitted</strong> con score, filtrando por{" "}
