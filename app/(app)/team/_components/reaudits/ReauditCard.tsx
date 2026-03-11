@@ -99,7 +99,8 @@ export default function ReauditCard({
     typeof row.original_audit_score === "number" &&
     Number.isFinite(row.original_audit_score);
   const improvement =
-    hasReauditScore && hasOriginalScore
+    typeof row.score === "number" &&
+    typeof row.original_audit_score === "number"
       ? row.score - row.original_audit_score
       : null;
 
