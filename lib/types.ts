@@ -1,6 +1,7 @@
 export type Role =
   | "superadmin"
   | "admin"
+  | "general_manager"
   | "manager"
   | "auditor"
   | "quality"

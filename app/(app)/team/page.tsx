@@ -2,13 +2,18 @@
 
 import { useEffect, useMemo, useState } from "react";
 import type { CSSProperties } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
+import { supabase } from "@/lib/supabaseClient";
 import { requireRoleOrRedirect } from "@/lib/auth/RequireRole";
 
 import { useTeamData, type TeamPeriodKey } from "./_hooks/useTeamData";
 import TeamTargetAssignmentsCard from "./_components/TeamTargetAssignmentsCard";
 import CorrectiveActionsPanel from "./_components/CorrectiveActionsPanel";
 import ReauditsPanel from "./_components/ReauditsPanel";
+import ManagerAreaWorkspace, {
+  type ManagerAreaHistoryFilters,
+  type ManagerAreaOption,
+} from "./_components/ManagerAreaWorkspace";
 
 function buildCardStyle(): CSSProperties {
   return {
@@ -57,10 +62,11 @@ function formatPct(n: number | null | undefined) {
 
 const HOTEL_KEY = "sc_hotel_id";
 
-type TeamTabKey = "summary" | "actions" | "reaudits";
+type TeamTabKey = "summary" | "actions" | "reaudits" | "area" | "history" | "templates";
 
 export default function TeamPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   requireRoleOrRedirect(
     ["superadmin", "admin", "manager", "quality", "engineering", "systems"],
@@ -73,10 +79,41 @@ export default function TeamPage() {
 
   const [selectedPeriod, setSelectedPeriod] = useState<TeamPeriodKey>("monthly");
   const [showAssignmentsConfig, setShowAssignmentsConfig] = useState(false);
-  const [activeTab, setActiveTab] = useState<TeamTabKey>("summary");
+  const [activeTab, setActiveTab] = useState<TeamTabKey>("area");
+  const [managerAreasLoading, setManagerAreasLoading] = useState(false);
+  const [managerAreasError, setManagerAreasError] = useState<string | null>(null);
+  const [managerAreaOptions, setManagerAreaOptions] = useState<ManagerAreaOption[]>([]);
+  const [selectedManagerAreaId, setSelectedManagerAreaId] = useState("");
+  const [managerAreaHistoryFilters, setManagerAreaHistoryFilters] =
+    useState<ManagerAreaHistoryFilters>(null);
 
   const { loading, error, profile, leaderboard, teamTargets, teamRecentRuns, summary } =
     useTeamData(selectedPeriod);
+
+  useEffect(() => {
+    const requestedTab = searchParams.get("tab");
+    if (!requestedTab) return;
+
+    const allowedTabs: TeamTabKey[] = [
+      "summary",
+      "actions",
+      "reaudits",
+      "area",
+      "history",
+      "templates",
+    ];
+
+    if (!allowedTabs.includes(requestedTab as TeamTabKey)) return;
+
+    if (profile?.role === "manager") {
+      setActiveTab(requestedTab as TeamTabKey);
+      return;
+    }
+
+    if (requestedTab === "summary" || requestedTab === "actions" || requestedTab === "reaudits") {
+      setActiveTab(requestedTab);
+    }
+  }, [profile?.role, searchParams]);
 
   useEffect(() => {
     if (profile?.role === "engineering" || profile?.role === "systems") {
@@ -84,11 +121,101 @@ export default function TeamPage() {
       return;
     }
 
+    if (profile?.role === "manager") {
+      setActiveTab((prev) => {
+        if (
+          prev === "summary" ||
+          prev === "actions" ||
+          prev === "reaudits" ||
+          prev === "area" ||
+          prev === "history" ||
+          prev === "templates"
+        ) {
+          return prev;
+        }
+        return "area";
+      });
+      return;
+    }
+
     setActiveTab((prev) => {
-      if (prev === "summary" || prev === "actions" || prev === "reaudits") return prev;
+      if (prev === "summary" || prev === "actions" || prev === "reaudits") {
+        return prev;
+      }
       return "summary";
     });
   }, [profile?.role]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadManagerAreas() {
+      if (profile?.role !== "manager") {
+        setManagerAreaOptions([]);
+        setSelectedManagerAreaId("");
+        setManagerAreasError(null);
+        setManagerAreasLoading(false);
+        return;
+      }
+
+      try {
+        setManagerAreasLoading(true);
+        setManagerAreasError(null);
+
+        const hotelIdToUse =
+          profile.hotel_id ??
+          (typeof window !== "undefined" ? localStorage.getItem(HOTEL_KEY) : null) ??
+          "";
+
+        const { data: accessData, error: accessError } = await supabase
+          .from("user_area_access")
+          .select("area_id")
+          .eq("user_id", profile.id)
+          .eq("hotel_id", hotelIdToUse);
+
+        if (accessError) throw accessError;
+
+        const areaIds = Array.from(
+          new Set((accessData ?? []).map((row: { area_id: string | null }) => row.area_id).filter(Boolean))
+        ) as string[];
+
+        if (areaIds.length === 0) {
+          if (cancelled) return;
+          setManagerAreaOptions([]);
+          setSelectedManagerAreaId("");
+          setManagerAreasLoading(false);
+          return;
+        }
+
+        const { data: areaData, error: areaError } = await supabase
+          .from("areas")
+          .select("id,name,type")
+          .in("id", areaIds)
+          .order("name", { ascending: true });
+
+        if (areaError) throw areaError;
+
+        const options = (areaData ?? []) as ManagerAreaOption[];
+        if (cancelled) return;
+
+        setManagerAreaOptions(options);
+        setSelectedManagerAreaId((prev) =>
+          prev && options.some((area) => area.id === prev) ? prev : options[0]?.id ?? ""
+        );
+      } catch (error: any) {
+        if (cancelled) return;
+        setManagerAreasError(error?.message ?? "No se pudieron cargar las áreas asignadas.");
+      } finally {
+        if (!cancelled) setManagerAreasLoading(false);
+      }
+    }
+
+    void loadManagerAreas();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [profile]);
 
   const panelBodyStyle: CSSProperties = {
     marginTop: 10,
@@ -223,6 +350,8 @@ export default function TeamPage() {
     profile?.role === "manager" ||
     profile?.role === "quality";
 
+  const showManagerAreaTabs = profile?.role === "manager";
+
   const tabStyle = (isActive: boolean): CSSProperties => ({
     ...btn,
     background: isActive ? "rgba(255,255,255,0.14)" : "rgba(255,255,255,0.06)",
@@ -274,12 +403,33 @@ export default function TeamPage() {
           flexWrap: "wrap",
         }}
       >
+        {showManagerAreaTabs ? (
+          <button style={tabStyle(activeTab === "area")} onClick={() => setActiveTab("area")}>
+            General
+          </button>
+        ) : null}
+
         {showSummaryTab ? (
           <button
             style={tabStyle(activeTab === "summary")}
             onClick={() => setActiveTab("summary")}
           >
-            Resumen
+            Follow up
+          </button>
+        ) : null}
+
+        {showReauditsTab ? (
+          <button
+            style={tabStyle(activeTab === "reaudits")}
+            onClick={() => setActiveTab("reaudits")}
+          >
+            Recuperación
+          </button>
+        ) : null}
+
+        {showManagerAreaTabs ? (
+          <button style={tabStyle(activeTab === "history")} onClick={() => setActiveTab("history")}>
+            Historial
           </button>
         ) : null}
 
@@ -287,17 +437,8 @@ export default function TeamPage() {
           style={tabStyle(activeTab === "actions")}
           onClick={() => setActiveTab("actions")}
         >
-          Corrective Actions
+          Corrective actions
         </button>
-
-        {showReauditsTab ? (
-          <button
-            style={tabStyle(activeTab === "reaudits")}
-            onClick={() => setActiveTab("reaudits")}
-          >
-            Re-audits
-          </button>
-        ) : null}
       </div>
 
       {error && activeTab === "summary" ? (
@@ -315,6 +456,66 @@ export default function TeamPage() {
       {activeTab === "reaudits" && showReauditsTab ? (
         <div style={{ marginTop: 12 }}>
           <ReauditsPanel profile={profile} hotelId={hotelId} />
+        </div>
+      ) : null}
+
+      {activeTab === "area" && showManagerAreaTabs ? (
+        <div style={{ marginTop: 12 }}>
+          <ManagerAreaWorkspace
+            mode="dashboard"
+            profileRole={profile?.role}
+            areasLoading={managerAreasLoading}
+            areasError={managerAreasError}
+            areaOptions={managerAreaOptions}
+            selectedAreaId={selectedManagerAreaId}
+            onSelectArea={(areaId) => {
+              setSelectedManagerAreaId(areaId);
+              setManagerAreaHistoryFilters(null);
+            }}
+            historyFilters={managerAreaHistoryFilters}
+            onOpenHistory={(filters) => {
+              setManagerAreaHistoryFilters(filters);
+              setActiveTab("history");
+            }}
+          />
+        </div>
+      ) : null}
+
+      {activeTab === "history" && showManagerAreaTabs ? (
+        <div style={{ marginTop: 12 }}>
+          <ManagerAreaWorkspace
+            mode="history"
+            profileRole={profile?.role}
+            areasLoading={managerAreasLoading}
+            areasError={managerAreasError}
+            areaOptions={managerAreaOptions}
+            selectedAreaId={selectedManagerAreaId}
+            onSelectArea={(areaId) => {
+              setSelectedManagerAreaId(areaId);
+              setManagerAreaHistoryFilters(null);
+            }}
+            historyFilters={managerAreaHistoryFilters}
+            onOpenHistory={(filters) => setManagerAreaHistoryFilters(filters)}
+          />
+        </div>
+      ) : null}
+
+      {activeTab === "templates" && showManagerAreaTabs ? (
+        <div style={{ marginTop: 12 }}>
+          <ManagerAreaWorkspace
+            mode="templates"
+            profileRole={profile?.role}
+            areasLoading={managerAreasLoading}
+            areasError={managerAreasError}
+            areaOptions={managerAreaOptions}
+            selectedAreaId={selectedManagerAreaId}
+            onSelectArea={(areaId) => {
+              setSelectedManagerAreaId(areaId);
+              setManagerAreaHistoryFilters(null);
+            }}
+            historyFilters={managerAreaHistoryFilters}
+            onOpenHistory={(filters) => setManagerAreaHistoryFilters(filters)}
+          />
         </div>
       ) : null}
 

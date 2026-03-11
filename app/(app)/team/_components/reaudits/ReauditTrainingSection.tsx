@@ -52,7 +52,7 @@ export default function ReauditTrainingSection({
           }}
         >
           <div style={{ fontSize: 12, color: "var(--muted)", fontWeight: 800 }}>
-            Training documentado
+            Formación documentada
           </div>
 
           <div style={{ marginTop: 6, whiteSpace: "pre-wrap" }}>
@@ -70,7 +70,7 @@ export default function ReauditTrainingSection({
       {canConfirmTraining && !isOpen ? (
         <div>
           <button disabled={busy} onClick={onOpen} style={primaryBtn}>
-            Documentar training
+            Documentar formación
           </button>
         </div>
       ) : null}
@@ -118,7 +118,7 @@ export default function ReauditTrainingSection({
                 opacity: busy ? 0.6 : 1,
               }}
             >
-              {busy ? "Guardando..." : "Guardar y confirmar training"}
+              {busy ? "Guardando..." : "Guardar y confirmar formación"}
             </button>
 
             <button disabled={busy} onClick={onCancel} style={btn}>

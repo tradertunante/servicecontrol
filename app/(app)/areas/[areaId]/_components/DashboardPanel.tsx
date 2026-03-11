@@ -13,17 +13,18 @@ import { clamp, fmtDate, getPeriodRange, periodLabel, scoreColor } from "../_lib
 import Sparkline from "./Sparkline";
 
 const card: React.CSSProperties = {
-  borderRadius: 18,
-  border: "1px solid rgba(0,0,0,0.08)",
-  background: "rgba(255,255,255,0.75)",
-  padding: 18,
+  borderRadius: 14,
+  border: "1px solid var(--border)",
+  background: "var(--card-bg)",
+  padding: 14,
+  boxShadow: "var(--shadow-sm)",
 };
 
 function pillStyle(): React.CSSProperties {
   return {
     borderRadius: 999,
-    border: "1px solid rgba(0,0,0,0.12)",
-    background: "#fff",
+    border: "1px solid var(--border)",
+    background: "rgba(255,255,255,0.06)",
     padding: "6px 10px",
     fontSize: 12,
     fontWeight: 950,
@@ -203,12 +204,13 @@ export default function DashboardPanel({
               onChange={(e) => setPeriod(e.target.value as PeriodKey)}
               style={{
                 padding: "10px 12px",
-                borderRadius: 14,
-                border: "2px solid rgba(255,0,150,0.20)",
+                borderRadius: 12,
+                border: "1px solid var(--border)",
                 outline: "none",
                 minWidth: 220,
                 fontWeight: 900,
-                background: "#fff",
+                background: "var(--card-bg)",
+                color: "inherit",
               }}
             >
               <option value="THIS_MONTH">Este mes</option>
@@ -224,12 +226,13 @@ export default function DashboardPanel({
               onChange={(e) => setTemplateFilter(e.target.value)}
               style={{
                 padding: "10px 12px",
-                borderRadius: 14,
-                border: "2px solid rgba(255,0,150,0.35)",
+                borderRadius: 12,
+                border: "1px solid var(--border)",
                 outline: "none",
                 minWidth: 260,
                 fontWeight: 900,
-                background: "#fff",
+                background: "var(--card-bg)",
+                color: "inherit",
               }}
             >
               <option value="ALL">General (todas)</option>
@@ -373,9 +376,9 @@ export default function DashboardPanel({
                     key={s.questionId}
                     style={{
                       ...clickableRow,
-                      border: "1px solid rgba(0,0,0,0.08)",
+                      border: "1px solid var(--border)",
                       borderRadius: 14,
-                      background: "rgba(0,0,0,0.02)",
+                      background: "rgba(255,255,255,0.04)",
                       padding: 10,
                       display: "flex",
                       justifyContent: "space-between",
@@ -435,9 +438,9 @@ export default function DashboardPanel({
                     key={c.classification}
                     style={{
                       ...clickableRow,
-                      border: "1px solid rgba(0,0,0,0.08)",
+                      border: "1px solid var(--border)",
                       borderRadius: 14,
-                      background: "rgba(0,0,0,0.02)",
+                      background: "rgba(255,255,255,0.04)",
                       padding: 10,
                       display: "flex",
                       justifyContent: "space-between",
