@@ -6,8 +6,8 @@ import type { MyPeriodKey, MyProfile } from "../_hooks/useMyDashboardData";
 function buildShellCard(): CSSProperties {
   return {
     border: "1px solid var(--border)",
-    borderRadius: 16,
-    padding: 16,
+    borderRadius: 14,
+    padding: 14,
     background: "var(--header-bg)",
     boxShadow: "var(--header-shadow)",
     width: "100%",
@@ -17,8 +17,8 @@ function buildShellCard(): CSSProperties {
 function buildInputStyle(): CSSProperties {
   return {
     width: "100%",
-    padding: "10px 12px",
-    borderRadius: 12,
+    padding: "9px 11px",
+    borderRadius: 10,
     border: "1px solid var(--input-border)",
     background: "var(--input-bg)",
     color: "var(--input-text)",
@@ -29,8 +29,8 @@ function buildInputStyle(): CSSProperties {
 function buildBtnStyle(): CSSProperties {
   return {
     border: "1px solid var(--input-border)",
-    borderRadius: 12,
-    padding: "10px 12px",
+    borderRadius: 10,
+    padding: "9px 11px",
     background: "rgba(0, 0, 0, 0.04)",
     cursor: "pointer",
     color: "var(--text)",
@@ -41,7 +41,7 @@ function buildPillStyle(): CSSProperties {
   return {
     border: "1px solid var(--border)",
     borderRadius: 999,
-    padding: "6px 10px",
+    padding: "5px 9px",
     background: "rgba(0, 0, 0, 0.03)",
     fontSize: 12,
     opacity: 0.9,
@@ -78,7 +78,7 @@ export default function MyHeader({
         }}
       >
         <div>
-          <div style={{ fontSize: 22, fontWeight: 900 }}>Mi espacio</div>
+          <div style={{ fontSize: 18, fontWeight: 900, lineHeight: 1.1 }}>Mi espacio</div>
           <div style={{ opacity: 0.85, marginTop: 4 }}>
             Tu ventana personal: trabajo, rendimiento y cuenta.
           </div>
@@ -99,15 +99,15 @@ export default function MyHeader({
 
       <div
         style={{
-          marginTop: 12,
+          marginTop: 10,
           display: "flex",
-          gap: 12,
+          gap: 10,
           alignItems: "flex-end",
           justifyContent: "space-between",
           flexWrap: "wrap",
         }}
       >
-        <div style={{ minWidth: 220 }}>
+        <div style={{ minWidth: 180, flex: "1 1 180px", maxWidth: 240 }}>
           <div style={{ opacity: 0.8, fontSize: 12, marginBottom: 6 }}>Periodo</div>
           <select
             style={input}

@@ -165,22 +165,22 @@ export default function HotelHeader() {
       </div>
 
       <style jsx>{`
-        .scHeader { position: fixed; top: 0; left: 0; right: 0; display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; background: var(--header-bg, rgba(255,255,255,0.92)); border-bottom: 1px solid var(--header-border, rgba(0,0,0,0.08)); box-shadow: 0 2px 8px rgba(0,0,0,0.05); z-index: 1000; backdrop-filter: blur(8px); gap: 12px; }
+        .scHeader { position: fixed; top: 0; left: 0; right: 0; display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: var(--header-bg, rgba(255,255,255,0.92)); border-bottom: 1px solid var(--header-border, rgba(0,0,0,0.08)); box-shadow: 0 2px 8px rgba(0,0,0,0.05); z-index: 1000; backdrop-filter: blur(8px); gap: 10px; }
         .left { display: flex; align-items: center; gap: 10px; min-width: 0; flex: 1; }
         .titleBlock { display: flex; flex-direction: column; min-width: 0; gap: 2px; }
-        .hotelBtn { font-size: 14px; font-weight: 950; letter-spacing: 0.3px; background: none; border: none; cursor: pointer; padding: 4px 6px; border-radius: 8px; opacity: ${loading ? 0.6 : isHoveringHotel ? 1 : 0.85}; transition: all 0.2s ease; color: ${isHoveringHotel ? "#000" : "inherit"}; text-decoration: ${isHoveringHotel ? "underline" : "none"}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
-        .pageTitle { font-size: 12px; font-weight: 900; opacity: 0.6; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+        .hotelBtn { font-size: 14px; font-weight: 950; letter-spacing: 0.2px; background: none; border: none; cursor: pointer; padding: 2px 4px; border-radius: 8px; opacity: ${loading ? 0.6 : isHoveringHotel ? 1 : 0.85}; transition: all 0.2s ease; color: ${isHoveringHotel ? "#000" : "inherit"}; text-decoration: ${isHoveringHotel ? "underline" : "none"}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; max-width: min(52vw, 360px); }
+        .pageTitle { font-size: 11px; font-weight: 900; opacity: 0.6; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; max-width: min(52vw, 360px); }
         .right { display: flex; align-items: center; gap: 10px; flex-shrink: 0; position: relative; }
         .actionsDesktop { display: flex; gap: 10px; align-items: center; }
         .actionsMobile { display: none; position: relative; }
-        .pillBtn { padding: 8px 14px; border-radius: 10px; border: 1px solid rgba(0,0,0,0.15); background: #fff; color: #000; font-weight: 900; cursor: pointer; font-size: 13px; white-space: nowrap; transition: all 0.2s; opacity: ${loading ? 0.6 : 1}; }
+        .pillBtn { padding: 7px 12px; border-radius: 10px; border: 1px solid rgba(0,0,0,0.15); background: #fff; color: #000; font-weight: 900; cursor: pointer; font-size: 13px; white-space: nowrap; transition: all 0.2s; opacity: ${loading ? 0.6 : 1}; }
         .pillBtn:hover:not(:disabled) { background: #000; color: #fff; }
-        .iconBtn { height: 40px; min-width: 40px; padding: 0 12px; border-radius: 12px; border: 1px solid rgba(0,0,0,0.15); background: #fff; color: #000; font-weight: 900; cursor: pointer; font-size: 16px; display: inline-flex; align-items: center; justify-content: center; transition: all 0.2s; }
+        .iconBtn { height: 38px; min-width: 38px; padding: 0 10px; border-radius: 12px; border: 1px solid rgba(0,0,0,0.15); background: #fff; color: #000; font-weight: 900; cursor: pointer; font-size: 15px; display: inline-flex; align-items: center; justify-content: center; transition: all 0.2s; }
         .iconBtn:hover:not(:disabled) { background: #000; color: #fff; }
-        .dropdown { position: absolute; top: 46px; right: 0; min-width: 180px; background: #fff; border: 1px solid rgba(0,0,0,0.12); border-radius: 12px; box-shadow: 0 14px 40px rgba(0,0,0,0.12); padding: 6px; overflow: hidden; z-index: 2000; }
+        .dropdown { position: absolute; top: 44px; right: 0; min-width: 170px; background: #fff; border: 1px solid rgba(0,0,0,0.12); border-radius: 12px; box-shadow: 0 14px 40px rgba(0,0,0,0.12); padding: 6px; overflow: hidden; z-index: 2000; }
         .dropItem { width: 100%; text-align: left; padding: 10px 12px; border-radius: 10px; border: none; background: transparent; cursor: pointer; font-weight: 900; font-size: 13px; color: #000; opacity: ${loading ? 0.6 : 1}; }
         .dropItem:hover:not(:disabled) { background: rgba(0,0,0,0.06); }
-        @media (max-width: 720px) { .scHeader { padding: 10px 12px; } .actionsDesktop { display: none; } .actionsMobile { display: block; } }
+        @media (max-width: 720px) { .scHeader { padding: 8px 10px; gap: 8px; } .left { gap: 8px; } .hotelBtn { font-size: 13px; max-width: 44vw; } .pageTitle { font-size: 10px; max-width: 44vw; } .actionsDesktop { display: none; } .actionsMobile { display: block; } .iconBtn { height: 36px; min-width: 36px; border-radius: 10px; } }
       `}</style>
     </>
   );

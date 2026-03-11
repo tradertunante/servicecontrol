@@ -26,8 +26,8 @@ export default function ReauditTrainingSection({
   trainingInfo: TrainingInfo | null;
 }) {
   const btn: React.CSSProperties = {
-    padding: "10px 14px",
-    borderRadius: 12,
+    padding: "9px 12px",
+    borderRadius: 10,
     border: "1px solid var(--border)",
     background: "var(--card-bg)",
     fontWeight: 900,
@@ -41,11 +41,11 @@ export default function ReauditTrainingSection({
   };
 
   return (
-    <div style={{ display: "grid", gap: 10 }}>
+    <div style={{ display: "grid", gap: 8 }}>
       {trainingInfo?.explanation ? (
         <div
           style={{
-            padding: 12,
+            padding: 10,
             borderRadius: 12,
             border: "1px solid rgba(0,0,0,0.08)",
             background: "rgba(255,255,255,0.03)",
@@ -59,7 +59,7 @@ export default function ReauditTrainingSection({
             {trainingInfo.explanation}
           </div>
 
-          <div style={{ marginTop: 8, fontSize: 12, color: "var(--muted)" }}>
+          <div style={{ marginTop: 6, fontSize: 12, color: "var(--muted)", overflowWrap: "anywhere" }}>
             {trainingInfo.confirmedBy ? `Por: ${trainingInfo.confirmedBy}` : ""}
             {trainingInfo.confirmedBy && trainingInfo.confirmedAt ? " · " : ""}
             {trainingInfo.confirmedAt ? `Fecha: ${fmtDate(trainingInfo.confirmedAt)}` : ""}
@@ -79,14 +79,14 @@ export default function ReauditTrainingSection({
         <div
           style={{
             display: "grid",
-            gap: 10,
-            padding: 12,
-            borderRadius: 14,
+            gap: 8,
+            padding: 10,
+            borderRadius: 12,
             border: "1px solid rgba(255,180,0,0.25)",
             background: "rgba(255,180,0,0.08)",
           }}
         >
-          <div style={{ fontWeight: 900 }}>
+          <div style={{ fontWeight: 900, lineHeight: 1.25 }}>
             Explica qué se hizo para dejar apto al colaborador para re-auditoría
           </div>
 
@@ -98,8 +98,8 @@ export default function ReauditTrainingSection({
             style={{
               width: "100%",
               resize: "vertical",
-              padding: 12,
-              borderRadius: 12,
+              padding: 10,
+              borderRadius: 10,
               border: "1px solid var(--border)",
               background: "var(--card-bg)",
             }}

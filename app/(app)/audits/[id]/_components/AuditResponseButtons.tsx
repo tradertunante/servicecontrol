@@ -14,7 +14,7 @@ export default function AuditResponseButtons({
   const options: AnswerValue[] = ["PASS", "FAIL", "NA"];
 
   return (
-    <div className="flex flex-col gap-2 sm:flex-row">
+    <div className="grid grid-cols-3 gap-2">
       {options.map((option) => {
         const selected = value === option;
         const tone =
@@ -36,7 +36,7 @@ export default function AuditResponseButtons({
             type="button"
             disabled={disabled}
             onClick={() => onChange(option)}
-            className={`min-h-[48px] flex-1 rounded-2xl border px-4 text-sm font-extrabold transition ${tone} ${
+            className={`min-h-[48px] min-w-0 rounded-xl border px-3 text-[13px] font-extrabold transition sm:rounded-2xl sm:px-4 sm:text-sm ${tone} ${
               disabled ? "cursor-not-allowed opacity-60" : ""
             }`}
           >

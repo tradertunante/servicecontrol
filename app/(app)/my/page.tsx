@@ -36,7 +36,7 @@ export default function MyDashboardPage() {
   }
 
   return (
-    <div style={{ width: "100%", padding: 18 }}>
+    <div style={{ width: "100%", padding: "12px 14px 18px" }}>
       <MyHeader
         profile={profile}
         hotelName={hotelName}

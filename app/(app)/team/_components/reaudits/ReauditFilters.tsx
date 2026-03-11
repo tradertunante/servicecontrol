@@ -17,8 +17,8 @@ export default function ReauditFilters({
   onReload: () => void | Promise<void>;
 }) {
   const btn: React.CSSProperties = {
-    padding: "10px 14px",
-    borderRadius: 12,
+    padding: "9px 12px",
+    borderRadius: 10,
     border: "1px solid var(--border)",
     background: "var(--card-bg)",
     fontWeight: 900,
@@ -30,12 +30,12 @@ export default function ReauditFilters({
       style={{
         background: "var(--card-bg)",
         border: "1px solid var(--border)",
-        borderRadius: 16,
-        padding: 14,
+        borderRadius: 14,
+        padding: 12,
         display: "flex",
-        gap: 10,
+        gap: 8,
         flexWrap: "wrap",
-        alignItems: "center",
+        alignItems: "stretch",
       }}
     >
       <input
@@ -43,10 +43,10 @@ export default function ReauditFilters({
         onChange={(e) => onQChange(e.target.value)}
         placeholder="Buscar área, template, colaborador, auditor..."
         style={{
-          flex: 1,
-          minWidth: 260,
-          padding: "10px 12px",
-          borderRadius: 12,
+          flex: "1 1 220px",
+          minWidth: 0,
+          padding: "9px 11px",
+          borderRadius: 10,
           border: "1px solid var(--border)",
           background: "var(--card-bg)",
         }}
