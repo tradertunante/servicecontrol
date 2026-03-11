@@ -114,6 +114,7 @@ pendiente
 - diseño recomendado de migración server-side
 - diseño técnico detallado de `submit_audit_run`
 - plan de implementación por entregables pequeños
+- corrección del ranking de FAIL por clasificación en dashboard de área usando clasificación efectiva por sección cuando `audit_questions.classification` no está poblado
 
 ### En curso
 
