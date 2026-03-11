@@ -198,13 +198,9 @@ export default function AuditPageShell({
 
   const footer = (
     <AuditStickyFooter
-      canGoPrevious={canGoPrevious}
-      canGoNext={canGoNext}
       submitting={submitting}
       submitted={submitted}
       saving={saving}
-      onPrevious={onPreviousQuestion}
-      onNext={onNextQuestion}
       onSave={onSubmit}
     />
   );
