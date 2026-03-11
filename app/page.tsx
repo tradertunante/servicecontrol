@@ -3,37 +3,8 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
-
-type Role =
-  | "admin"
-  | "manager"
-  | "auditor"
-  | "superadmin"
-  | "quality"
-  | "engineering"
-  | "systems";
-
-type Profile = {
-  id: string;
-  full_name: string | null;
-  role: Role;
-  hotel_id: string | null;
-  active?: boolean | null;
-};
-
-function cleanRole(input: any): Role {
-  const r = String(input ?? "").trim().toLowerCase();
-
-  if (r === "superadmin") return "superadmin";
-  if (r === "admin") return "admin";
-  if (r === "manager") return "manager";
-  if (r === "auditor") return "auditor";
-  if (r === "quality") return "quality";
-  if (r === "engineering") return "engineering";
-  if (r === "systems") return "systems";
-
-  return "auditor";
-}
+import { normalizeRole } from "@/lib/auth/permissions";
+import type { Profile } from "@/lib/types";
 
 export default function HomePage() {
   const router = useRouter();
@@ -51,7 +22,9 @@ export default function HomePage() {
 
       try {
         const start = Date.now();
-        let session = null as any;
+        let session: Awaited<
+          ReturnType<typeof supabase.auth.getSession>
+        >["data"]["session"] = null;
 
         while (Date.now() - start < 1500) {
           const { data, error } = await supabase.auth.getSession();
@@ -92,7 +65,7 @@ export default function HomePage() {
           throw new Error("Tu usuario está inactivo.");
         }
 
-        const role = cleanRole(prof.role);
+        const role = normalizeRole(prof.role);
 
         const profile: Profile = {
           id: prof.id,

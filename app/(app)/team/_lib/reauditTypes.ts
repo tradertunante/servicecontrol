@@ -50,6 +50,7 @@ export type EnrichedReauditRow = ReauditRow & {
   template_name: string | null;
   team_member_name: string | null;
   assigned_auditor_name: string | null;
+  original_audit_score: number | null;
 };
 
 export type ReauditStats = {

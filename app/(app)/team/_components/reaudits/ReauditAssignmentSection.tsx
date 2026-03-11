@@ -25,7 +25,7 @@ export default function ReauditAssignmentSection({
   selectedNote: string;
   onAuditorChange: (value: string) => void;
   onNoteChange: (value: string) => void;
-  onSave: () => void;
+  onSave: () => void | Promise<void>;
   onReset: () => void;
 }) {
   const currentAuditorId = assignedAuditorId ?? "";
@@ -34,11 +34,11 @@ export default function ReauditAssignmentSection({
 
   const panelStyle: React.CSSProperties = {
     border: "1px solid var(--border)",
-    borderRadius: 14,
+    borderRadius: 12,
     background: "rgba(255,255,255,0.03)",
-    padding: 12,
+    padding: 10,
     display: "grid",
-    gap: 10,
+    gap: 8,
     minWidth: 0,
   };
 
@@ -50,8 +50,8 @@ export default function ReauditAssignmentSection({
   };
 
   const btn: React.CSSProperties = {
-    padding: "10px 14px",
-    borderRadius: 12,
+    padding: "8px 12px",
+    borderRadius: 10,
     border: "1px solid var(--border)",
     background: "var(--card-bg)",
     fontWeight: 900,
@@ -64,14 +64,21 @@ export default function ReauditAssignmentSection({
     <div style={panelStyle}>
       <div
         style={{
-          display: "grid",
-          gridTemplateColumns: "160px minmax(0, 1fr)",
-          gap: 10,
+          display: "flex",
+          justifyContent: "space-between",
+          gap: 8,
           alignItems: "center",
+          flexWrap: "wrap",
         }}
       >
         <div style={labelStyle}>Auditor asignado</div>
-        <div style={{ fontWeight: 800, overflowWrap: "anywhere" }}>
+        <div
+          style={{
+            fontWeight: 800,
+            overflowWrap: "anywhere",
+            textAlign: "right",
+          }}
+        >
           {assignedAuditorName ?? "—"}
         </div>
       </div>
@@ -81,9 +88,9 @@ export default function ReauditAssignmentSection({
           style={{
             display: "grid",
             gridTemplateColumns: hasPendingChange
-              ? "minmax(220px, 280px) minmax(220px, 1fr) auto"
-              : "minmax(220px, 280px) auto",
-            gap: 10,
+              ? "minmax(180px, 240px) minmax(180px, 1fr) auto"
+              : "minmax(180px, 240px) auto",
+            gap: 8,
             alignItems: "center",
           }}
         >
@@ -92,10 +99,10 @@ export default function ReauditAssignmentSection({
             onChange={(e) => onAuditorChange(e.target.value)}
             style={{
               padding: "10px 12px",
-              borderRadius: 12,
+              borderRadius: 10,
               border: "1px solid var(--border)",
               background: "var(--card-bg)",
-              minHeight: 42,
+              minHeight: 40,
               width: "100%",
             }}
           >
@@ -115,10 +122,10 @@ export default function ReauditAssignmentSection({
               style={{
                 width: "100%",
                 padding: "10px 12px",
-                borderRadius: 12,
+                borderRadius: 10,
                 border: "1px solid var(--border)",
                 background: "var(--card-bg)",
-                minHeight: 42,
+                minHeight: 40,
               }}
             />
           ) : null}

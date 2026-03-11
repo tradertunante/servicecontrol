@@ -55,8 +55,8 @@ export default function ReauditCard({
   const router = useRouter();
 
   const btn: React.CSSProperties = {
-    padding: "10px 14px",
-    borderRadius: 12,
+    padding: "8px 12px",
+    borderRadius: 10,
     border: "1px solid var(--border)",
     background: "var(--card-bg)",
     fontWeight: 900,
@@ -71,9 +71,9 @@ export default function ReauditCard({
 
   const panelStyle: React.CSSProperties = {
     border: "1px solid var(--border)",
-    borderRadius: 14,
+    borderRadius: 12,
     background: "rgba(255,255,255,0.03)",
-    padding: 12,
+    padding: 10,
     minWidth: 0,
   };
 
@@ -94,6 +94,14 @@ export default function ReauditCard({
   const daysToDue = dayDiffFromNow(row.scheduled_for);
   const isOverdue = daysToDue !== null && daysToDue < 0;
   const isReady = !!row.ready_for_reaudit;
+  const hasReauditScore = typeof row.score === "number" && Number.isFinite(row.score);
+  const hasOriginalScore =
+    typeof row.original_audit_score === "number" &&
+    Number.isFinite(row.original_audit_score);
+  const improvement =
+    hasReauditScore && hasOriginalScore
+      ? row.score - row.original_audit_score
+      : null;
 
   const canConfirmTraining =
     row.status === "pending_training" &&
@@ -103,6 +111,12 @@ export default function ReauditCard({
   const isClosed = row.status === "submitted";
   const canReassign = canManageReauditAssignment && !isClosed;
 
+  function formatScore(score: number | null | undefined) {
+    return typeof score === "number" && Number.isFinite(score)
+      ? `${score.toFixed(1)}%`
+      : "—";
+  }
+
   return (
     <div
       style={{
@@ -110,21 +124,21 @@ export default function ReauditCard({
         border: isReady ? "1px solid rgba(0,200,0,0.30)" : "1px solid var(--border)",
         borderRadius: 16,
         boxShadow: "var(--shadow-sm)",
-        padding: 16,
+        padding: 14,
         display: "grid",
-        gap: 12,
+        gap: 10,
       }}
     >
       <div
         style={{
           display: "flex",
           justifyContent: "space-between",
-          gap: 12,
+          gap: 10,
           alignItems: "flex-start",
           flexWrap: "wrap",
         }}
       >
-        <div style={{ display: "grid", gap: 8, minWidth: 0 }}>
+        <div style={{ display: "grid", gap: 6, minWidth: 0 }}>
           <div
             style={{
               display: "flex",
@@ -218,7 +232,7 @@ export default function ReauditCard({
         style={{
           display: "grid",
           gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
-          gap: 10,
+          gap: 8,
         }}
       >
         <div style={panelStyle}>
@@ -250,13 +264,51 @@ export default function ReauditCard({
 
       <div
         style={{
+          ...panelStyle,
+          display: "flex",
+          gap: 12,
+          flexWrap: "wrap",
+          alignItems: "center",
+          justifyContent: "space-between",
+        }}
+      >
+        <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
+          <div style={{ display: "flex", gap: 6, alignItems: "baseline" }}>
+            <span style={labelStyle}>Score original</span>
+            <span style={valueStyle}>{formatScore(row.original_audit_score)}</span>
+          </div>
+
+          <div style={{ display: "flex", gap: 6, alignItems: "baseline" }}>
+            <span style={labelStyle}>Reauditoría</span>
+            <span style={valueStyle}>
+              {hasReauditScore ? formatScore(row.score) : "Pendiente"}
+            </span>
+          </div>
+        </div>
+
+        {improvement !== null ? (
+          <div
+            style={{
+              ...valueStyle,
+              color: improvement > 0 ? "green" : improvement < 0 ? "crimson" : "inherit",
+              whiteSpace: "nowrap",
+            }}
+          >
+            Mejora: {improvement > 0 ? "+" : ""}
+            {improvement.toFixed(2)} pts
+          </div>
+        ) : null}
+      </div>
+
+      <div
+        style={{
           display: "grid",
           gridTemplateColumns: "minmax(420px, 1.1fr) minmax(320px, 0.9fr)",
-          gap: 12,
+          gap: 10,
           alignItems: "start",
         }}
       >
-        <div style={{ display: "grid", gap: 12, minWidth: 0 }}>
+        <div style={{ display: "grid", gap: 10, minWidth: 0 }}>
           <ReauditAssignmentSection
             assignedAuditorName={row.assigned_auditor_name}
             assignedAuditorId={row.assigned_auditor_id}
@@ -294,27 +346,33 @@ export default function ReauditCard({
         </div>
       </div>
 
-      <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-        {isReady ? (
-          <>
-            <div
-              style={{
-                ...btn,
-                cursor: "default",
-                background: "rgba(0,200,0,0.08)",
-                color: "green",
-                border: "1px solid rgba(0,200,0,0.2)",
-              }}
-            >
-              Lista para re-auditar
-            </div>
+      {isReady ? (
+        <div
+          style={{
+            display: "flex",
+            gap: 8,
+            flexWrap: "wrap",
+            alignItems: "center",
+            justifyContent: "space-between",
+          }}
+        >
+          <div
+            style={{
+              ...btn,
+              cursor: "default",
+              background: "rgba(0,200,0,0.08)",
+              color: "green",
+              border: "1px solid rgba(0,200,0,0.2)",
+            }}
+          >
+            Lista para re-auditar
+          </div>
 
-            <button onClick={() => router.push(`/audits/${row.id}`)} style={primaryBtn}>
-              Open Re-audit
-            </button>
-          </>
-        ) : null}
-      </div>
+          <button onClick={() => router.push(`/audits/${row.id}`)} style={primaryBtn}>
+            Open Re-audit
+          </button>
+        </div>
+      ) : null}
     </div>
   );
 }
