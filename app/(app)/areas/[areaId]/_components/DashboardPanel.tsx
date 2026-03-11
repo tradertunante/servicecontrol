@@ -264,7 +264,7 @@ export default function DashboardPanel({
           {lastRun ? (
             <>
               <div style={{ fontWeight: 900 }}>
-                {templateNameById[lastRun.audit_template_id] ?? lastRun.audit_template_id}
+                {templateNameById[lastRun.audit_template_id] ?? "Plantilla"}
               </div>
               <div style={{ opacity: 0.85, marginTop: 4 }}>
                 {fmtDate(lastRun.executed_at)} ·{" "}

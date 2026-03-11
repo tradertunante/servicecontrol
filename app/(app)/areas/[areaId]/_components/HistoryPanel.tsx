@@ -306,7 +306,7 @@ export default function HistoryPanel({
     out.push({ label: `Periodo: ${String(urlPeriod)}` });
     out.push({ label: urlTemplate === "ALL" ? "Vista: General" : "Vista: Por tipo" });
 
-    if (urlFailQ) out.push({ label: `Estándar: ${urlFailQ}` });
+    if (urlFailQ) out.push({ label: "Estándar seleccionado" });
     if (urlFailCls) out.push({ label: `Clasificación: ${urlFailCls}` });
 
     return out;
