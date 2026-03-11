@@ -4,7 +4,6 @@ import { useEffect, useMemo, useRef } from "react";
 import AuditHeader from "./AuditHeader";
 import AuditProgressBar from "./AuditProgressBar";
 import AuditQuestionCard from "./AuditQuestionCard";
-import AuditSectionChips from "./AuditSectionChips";
 import AuditStickyFooter from "./AuditStickyFooter";
 import DesktopAuditLayout from "./DesktopAuditLayout";
 import MobileAuditLayout from "./MobileAuditLayout";
@@ -114,16 +113,8 @@ export default function AuditPageShell({
     </div>
   );
 
-  const sectionNav = (
-    <AuditSectionChips
-      sections={sections}
-      activeSectionId={activeSectionId}
-      onSelect={onSelectSection}
-    />
-  );
-
   const content = (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col gap-2.5">
       {error ? (
         <div className="rounded-2xl border border-rose-200 bg-rose-50 px-3 py-2.5 text-sm font-extrabold text-rose-700">
           {error}
@@ -220,8 +211,8 @@ export default function AuditPageShell({
 
   return (
     <>
-      <MobileAuditLayout header={header} sections={sectionNav} content={content} footer={footer} />
-      <DesktopAuditLayout header={header} sections={sectionNav} content={content} footer={footer} />
+      <MobileAuditLayout header={header} content={content} footer={footer} />
+      <DesktopAuditLayout header={header} content={content} footer={footer} />
     </>
   );
 }
