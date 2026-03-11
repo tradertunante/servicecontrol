@@ -17,24 +17,26 @@ import {
 } from "../_lib/areaUtils";
 
 const card: React.CSSProperties = {
-  borderRadius: 18,
-  border: "1px solid rgba(0,0,0,0.08)",
-  background: "rgba(255,255,255,0.75)",
-  padding: 18,
+  borderRadius: 14,
+  border: "1px solid var(--border)",
+  background: "var(--card-bg)",
+  padding: 14,
+  boxShadow: "var(--shadow-sm)",
 };
 
 const inputStyle: React.CSSProperties = {
   padding: "10px 12px",
   borderRadius: 12,
-  border: "1px solid rgba(0,0,0,0.20)",
-  background: "#fff",
+  border: "1px solid var(--border)",
+  background: "var(--card-bg)",
+  color: "inherit",
   fontWeight: 900,
 };
 
 const primaryBtn: React.CSSProperties = {
   padding: "10px 14px",
   borderRadius: 12,
-  border: "1px solid rgba(0,0,0,0.2)",
+  border: "1px solid var(--border)",
   background: "#000",
   color: "#fff",
   fontWeight: 900,
@@ -45,9 +47,9 @@ const primaryBtn: React.CSSProperties = {
 const ghostBtn: React.CSSProperties = {
   padding: "10px 14px",
   borderRadius: 12,
-  border: "1px solid rgba(0,0,0,0.2)",
-  background: "#fff",
-  color: "#000",
+  border: "1px solid var(--border)",
+  background: "var(--card-bg)",
+  color: "inherit",
   fontWeight: 900,
   cursor: "pointer",
   whiteSpace: "nowrap",
@@ -56,8 +58,8 @@ const ghostBtn: React.CSSProperties = {
 const dangerBtn: React.CSSProperties = {
   padding: "10px 14px",
   borderRadius: 12,
-  border: "1px solid rgba(0,0,0,0.25)",
-  background: "#fff",
+  border: "1px solid var(--border)",
+  background: "var(--card-bg)",
   color: "#b00020",
   fontWeight: 950,
   cursor: "pointer",
@@ -67,8 +69,8 @@ const dangerBtn: React.CSSProperties = {
 function chipStyle(): React.CSSProperties {
   return {
     borderRadius: 999,
-    border: "1px solid rgba(0,0,0,0.14)",
-    background: "#fff",
+    border: "1px solid var(--border)",
+    background: "rgba(255,255,255,0.06)",
     padding: "6px 10px",
     fontSize: 12,
     fontWeight: 950,
@@ -83,12 +85,20 @@ export default function HistoryPanel({
   templates,
   onViewRun,
   onDeleteSuccess,
+  embeddedTemplateFilter,
+  embeddedPeriod,
+  embeddedFailQuestionId,
+  embeddedFailClassification,
 }: {
   areaId: string;
   profileRole: Role | null;
   templates: AuditTemplate[];
   onViewRun: (runId: string) => void;
   onDeleteSuccess: (deletedRunId: string) => void;
+  embeddedTemplateFilter?: string | null;
+  embeddedPeriod?: PeriodKey | null;
+  embeddedFailQuestionId?: string | null;
+  embeddedFailClassification?: string | null;
 }) {
   const searchParams = useSearchParams();
   const now = new Date();
@@ -106,10 +116,10 @@ export default function HistoryPanel({
   const showDelete = canDeleteAudits(profileRole);
 
   // ✅ params desde dashboard
-  const urlTemplate = searchParams.get("template") ?? "ALL";
-  const urlPeriod = safePeriod(searchParams.get("period"));
-  const urlFailQ = (searchParams.get("fail_q") ?? "").trim();
-  const urlFailCls = (searchParams.get("fail_cls") ?? "").trim();
+  const urlTemplate = embeddedTemplateFilter ?? searchParams.get("template") ?? "ALL";
+  const urlPeriod = embeddedPeriod ?? safePeriod(searchParams.get("period"));
+  const urlFailQ = (embeddedFailQuestionId ?? searchParams.get("fail_q") ?? "").trim();
+  const urlFailCls = (embeddedFailClassification ?? searchParams.get("fail_cls") ?? "").trim();
 
   const isFailMode = Boolean(urlFailQ || urlFailCls);
 
@@ -434,10 +444,10 @@ export default function HistoryPanel({
               <div
                 key={r.id}
                 style={{
-                  border: "1px solid rgba(0,0,0,0.10)",
+                  border: "1px solid var(--border)",
                   borderRadius: 14,
                   padding: 14,
-                  background: "rgba(0,0,0,0.02)",
+                  background: "rgba(255,255,255,0.04)",
                   display: "flex",
                   justifyContent: "space-between",
                   alignItems: "center",

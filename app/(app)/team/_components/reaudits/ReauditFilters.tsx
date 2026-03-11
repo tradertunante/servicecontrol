@@ -58,11 +58,9 @@ export default function ReauditFilters({
         style={btn}
       >
         <option value="all">Todos los estados</option>
-        <option value="pending_training">pending_training</option>
-        <option value="blocked_by_non_operational">
-          blocked_by_non_operational
-        </option>
-        <option value="draft">ready_for_reaudit</option>
+        <option value="pending_training">Formación pendiente</option>
+        <option value="blocked_by_non_operational">Bloqueadas</option>
+        <option value="draft">Listas para ejecutar</option>
       </select>
 
       <button onClick={onReload} style={btn}>

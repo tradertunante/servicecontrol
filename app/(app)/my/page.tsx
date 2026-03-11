@@ -35,6 +35,55 @@ export default function MyDashboardPage() {
     router.replace("/login");
   }
 
+  async function handleAudit() {
+    try {
+      if (profile?.role === "manager") {
+        router.push("/team");
+        return;
+      }
+
+      const {
+        data: { user },
+        error: userError,
+      } = await supabase.auth.getUser();
+
+      if (userError || !user) {
+        alert("No se pudo identificar tu usuario para abrir el área de auditoría.");
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from("user_area_access")
+        .select("area_id")
+        .eq("user_id", user.id);
+
+      if (error) throw error;
+
+      const areaIds = Array.from(
+        new Set(
+          (data ?? [])
+            .map((row: { area_id: string | null }) => row.area_id)
+            .filter((areaId): areaId is string => !!areaId)
+        )
+      );
+
+      if (areaIds.length === 0) {
+        alert("No tienes ningún área asignada para auditar.");
+        return;
+      }
+
+      if (areaIds.length === 1) {
+        router.push(`/areas/${areaIds[0]}?tab=dashboard`);
+        return;
+      }
+
+      router.push("/areas");
+    } catch (error) {
+      console.error("Error resolving audit area access:", error);
+      alert("No se pudo abrir el área de auditoría.");
+    }
+  }
+
   return (
     <div style={{ width: "100%", padding: "12px 14px 18px" }}>
       <MyHeader
@@ -42,7 +91,7 @@ export default function MyDashboardPage() {
         hotelName={hotelName}
         selectedPeriod={selectedPeriod}
         onChangePeriod={setSelectedPeriod}
-        onAudit={() => router.push("/audits/new")}
+        onAudit={handleAudit}
       />
 
       <MySubnav viewMode={viewMode} onChange={setViewMode} />

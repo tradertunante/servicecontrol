@@ -54,6 +54,14 @@ export default function ReauditCard({
 }) {
   const router = useRouter();
 
+  function getStatusLabel(status: string | null | undefined) {
+    if (status === "draft") return "Lista";
+    if (status === "pending_training") return "Formación pendiente";
+    if (status === "blocked_by_non_operational") return "Bloqueada";
+    if (status === "submitted") return "Cerrada";
+    return status ?? "—";
+  }
+
   const btn: React.CSSProperties = {
     padding: "7px 11px",
     borderRadius: 10,
@@ -169,7 +177,7 @@ export default function ReauditCard({
                       : "crimson",
               }}
             >
-              {row.status ?? "—"}
+              {getStatusLabel(row.status)}
             </span>
 
             {isReady ? (
@@ -184,7 +192,7 @@ export default function ReauditCard({
                   color: "green",
                 }}
               >
-                READY
+                LISTA
               </span>
             ) : null}
 
@@ -200,7 +208,7 @@ export default function ReauditCard({
                   color: "crimson",
                 }}
               >
-                OVERDUE
+                VENCIDA
               </span>
             ) : null}
           </div>
@@ -249,7 +257,7 @@ export default function ReauditCard({
         </div>
 
         <div style={panelStyle}>
-          <div style={labelStyle}>Training</div>
+          <div style={labelStyle}>Formación</div>
           <div style={valueStyle}>
             {row.requires_training
               ? row.training_confirmed
@@ -260,7 +268,7 @@ export default function ReauditCard({
         </div>
 
         <div style={panelStyle}>
-          <div style={labelStyle}>Blocking issues</div>
+          <div style={labelStyle}>Bloqueos</div>
           <div style={valueStyle}>{row.blocking_issue_count ?? 0}</div>
         </div>
       </div>
@@ -372,7 +380,7 @@ export default function ReauditCard({
           </div>
 
           <button onClick={() => router.push(`/audits/${row.id}`)} style={primaryBtn}>
-            Open Re-audit
+            Abrir re-auditoría
           </button>
         </div>
       ) : null}

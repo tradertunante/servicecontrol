@@ -58,7 +58,7 @@ export function useAreaData({
         // ✅ incluye quality
         const p = await requireRoleOrRedirect(
           router,
-          ["admin", "manager", "auditor", "superadmin", "quality"],
+          ["admin", "general_manager", "manager", "auditor", "superadmin", "quality"],
           "/areas"
         );
         if (!p) return;
@@ -66,7 +66,9 @@ export function useAreaData({
 
         // ✅ permitir quality aunque canRunAudits no lo contemple
         const allowed =
-          p.role === "superadmin" ? true : canRunAudits(p.role) || p.role === "quality";
+          p.role === "superadmin"
+            ? true
+            : canRunAudits(p.role) || p.role === "quality" || p.role === "general_manager";
 
         if (!allowed) {
           setError("No tienes permisos para acceder a esta sección.");

@@ -35,7 +35,7 @@ export default function AreasPage() {
         // ✅ quality incluido
         const p = (await requireRoleOrRedirect(
           router,
-          ["admin", "manager", "auditor", "superadmin", "quality"],
+          ["admin", "general_manager", "manager", "auditor", "superadmin", "quality"],
           "/login"
         )) as Profile | null;
         if (!alive || !p) return;
@@ -74,8 +74,9 @@ export default function AreasPage() {
       try {
         // ✅ admin, manager, superadmin y quality ven todas las áreas
         // auditor solo ve sus áreas asignadas
-        const isAdminLike = profile.role === "admin" || profile.role === "manager" ||
-                            profile.role === "superadmin" || profile.role === "quality";
+        const isAdminLike = profile.role === "admin" || profile.role === "general_manager" ||
+                            profile.role === "manager" || profile.role === "superadmin" ||
+                            profile.role === "quality";
         let areasList: AreaRow[] = [];
 
         if (isAdminLike) {
