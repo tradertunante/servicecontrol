@@ -26,6 +26,7 @@ type AnswerRow = {
   answer: string | null; // legacy/mixed source
   result: string | null; // "FAIL" | "NA"
   comment: string | null;
+  photo_path: string | null;
 };
 
 type QuestionMeta = {
@@ -123,6 +124,12 @@ function chip(text: string, kind?: "FAIL" | "NA") {
       {text}
     </span>
   );
+}
+
+function normalizeAnswerValue(row: AnswerRow) {
+  // audit_answers may contain mixed legacy/current values in answer/result.
+  // Always normalize from answer first, then result.
+  return String(row.answer ?? row.result ?? "").trim().toUpperCase();
 }
 
 export default function AuditRunViewPage() {
@@ -236,7 +243,7 @@ export default function AuditRunViewPage() {
         // Answers
         const { data: aData, error: aErr } = await supabase
           .from("audit_answers")
-          .select("audit_run_id,question_id,answer,result,comment")
+          .select("audit_run_id,question_id,answer,result,comment,photo_path")
           .eq("audit_run_id", auditRunId);
 
         if (aErr) throw aErr;
@@ -300,10 +307,8 @@ export default function AuditRunViewPage() {
       };
     }
 
-    // NOTE: audit_answers may contain legacy/mixed data across `answer` and `result`.
-    // All read paths must normalize using `answer ?? result`.
     for (const a of answers) {
-      const res = String(a.answer ?? a.result ?? "").toUpperCase();
+      const res = normalizeAnswerValue(a);
       if (res !== "FAIL" && res !== "NA") continue;
 
       const meta = qMeta[a.question_id];

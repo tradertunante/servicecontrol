@@ -26,8 +26,36 @@ export default function TeamSummaryTab({
   hotelId: string;
 }) {
   const [showAssignmentsConfig, setShowAssignmentsConfig] = useState(false);
-  const { loading, error, leaderboard, teamTargets, teamRecentRuns, summary } =
+  const { loading, error, leaderboard, teamTargets, teamRecentRuns, teamTemplateProgress, summary } =
     useTeamData(selectedPeriod);
+
+  const overviewSummary = useMemo(() => {
+    let totalTargets = 0;
+    let totalCoveredTargets = 0;
+    let totalRemaining = 0;
+
+    for (const row of teamTargets) {
+      const target = Number(row.target ?? 0);
+      const completed = Number(row.completed ?? 0);
+      const covered = Math.min(completed, target);
+      const remaining = Math.max(target - covered, 0);
+
+      totalTargets += target;
+      totalCoveredTargets += covered;
+      totalRemaining += remaining;
+    }
+
+    const globalPct =
+      totalTargets > 0 ? (totalCoveredTargets / totalTargets) * 100 : 0;
+
+    return {
+      totalAuditsDone: summary.totalAuditsDone,
+      totalTargets,
+      totalCoveredTargets,
+      totalRemaining,
+      globalPct,
+    };
+  }, [summary.totalAuditsDone, teamTargets]);
 
   const groupedTargetsByAuditor = useMemo(() => {
     const map: Record<
@@ -89,6 +117,115 @@ export default function TeamSummaryTab({
     return result;
   }, [teamTargets]);
 
+  const groupedTargetsByTemplateFallback = useMemo(() => {
+    const map: Record<
+      string,
+      {
+        template: string;
+        targetSum: number;
+        completedSum: number;
+        remainingSum: number;
+        progressPct: number;
+      }
+    > = {};
+
+    for (const row of teamTargets) {
+      const key = String(row.template ?? "Auditoría");
+      const target = Number(row.target ?? 0);
+      const completed = Number(row.completed ?? 0);
+      const remaining = Math.max(target - completed, 0);
+
+      if (!map[key]) {
+        map[key] = {
+          template: key,
+          targetSum: 0,
+          completedSum: 0,
+          remainingSum: 0,
+          progressPct: 0,
+        };
+      }
+
+      map[key].targetSum += target;
+      map[key].completedSum += completed;
+      map[key].remainingSum += remaining;
+    }
+
+    const result = Object.values(map).map((group) => ({
+      ...group,
+      progressPct: group.targetSum > 0 ? (group.completedSum / group.targetSum) * 100 : 0,
+    }));
+
+    result.sort((a, b) => {
+      const remainingDiff = b.remainingSum - a.remainingSum;
+      if (remainingDiff !== 0) return remainingDiff;
+      return a.template.localeCompare(b.template);
+    });
+
+    return result;
+  }, [teamTargets]);
+
+  const groupedTargetsByTemplate = useMemo(() => {
+    if (teamTemplateProgress.length > 0) return teamTemplateProgress;
+    return groupedTargetsByTemplateFallback;
+  }, [groupedTargetsByTemplateFallback, teamTemplateProgress]);
+
+  const rubricTargetsByAuditor = useMemo(() => {
+    const auditorMap: Record<
+      string,
+      Array<{
+        template: string;
+        completed: number;
+        target: number;
+        remaining: number;
+      }>
+    > = {};
+
+    const grouped: Record<
+      string,
+      Record<
+        string,
+        {
+          template: string;
+          completed: number;
+          target: number;
+          remaining: number;
+        }
+      >
+    > = {};
+
+    for (const row of teamTargets) {
+      const auditorId = row.auditor_user_id;
+      const template = String(row.template ?? "Auditoría");
+      const target = Number(row.target ?? 0);
+      const completed = Number(row.completed ?? 0);
+      const remaining = Math.max(target - Math.min(completed, target), 0);
+
+      if (!grouped[auditorId]) grouped[auditorId] = {};
+      if (!grouped[auditorId][template]) {
+        grouped[auditorId][template] = {
+          template,
+          completed: 0,
+          target: 0,
+          remaining: 0,
+        };
+      }
+
+      grouped[auditorId][template].completed += completed;
+      grouped[auditorId][template].target += target;
+      grouped[auditorId][template].remaining += remaining;
+    }
+
+    for (const auditorId of Object.keys(grouped)) {
+      auditorMap[auditorId] = Object.values(grouped[auditorId]).sort((a, b) => {
+        const remainingDiff = b.remaining - a.remaining;
+        if (remainingDiff !== 0) return remainingDiff;
+        return a.template.localeCompare(b.template);
+      });
+    }
+
+    return auditorMap;
+  }, [teamTargets]);
+
   const insights = useMemo(() => {
     const list: {
       type: "warning" | "info";
@@ -96,38 +233,44 @@ export default function TeamSummaryTab({
       text: string;
     }[] = [];
 
-    if (summary.totalTargets > 0 && summary.totalAuditsDone === 0) {
+    if (overviewSummary.totalTargets > 0 && overviewSummary.totalAuditsDone === 0) {
       list.push({
         type: "warning",
         title: "Atención",
         text: "El equipo aún no ha iniciado el objetivo del periodo.",
       });
-    } else if (summary.totalTargets > 0) {
-      const ratio = summary.totalRemaining / summary.totalTargets;
+    } else if (overviewSummary.totalTargets > 0) {
+      const ratio = overviewSummary.totalRemaining / overviewSummary.totalTargets;
 
       if (ratio > 0.7) {
         list.push({
           type: "warning",
           title: "Retraso en objetivos",
-          text: "Queda más del 70% del objetivo del periodo por completar.",
+          text: "Queda más del 70% del objetivo asignado del periodo por cubrir.",
         });
       }
     }
 
     if (groupedTargetsByAuditor.length > 0) {
       const top = groupedTargetsByAuditor[0];
+      const topPendingCount = groupedTargetsByAuditor.filter(
+        (group) => group.remainingSum === top.remainingSum,
+      ).length;
 
       if (top.remainingSum > 0) {
         list.push({
           type: "info",
           title: "Reparto de carga",
-          text: `${top.auditor} concentra la mayor carga pendiente (${top.remainingSum} auditorías).`,
+          text:
+            topPendingCount > 1
+              ? `${top.auditor} está entre las mayores cargas pendientes asignadas (${top.remainingSum} auditorías).`
+              : `${top.auditor} concentra la mayor carga pendiente asignada (${top.remainingSum} auditorías).`,
         });
       }
     }
 
     return list.slice(0, 3);
-  }, [summary, groupedTargetsByAuditor]);
+  }, [overviewSummary, groupedTargetsByAuditor]);
 
   const progressTrackStyle: React.CSSProperties = {
     marginTop: 10,
@@ -164,49 +307,6 @@ export default function TeamSummaryTab({
           <b>Error:</b> {error}
         </Card>
       ) : null}
-
-      <div
-        style={{
-          marginTop: 14,
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
-          gap: 12,
-        }}
-      >
-        <Card>
-          <div style={{ opacity: 0.8, fontSize: 13 }}>
-            Auditorías equipo · {getPeriodLabel(selectedPeriod)}
-          </div>
-          <div style={{ fontSize: 26, fontWeight: 800, marginTop: 6 }}>
-            {summary.totalAuditsDone}
-          </div>
-        </Card>
-
-        <Card>
-          <div style={{ opacity: 0.8, fontSize: 13 }}>
-            Objetivo total · {getPeriodLabel(selectedPeriod)}
-          </div>
-          <div style={{ fontSize: 26, fontWeight: 800, marginTop: 6 }}>
-            {summary.totalCompletedTargets} / {summary.totalTargets}
-          </div>
-        </Card>
-
-        <Card>
-          <div style={{ opacity: 0.8, fontSize: 13 }}>
-            Restantes · {getPeriodLabel(selectedPeriod)}
-          </div>
-          <div style={{ fontSize: 26, fontWeight: 800, marginTop: 6 }}>
-            {summary.totalRemaining}
-          </div>
-        </Card>
-
-        <Card>
-          <div style={{ opacity: 0.8, fontSize: 13 }}>Progreso global</div>
-          <div style={{ fontSize: 26, fontWeight: 800, marginTop: 6 }}>
-            {formatPct(summary.globalPct)}
-          </div>
-        </Card>
-      </div>
 
       {insights.length > 0 && (
         <Card style={{ marginTop: 14 }}>
@@ -276,7 +376,7 @@ export default function TeamSummaryTab({
             )
           </div>
           <div style={{ opacity: 0.8, marginTop: 6, fontSize: 13 }}>
-            Resumen por persona, ordenado por % de objetivo completado.
+            Producción por persona frente a su objetivo asignado.
           </div>
 
           <div style={panelBodyStyle}>
@@ -308,7 +408,7 @@ export default function TeamSummaryTab({
                         #{idx + 1} · {row.auditor_name}
                       </div>
                       <div style={{ opacity: 0.8, fontSize: 13, marginTop: 4 }}>
-                        Auditorías: <b>{row.audits_done}</b> · Media:{" "}
+                        Producción: <b>{row.audits_done}</b> auditorías · Media:{" "}
                         <b>
                           {row.avg_score !== null
                             ? `${Number(row.avg_score).toFixed(1)}%`
@@ -316,7 +416,40 @@ export default function TeamSummaryTab({
                         </b>
                       </div>
                       <div style={{ opacity: 0.8, fontSize: 13, marginTop: 4 }}>
-                        Objetivo: <b>{row.targets_completed}</b> / {row.targets_total}
+                        Producción / objetivo: <b>{row.targets_completed}</b> / {row.targets_total}
+                      </div>
+
+                      <div style={{ marginTop: 10, display: "grid", gap: 4 }}>
+                        {(rubricTargetsByAuditor[row.auditor_user_id] ?? []).length === 0 ? (
+                          <div style={{ opacity: 0.7, fontSize: 12.5 }}>Sin objetivos por rubro</div>
+                        ) : (
+                          rubricTargetsByAuditor[row.auditor_user_id].map((rubric) => (
+                            <div
+                              key={`${row.auditor_user_id}-${rubric.template}`}
+                              style={{
+                                display: "flex",
+                                justifyContent: "space-between",
+                                gap: 8,
+                                fontSize: 12.5,
+                                opacity: 0.82,
+                              }}
+                            >
+                              <span
+                                style={{
+                                  minWidth: 0,
+                                  whiteSpace: "nowrap",
+                                  overflow: "hidden",
+                                  textOverflow: "ellipsis",
+                                }}
+                              >
+                                {rubric.template}
+                              </span>
+                              <span style={{ whiteSpace: "nowrap", flexShrink: 0 }}>
+                                {rubric.completed} / {rubric.target}
+                              </span>
+                            </div>
+                          ))
+                        )}
                       </div>
                     </div>
 
@@ -347,20 +480,19 @@ export default function TeamSummaryTab({
         </Card>
 
         <Card>
-          <div style={{ fontWeight: 700, fontSize: 16 }}>Objetivos por auditor</div>
+          <div style={{ fontWeight: 700, fontSize: 16 }}>Objetivos por rubro</div>
           <div style={{ opacity: 0.8, marginTop: 6, fontSize: 13 }}>
-            Resumen por persona y detalle por auditoría para cerrar{" "}
-            {getPeriodLabel(selectedPeriod)}.
+            Producción del equipo frente al objetivo asignado agrupada por plantilla en {getPeriodLabel(selectedPeriod)}.
           </div>
 
           <div style={panelBodyStyle}>
             {loading ? (
               <div>Cargando…</div>
-            ) : groupedTargetsByAuditor.length === 0 ? (
+            ) : groupedTargetsByTemplate.length === 0 ? (
               <div style={{ opacity: 0.85 }}>No hay objetivos para este periodo.</div>
             ) : (
-              groupedTargetsByAuditor.map((group) => (
-                <Card key={group.auditorUserId} padding={12}>
+              groupedTargetsByTemplate.map((group) => (
+                <Card key={group.template} padding={12}>
                   <div
                     style={{
                       display: "flex",
@@ -379,11 +511,13 @@ export default function TeamSummaryTab({
                           textOverflow: "ellipsis",
                         }}
                       >
-                        {group.auditor}
+                        {group.template}
                       </div>
                       <div style={{ opacity: 0.8, fontSize: 13, marginTop: 4 }}>
-                        Restan <b>{group.remainingSum}</b> · {group.completedSum}/
-                        {group.targetSum}
+                        {group.completedSum} / {group.targetSum}
+                      </div>
+                      <div style={{ opacity: 0.8, fontSize: 12, marginTop: 4 }}>
+                        faltan <b>{group.remainingSum}</b>
                       </div>
                     </div>
 
@@ -406,50 +540,6 @@ export default function TeamSummaryTab({
                         background: "linear-gradient(90deg,#60a5fa,#38bdf8)",
                       }}
                     />
-                  </div>
-
-                  <div style={{ marginTop: 12, display: "grid", gap: 8 }}>
-                    {group.rows.map((row) => (
-                      <Card
-                        key={row.target_id}
-                        padding={10}
-                        radius={12}
-                        shadow="none"
-                        style={{
-                          display: "flex",
-                          justifyContent: "space-between",
-                          gap: 10,
-                          alignItems: "center",
-                        }}
-                      >
-                        <div
-                          style={{
-                            minWidth: 0,
-                            whiteSpace: "nowrap",
-                            overflow: "hidden",
-                            textOverflow: "ellipsis",
-                            opacity: 0.95,
-                          }}
-                        >
-                          {row.template}
-                        </div>
-
-                        <div
-                          style={{
-                            textAlign: "right",
-                            whiteSpace: "nowrap",
-                            flexShrink: 0,
-                          }}
-                        >
-                          <div style={{ fontWeight: 700 }}>
-                            {row.completed} / {row.target}
-                          </div>
-                          <div style={{ opacity: 0.8, fontSize: 12 }}>
-                            faltan <b>{row.remaining}</b>
-                          </div>
-                        </div>
-                      </Card>
-                    ))}
                   </div>
                 </Card>
               ))
