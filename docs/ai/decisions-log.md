@@ -238,6 +238,42 @@ El área dashboard necesitaba rankear FAIL por clasificación, pero el flujo rea
 - usar una clasificación efectiva compatible con el modelo actual
 
 ### Decisión final
+
+Usar una clasificación efectiva: tomar `audit_questions.classification` y, si está nula, hacer fallback a `audit_sections.name`.
+
+### Impacto esperado
+- evita paneles vacíos o incompletos
+- alinea dashboard/reporting con el modelo efectivo actual del builder
+- reduce dependencia de columnas opcionales inconsistentes
+
+---
+
+## Decisión 9
+
+### Fecha
+2026-03-11
+
+### Decisión
+Blindar el submit de auditoría contra carreras entre autosave y submit explícito.
+
+### Contexto
+El flujo de auditoría usa autosave cliente para persistir respuestas en `audit_answers`. Durante pruebas reales, el auditor podía marcar `FAIL` y enviar inmediatamente. En ese escenario, una acción de autosave ya iniciada podía salir de la cola antes de completar su `upsert`, mientras `submitRun()` asumía que `flushAll()` ya había dejado la DB sincronizada. El RPC `submit_audit_run` terminaba calculando score sobre valores viejos.
+
+### Alternativas consideradas
+- confiar solo en `flushAll()` y ajustar timings del autosave
+- mover inmediatamente todo el submit a un flujo puramente server-side sin dependencia de estado local
+- blindar el submit actual con espera de saves en vuelo y sincronización final explícita
+
+### Decisión final
+Mantener el flujo actual, pero con dos defensas explícitas:
+
+- `flushAll()` debe esperar también acciones ya iniciadas
+- antes de llamar al endpoint de submit, la UI debe hacer un `upsert` final de `answersByQ` para que `submit_audit_run` calcule score sobre el estado local más reciente
+
+### Impacto esperado
+- elimina el caso observado de score `100%` por lecturas viejas
+- reduce el riesgo de discrepancia entre UI local y DB en el momento del submit
+- mantiene el cambio pequeño mientras la arquitectura de submit sigue migrando a server-side
 Para reporting de área, resolver clasificación con esta prioridad:
 
 - `audit_questions.classification` si viene poblada

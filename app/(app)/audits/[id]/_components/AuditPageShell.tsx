@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useRef } from "react";
 import AuditHeader from "./AuditHeader";
-import AuditProgressBar from "./AuditProgressBar";
 import AuditQuestionCard from "./AuditQuestionCard";
 import AuditStickyFooter from "./AuditStickyFooter";
 import DesktopAuditLayout from "./DesktopAuditLayout";
@@ -45,8 +44,6 @@ export default function AuditPageShell({
   savingMember,
   submitted,
   error,
-  answeredCount,
-  totalQuestions,
   activeQuestionId,
   activeSectionId,
   canGoPrevious,
@@ -75,8 +72,6 @@ export default function AuditPageShell({
   savingMember: boolean;
   submitted: boolean;
   error: string | null;
-  answeredCount: number;
-  totalQuestions: number;
   activeQuestionId: string | null;
   activeSectionId: string | null;
   canGoPrevious: boolean;
@@ -107,9 +102,6 @@ export default function AuditPageShell({
         subtitle={`${area?.name ?? "—"}${area?.type ? ` · ${area.type}` : ""}`}
         meta={`Fecha: ${fmtDate(run.executed_at ?? null)}`}
       />
-      <div className="px-4 pb-3 lg:px-6 lg:pb-4">
-        <AuditProgressBar answered={answeredCount} total={totalQuestions} />
-      </div>
     </div>
   );
 

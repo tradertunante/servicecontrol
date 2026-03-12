@@ -217,3 +217,38 @@ Se alineó el dashboard de área con el modelo efectivo actual del sistema:
 - `app/(app)/areas/[areaId]/_components/DashboardPanel.tsx`
 - `app/(app)/areas/[areaId]/_components/HistoryPanel.tsx`
 - `app/(app)/builder/[templateId]/import/page.tsx`
+
+---
+
+## Issue 7
+
+### Fecha
+2026-03-11
+
+### Síntoma
+Una auditoría podía mostrar `100%` y `0 hallazgos` incluso cuando el auditor había marcado varios `FAIL` antes de enviar.
+
+### Causa raíz
+Se detectaron dos causas encadenadas:
+
+1. La página de detalle de auditoría leía `audit_answers` de forma incompleta y dependía de `result`, cuando el sistema puede tener datos mixtos entre `answer` y `result`.
+2. El submit dependía de que `flushAll()` dejara persistidas todas las respuestas antes de llamar a `submit_audit_run`, pero el autosave tenía una carrera: una acción ya iniciada podía desaparecer de la cola antes de terminar el `upsert`, permitiendo que el RPC leyera valores viejos en DB.
+
+### Solución aplicada
+Se corrigió el problema en dos capas:
+
+- en `app/(app)/audits/[id]/view/page.tsx`, todas las lecturas del detalle ahora normalizan con `answer ?? result`
+- en `app/(app)/audits/[id]/_hooks/useAuditAutosave.ts`, `flushAll()` ahora espera también saves en vuelo, no solo saves pendientes
+- en `app/(app)/audits/[id]/_hooks/useAuditSession.ts`, justo antes del submit se fuerza un `upsert` final de `answersByQ` hacia `audit_answers` para asegurar que el RPC calcule score con el estado local más reciente
+
+### Cómo evitarlo en el futuro
+- cualquier read path de `audit_answers` debe normalizar desde `answer` primero y luego `result`
+- no asumir que una cola de autosave vacía implica que no hay escrituras en vuelo
+- antes de ejecutar operaciones críticas server-side, sincronizar explícitamente el estado local relevante si el flujo depende de autosave asíncrono
+- no introducir nuevas lecturas o reportes sobre `audit_answers` que dependan solo de una de las dos columnas sin documentarlo
+
+### Archivos relacionados
+- `app/(app)/audits/[id]/view/page.tsx`
+- `app/(app)/audits/[id]/_hooks/useAuditAutosave.ts`
+- `app/(app)/audits/[id]/_hooks/useAuditSession.ts`
+- `supabase/migrations/20260310_120000_submit_audit_run_rpc.sql`

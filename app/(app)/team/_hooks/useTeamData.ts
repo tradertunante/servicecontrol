@@ -40,6 +40,14 @@ type TeamRecentRunRow = {
   auditor_name: string | null;
 };
 
+type TeamTemplateProgressRow = {
+  template: string;
+  target: number;
+  completed: number;
+  remaining: number;
+  progress_pct: number;
+};
+
 type TeamSummary = {
   totalAuditsDone: number;
   totalTargets: number;
@@ -59,6 +67,7 @@ type RpcTeamSummaryPayload = {
   leaderboard?: LeaderboardRow[] | null;
   team_targets?: TeamTargetRow[] | null;
   recent_runs?: TeamRecentRunRow[] | null;
+  template_progress?: TeamTemplateProgressRow[] | null;
 };
 
 function canAccessTeam(role: string | null | undefined) {
@@ -95,6 +104,7 @@ export function useTeamData(selectedPeriod: TeamPeriodKey) {
   const [leaderboard, setLeaderboard] = useState<LeaderboardRow[]>([]);
   const [teamTargets, setTeamTargets] = useState<TeamTargetRow[]>([]);
   const [teamRecentRuns, setTeamRecentRuns] = useState<TeamRecentRunRow[]>([]);
+  const [teamTemplateProgress, setTeamTemplateProgress] = useState<TeamTemplateProgressRow[]>([]);
   const [summary, setSummary] = useState<TeamSummary>(() => emptySummary());
 
   useEffect(() => {
@@ -147,6 +157,9 @@ export function useTeamData(selectedPeriod: TeamPeriodKey) {
           setLeaderboard(Array.isArray(payload.leaderboard) ? payload.leaderboard : []);
           setTeamTargets(Array.isArray(payload.team_targets) ? payload.team_targets : []);
           setTeamRecentRuns(Array.isArray(payload.recent_runs) ? payload.recent_runs : []);
+          setTeamTemplateProgress(
+            Array.isArray(payload.template_progress) ? payload.template_progress : []
+          );
           setSummary(mapRpcSummary(payload.summary));
         }
       } catch (e: any) {
@@ -155,6 +168,7 @@ export function useTeamData(selectedPeriod: TeamPeriodKey) {
           setLeaderboard([]);
           setTeamTargets([]);
           setTeamRecentRuns([]);
+          setTeamTemplateProgress([]);
           setSummary(emptySummary());
         }
       } finally {
@@ -175,6 +189,7 @@ export function useTeamData(selectedPeriod: TeamPeriodKey) {
     leaderboard,
     teamTargets,
     teamRecentRuns,
+    teamTemplateProgress,
     summary,
   };
 }

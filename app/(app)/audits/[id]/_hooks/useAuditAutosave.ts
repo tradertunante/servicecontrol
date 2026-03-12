@@ -7,14 +7,27 @@ type SaveAction = () => Promise<void>;
 export function useAuditAutosave(delayMs = 450) {
   const timersRef = useRef(new Map<string, ReturnType<typeof setTimeout>>());
   const actionsRef = useRef(new Map<string, SaveAction>());
+  const runningRef = useRef(new Map<string, Promise<void>>());
   const [pendingCount, setPendingCount] = useState(0);
 
   const refreshPendingCount = useCallback(() => {
-    setPendingCount(new Set([...timersRef.current.keys(), ...actionsRef.current.keys()]).size);
+    setPendingCount(
+      new Set([
+        ...timersRef.current.keys(),
+        ...actionsRef.current.keys(),
+        ...runningRef.current.keys(),
+      ]).size,
+    );
   }, []);
 
   const runAction = useCallback(
     async (key: string) => {
+      const running = runningRef.current.get(key);
+      if (running) {
+        await running;
+        return;
+      }
+
       const timer = timersRef.current.get(key);
       if (timer) {
         clearTimeout(timer);
@@ -26,7 +39,17 @@ export function useAuditAutosave(delayMs = 450) {
       refreshPendingCount();
 
       if (!action) return;
-      await action();
+
+      const promise = (async () => {
+        await action();
+      })().finally(() => {
+        runningRef.current.delete(key);
+        refreshPendingCount();
+      });
+
+      runningRef.current.set(key, promise);
+      refreshPendingCount();
+      await promise;
     },
     [refreshPendingCount],
   );
@@ -50,15 +73,23 @@ export function useAuditAutosave(delayMs = 450) {
   );
 
   const flushAll = useCallback(async () => {
-    const keys = Array.from(new Set(actionsRef.current.keys()));
+    const keys = Array.from(
+      new Set([...actionsRef.current.keys(), ...runningRef.current.keys()]),
+    );
     for (const key of keys) {
       await runAction(key);
+    }
+
+    const running = Array.from(new Set(runningRef.current.values()));
+    if (running.length > 0) {
+      await Promise.all(running);
     }
   }, [runAction]);
 
   useEffect(() => {
     const timers = timersRef.current;
     const actions = actionsRef.current;
+    const running = runningRef.current;
 
     return () => {
       for (const timer of timers.values()) {
@@ -66,6 +97,7 @@ export function useAuditAutosave(delayMs = 450) {
       }
       timers.clear();
       actions.clear();
+      running.clear();
     };
   }, []);
 

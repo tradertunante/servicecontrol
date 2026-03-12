@@ -50,8 +50,6 @@ export default function AuditRunPage() {
         savingMember={session.savingMember}
         submitted={session.submitted}
         error={session.error}
-        answeredCount={session.totals.answered}
-        totalQuestions={session.totals.total}
         activeQuestionId={navigation.activeQuestionId}
         activeSectionId={navigation.activeSectionId}
         canGoPrevious={navigation.hasPrevious}

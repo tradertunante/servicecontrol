@@ -605,6 +605,26 @@ export function useAuditSession(runId: string | undefined) {
     try {
       await flushAll();
 
+      const latestAnswers = questions.map((question) => {
+        const draft = makeDraftAnswer(run.id, question.id, answersByQ[question.id]);
+        return {
+          audit_run_id: run.id,
+          question_id: question.id,
+          answer: draft.answer,
+          result: draft.result,
+          comment: draft.comment,
+          photo_path: draft.photo_path,
+        };
+      });
+
+      if (latestAnswers.length > 0) {
+        const { error: syncError } = await supabase
+          .from("audit_answers")
+          .upsert(latestAnswers, { onConflict: "audit_run_id,question_id" });
+
+        if (syncError) throw syncError;
+      }
+
       const { data: sessionData } = await supabase.auth.getSession();
       const accessToken = sessionData?.session?.access_token;
       if (!accessToken) {
