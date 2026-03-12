@@ -132,8 +132,8 @@ export function useTeamData(selectedPeriod: TeamPeriodKey) {
 
         const { data: rpcData, error: rpcErr } = await supabase.rpc("rpc_team_summary", {
           p_hotel_id: hotelId,
-          p_user_id: uid,
           p_period: selectedPeriod,
+          p_user_id: uid,
         });
 
         if (rpcErr) throw rpcErr;
