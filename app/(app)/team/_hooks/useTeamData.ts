@@ -130,7 +130,7 @@ export function useTeamData(selectedPeriod: TeamPeriodKey) {
 
         if (!cancelled) setProfile(prof);
 
-        const { data: rpcData, error: rpcErr } = await supabase.rpc("rpc_team_summary", {
+        const { data: rpcData, error: rpcErr } = await supabase.rpc("rpc_team_summary_v2", {
           p_hotel_id: hotelId,
           p_period: selectedPeriod,
           p_user_id: uid,
