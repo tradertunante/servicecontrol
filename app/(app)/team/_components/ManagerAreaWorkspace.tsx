@@ -8,6 +8,7 @@ import HistoryPanel from "@/app/(app)/areas/[areaId]/_components/HistoryPanel";
 import TemplatesPanel from "@/app/(app)/areas/[areaId]/_components/TemplatesPanel";
 import { useAreaData } from "@/app/(app)/areas/[areaId]/_hooks/useAreaData";
 import type { PeriodKey } from "@/app/(app)/areas/[areaId]/_lib/areaTypes";
+import { useManagerAreaTemplates } from "../_hooks/useManagerAreaTemplates";
 
 export type ManagerAreaOption = {
   id: string;
@@ -43,15 +44,8 @@ export default function ManagerAreaWorkspace({
   historyFilters: ManagerAreaHistoryFilters;
   onOpenHistory: (filters: Exclude<ManagerAreaHistoryFilters, null>) => void;
 }) {
-  const router = useRouter();
   const [templateFilter, setTemplateFilter] = useState("ALL");
   const [period, setPeriod] = useState<PeriodKey>("THIS_MONTH");
-
-  const data = useAreaData({
-    areaId: selectedAreaId,
-    templateFilter,
-    setTemplateFilter,
-  });
 
   useEffect(() => {
     setTemplateFilter("ALL");
@@ -130,70 +124,181 @@ export default function ManagerAreaWorkspace({
         </Card>
       ) : null}
 
-      {data.loading ? <div style={{ fontWeight: 900 }}>Cargando información del área…</div> : null}
-      {data.error ? (
-        <Card
-          style={{
-            border: "1px solid rgba(220,0,0,0.35)",
-            background: "rgba(220,0,0,0.06)",
-            color: "crimson",
-            fontWeight: 900,
-          }}
-        >
-          {data.error}
-        </Card>
+      {mode === "dashboard" ? (
+        <ManagerAreaDashboardMode
+          areaId={selectedAreaId}
+          templateFilter={templateFilter}
+          setTemplateFilter={setTemplateFilter}
+          period={period}
+          setPeriod={setPeriod}
+          onOpenHistory={onOpenHistory}
+        />
       ) : null}
 
-      {!data.loading && !data.error ? (
-        <>
-          {mode === "dashboard" ? (
-            <DashboardPanel
-              period={period}
-              setPeriod={setPeriod}
-              templateFilter={templateFilter}
-              setTemplateFilter={setTemplateFilter}
-              templates={data.templates}
-              templateNameById={data.templateNameById}
-              totalsByTemplate={data.totalsByTemplate}
-              exceptionsByRun={data.exceptionsByRun}
-              runs={data.runs}
-              answersByRun={data.answersByRun}
-              questionMetaById={data.questionMetaById}
-              onViewRun={(runId) => router.push(`/audits/${runId}`)}
-              onOpenFailRuns={(payload) =>
-                onOpenHistory({
-                  templateFilter,
-                  period,
-                  questionId: payload.questionId,
-                  classification: payload.classification,
-                })
-              }
-            />
-          ) : null}
+      {mode === "history" ? (
+        <ManagerAreaHistoryMode
+          areaId={selectedAreaId}
+          profileRole={profileRole}
+          historyFilters={historyFilters}
+        />
+      ) : null}
 
-          {mode === "history" ? (
-            <HistoryPanel
-              areaId={selectedAreaId}
-              profileRole={(profileRole ?? null) as any}
-              templates={data.templates}
-              onViewRun={(runId) => router.push(`/audits/${runId}`)}
-              onDeleteSuccess={(deletedId) => data.removeRunEverywhere(deletedId)}
-              embeddedTemplateFilter={historyFilters?.templateFilter ?? null}
-              embeddedPeriod={historyFilters?.period ?? null}
-              embeddedFailQuestionId={historyFilters?.questionId ?? null}
-              embeddedFailClassification={historyFilters?.classification ?? null}
-            />
-          ) : null}
-
-          {mode === "templates" ? (
-            <TemplatesPanel
-              templates={data.templates}
-              starting={data.starting}
-              onStart={data.handleStart}
-            />
-          ) : null}
-        </>
+      {mode === "templates" ? (
+        <ManagerAreaTemplatesMode
+          areaId={selectedAreaId}
+          profileRole={profileRole}
+        />
       ) : null}
     </div>
+  );
+}
+
+function ManagerAreaDashboardMode({
+  areaId,
+  templateFilter,
+  setTemplateFilter,
+  period,
+  setPeriod,
+  onOpenHistory,
+}: {
+  areaId: string;
+  templateFilter: string;
+  setTemplateFilter: (v: string) => void;
+  period: PeriodKey;
+  setPeriod: (p: PeriodKey) => void;
+  onOpenHistory: (filters: Exclude<ManagerAreaHistoryFilters, null>) => void;
+}) {
+  const router = useRouter();
+  const data = useAreaData({
+    areaId,
+    templateFilter,
+    setTemplateFilter,
+  });
+
+  if (data.loading) {
+    return <div style={{ fontWeight: 900 }}>Cargando información del área…</div>;
+  }
+
+  if (data.error) {
+    return (
+      <Card
+        style={{
+          border: "1px solid rgba(220,0,0,0.35)",
+          background: "rgba(220,0,0,0.06)",
+          color: "crimson",
+          fontWeight: 900,
+        }}
+      >
+        {data.error}
+      </Card>
+    );
+  }
+
+  return (
+    <DashboardPanel
+      period={period}
+      setPeriod={setPeriod}
+      templateFilter={templateFilter}
+      setTemplateFilter={setTemplateFilter}
+      templates={data.templates}
+      templateNameById={data.templateNameById}
+      totalsByTemplate={data.totalsByTemplate}
+      exceptionsByRun={data.exceptionsByRun}
+      runs={data.runs}
+      answersByRun={data.answersByRun}
+      questionMetaById={data.questionMetaById}
+      onViewRun={(runId) => router.push(`/audits/${runId}`)}
+      onOpenFailRuns={(payload) =>
+        onOpenHistory({
+          templateFilter,
+          period,
+          questionId: payload.questionId,
+          classification: payload.classification,
+        })
+      }
+    />
+  );
+}
+
+function ManagerAreaHistoryMode({
+  areaId,
+  profileRole,
+  historyFilters,
+}: {
+  areaId: string;
+  profileRole: string | null | undefined;
+  historyFilters: ManagerAreaHistoryFilters;
+}) {
+  const router = useRouter();
+  const templatesData = useManagerAreaTemplates({ areaId, profileRole });
+
+  if (templatesData.loading) {
+    return <div style={{ fontWeight: 900 }}>Cargando información del área…</div>;
+  }
+
+  if (templatesData.error) {
+    return (
+      <Card
+        style={{
+          border: "1px solid rgba(220,0,0,0.35)",
+          background: "rgba(220,0,0,0.06)",
+          color: "crimson",
+          fontWeight: 900,
+        }}
+      >
+        {templatesData.error}
+      </Card>
+    );
+  }
+
+  return (
+    <HistoryPanel
+      areaId={areaId}
+      profileRole={(profileRole ?? null) as any}
+      templates={templatesData.templates}
+      onViewRun={(runId) => router.push(`/audits/${runId}`)}
+      onDeleteSuccess={() => {}}
+      embeddedTemplateFilter={historyFilters?.templateFilter ?? null}
+      embeddedPeriod={historyFilters?.period ?? null}
+      embeddedFailQuestionId={historyFilters?.questionId ?? null}
+      embeddedFailClassification={historyFilters?.classification ?? null}
+    />
+  );
+}
+
+function ManagerAreaTemplatesMode({
+  areaId,
+  profileRole,
+}: {
+  areaId: string;
+  profileRole: string | null | undefined;
+}) {
+  const templatesData = useManagerAreaTemplates({ areaId, profileRole });
+
+  if (templatesData.loading) {
+    return <div style={{ fontWeight: 900 }}>Cargando información del área…</div>;
+  }
+
+  if (templatesData.error) {
+    return (
+      <Card
+        style={{
+          border: "1px solid rgba(220,0,0,0.35)",
+          background: "rgba(220,0,0,0.06)",
+          color: "crimson",
+          fontWeight: 900,
+        }}
+      >
+        {templatesData.error}
+      </Card>
+    );
+  }
+
+  return (
+    <TemplatesPanel
+      templates={templatesData.templates}
+      starting={templatesData.starting}
+      onStart={templatesData.handleStart}
+    />
   );
 }
