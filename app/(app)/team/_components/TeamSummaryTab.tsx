@@ -534,7 +534,7 @@ export default function TeamSummaryTab({
                         height: "100%",
                         width: `${Math.max(
                           0,
-                          Math.min(100, Number(group.progressPct ?? 0))
+                          Math.min(100, Number((group as any)["progressPct"] ?? 0))
                         )}%`,
                         borderRadius: 999,
                         background: "linear-gradient(90deg,#60a5fa,#38bdf8)",
