@@ -259,3 +259,54 @@ export async function PATCH(request: NextRequest) {
     return jsonError(error instanceof Error ? error.message : "Error inesperado.", 500);
   }
 }
+
+export async function DELETE(request: NextRequest) {
+  try {
+    const caller = await getCaller(request, ["admin", "quality", "manager", "general_manager"]);
+
+    if (!caller.ok) {
+      return jsonError(caller.error, caller.status);
+    }
+
+    const body = await request.json().catch(() => null);
+    const sessionId = String(body?.session_id ?? "").trim();
+
+    if (!sessionId) {
+      return jsonError("session_id es obligatorio.");
+    }
+
+    const admin = supabaseAdmin();
+    const { data: session, error: sessionError } = await admin
+      .from("training_sessions")
+      .select("id, hotel_id, status")
+      .eq("id", sessionId)
+      .eq("hotel_id", caller.profile.hotel_id)
+      .maybeSingle();
+
+    if (sessionError) {
+      return jsonError(sessionError.message, 500);
+    }
+
+    if (!session) {
+      return jsonError("Sesion no encontrada.", 404);
+    }
+
+    if (session.status !== "closed") {
+      return jsonError("Solo se pueden eliminar sesiones cerradas.", 409);
+    }
+
+    const { error } = await admin
+      .from("training_sessions")
+      .delete()
+      .eq("id", session.id)
+      .eq("hotel_id", caller.profile.hotel_id);
+
+    if (error) {
+      return jsonError(error.message, 500);
+    }
+
+    return NextResponse.json({ ok: true });
+  } catch (error) {
+    return jsonError(error instanceof Error ? error.message : "Error inesperado.", 500);
+  }
+}
