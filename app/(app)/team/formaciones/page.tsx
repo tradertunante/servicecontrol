@@ -18,7 +18,21 @@ export default function TeamFormacionesPage() {
 
   return (
     <TeamPageShell profile={profile} profileError={profileError} activeSection="actions">
-      <CorrectiveActionsPanel profile={profile} hotelId={hotelId} />
+      <>
+        <div
+          style={{
+            border: "1px solid #e5e7eb",
+            background: "#fff",
+            padding: "16px",
+            borderRadius: "12px",
+            marginBottom: "16px",
+            fontWeight: 600,
+          }}
+        >
+          Under construction
+        </div>
+        <CorrectiveActionsPanel profile={profile} hotelId={hotelId} />
+      </>
     </TeamPageShell>
   );
 }
