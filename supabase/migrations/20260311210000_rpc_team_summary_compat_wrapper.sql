@@ -16,8 +16,8 @@ security definer
 set search_path = public
 as $$
   select public.rpc_team_summary(
-    p_hotel_id => p_hotel_id,
-    p_user_id => p_user_id,
-    p_period => p_period
+    p_hotel_id,
+    p_user_id,
+    p_period
   );
 $$;
