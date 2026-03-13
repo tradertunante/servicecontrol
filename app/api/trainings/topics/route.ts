@@ -199,8 +199,29 @@ export async function POST(request: NextRequest) {
       return jsonError(areaAccessError.message, 500);
     }
 
-    const areaIds = Array.from(
+    const rawAreaIds = Array.from(
       new Set((areaAccessRows ?? []).map((row) => String(row.area_id ?? "")).filter(Boolean))
+    );
+
+    const { data: areaRows, error: areaRowsError } = rawAreaIds.length
+      ? await admin
+          .from("areas")
+          .select("id, active, hotel_id")
+          .eq("hotel_id", caller.profile.hotel_id)
+          .in("id", rawAreaIds)
+      : { data: [], error: null };
+
+    if (areaRowsError) {
+      return jsonError(areaRowsError.message, 500);
+    }
+
+    const areaIds = Array.from(
+      new Set(
+        (areaRows ?? [])
+          .filter((row) => row.active !== false)
+          .map((row) => String(row.id ?? ""))
+          .filter(Boolean)
+      )
     );
 
     if (areaIds.length === 0) {
