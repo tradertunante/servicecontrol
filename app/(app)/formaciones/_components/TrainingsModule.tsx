@@ -499,96 +499,197 @@ export default function TrainingsModule() {
         </div>
       </div>
 
-      <div style={{ display: "grid", gap: 12 }}>
-        {loading ? (
-          <div style={panelStyle()}>Cargando formaciones...</div>
-        ) : activeTopics.length === 0 ? (
-          <div style={panelStyle()}>No hay formaciones abiertas en este momento.</div>
-        ) : (
-          activeTopics.map((topic) => {
-            const activeSessions = topic.sessions.filter((session) => session.status === "open");
-            const publicLink = origin ? `${origin}/formaciones/registro/${topic.qr_token}` : `/formaciones/registro/${topic.qr_token}`;
+      <div style={panelStyle()}>
+        <div style={{ fontSize: 22, fontWeight: 800 }}>Temas creados</div>
+        <div style={{ marginTop: 6, color: "#4b5563", lineHeight: 1.5 }}>
+          Todos los temas registrados para tu alcance actual, aunque todavia no tengan sesiones abiertas.
+        </div>
 
-            return (
-              <div key={topic.id} style={panelStyle()}>
-                <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
-                  <div style={{ display: "grid", gap: 10, flex: 1, minWidth: 280 }}>
-                    <div style={{ fontSize: 20, fontWeight: 800 }}>{topic.title}</div>
-                    {topic.description ? (
-                      <div style={{ marginTop: 6, color: "#4b5563", lineHeight: 1.5 }}>{topic.description}</div>
-                    ) : null}
-                    <div style={{ fontSize: 13, color: "#4b5563" }}>
-                      <b>Area:</b> {topic.area_name || "Sin area"}
-                    </div>
-                    <div
-                      style={{
-                        border: "1px solid #e5e7eb",
-                        borderRadius: 12,
-                        padding: 14,
-                        background: "#f9fafb",
-                        width: "fit-content",
-                      }}
-                    >
-                      <QRCode value={publicLink} size={160} bgColor="#FFFFFF" fgColor="#111827" />
-                    </div>
-                    <div style={{ fontSize: 13, color: "#4b5563", lineHeight: 1.5 }}>
-                      <div style={{ fontWeight: 700, marginBottom: 4 }}>Link fijo del QR</div>
-                      <a
-                        href={publicLink}
-                        target="_blank"
-                        rel="noreferrer"
-                        style={{ color: "#2563eb", wordBreak: "break-all" }}
+        <div style={{ marginTop: 14, display: "grid", gap: 12 }}>
+          {loading ? (
+            <div style={{ color: "#6b7280" }}>Cargando temas...</div>
+          ) : sortedTopics.length === 0 ? (
+            <div style={{ color: "#6b7280" }}>No hay temas registrados todavia.</div>
+          ) : (
+            sortedTopics.map((topic) => {
+              const activeSessions = topic.sessions.filter((session) => session.status === "open");
+              const publicLink = origin ? `${origin}/formaciones/registro/${topic.qr_token}` : `/formaciones/registro/${topic.qr_token}`;
+
+              return (
+                <div key={topic.id} style={{ border: "1px solid #e5e7eb", borderRadius: 12, padding: 16, background: "#fff" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+                    <div style={{ display: "grid", gap: 10, flex: 1, minWidth: 280 }}>
+                      <div style={{ fontSize: 20, fontWeight: 800 }}>{topic.title}</div>
+                      {topic.description ? (
+                        <div style={{ marginTop: 6, color: "#4b5563", lineHeight: 1.5 }}>{topic.description}</div>
+                      ) : null}
+                      <div style={{ fontSize: 13, color: "#4b5563" }}>
+                        <b>Area:</b> {topic.area_name || "Sin area"}
+                      </div>
+                      <div
+                        style={{
+                          border: "1px solid #e5e7eb",
+                          borderRadius: 12,
+                          padding: 14,
+                          background: "#f9fafb",
+                          width: "fit-content",
+                        }}
                       >
-                        {publicLink}
-                      </a>
+                        <QRCode value={publicLink} size={160} bgColor="#FFFFFF" fgColor="#111827" />
+                      </div>
+                      <div style={{ fontSize: 13, color: "#4b5563", lineHeight: 1.5 }}>
+                        <div style={{ fontWeight: 700, marginBottom: 4 }}>Link fijo del QR</div>
+                        <a
+                          href={publicLink}
+                          target="_blank"
+                          rel="noreferrer"
+                          style={{ color: "#2563eb", wordBreak: "break-all" }}
+                        >
+                          {publicLink}
+                        </a>
+                      </div>
+                      <div>
+                        <button
+                          type="button"
+                          onClick={() => void handleCopyLink(topic.id, publicLink)}
+                          style={secondaryButtonStyle(false)}
+                        >
+                          {copiedTopicId === topic.id ? "Link copiado" : "Copiar link"}
+                        </button>
+                      </div>
                     </div>
-                    <div>
+
+                    <div style={{ minWidth: 240, display: "grid", gap: 8 }}>
+                      <div
+                        style={{
+                          border: "1px solid #e5e7eb",
+                          borderRadius: 10,
+                          padding: 12,
+                          background: "#f9fafb",
+                          fontSize: 14,
+                        }}
+                      >
+                        <b>Sesiones activas:</b> {activeSessions.length}
+                      </div>
+                      <input
+                        value={sessionLabels[topic.id] ?? ""}
+                        onChange={(event) =>
+                          setSessionLabels((current) => ({ ...current, [topic.id]: event.target.value }))
+                        }
+                        placeholder="Label opcional, ej. 7 AM"
+                        style={inputStyle()}
+                      />
                       <button
-                        type="button"
-                        onClick={() => void handleCopyLink(topic.id, publicLink)}
-                        style={secondaryButtonStyle(false)}
+                        onClick={() => void handleOpenSession(topic.id)}
+                        disabled={sessionBusyKey === `open:${topic.id}`}
+                        style={buttonStyle(sessionBusyKey === `open:${topic.id}`)}
                       >
-                        {copiedTopicId === topic.id ? "Link copiado" : "Copiar link"}
+                        {sessionBusyKey === `open:${topic.id}` ? "Abriendo..." : "Abrir sesion"}
                       </button>
                     </div>
                   </div>
 
-                  <div style={{ minWidth: 240, display: "grid", gap: 8 }}>
-                    <div
-                      style={{
-                        border: "1px solid #e5e7eb",
-                        borderRadius: 10,
-                        padding: 12,
-                        background: "#f9fafb",
-                        fontSize: 14,
-                      }}
-                    >
-                      <b>Sesiones activas:</b> {activeSessions.length}
-                    </div>
-                    <input
-                      value={sessionLabels[topic.id] ?? ""}
-                      onChange={(event) =>
-                        setSessionLabels((current) => ({ ...current, [topic.id]: event.target.value }))
-                      }
-                      placeholder="Label opcional, ej. 7 AM"
-                      style={inputStyle()}
-                    />
-                    <button
-                      onClick={() => void handleOpenSession(topic.id)}
-                      disabled={sessionBusyKey === `open:${topic.id}`}
-                      style={buttonStyle(sessionBusyKey === `open:${topic.id}`)}
-                    >
-                      {sessionBusyKey === `open:${topic.id}` ? "Abriendo..." : "Abrir sesion"}
-                    </button>
+                  <div style={{ marginTop: 16, display: "grid", gap: 10 }}>
+                    <div style={{ fontWeight: 800, fontSize: 16 }}>Sesiones activas</div>
+                    {activeSessions.length === 0 ? (
+                      <div style={{ color: "#6b7280" }}>No hay sesiones activas para este tema.</div>
+                    ) : (
+                      activeSessions.map((session) => (
+                        <div
+                          key={session.id}
+                          style={{
+                            border: "1px solid #e5e7eb",
+                            borderRadius: 10,
+                            padding: 12,
+                            background: "#ecfdf5",
+                          }}
+                        >
+                          <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+                            <div style={{ display: "grid", gap: 4 }}>
+                              <div style={{ fontWeight: 700 }}>
+                                {session.session_label?.trim() || "Sesion sin label"} · Abierta
+                              </div>
+                              <div style={{ fontSize: 14, color: "#4b5563" }}>
+                                Supervisor: {session.supervisor_name_snapshot || "Sin nombre"}
+                              </div>
+                              <div style={{ fontSize: 13, color: "#6b7280" }}>
+                                Inicio: {formatDateTime(session.opened_at)}
+                                {session.closed_at ? ` · Cierre: ${formatDateTime(session.closed_at)}` : ""}
+                              </div>
+                            </div>
+
+                            <div style={{ display: "grid", gap: 8, justifyItems: "end" }}>
+                              <div
+                                style={{
+                                  border: "1px solid #d1d5db",
+                                  borderRadius: 999,
+                                  padding: "6px 10px",
+                                  fontSize: 13,
+                                  background: "#fff",
+                                }}
+                              >
+                                Asistencias: <b>{session.attendance_count}</b>
+                              </div>
+                              <button
+                                onClick={() => void handleCloseSession(session.id)}
+                                disabled={sessionBusyKey === `close:${session.id}`}
+                                style={secondaryButtonStyle(sessionBusyKey === `close:${session.id}`)}
+                              >
+                                {sessionBusyKey === `close:${session.id}` ? "Cerrando..." : "Cerrar sesion"}
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      ))
+                    )}
                   </div>
                 </div>
+              );
+            })
+          )}
+        </div>
+      </div>
 
-                <div style={{ marginTop: 16, display: "grid", gap: 10 }}>
-                  <div style={{ fontWeight: 800, fontSize: 16 }}>Sesiones activas</div>
-                  {activeSessions.length === 0 ? (
-                    <div style={{ color: "#6b7280" }}>No hay sesiones activas para este tema.</div>
-                  ) : (
-                    activeSessions.map((session) => (
+      <div style={panelStyle()}>
+        <div style={{ fontSize: 22, fontWeight: 800 }}>Formaciones abiertas</div>
+        <div style={{ marginTop: 6, color: "#4b5563", lineHeight: 1.5 }}>
+          Solo temas que actualmente tienen al menos una sesion abierta.
+        </div>
+
+        <div style={{ marginTop: 14, display: "grid", gap: 12 }}>
+          {loading ? (
+            <div style={{ color: "#6b7280" }}>Cargando formaciones abiertas...</div>
+          ) : activeTopics.length === 0 ? (
+            <div style={{ color: "#6b7280" }}>No hay formaciones abiertas en este momento.</div>
+          ) : (
+            activeTopics.map((topic) => {
+              const activeSessions = topic.sessions.filter((session) => session.status === "open");
+
+              return (
+                <div key={topic.id} style={{ border: "1px solid #e5e7eb", borderRadius: 12, padding: 16, background: "#fff" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+                    <div>
+                      <div style={{ fontSize: 18, fontWeight: 800 }}>{topic.title}</div>
+                      <div style={{ marginTop: 4, fontSize: 13, color: "#4b5563" }}>
+                        <b>Area:</b> {topic.area_name || "Sin area"}
+                      </div>
+                    </div>
+                    <div
+                      style={{
+                        border: "1px solid #d1d5db",
+                        borderRadius: 999,
+                        padding: "6px 10px",
+                        fontSize: 13,
+                        background: "#fff",
+                        height: "fit-content",
+                      }}
+                    >
+                      Sesiones activas: <b>{activeSessions.length}</b>
+                    </div>
+                  </div>
+
+                  <div style={{ marginTop: 12, display: "grid", gap: 10 }}>
+                    {activeSessions.map((session) => (
                       <div
                         key={session.id}
                         style={{
@@ -608,39 +709,29 @@ export default function TrainingsModule() {
                             </div>
                             <div style={{ fontSize: 13, color: "#6b7280" }}>
                               Inicio: {formatDateTime(session.opened_at)}
-                              {session.closed_at ? ` · Cierre: ${formatDateTime(session.closed_at)}` : ""}
                             </div>
                           </div>
-
-                          <div style={{ display: "grid", gap: 8, justifyItems: "end" }}>
-                            <div
-                              style={{
-                                border: "1px solid #d1d5db",
-                                borderRadius: 999,
-                                padding: "6px 10px",
-                                fontSize: 13,
-                                background: "#fff",
-                              }}
-                            >
-                              Asistencias: <b>{session.attendance_count}</b>
-                            </div>
-                            <button
-                              onClick={() => void handleCloseSession(session.id)}
-                              disabled={sessionBusyKey === `close:${session.id}`}
-                              style={secondaryButtonStyle(sessionBusyKey === `close:${session.id}`)}
-                            >
-                              {sessionBusyKey === `close:${session.id}` ? "Cerrando..." : "Cerrar sesion"}
-                            </button>
+                          <div
+                            style={{
+                              border: "1px solid #d1d5db",
+                              borderRadius: 999,
+                              padding: "6px 10px",
+                              fontSize: 13,
+                              background: "#fff",
+                              height: "fit-content",
+                            }}
+                          >
+                            Asistencias: <b>{session.attendance_count}</b>
                           </div>
                         </div>
                       </div>
-                    ))
-                  )}
+                    ))}
+                  </div>
                 </div>
-              </div>
-            );
-          })
-        )}
+              );
+            })
+          )}
+        </div>
       </div>
 
       <div style={panelStyle()}>
