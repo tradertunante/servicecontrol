@@ -514,10 +514,10 @@ export default function TeamSummaryTab({
                         {group.template}
                       </div>
                       <div style={{ opacity: 0.8, fontSize: 13, marginTop: 4 }}>
-                        {group.completed} / {group.target}
+                        {group.completedSum} / {group.targetSum}
                       </div>
                       <div style={{ opacity: 0.8, fontSize: 12, marginTop: 4 }}>
-                        faltan <b>{group.remaining}</b>
+                        faltan <b>{group.remainingSum}</b>
                       </div>
                     </div>
 
