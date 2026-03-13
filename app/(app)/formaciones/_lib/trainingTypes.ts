@@ -13,6 +13,8 @@ export type TrainingSession = {
 export type TrainingTopic = {
   id: string;
   hotel_id: string;
+  area_id: string | null;
+  area_name: string | null;
   title: string;
   description: string | null;
   qr_token: string;

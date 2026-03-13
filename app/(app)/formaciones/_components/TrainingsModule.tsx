@@ -517,6 +517,9 @@ export default function TrainingsModule() {
                     {topic.description ? (
                       <div style={{ marginTop: 6, color: "#4b5563", lineHeight: 1.5 }}>{topic.description}</div>
                     ) : null}
+                    <div style={{ fontSize: 13, color: "#4b5563" }}>
+                      <b>Area:</b> {topic.area_name || "Sin area"}
+                    </div>
                     <div
                       style={{
                         border: "1px solid #e5e7eb",

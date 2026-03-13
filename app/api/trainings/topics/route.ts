@@ -77,12 +77,29 @@ export async function GET(request: NextRequest) {
     const admin = supabaseAdmin();
     const { data: topics, error: topicsError } = await admin
       .from("training_topics")
-      .select("id, hotel_id, title, description, qr_token, is_active, created_at")
+      .select("id, hotel_id, area_id, title, description, qr_token, is_active, created_at")
       .eq("hotel_id", caller.profile.hotel_id)
       .order("created_at", { ascending: false });
 
     if (topicsError) {
       return jsonError(topicsError.message, 500);
+    }
+
+    const areaIds = Array.from(
+      new Set((topics ?? []).map((topic) => String(topic.area_id ?? "")).filter(Boolean))
+    );
+    const { data: areas, error: areasError } = areaIds.length
+      ? await admin.from("areas").select("id, name").in("id", areaIds)
+      : { data: [], error: null };
+
+    if (areasError) {
+      return jsonError(areasError.message, 500);
+    }
+
+    const areaNameById = new Map<string, string>();
+
+    for (const area of areas ?? []) {
+      areaNameById.set(String(area.id), String(area.name ?? "Area"));
     }
 
     const topicIds = (topics ?? []).map((topic) => topic.id as string);
@@ -140,6 +157,8 @@ export async function GET(request: NextRequest) {
       topics: (topics ?? []).map((topic) => ({
         id: topic.id,
         hotel_id: topic.hotel_id,
+        area_id: topic.area_id ?? null,
+        area_name: areaNameById.get(String(topic.area_id ?? "")) ?? null,
         title: topic.title,
         description: topic.description ?? null,
         qr_token: topic.qr_token,
@@ -170,28 +189,66 @@ export async function POST(request: NextRequest) {
     }
 
     const admin = supabaseAdmin();
+    const { data: areaAccessRows, error: areaAccessError } = await admin
+      .from("user_area_access")
+      .select("area_id")
+      .eq("hotel_id", caller.profile.hotel_id)
+      .eq("user_id", caller.profile.id);
+
+    if (areaAccessError) {
+      return jsonError(areaAccessError.message, 500);
+    }
+
+    const areaIds = Array.from(
+      new Set((areaAccessRows ?? []).map((row) => String(row.area_id ?? "")).filter(Boolean))
+    );
+
+    if (areaIds.length === 0) {
+      return jsonError("No tienes un area asignada para crear formaciones.", 409);
+    }
+
+    if (areaIds.length > 1) {
+      return jsonError(
+        "Tu usuario tiene mas de un area asignada. Este flujo requiere un area unica para crear la formacion.",
+        409
+      );
+    }
+
+    const areaId = areaIds[0];
     const qrToken = crypto.randomUUID().replace(/-/g, "");
 
     const { data, error } = await admin
       .from("training_topics")
       .insert({
         hotel_id: caller.profile.hotel_id,
+        area_id: areaId,
         title,
         description,
         qr_token: qrToken,
         created_by: caller.profile.id,
       })
-      .select("id, hotel_id, title, description, qr_token, is_active, created_at")
+      .select("id, hotel_id, area_id, title, description, qr_token, is_active, created_at")
       .single();
 
     if (error || !data) {
       return jsonError(error?.message ?? "No se pudo crear el tema.", 500);
     }
 
+    const { data: area, error: areaError } = await admin
+      .from("areas")
+      .select("id, name")
+      .eq("id", areaId)
+      .maybeSingle();
+
+    if (areaError) {
+      return jsonError(areaError.message, 500);
+    }
+
     return NextResponse.json({
       ok: true,
       topic: {
         ...data,
+        area_name: area?.name ?? null,
         sessions: [],
       },
     });
