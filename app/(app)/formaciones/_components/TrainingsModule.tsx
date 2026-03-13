@@ -4,7 +4,13 @@ import { useEffect, useMemo, useState } from "react";
 import type { CSSProperties } from "react";
 import QRCode from "react-qr-code";
 import { supabase } from "@/lib/supabaseClient";
-import type { TrainingTopic, TrainingTopicsResponse } from "../_lib/trainingTypes";
+import type {
+  TrainingHistoryDetailResponse,
+  TrainingHistoryResponse,
+  TrainingHistorySession,
+  TrainingTopic,
+  TrainingTopicsResponse,
+} from "../_lib/trainingTypes";
 
 function panelStyle(): CSSProperties {
   return {
@@ -87,7 +93,9 @@ function normalizeTrainingsErrorMessage(message: string | null | undefined, fall
 
 export default function TrainingsModule() {
   const [topics, setTopics] = useState<TrainingTopic[]>([]);
+  const [historySessions, setHistorySessions] = useState<TrainingHistorySession[]>([]);
   const [loading, setLoading] = useState(true);
+  const [historyLoading, setHistoryLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -95,6 +103,11 @@ export default function TrainingsModule() {
   const [sessionLabels, setSessionLabels] = useState<Record<string, string>>({});
   const [sessionBusyKey, setSessionBusyKey] = useState<string | null>(null);
   const [copiedTopicId, setCopiedTopicId] = useState<string | null>(null);
+  const [expandedHistorySessionId, setExpandedHistorySessionId] = useState<string | null>(null);
+  const [historyDetailBusyId, setHistoryDetailBusyId] = useState<string | null>(null);
+  const [historyDetails, setHistoryDetails] = useState<
+    Record<string, TrainingHistoryDetailResponse["attendances"]>
+  >({});
   const [origin, setOrigin] = useState("");
 
   useEffect(() => {
@@ -142,8 +155,48 @@ export default function TrainingsModule() {
     }
   }
 
+  async function loadHistory() {
+    try {
+      setHistoryLoading(true);
+      setError(null);
+      const token = await getAccessToken();
+
+      if (!token) {
+        throw new Error("Sesion invalida.");
+      }
+
+      const res = await fetch("/api/trainings/history", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      const payload = (await res.json().catch(() => null)) as TrainingHistoryResponse | { error?: string } | null;
+
+      if (!res.ok) {
+        throw new Error(
+          normalizeTrainingsErrorMessage(
+            payload && "error" in payload ? payload.error ?? null : null,
+            "No se pudo cargar el historico."
+          )
+        );
+      }
+
+      setHistorySessions(payload && "sessions" in payload ? payload.sessions : []);
+    } catch (err) {
+      setError(
+        normalizeTrainingsErrorMessage(
+          err instanceof Error ? err.message : null,
+          "No se pudo cargar el historico."
+        )
+      );
+    } finally {
+      setHistoryLoading(false);
+    }
+  }
+
   useEffect(() => {
     void loadTopics();
+    void loadHistory();
   }, []);
 
   async function handleCreateTopic() {
@@ -185,7 +238,7 @@ export default function TrainingsModule() {
 
       setTitle("");
       setDescription("");
-      await loadTopics();
+      await Promise.all([loadTopics(), loadHistory()]);
     } catch (err) {
       setError(
         normalizeTrainingsErrorMessage(
@@ -229,7 +282,7 @@ export default function TrainingsModule() {
       }
 
       setSessionLabels((current) => ({ ...current, [topicId]: "" }));
-      await loadTopics();
+      await Promise.all([loadTopics(), loadHistory()]);
     } catch (err) {
       setError(
         normalizeTrainingsErrorMessage(
@@ -271,7 +324,7 @@ export default function TrainingsModule() {
         );
       }
 
-      await loadTopics();
+      await Promise.all([loadTopics(), loadHistory()]);
     } catch (err) {
       setError(
         normalizeTrainingsErrorMessage(
@@ -296,6 +349,106 @@ export default function TrainingsModule() {
     }
   }
 
+  async function handleDeleteSession(sessionId: string) {
+    if (typeof window !== "undefined") {
+      const confirmed = window.confirm("Esta accion eliminara la sesion cerrada y sus asistencias registradas. ¿Continuar?");
+      if (!confirmed) return;
+    }
+
+    try {
+      setSessionBusyKey(`delete:${sessionId}`);
+      setError(null);
+      const token = await getAccessToken();
+
+      if (!token) {
+        throw new Error("Sesion invalida.");
+      }
+
+      const res = await fetch("/api/trainings/sessions", {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          session_id: sessionId,
+        }),
+      });
+
+      const payload = (await res.json().catch(() => null)) as { error?: string } | null;
+
+      if (!res.ok) {
+        throw new Error(
+          normalizeTrainingsErrorMessage(payload?.error ?? null, "No se pudo eliminar la sesion.")
+        );
+      }
+
+      await Promise.all([loadTopics(), loadHistory()]);
+    } catch (err) {
+      setError(
+        normalizeTrainingsErrorMessage(
+          err instanceof Error ? err.message : null,
+          "No se pudo eliminar la sesion."
+        )
+      );
+    } finally {
+      setSessionBusyKey(null);
+    }
+  }
+
+  async function handleToggleHistoryDetail(sessionId: string) {
+    if (expandedHistorySessionId === sessionId) {
+      setExpandedHistorySessionId(null);
+      return;
+    }
+
+    setExpandedHistorySessionId(sessionId);
+
+    if (historyDetails[sessionId]) {
+      return;
+    }
+
+    try {
+      setHistoryDetailBusyId(sessionId);
+      setError(null);
+      const token = await getAccessToken();
+
+      if (!token) {
+        throw new Error("Sesion invalida.");
+      }
+
+      const res = await fetch(`/api/trainings/history?session_id=${encodeURIComponent(sessionId)}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      const payload = (await res.json().catch(() => null)) as TrainingHistoryDetailResponse | { error?: string } | null;
+
+      if (!res.ok) {
+        throw new Error(
+          normalizeTrainingsErrorMessage(
+            payload && "error" in payload ? payload.error ?? null : null,
+            "No se pudo cargar el detalle historico."
+          )
+        );
+      }
+
+      setHistoryDetails((current) => ({
+        ...current,
+        [sessionId]: payload && "attendances" in payload ? payload.attendances : [],
+      }));
+    } catch (err) {
+      setError(
+        normalizeTrainingsErrorMessage(
+          err instanceof Error ? err.message : null,
+          "No se pudo cargar el detalle historico."
+        )
+      );
+    } finally {
+      setHistoryDetailBusyId(null);
+    }
+  }
+
   const sortedTopics = useMemo(
     () =>
       [...topics].sort((a, b) => {
@@ -309,6 +462,12 @@ export default function TrainingsModule() {
         return a.title.localeCompare(b.title, "es");
       }),
     [topics]
+  );
+
+  const activeTopics = useMemo(
+    () =>
+      sortedTopics.filter((topic) => topic.sessions.some((session) => session.status === "open")),
+    [sortedTopics]
   );
 
   return (
@@ -343,10 +502,10 @@ export default function TrainingsModule() {
       <div style={{ display: "grid", gap: 12 }}>
         {loading ? (
           <div style={panelStyle()}>Cargando formaciones...</div>
-        ) : sortedTopics.length === 0 ? (
-          <div style={panelStyle()}>No hay temas registrados todavia.</div>
+        ) : activeTopics.length === 0 ? (
+          <div style={panelStyle()}>No hay formaciones abiertas en este momento.</div>
         ) : (
-          sortedTopics.map((topic) => {
+          activeTopics.map((topic) => {
             const activeSessions = topic.sessions.filter((session) => session.status === "open");
             const publicLink = origin ? `${origin}/formaciones/registro/${topic.qr_token}` : `/formaciones/registro/${topic.qr_token}`;
 
@@ -422,23 +581,24 @@ export default function TrainingsModule() {
                 </div>
 
                 <div style={{ marginTop: 16, display: "grid", gap: 10 }}>
-                  {topic.sessions.length === 0 ? (
-                    <div style={{ color: "#6b7280" }}>Sin sesiones todavia.</div>
+                  <div style={{ fontWeight: 800, fontSize: 16 }}>Sesiones activas</div>
+                  {activeSessions.length === 0 ? (
+                    <div style={{ color: "#6b7280" }}>No hay sesiones activas para este tema.</div>
                   ) : (
-                    topic.sessions.map((session) => (
+                    activeSessions.map((session) => (
                       <div
                         key={session.id}
                         style={{
                           border: "1px solid #e5e7eb",
                           borderRadius: 10,
                           padding: 12,
-                          background: session.status === "open" ? "#ecfdf5" : "#f9fafb",
+                          background: "#ecfdf5",
                         }}
                       >
                         <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
                           <div style={{ display: "grid", gap: 4 }}>
                             <div style={{ fontWeight: 700 }}>
-                              {session.session_label?.trim() || "Sesion sin label"} · {session.status === "open" ? "Abierta" : "Cerrada"}
+                              {session.session_label?.trim() || "Sesion sin label"} · Abierta
                             </div>
                             <div style={{ fontSize: 14, color: "#4b5563" }}>
                               Supervisor: {session.supervisor_name_snapshot || "Sin nombre"}
@@ -461,15 +621,13 @@ export default function TrainingsModule() {
                             >
                               Asistencias: <b>{session.attendance_count}</b>
                             </div>
-                            {session.status === "open" ? (
-                              <button
-                                onClick={() => void handleCloseSession(session.id)}
-                                disabled={sessionBusyKey === `close:${session.id}`}
-                                style={secondaryButtonStyle(sessionBusyKey === `close:${session.id}`)}
-                              >
-                                {sessionBusyKey === `close:${session.id}` ? "Cerrando..." : "Cerrar sesion"}
-                              </button>
-                            ) : null}
+                            <button
+                              onClick={() => void handleCloseSession(session.id)}
+                              disabled={sessionBusyKey === `close:${session.id}`}
+                              style={secondaryButtonStyle(sessionBusyKey === `close:${session.id}`)}
+                            >
+                              {sessionBusyKey === `close:${session.id}` ? "Cerrando..." : "Cerrar sesion"}
+                            </button>
                           </div>
                         </div>
                       </div>
@@ -480,6 +638,121 @@ export default function TrainingsModule() {
             );
           })
         )}
+      </div>
+
+      <div style={panelStyle()}>
+        <div style={{ fontSize: 22, fontWeight: 800 }}>Historico</div>
+        <div style={{ marginTop: 6, color: "#4b5563", lineHeight: 1.5 }}>
+          Sesiones cerradas de todas las formaciones, ordenadas por cierre mas reciente.
+        </div>
+
+        <div style={{ marginTop: 14, display: "grid", gap: 10 }}>
+          {historyLoading ? (
+            <div style={{ color: "#6b7280" }}>Cargando historico...</div>
+          ) : historySessions.length === 0 ? (
+            <div style={{ color: "#6b7280" }}>No hay sesiones cerradas todavia.</div>
+          ) : (
+            historySessions.map((session) => (
+              <div
+                key={session.id}
+                style={{
+                  border: "1px solid #e5e7eb",
+                  borderRadius: 10,
+                  padding: 12,
+                  background: "#f9fafb",
+                }}
+              >
+                <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+                  <div style={{ display: "grid", gap: 4 }}>
+                    <div style={{ fontWeight: 800 }}>{session.topic_title}</div>
+                    <div style={{ fontSize: 14, color: "#4b5563" }}>
+                      Supervisor: {session.supervisor_name_snapshot || "Sin nombre"}
+                    </div>
+                    <div style={{ fontSize: 13, color: "#4b5563" }}>
+                      Sesion: {session.session_label?.trim() || "Sesion sin label"}
+                    </div>
+                    <div style={{ fontSize: 13, color: "#6b7280" }}>
+                      Inicio: {formatDateTime(session.opened_at)} · Cierre: {formatDateTime(session.closed_at)}
+                    </div>
+                  </div>
+
+                  <div style={{ display: "grid", gap: 8, justifyItems: "end" }}>
+                    <div
+                      style={{
+                        border: "1px solid #d1d5db",
+                        borderRadius: 999,
+                        padding: "6px 10px",
+                        fontSize: 13,
+                        background: "#fff",
+                      }}
+                    >
+                      Asistencias: <b>{session.attendance_count}</b>
+                    </div>
+                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
+                      <button
+                        onClick={() => void handleToggleHistoryDetail(session.id)}
+                        disabled={historyDetailBusyId === session.id}
+                        style={secondaryButtonStyle(historyDetailBusyId === session.id)}
+                      >
+                        {expandedHistorySessionId === session.id ? "Ocultar detalle" : "Ver detalle"}
+                      </button>
+                      <button
+                        onClick={() => void handleDeleteSession(session.id)}
+                        disabled={sessionBusyKey === `delete:${session.id}`}
+                        style={secondaryButtonStyle(sessionBusyKey === `delete:${session.id}`)}
+                      >
+                        {sessionBusyKey === `delete:${session.id}` ? "Eliminando..." : "Eliminar"}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {expandedHistorySessionId === session.id ? (
+                  <div
+                    style={{
+                      marginTop: 12,
+                      borderTop: "1px solid #e5e7eb",
+                      paddingTop: 12,
+                      display: "grid",
+                      gap: 8,
+                    }}
+                  >
+                    {historyDetailBusyId === session.id ? (
+                      <div style={{ color: "#6b7280" }}>Cargando detalle...</div>
+                    ) : (historyDetails[session.id] ?? []).length === 0 ? (
+                      <div style={{ color: "#6b7280" }}>Sin asistencias registradas.</div>
+                    ) : (
+                      (historyDetails[session.id] ?? []).map((attendance) => (
+                        <div
+                          key={attendance.id}
+                          style={{
+                            border: "1px solid #e5e7eb",
+                            borderRadius: 10,
+                            padding: 10,
+                            background: "#fff",
+                          }}
+                        >
+                          <div style={{ fontWeight: 700 }}>
+                            {attendance.employee_name_input?.trim() || "Sin nombre capturado"}
+                          </div>
+                          <div style={{ marginTop: 4, fontSize: 13, color: "#4b5563" }}>
+                            Numero: {attendance.employee_number}
+                          </div>
+                          <div style={{ marginTop: 4, fontSize: 13, color: "#4b5563" }}>
+                            Perfil validado: {attendance.validated_profile_name || "No disponible"}
+                          </div>
+                          <div style={{ marginTop: 4, fontSize: 13, color: "#6b7280" }}>
+                            Registro: {formatDateTime(attendance.checked_in_at)}
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                ) : null}
+              </div>
+            ))
+          )}
+        </div>
       </div>
     </div>
   );
