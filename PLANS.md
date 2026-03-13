@@ -271,3 +271,33 @@ Cuando se implemente cada entregable, actualizar:
 - próximos pasos
 - riesgos residuales
 - checklist de verificación
+
+---
+
+## Team routing split
+
+### Estado
+- [x] `/team` convertido en redirect por rol/tab legacy
+- [x] Rutas separadas creadas para `progreso`, `formaciones`, `recuperacion`, `general`, `historial`, `templates`
+- [x] Shell común extraído para navegación y contexto visual de equipo
+- [x] Hook común extraído para perfil y áreas manager
+- [x] Navegación interna actualizada para no generar `/team?tab=...`
+- [x] Accesos manager del header migrados a rutas reales
+- [x] `/team/page.tsx` mantenido como entrypoint de compatibilidad para redirects legacy
+
+### Objetivo
+Reducir la latencia percibida del módulo Team separando los flujos pesados en páginas distintas, en lugar de concentrarlos en un único workspace con tabs internos.
+
+### Riesgos residuales
+- persistencia del área seleccionada solo vía query string en rutas manager
+- el coste de perfil/áreas manager sigue existiendo por ruta, aunque ya no comparte entrypoint con todos los paneles
+- todavía hay que cerrar del todo la semántica del panel Team Progreso
+
+### Verificación
+- [x] `npm run lint` pasó tras la migración
+- [x] solo quedaron warnings previos no relacionados
+
+### Próximo trabajo recomendado
+- [ ] cerrar la semántica final de KPIs en Team Progreso
+- [ ] validar la lógica de completitud por rubro a nivel equipo
+- [ ] continuar la investigación/fix del scoring de auditorías si vuelve a reproducirse alguna inconsistencia
