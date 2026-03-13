@@ -523,7 +523,7 @@ export default function TeamSummaryTab({
 
                     <div style={{ textAlign: "right", whiteSpace: "nowrap" }}>
                       <div style={{ fontWeight: 800, fontSize: 20 }}>
-                        {formatPct(group.progressPct)}
+                        {formatPct((group as any)["progressPct"] ?? 0)}
                       </div>
                     </div>
                   </div>
