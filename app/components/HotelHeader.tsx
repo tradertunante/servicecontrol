@@ -159,11 +159,11 @@ export default function HotelHeader() {
   const backTarget = getBackTarget(pathname);
   const showBack = Boolean(backTarget);
   const navTo = (path: string) => { router.push(path); };
-  const hotelHomeTarget = profile?.role === "manager" ? "/team?tab=area" : "/home";
+  const hotelHomeTarget = profile?.role === "manager" ? "/team/general" : "/home";
   const openAuditArea = async () => {
     try {
       if (profile?.role === "manager") {
-        router.push("/team?tab=templates");
+        router.push("/team/templates");
         return;
       }
 

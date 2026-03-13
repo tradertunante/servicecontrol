@@ -320,3 +320,73 @@ Cada vez que se tome una decisión de arquitectura o dominio importante, registr
 
 No sobrescribir decisiones anteriores.
 Si una decisión cambia, añadir una nueva entrada que la reemplace explícitamente.
+
+---
+
+## Decisión 9
+
+### Fecha
+2026-03-11
+
+### Decisión
+Separar `/team` en rutas independientes por módulo en lugar de mantener un workspace único con tabs internos pesados.
+
+### Contexto
+El workspace de equipo concentraba en una sola página los flujos de progreso, formaciones, recuperación y manager area workspace. Aunque parte de la carga ya se había diferido por tab, el entrypoint seguía acumulando estado, imports y coordinación de módulos distintos, con peor sensación de respuesta que `/analytics`.
+
+### Alternativas consideradas
+- mantener un único `page.tsx` con tabs internos
+- profundizar más el lazy-load dentro de la misma página
+- dividir por rutas reales y reutilizar un shell común de navegación
+
+### Decisión final
+Crear páginas separadas para:
+- `/team/progreso`
+- `/team/formaciones`
+- `/team/recuperacion`
+- `/team/general`
+- `/team/historial`
+
+Y dejar `/team` como redirect compatible según rol/tab legacy.
+
+### Impacto esperado
+- menor bundle inicial por módulo
+- menos estado compartido en un único entrypoint
+- navegación más rápida y predecible entre módulos pesados
+- estructura más parecida a `/analytics`, que ya reacciona mejor
+
+---
+
+## Decisión 10
+
+### Fecha
+2026-03-12
+
+### Decisión
+Completar la migración de `/team` a navegación basada en rutas reales y mantener `/team` solo como entrypoint de compatibilidad.
+
+### Contexto
+La primera fase del split separó los módulos pesados de Team en páginas reales, pero aún quedaban puntos internos que generaban navegación legacy con `?tab=...`. Eso mantenía ambigüedad en enlaces internos y en accesos desde header/acciones operativas.
+
+### Alternativas consideradas
+- seguir permitiendo que la navegación interna use `?tab=...`
+- eliminar completamente `/team` como entrypoint legacy
+- usar rutas reales para la navegación nueva y conservar `/team` solo como redirect compatible
+
+### Decisión final
+Completar la migración con estas reglas:
+
+- navegación interna nueva ya no genera `/team?tab=...`
+- `/team/page.tsx` se mantiene como compatibilidad para redirects legacy
+- se añade `/team/templates` como ruta real para managers
+- en flujos manager se preserva `area=...` vía query string de forma intencional
+
+### Impacto esperado
+- navegación interna más consistente
+- menos dependencia de compatibilidad implícita por query string
+- menor riesgo de enlaces viejos regenerados por componentes nuevos
+- mejor separación de responsabilidades por ruta
+
+### Verificación
+- `npm run lint` pasó tras la migración
+- solo quedaron warnings preexistentes no relacionados
