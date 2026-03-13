@@ -95,6 +95,11 @@ export default function AuditPageShell({
     node.scrollIntoView({ behavior: "smooth", block: "start" });
   }, [activeQuestionId]);
 
+  const totalQuestions = useMemo(
+    () => sections.reduce((sum, section) => sum + (groupedQuestions[section.id]?.length ?? 0), 0),
+    [groupedQuestions, sections]
+  );
+
   const header = (
     <div className="space-y-2 bg-slate-50">
       <AuditHeader
