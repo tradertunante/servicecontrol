@@ -833,7 +833,7 @@ export default function TrainingsModule() {
                             Numero: {attendance.employee_number}
                           </div>
                           <div style={{ marginTop: 4, fontSize: 13, color: "#4b5563" }}>
-                            Perfil validado: {attendance.validated_profile_name || "No disponible"}
+                            Colaborador validado: {attendance.validated_member_name || "No disponible"}
                           </div>
                           <div style={{ marginTop: 4, fontSize: 13, color: "#6b7280" }}>
                             Registro: {formatDateTime(attendance.checked_in_at)}

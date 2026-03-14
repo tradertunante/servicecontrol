@@ -105,7 +105,7 @@ export async function GET(request: NextRequest) {
 
       const { data: attendances, error: attendancesError } = await admin
         .from("training_attendances")
-        .select("id, employee_profile_id, employee_name_input, employee_number, checked_in_at")
+        .select("id, team_member_id, employee_name_input, employee_number, checked_in_at")
         .eq("session_id", session.id)
         .order("checked_in_at", { ascending: false });
 
@@ -113,26 +113,26 @@ export async function GET(request: NextRequest) {
         return jsonError(attendancesError.message, 500);
       }
 
-      const profileIds = Array.from(
+      const memberIds = Array.from(
         new Set(
           (attendances ?? [])
-            .map((attendance) => String(attendance.employee_profile_id ?? ""))
+            .map((attendance) => String(attendance.team_member_id ?? ""))
             .filter(Boolean)
         )
       );
 
-      const { data: profiles, error: profilesError } = profileIds.length
-        ? await admin.from("profiles").select("id, full_name").in("id", profileIds)
+      const { data: members, error: membersError } = memberIds.length
+        ? await admin.from("team_members").select("id, full_name").in("id", memberIds)
         : { data: [], error: null };
 
-      if (profilesError) {
-        return jsonError(profilesError.message, 500);
+      if (membersError) {
+        return jsonError(membersError.message, 500);
       }
 
-      const profileNameById = new Map<string, string | null>();
+      const memberNameById = new Map<string, string | null>();
 
-      for (const profile of profiles ?? []) {
-        profileNameById.set(String(profile.id), (profile.full_name as string | null) ?? null);
+      for (const member of members ?? []) {
+        memberNameById.set(String(member.id), (member.full_name as string | null) ?? null);
       }
 
       return NextResponse.json({
@@ -150,11 +150,11 @@ export async function GET(request: NextRequest) {
         },
         attendances: (attendances ?? []).map((attendance) => ({
           id: attendance.id,
-          employee_profile_id: attendance.employee_profile_id,
+          team_member_id: attendance.team_member_id,
           employee_name_input: attendance.employee_name_input ?? null,
           employee_number: attendance.employee_number,
           checked_in_at: attendance.checked_in_at,
-          validated_profile_name: profileNameById.get(String(attendance.employee_profile_id)) ?? null,
+          validated_member_name: memberNameById.get(String(attendance.team_member_id)) ?? null,
         })),
       });
     }

@@ -28,7 +28,7 @@ export async function POST(request: NextRequest) {
     const admin = supabaseAdmin();
     const { data: session, error: sessionError } = await admin
       .from("training_sessions")
-      .select("id, hotel_id, topic_id, status")
+      .select("id, hotel_id, topic_id, status, training_topics(area_id)")
       .eq("id", sessionId)
       .maybeSingle();
 
@@ -44,26 +44,45 @@ export async function POST(request: NextRequest) {
       return jsonError("La sesion ya no esta abierta.", 409);
     }
 
-    const { data: profile, error: profileError } = await admin
-      .from("profiles")
-      .select("id, full_name, active, employee_number")
+    const topicAreaId = String((session as any)?.training_topics?.area_id ?? "").trim() || null;
+
+    const { data: member, error: memberError } = await admin
+      .from("team_members")
+      .select("id, full_name, active, employee_number, hotel_id")
       .eq("hotel_id", session.hotel_id)
       .eq("employee_number", employeeNumber)
       .maybeSingle();
 
-    if (profileError) {
-      return jsonError(profileError.message, 500);
+    if (memberError) {
+      return jsonError(memberError.message, 500);
     }
 
-    if (!profile || profile.active === false) {
+    if (!member || member.active === false) {
       return jsonError("Numero de empleado no encontrado.", 404);
+    }
+
+    if (topicAreaId) {
+      const { data: areaLink, error: areaLinkError } = await admin
+        .from("team_member_areas")
+        .select("team_member_id")
+        .eq("team_member_id", member.id)
+        .eq("area_id", topicAreaId)
+        .maybeSingle();
+
+      if (areaLinkError) {
+        return jsonError(areaLinkError.message, 500);
+      }
+
+      if (!areaLink) {
+        return jsonError("El colaborador no pertenece al area de esta formacion.", 409);
+      }
     }
 
     const { error: insertError } = await admin.from("training_attendances").insert({
       hotel_id: session.hotel_id,
       topic_id: session.topic_id,
       session_id: session.id,
-      employee_profile_id: profile.id,
+      team_member_id: member.id,
       employee_number: employeeNumber,
       employee_name_input: employeeNameInput,
     });
@@ -80,10 +99,10 @@ export async function POST(request: NextRequest) {
       ok: true,
       attendance: {
         session_id: session.id,
-        employee_profile_id: profile.id,
+        team_member_id: member.id,
         employee_number: employeeNumber,
         employee_name_input: employeeNameInput,
-        employee_name_snapshot: profile.full_name ?? null,
+        employee_name_snapshot: member.full_name ?? null,
       },
     });
   } catch (error) {

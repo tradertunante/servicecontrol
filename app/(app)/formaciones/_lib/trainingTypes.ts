@@ -42,11 +42,11 @@ export type TrainingHistorySession = {
 
 export type TrainingHistoryAttendance = {
   id: string;
-  employee_profile_id: string;
+  team_member_id: string | null;
   employee_name_input: string | null;
   employee_number: string;
   checked_in_at: string;
-  validated_profile_name: string | null;
+  validated_member_name: string | null;
 };
 
 export type TrainingHistoryResponse = {
