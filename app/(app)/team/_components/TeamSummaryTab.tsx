@@ -169,6 +169,26 @@ export default function TeamSummaryTab({
     return groupedTargetsByTemplateFallback;
   }, [groupedTargetsByTemplateFallback, teamTemplateProgress]);
 
+  const rubricGoalProgress = useMemo(
+    () =>
+      groupedTargetsByTemplate.map((group) => {
+        const template = String(group.template ?? "Auditoría");
+        const target = Number(("targetSum" in group ? group.targetSum : group.target) ?? 0);
+        const completed = Number(("completedSum" in group ? group.completedSum : group.completed) ?? 0);
+        const remaining = Math.max(target - completed, 0);
+        const progressPct = target > 0 ? Math.min((completed / target) * 100, 100) : 0;
+
+        return {
+          template,
+          target,
+          completed,
+          remaining,
+          progressPct,
+        };
+      }),
+    [groupedTargetsByTemplate]
+  );
+
   const rubricTargetsByAuditor = useMemo(() => {
     const auditorMap: Record<
       string,
@@ -366,6 +386,71 @@ export default function TeamSummaryTab({
         }}
       >
         <Card>
+          <div style={{ fontWeight: 700, fontSize: 16 }}>Objetivos por rubro</div>
+          <div style={{ opacity: 0.8, marginTop: 6, fontSize: 13 }}>
+            Producción del equipo frente al objetivo asignado agrupada por plantilla en {getPeriodLabel(selectedPeriod)}.
+          </div>
+
+          <div style={panelBodyStyle}>
+            {loading ? (
+              <div>Cargando…</div>
+            ) : rubricGoalProgress.length === 0 ? (
+              <div style={{ opacity: 0.85 }}>No hay objetivos para este periodo.</div>
+            ) : (
+              rubricGoalProgress.map((group) => (
+                <Card key={group.template} padding={12}>
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      gap: 12,
+                      alignItems: "flex-start",
+                    }}
+                  >
+                    <div style={{ minWidth: 0 }}>
+                      <div
+                        style={{
+                          fontWeight: 700,
+                          fontSize: 18,
+                          whiteSpace: "nowrap",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                        }}
+                      >
+                        {group.template}
+                      </div>
+                      <div style={{ opacity: 0.8, fontSize: 13, marginTop: 4 }}>
+                        {group.completed} / {group.target}
+                      </div>
+                      <div style={{ opacity: 0.8, fontSize: 12, marginTop: 4 }}>
+                        faltan <b>{group.remaining}</b>
+                      </div>
+                    </div>
+
+                    <div style={{ textAlign: "right", whiteSpace: "nowrap" }}>
+                      <div style={{ fontWeight: 800, fontSize: 20 }}>
+                        {formatPct(group.progressPct)}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div style={progressTrackStyle}>
+                    <div
+                      style={{
+                        height: "100%",
+                        width: `${Math.max(0, Math.min(100, Number(group.progressPct ?? 0)))}%`,
+                        borderRadius: 999,
+                        background: "linear-gradient(90deg,#60a5fa,#38bdf8)",
+                      }}
+                    />
+                  </div>
+                </Card>
+              ))
+            )}
+          </div>
+        </Card>
+
+        <Card>
           <div style={{ fontWeight: 700, fontSize: 16 }}>
             Leaderboard auditores (
             {selectedPeriod === "daily"
@@ -467,74 +552,6 @@ export default function TeamSummaryTab({
                         width: `${Math.max(
                           0,
                           Math.min(100, Number(row.progress_pct ?? 0))
-                        )}%`,
-                        borderRadius: 999,
-                        background: "linear-gradient(90deg,#60a5fa,#38bdf8)",
-                      }}
-                    />
-                  </div>
-                </Card>
-              ))
-            )}
-          </div>
-        </Card>
-
-        <Card>
-          <div style={{ fontWeight: 700, fontSize: 16 }}>Objetivos por rubro</div>
-          <div style={{ opacity: 0.8, marginTop: 6, fontSize: 13 }}>
-            Producción del equipo frente al objetivo asignado agrupada por plantilla en {getPeriodLabel(selectedPeriod)}.
-          </div>
-
-          <div style={panelBodyStyle}>
-            {loading ? (
-              <div>Cargando…</div>
-            ) : groupedTargetsByTemplate.length === 0 ? (
-              <div style={{ opacity: 0.85 }}>No hay objetivos para este periodo.</div>
-            ) : (
-              groupedTargetsByTemplate.map((group) => (
-                <Card key={group.template} padding={12}>
-                  <div
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      gap: 12,
-                      alignItems: "flex-start",
-                    }}
-                  >
-                    <div style={{ minWidth: 0 }}>
-                      <div
-                        style={{
-                          fontWeight: 700,
-                          fontSize: 18,
-                          whiteSpace: "nowrap",
-                          overflow: "hidden",
-                          textOverflow: "ellipsis",
-                        }}
-                      >
-                        {group.template}
-                      </div>
-                      <div style={{ opacity: 0.8, fontSize: 13, marginTop: 4 }}>
-                        {(group as any)["completedSum"] ?? (group as any)["completed"]} / {(group as any)["targetSum"] ?? (group as any)["target"]}
-                      </div>
-                      <div style={{ opacity: 0.8, fontSize: 12, marginTop: 4 }}>
-                        faltan <b>{(group as any)["remainingSum"] ?? (group as any)["remaining"]}</b>
-                      </div>
-                    </div>
-
-                    <div style={{ textAlign: "right", whiteSpace: "nowrap" }}>
-                      <div style={{ fontWeight: 800, fontSize: 20 }}>
-                        {formatPct((group as any)["progressPct"] ?? 0)}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div style={progressTrackStyle}>
-                    <div
-                      style={{
-                        height: "100%",
-                        width: `${Math.max(
-                          0,
-                          Math.min(100, Number((group as any)["progressPct"] ?? 0))
                         )}%`,
                         borderRadius: 999,
                         background: "linear-gradient(90deg,#60a5fa,#38bdf8)",
