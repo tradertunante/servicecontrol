@@ -3,6 +3,9 @@
 
 import { useEffect, useMemo, useState } from "react";
 import type { CSSProperties } from "react";
+import AuditLogModal from "@/components/audit/AuditLogModal";
+import { postAuditLogEntries } from "@/lib/auditLogsClient";
+import type { AuditLogEntryInput } from "@/lib/auditLogTypes";
 import { supabase } from "@/lib/supabaseClient";
 
 type PeriodKey = "daily" | "weekly" | "monthly";
@@ -58,6 +61,7 @@ type AssignmentRow = {
   user_id: string;
   target_count: number;
   active: boolean;
+  source_ids?: string[];
 };
 
 type TemplateAssignmentMap = Record<string, Record<string, AssignmentRow>>;
@@ -113,6 +117,42 @@ function getAssignmentStatus(targetCount: number, assignedTotal: number, hasGoal
   return "Excedido";
 }
 
+function buildEquitableDistribution(targetCount: number, memberCount: number) {
+  if (memberCount <= 0) return [];
+
+  const normalizedTarget = normalizeAssignmentValue(targetCount);
+  const base = Math.floor(normalizedTarget / memberCount);
+  const remainder = normalizedTarget % memberCount;
+
+  return Array.from({ length: memberCount }, (_, index) =>
+    base + (index < remainder ? 1 : 0)
+  );
+}
+
+function buildLoadBasedDistribution(targetCount: number, currentLoads: number[]) {
+  const normalizedTarget = normalizeAssignmentValue(targetCount);
+  if (currentLoads.length === 0) return [];
+
+  const nextAssignments = Array.from({ length: currentLoads.length }, () => 0);
+
+  for (let unit = 0; unit < normalizedTarget; unit += 1) {
+    let selectedIndex = 0;
+    let selectedLoad = currentLoads[0] + nextAssignments[0];
+
+    for (let index = 1; index < currentLoads.length; index += 1) {
+      const candidateLoad = currentLoads[index] + nextAssignments[index];
+      if (candidateLoad < selectedLoad) {
+        selectedIndex = index;
+        selectedLoad = candidateLoad;
+      }
+    }
+
+    nextAssignments[selectedIndex] += 1;
+  }
+
+  return nextAssignments;
+}
+
 function normalizeRelation(value: MaybeRelation): NameRelation | null {
   if (!value) return null;
   if (Array.isArray(value)) return value[0] ?? null;
@@ -144,11 +184,17 @@ export default function TeamTargetAssignmentsCard({
   const [areas, setAreas] = useState<AreaRow[]>([]);
   const [selectedAreaId, setSelectedAreaId] = useState<string>("");
   const [selectedPeriod, setSelectedPeriod] = useState<PeriodKey>("daily");
+  const [historyOpen, setHistoryOpen] = useState(false);
 
   const [teamUsers, setTeamUsers] = useState<TeamUserRow[]>([]);
   const [templateTargets, setTemplateTargets] = useState<AreaTemplateTargetRow[]>([]);
   const [assignmentsByTemplate, setAssignmentsByTemplate] = useState<TemplateAssignmentMap>({});
   const [initialAssignmentsByTemplate, setInitialAssignmentsByTemplate] = useState<TemplateAssignmentMap>({});
+  const [templateHints, setTemplateHints] = useState<Record<string, string>>({});
+
+  function getAreaName(areaId: string) {
+    return areas.find((area) => area.id === areaId)?.name ?? "Área";
+  }
 
   useEffect(() => {
     loadInitial();
@@ -376,6 +422,15 @@ export default function TeamTargetAssignmentsCard({
       return;
     }
 
+    const eligibleUserIds = users.map((user) => user.id);
+
+    if (eligibleUserIds.length === 0) {
+      setAssignmentsByTemplate({});
+      setInitialAssignmentsByTemplate({});
+      setLoading(false);
+      return;
+    }
+
     const assResp = await supabase
       .from("area_template_target_assignments")
       .select(`
@@ -390,6 +445,8 @@ export default function TeamTargetAssignmentsCard({
       .eq("hotel_id", hotelId)
       .eq("area_id", areaId)
       .eq("period", period)
+      .eq("active", true)
+      .in("user_id", eligibleUserIds)
       .in("audit_template_id", templateIds);
 
     if (assResp.error) {
@@ -410,11 +467,25 @@ export default function TeamTargetAssignmentsCard({
 
       if (!nextMap[auditTemplateId]) nextMap[auditTemplateId] = {};
 
+      const existing = nextMap[auditTemplateId][userId];
+      const nextId = String((row as any).id ?? "");
+      const nextCount = Number((row as any).target_count ?? 0);
+
+      if (existing) {
+        nextMap[auditTemplateId][userId] = {
+          ...existing,
+          target_count: normalizeAssignmentValue(existing.target_count + nextCount),
+          source_ids: [...(existing.source_ids ?? []), nextId].filter(Boolean),
+        };
+        continue;
+      }
+
       nextMap[auditTemplateId][userId] = {
-        id: (row as any).id,
+        id: nextId || undefined,
         user_id: userId,
-        target_count: Number((row as any).target_count ?? 0),
+        target_count: normalizeAssignmentValue(nextCount),
         active: Boolean((row as any).active ?? true),
+        source_ids: nextId ? [nextId] : [],
       };
     }
 
@@ -428,6 +499,7 @@ export default function TeamTargetAssignmentsCard({
             user_id: user.id,
             target_count: 0,
             active: true,
+            source_ids: [],
           };
         }
       }
@@ -435,6 +507,7 @@ export default function TeamTargetAssignmentsCard({
 
     setAssignmentsByTemplate(nextMap);
     setInitialAssignmentsByTemplate(JSON.parse(JSON.stringify(nextMap)) as TemplateAssignmentMap);
+    setTemplateHints({});
     setLoading(false);
   }
 
@@ -450,12 +523,130 @@ export default function TeamTargetAssignmentsCard({
           ...(prev[templateId]?.[userId] ?? {
             user_id: userId,
             active: true,
+            source_ids: [],
           }),
           user_id: userId,
           target_count: nextValue,
           active: true,
         },
       },
+    }));
+    setTemplateHints((prev) => ({ ...prev, [templateId]: "" }));
+  }
+
+  function autoDistributeTemplate(templateId: string, targetCount: number) {
+    if (teamUsers.length === 0) {
+      setTemplateHints((prev) => ({
+        ...prev,
+        [templateId]: "No hay miembros elegibles para repartir este objetivo.",
+      }));
+      return;
+    }
+
+    const distribution = buildEquitableDistribution(targetCount, teamUsers.length);
+    const currentTemplate = assignmentsByTemplate[templateId] ?? {};
+    const hasChanges = teamUsers.some(
+      (user, index) =>
+        normalizeAssignmentValue(Number(currentTemplate[user.id]?.target_count ?? 0)) !==
+        normalizeAssignmentValue(distribution[index] ?? 0)
+    );
+
+    if (!hasChanges) {
+      setTemplateHints((prev) => ({
+        ...prev,
+        [templateId]: "El reparto ya coincide con la distribucion sugerida.",
+      }));
+      return;
+    }
+
+    setAssignmentsByTemplate((prev) => {
+      const currentTemplate = prev[templateId] ?? {};
+      const nextTemplate: Record<string, AssignmentRow> = { ...currentTemplate };
+
+      for (const [index, user] of teamUsers.entries()) {
+        nextTemplate[user.id] = {
+          ...(currentTemplate[user.id] ?? {
+            user_id: user.id,
+            active: true,
+            source_ids: [],
+          }),
+          user_id: user.id,
+          active: true,
+          target_count: distribution[index] ?? 0,
+        };
+      }
+
+      return {
+        ...prev,
+        [templateId]: nextTemplate,
+      };
+    });
+
+    setTemplateHints((prev) => ({
+      ...prev,
+      [templateId]: "Reparto automático aplicado. Revisa y guarda los cambios.",
+    }));
+  }
+
+  function autoDistributeTemplateByLoad(templateId: string, targetCount: number) {
+    if (teamUsers.length === 0) {
+      setTemplateHints((prev) => ({
+        ...prev,
+        [templateId]: "No hay miembros elegibles para repartir este objetivo.",
+      }));
+      return;
+    }
+
+    const currentLoads = teamUsers.map((user) =>
+      templateTargets.reduce((sum, template) => {
+        if (template.audit_template_id === templateId) return sum;
+        const row = assignmentsByTemplate[template.audit_template_id]?.[user.id];
+        return sum + normalizeAssignmentValue(Number(row?.target_count ?? 0));
+      }, 0)
+    );
+
+    const distribution = buildLoadBasedDistribution(targetCount, currentLoads);
+    const currentTemplate = assignmentsByTemplate[templateId] ?? {};
+    const hasChanges = teamUsers.some(
+      (user, index) =>
+        normalizeAssignmentValue(Number(currentTemplate[user.id]?.target_count ?? 0)) !==
+        normalizeAssignmentValue(distribution[index] ?? 0)
+    );
+
+    if (!hasChanges) {
+      setTemplateHints((prev) => ({
+        ...prev,
+        [templateId]: "El reparto ya coincide con la distribucion sugerida por carga.",
+      }));
+      return;
+    }
+
+    setAssignmentsByTemplate((prev) => {
+      const currentTemplate = prev[templateId] ?? {};
+      const nextTemplate: Record<string, AssignmentRow> = { ...currentTemplate };
+
+      for (const [index, user] of teamUsers.entries()) {
+        nextTemplate[user.id] = {
+          ...(currentTemplate[user.id] ?? {
+            user_id: user.id,
+            active: true,
+            source_ids: [],
+          }),
+          user_id: user.id,
+          active: true,
+          target_count: distribution[index] ?? 0,
+        };
+      }
+
+      return {
+        ...prev,
+        [templateId]: nextTemplate,
+      };
+    });
+
+    setTemplateHints((prev) => ({
+      ...prev,
+      [templateId]: "Reparto por carga aplicado. Revisa y guarda los cambios.",
     }));
   }
 
@@ -482,35 +673,65 @@ export default function TeamTargetAssignmentsCard({
     };
   }, [templateTargets, assignmentsByTemplate]);
 
-  const changedAssignmentsByTemplate = useMemo(() => {
-    const next: Record<string, AssignmentRow[]> = {};
+  const templateDirtyState = useMemo(() => {
+    const next: Record<
+      string,
+      {
+        dirty: boolean;
+        changedRows: AssignmentRow[];
+      }
+    > = {};
 
     for (const target of templateTargets) {
       const templateId = target.audit_template_id;
       const currentRows = assignmentsByTemplate[templateId] ?? {};
       const initialRows = initialAssignmentsByTemplate[templateId] ?? {};
+      const changedRows: AssignmentRow[] = [];
 
-      next[templateId] = Object.values(currentRows).filter((row) => {
-        const initialRow = initialRows[row.user_id];
-        return (
-          !initialRow ||
-          normalizeAssignmentValue(row.target_count) !==
-            normalizeAssignmentValue(initialRow.target_count) ||
-          Boolean(row.active) !== Boolean(initialRow.active)
-        );
-      });
+      for (const user of teamUsers) {
+        const currentRow = currentRows[user.id] ?? {
+          user_id: user.id,
+          target_count: 0,
+          active: true,
+          source_ids: [],
+        };
+        const initialRow = initialRows[user.id] ?? {
+          user_id: user.id,
+          target_count: 0,
+          active: true,
+          source_ids: [],
+        };
+
+        const currentValue = normalizeAssignmentValue(Number(currentRow.target_count ?? 0));
+        const initialValue = normalizeAssignmentValue(Number(initialRow.target_count ?? 0));
+
+        if (
+          currentValue !== initialValue ||
+          Boolean(currentRow.active) !== Boolean(initialRow.active)
+        ) {
+          changedRows.push({
+            ...currentRow,
+            target_count: currentValue,
+          });
+        }
+      }
+
+      next[templateId] = {
+        dirty: changedRows.length > 0,
+        changedRows,
+      };
     }
 
     return next;
-  }, [assignmentsByTemplate, initialAssignmentsByTemplate, templateTargets]);
+  }, [assignmentsByTemplate, initialAssignmentsByTemplate, templateTargets, teamUsers]);
 
   const totalChangedAssignments = useMemo(
     () =>
-      Object.values(changedAssignmentsByTemplate).reduce(
-        (acc, rows) => acc + rows.length,
+      Object.values(templateDirtyState).reduce(
+        (acc, entry) => acc + entry.changedRows.length,
         0
       ),
-    [changedAssignmentsByTemplate]
+    [templateDirtyState]
   );
 
   async function saveAssignments(templateId?: string) {
@@ -535,12 +756,13 @@ export default function TeamTargetAssignmentsCard({
 
     const auth = await supabase.auth.getUser();
     const createdBy = auth.data.user?.id ?? null;
+    const logEntries: AuditLogEntryInput[] = [];
     const targetsToSave = templateId
       ? templateTargets.filter((target) => target.audit_template_id === templateId)
       : templateTargets;
 
     const changedRows = targetsToSave.flatMap(
-      (target) => changedAssignmentsByTemplate[target.audit_template_id] ?? []
+      (target) => templateDirtyState[target.audit_template_id]?.changedRows ?? []
     );
 
     if (changedRows.length === 0) {
@@ -551,80 +773,140 @@ export default function TeamTargetAssignmentsCard({
 
     for (const target of targetsToSave) {
       const templateId = target.audit_template_id;
-      const templateAssignments = changedAssignmentsByTemplate[templateId] ?? [];
+      const templateAssignments = templateDirtyState[templateId]?.changedRows ?? [];
 
       for (const row of templateAssignments) {
+        const normalizedTargetCount = normalizeAssignmentValue(Number(row.target_count ?? 0));
         const payload: any = {
-          id: row.id ?? undefined,
           hotel_id: hotelId,
           area_id: selectedAreaId,
           audit_template_id: templateId,
           user_id: row.user_id,
           period: selectedPeriod,
-          target_count: normalizeAssignmentValue(Number(row.target_count ?? 0)),
+          target_count: normalizedTargetCount,
           active: row.active,
           created_by: createdBy,
         };
+        const oldRow = initialAssignmentsByTemplate[templateId]?.[row.user_id];
+        const oldTargetCount = normalizeAssignmentValue(Number(oldRow?.target_count ?? 0));
+        const action =
+          oldTargetCount === 0 && normalizedTargetCount > 0
+            ? "assign"
+            : oldTargetCount > 0 && normalizedTargetCount === 0
+              ? "unassign"
+              : "update";
 
-        const up = await supabase
+        const existingResp = await supabase
           .from("area_template_target_assignments")
-          .upsert(payload, {
-            onConflict: "hotel_id,area_id,audit_template_id,user_id,period",
-            ignoreDuplicates: false,
-          });
+          .select("id")
+          .eq("hotel_id", hotelId)
+          .eq("area_id", selectedAreaId)
+          .eq("audit_template_id", templateId)
+          .eq("user_id", row.user_id)
+          .eq("period", selectedPeriod)
+          .eq("active", true);
 
-        if (
-          up.error &&
-          String(up.error.message || "").includes("there is no unique or exclusion constraint")
-        ) {
-          const ex = await supabase
+        if (existingResp.error) {
+          setError(existingResp.error.message);
+          setSaving(false);
+          return;
+        }
+
+        const existingRows = ((existingResp.data ?? []) as Array<{ id: string }>).filter(
+          (item) => item?.id
+        );
+
+        const canonicalId =
+          row.id ??
+          row.source_ids?.[0] ??
+          existingRows[0]?.id ??
+          undefined;
+
+        const duplicateIds = Array.from(
+          new Set(
+            [
+              ...(row.source_ids ?? []),
+              ...existingRows.map((item) => item.id),
+            ].filter((id) => id && id !== canonicalId)
+          )
+        );
+
+        if (canonicalId) {
+          const updateResp = await supabase
             .from("area_template_target_assignments")
-            .select("id")
-            .eq("hotel_id", hotelId)
-            .eq("area_id", selectedAreaId)
-            .eq("audit_template_id", templateId)
-            .eq("user_id", row.user_id)
-            .eq("period", selectedPeriod)
-            .limit(1)
-            .maybeSingle();
+            .update(payload)
+            .eq("id", canonicalId);
 
-          if (ex.error) {
-            setError(ex.error.message);
+          if (updateResp.error) {
+            setError(updateResp.error.message);
             setSaving(false);
             return;
           }
+        } else {
+          const insertResp = await supabase
+            .from("area_template_target_assignments")
+            .insert(payload);
 
-          if (ex.data?.id) {
-            const u = await supabase
-              .from("area_template_target_assignments")
-              .update(payload)
-              .eq("id", ex.data.id);
-
-            if (u.error) {
-              setError(u.error.message);
-              setSaving(false);
-              return;
-            }
-          } else {
-            const i = await supabase
-              .from("area_template_target_assignments")
-              .insert(payload);
-
-            if (i.error) {
-              setError(i.error.message);
-              setSaving(false);
-              return;
-            }
+          if (insertResp.error) {
+            setError(insertResp.error.message);
+            setSaving(false);
+            return;
           }
-        } else if (up.error) {
-          setError(up.error.message);
-          setSaving(false);
-          return;
+        }
+
+        if (duplicateIds.length > 0) {
+          const deactivateResp = await supabase
+            .from("area_template_target_assignments")
+            .update({ active: false })
+            .in("id", duplicateIds);
+
+          if (deactivateResp.error) {
+            setError(deactivateResp.error.message);
+            setSaving(false);
+            return;
+          }
+        }
+
+        if (oldTargetCount !== normalizedTargetCount) {
+          const userName =
+            teamUsers.find((user) => user.id === row.user_id)?.full_name ??
+            row.user_id.slice(0, 8);
+          logEntries.push({
+            hotel_id: hotelId,
+            actor_user_id: createdBy,
+            entity_type: "team_target_assignment",
+            entity_id: `${hotelId}:${selectedAreaId}:${selectedPeriod}:${templateId}:${row.user_id}`,
+            action,
+            old_value:
+              oldTargetCount > 0
+                ? { target_count: oldTargetCount, active: oldRow?.active ?? true }
+                : null,
+            new_value: { target_count: normalizedTargetCount, active: row.active },
+            metadata: {
+              area_id: selectedAreaId,
+              area_name: getAreaName(selectedAreaId),
+              audit_template_id: templateId,
+              template_name: getTemplateName(target),
+              affected_user_id: row.user_id,
+              affected_user_name: userName,
+              period: selectedPeriod,
+              source_screen: "team_progress",
+            },
+          });
         }
       }
     }
 
+    try {
+      await postAuditLogEntries(logEntries);
+    } catch (auditError) {
+      console.error("No se pudo registrar el historial de asignaciones", auditError);
+    }
+
     await loadAreaContext(selectedAreaId, selectedPeriod);
+    if (templateId) {
+      setTemplateHints((prev) => ({ ...prev, [templateId]: "" }));
+    }
     setFeedback({
       type: "success",
       text:
@@ -656,13 +938,18 @@ export default function TeamTargetAssignmentsCard({
           </div>
         </div>
 
-        <button
-          style={btn}
-          onClick={() => selectedAreaId && loadAreaContext(selectedAreaId, selectedPeriod)}
-          disabled={loading || saving}
-        >
-          Refrescar
-        </button>
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+          <button
+            style={btn}
+            onClick={() => selectedAreaId && loadAreaContext(selectedAreaId, selectedPeriod)}
+            disabled={loading || saving}
+          >
+            Refrescar
+          </button>
+          <button style={btn} onClick={() => setHistoryOpen(true)} disabled={!selectedAreaId}>
+            Historial
+          </button>
+        </div>
       </div>
 
       {error ? (
@@ -800,7 +1087,8 @@ export default function TeamTargetAssignmentsCard({
               const targetCount = Number(target.target_count ?? 0);
               const remaining = Math.max(targetCount - assignedTotal, 0);
               const status = getAssignmentStatus(targetCount, assignedTotal, true);
-              const templateChanges = changedAssignmentsByTemplate[templateId] ?? [];
+              const templateDirty = templateDirtyState[templateId]?.dirty ?? false;
+              const templateHint = templateHints[templateId] ?? "";
 
               return (
                 <div
@@ -830,6 +1118,23 @@ export default function TeamTargetAssignmentsCard({
                       </div>
                     </div>
 
+                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                      <button
+                        style={btn}
+                        onClick={() => autoDistributeTemplate(templateId, targetCount)}
+                        disabled={saving || loading || teamUsers.length === 0}
+                      >
+                        Auto-repartir
+                      </button>
+                      <button
+                        style={btn}
+                        onClick={() => autoDistributeTemplateByLoad(templateId, targetCount)}
+                        disabled={saving || loading || teamUsers.length === 0}
+                      >
+                        Auto-repartir por carga
+                      </button>
+                    </div>
+
                     <div
                       style={{
                         display: "grid",
@@ -840,7 +1145,7 @@ export default function TeamTargetAssignmentsCard({
                       }}
                     >
                       <div style={input}>Meta: {targetCount}</div>
-                      <div style={input}>Asignado: {assignedTotal}</div>
+                      <div style={input}>Asignado: {assignedTotal} / {targetCount}</div>
                       <div style={input}>Pendiente: {remaining}</div>
                       <div style={input}>Estado: {status}</div>
                     </div>
@@ -913,15 +1218,15 @@ export default function TeamTargetAssignmentsCard({
                     }}
                   >
                     <div style={{ opacity: 0.8, fontSize: 12.5 }}>
-                      {templateChanges.length === 0
-                        ? "Sin cambios pendientes en este template."
-                        : `${templateChanges.length} cambio${templateChanges.length === 1 ? "" : "s"} pendiente${templateChanges.length === 1 ? "" : "s"} en este template.`}
+                      {templateDirty
+                        ? "Cambios sin guardar"
+                        : templateHint || "Sin cambios pendientes en este template."}
                     </div>
 
                     <button
                       style={btn}
                       onClick={() => saveAssignments(templateId)}
-                      disabled={saving || loading || templateChanges.length === 0}
+                      disabled={saving || loading || !templateDirty}
                     >
                       {saving ? "Guardando…" : "Guardar template"}
                     </button>
@@ -942,6 +1247,16 @@ export default function TeamTargetAssignmentsCard({
           {saving ? "Guardando…" : totalChangedAssignments > 0 ? `Guardar ${totalChangedAssignments} cambio${totalChangedAssignments === 1 ? "" : "s"}` : "Guardar cambios"}
         </button>
       </div>
+
+      <AuditLogModal
+        open={historyOpen}
+        onClose={() => setHistoryOpen(false)}
+        hotelId={hotelId}
+        entityTypes={["team_target_assignment"]}
+        areaId={selectedAreaId || undefined}
+        period={selectedPeriod}
+        sourceScreen="team_progress"
+      />
     </div>
   );
 }

@@ -301,3 +301,25 @@ Reducir la latencia percibida del módulo Team separando los flujos pesados en p
 - [ ] cerrar la semántica final de KPIs en Team Progreso
 - [ ] validar la lógica de completitud por rubro a nivel equipo
 - [ ] continuar la investigación/fix del scoring de auditorías si vuelve a reproducirse alguna inconsistencia
+
+---
+
+## Audit Logs fase 1
+
+### Estado
+- [x] tabla `audit_logs` definida en migración
+- [x] route handler para escritura/lectura de historial
+- [x] logging best-effort integrado en Team assignments
+- [x] logging best-effort integrado en Admin goals
+- [x] modal reusable de historial bajo demanda
+
+### Riesgos residuales
+- el logging aún no es transaccional con la operación principal
+- eventos viejos previos a la migración no aparecerán en el historial
+- algunos dominios importantes todavía no publican eventos (`member_role`, `audit_run`)
+
+### Verificación
+- [ ] aplicar migración en Supabase
+- [ ] verificar creación de logs al guardar asignaciones Team
+- [ ] verificar creación de logs al guardar objetivos Admin
+- [ ] validar filtros de modal por hotel/área/periodo
