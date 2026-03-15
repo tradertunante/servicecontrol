@@ -390,3 +390,32 @@ Completar la migración con estas reglas:
 ### Verificación
 - `npm run lint` pasó tras la migración
 - solo quedaron warnings preexistentes no relacionados
+
+---
+
+## Decisión 11
+
+### Fecha
+2026-03-15
+
+### Decisión
+Implementar la primera fase de historial de cambios con una tabla `audit_logs`, escritura best-effort vía route handlers y visualización bajo demanda en modal.
+
+### Contexto
+Se necesitaba trazabilidad inicial para cambios críticos de operación sin ensuciar la UI con paneles permanentes ni depender de escritura directa desde cliente sobre una tabla sensible.
+
+### Alternativas consideradas
+- renderizar un historial fijo dentro de las pantallas Team/Admin
+- escribir logs directamente desde cliente con RLS
+- posponer el historial hasta tener un backend transaccional completo
+
+### Decisión final
+- crear `public.audit_logs` con payloads JSONB de antes/después
+- escribir logs desde `/api/audit-logs` usando `supabaseAdmin`
+- mantener logging best-effort para no bloquear los flujos principales
+- abrir el historial solo desde botones `Historial` que montan un modal reusable
+
+### Impacto esperado
+- trazabilidad inicial para objetivos y asignaciones
+- menor riesgo de romper flujos existentes por fallos de logging
+- UI más limpia al mantener el historial fuera del layout principal

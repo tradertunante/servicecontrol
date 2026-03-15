@@ -2,6 +2,9 @@
 
 import { useEffect, useMemo, useState } from "react";
 import type { CSSProperties } from "react";
+import AuditLogModal from "@/components/audit/AuditLogModal";
+import { postAuditLogEntries } from "@/lib/auditLogsClient";
+import type { AuditLogEntryInput } from "@/lib/auditLogTypes";
 import { supabase } from "@/lib/supabaseClient";
 
 type AreaRow = {
@@ -105,6 +108,7 @@ export default function AuditTargetsModule({
   const [templates, setTemplates] = useState<TemplateRow[]>([]);
   const [targets, setTargets] = useState<AreaTemplateTargetRow[]>([]);
   const [assignmentMap, setAssignmentMap] = useState<Record<string, AssignmentAgg>>({});
+  const [historyOpen, setHistoryOpen] = useState(false);
 
   // Form
   const [editId, setEditId] = useState<string | null>(null);
@@ -126,6 +130,14 @@ export default function AuditTargetsModule({
     setPeriod("daily");
     setTargetCount(3);
     setActive(true);
+  }
+
+  function getAreaName(areaIdValue: string) {
+    return areas.find((area) => area.id === areaIdValue)?.name ?? "Área";
+  }
+
+  function getTemplateName(templateIdValue: string) {
+    return templates.find((template) => template.id === templateIdValue)?.name ?? "Template";
   }
 
   async function loadAll() {
@@ -257,6 +269,9 @@ export default function AuditTargetsModule({
 
     setSaving(true);
     setError(null);
+    const row = targets.find((target) => target.id === rowId) ?? null;
+    const auth = await supabase.auth.getUser();
+    const actorUserId = auth.data.user?.id ?? null;
 
     const d = await supabase.from("area_template_targets").delete().eq("id", rowId);
 
@@ -264,6 +279,37 @@ export default function AuditTargetsModule({
       setError(d.error.message);
       setSaving(false);
       return;
+    }
+
+    if (row) {
+      const logEntries: AuditLogEntryInput[] = [
+        {
+          hotel_id: hotelId,
+          actor_user_id: actorUserId,
+          entity_type: "area_template_target",
+          entity_id: row.id,
+          action: "deactivate",
+          old_value: {
+            target_count: Number(row.target_count ?? 0),
+            active: row.active ?? true,
+          },
+          new_value: null,
+          metadata: {
+            area_id: row.area_id,
+            area_name: row.areas?.name ?? getAreaName(row.area_id),
+            audit_template_id: row.audit_template_id,
+            template_name: row.audit_templates?.name ?? getTemplateName(row.audit_template_id),
+            period: row.period,
+            source_screen: "admin_audit_targets",
+          },
+        },
+      ];
+
+      try {
+        await postAuditLogEntries(logEntries);
+      } catch (auditError) {
+        console.error("No se pudo registrar el historial de objetivos", auditError);
+      }
     }
 
     await loadAll();
@@ -302,6 +348,15 @@ export default function AuditTargetsModule({
 
     const auth = await supabase.auth.getUser();
     const createdBy = auth.data.user?.id ?? null;
+    const existingTarget =
+      targets.find((row) => row.id === editId) ??
+      targets.find(
+        (row) =>
+          row.area_id === areaId &&
+          row.audit_template_id === templateId &&
+          row.period === period
+      ) ??
+      null;
 
     const payload: {
       id?: string;
@@ -356,6 +411,7 @@ export default function AuditTargetsModule({
           setSaving(false);
           return;
         }
+        payload.id = ex.data.id;
       } else {
         const i = await supabase.from("area_template_targets").insert(payload);
         if (i.error) {
@@ -368,6 +424,59 @@ export default function AuditTargetsModule({
       setError(up.error.message);
       setSaving(false);
       return;
+    } else if (up.data?.id) {
+      payload.id = up.data.id;
+    }
+
+    const nextTargetCount = Number(targetCount);
+    const oldTargetCount = Number(existingTarget?.target_count ?? 0);
+    const action =
+      !existingTarget
+        ? "create"
+        : existingTarget.active === false && active
+          ? "reactivate"
+          : existingTarget.active !== false && active === false
+            ? "deactivate"
+            : "update";
+
+    if (
+      !existingTarget ||
+      oldTargetCount !== nextTargetCount ||
+      Boolean(existingTarget.active ?? true) !== active
+    ) {
+      const logEntries: AuditLogEntryInput[] = [
+        {
+          hotel_id: hotelId,
+          actor_user_id: createdBy,
+          entity_type: "area_template_target",
+          entity_id: payload.id ?? `${hotelId}:${areaId}:${period}:${templateId}`,
+          action,
+          old_value: existingTarget
+            ? {
+                target_count: Number(existingTarget.target_count ?? 0),
+                active: existingTarget.active ?? true,
+              }
+            : null,
+          new_value: {
+            target_count: nextTargetCount,
+            active,
+          },
+          metadata: {
+            area_id: areaId,
+            area_name: getAreaName(areaId),
+            audit_template_id: templateId,
+            template_name: getTemplateName(templateId),
+            period,
+            source_screen: "admin_audit_targets",
+          },
+        },
+      ];
+
+      try {
+        await postAuditLogEntries(logEntries);
+      } catch (auditError) {
+        console.error("No se pudo registrar el historial de objetivos", auditError);
+      }
     }
 
     await loadAll();
@@ -393,9 +502,14 @@ export default function AuditTargetsModule({
           </div>
         </div>
 
-        <button style={btn} onClick={() => loadAll()} disabled={loading || saving}>
-          Refrescar
-        </button>
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+          <button style={btn} onClick={() => loadAll()} disabled={loading || saving}>
+            Refrescar
+          </button>
+          <button style={btn} onClick={() => setHistoryOpen(true)}>
+            Historial
+          </button>
+        </div>
       </div>
 
       {error ? (
@@ -572,6 +686,16 @@ export default function AuditTargetsModule({
           </div>
         )}
       </div>
+
+      <AuditLogModal
+        open={historyOpen}
+        onClose={() => setHistoryOpen(false)}
+        hotelId={hotelId}
+        entityTypes={["area_template_target"]}
+        areaId={areaId || undefined}
+        period={period || undefined}
+        sourceScreen="admin_audit_targets"
+      />
     </div>
   );
 }
