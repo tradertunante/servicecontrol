@@ -165,6 +165,24 @@ export default function AreaPage() {
 
       <AreaHeader area={data.area} role={data.profile?.role ?? null} />
 
+      <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 12, marginBottom: 8 }}>
+        <button
+          onClick={() => router.push(`/reports/monthly/area/${areaId}`)}
+          style={{
+            padding: "10px 14px",
+            borderRadius: 12,
+            border: "1px solid rgba(0,0,0,0.15)",
+            background: "#fff",
+            color: "#111",
+            fontWeight: 900,
+            cursor: "pointer",
+            whiteSpace: "nowrap",
+          }}
+        >
+          Reporte mensual
+        </button>
+      </div>
+
       <AreaTabs
         activeTab={tab}
         onChangeTab={(next) => {
