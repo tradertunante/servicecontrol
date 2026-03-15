@@ -8,6 +8,14 @@ function jsonError(message: string, status = 400) {
   return NextResponse.json({ ok: false, error: message }, { status });
 }
 
+function jsonNoStore(body: unknown) {
+  return NextResponse.json(body, {
+    headers: {
+      "Cache-Control": "no-store",
+    },
+  });
+}
+
 function normalizeRole(input: unknown): string {
   return String(input ?? "").trim().toLowerCase();
 }
@@ -135,7 +143,7 @@ export async function GET(request: NextRequest) {
         memberNameById.set(String(member.id), (member.full_name as string | null) ?? null);
       }
 
-      return NextResponse.json({
+      return jsonNoStore({
         ok: true,
         session: {
           id: session.id,
@@ -205,7 +213,7 @@ export async function GET(request: NextRequest) {
       attendanceCountBySession.set(key, (attendanceCountBySession.get(key) ?? 0) + 1);
     }
 
-    return NextResponse.json({
+    return jsonNoStore({
       ok: true,
       sessions: (sessions ?? []).map((session) => ({
         id: session.id,

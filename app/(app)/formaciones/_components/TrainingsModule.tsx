@@ -127,6 +127,7 @@ export default function TrainingsModule() {
       }
 
       const res = await fetch("/api/trainings/topics", {
+        cache: "no-store",
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -166,6 +167,7 @@ export default function TrainingsModule() {
       }
 
       const res = await fetch("/api/trainings/history", {
+        cache: "no-store",
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -299,6 +301,14 @@ export default function TrainingsModule() {
     try {
       setSessionBusyKey(`close:${sessionId}`);
       setError(null);
+      const closedAt = new Date().toISOString();
+      const sessionToClose =
+        topics.flatMap((topic) =>
+          topic.sessions.map((session) => ({
+            topic,
+            session,
+          }))
+        ).find((entry) => entry.session.id === sessionId) ?? null;
       const token = await getAccessToken();
 
       if (!token) {
@@ -324,6 +334,42 @@ export default function TrainingsModule() {
         );
       }
 
+      setTopics((current) =>
+        current.map((topic) => ({
+          ...topic,
+          sessions: topic.sessions.map((session) =>
+            session.id === sessionId
+              ? {
+                  ...session,
+                  status: "closed",
+                  closed_at: closedAt,
+                }
+              : session
+          ),
+        }))
+      );
+      if (sessionToClose) {
+        setHistorySessions((current) =>
+          [
+            {
+              id: sessionToClose.session.id,
+              topic_id: sessionToClose.session.topic_id,
+              topic_title: sessionToClose.topic.title,
+              hotel_id: sessionToClose.session.hotel_id,
+              opened_at: sessionToClose.session.opened_at,
+              closed_at: closedAt,
+              supervisor_name_snapshot: sessionToClose.session.supervisor_name_snapshot,
+              session_label: sessionToClose.session.session_label,
+              attendance_count: sessionToClose.session.attendance_count,
+            },
+            ...current.filter((session) => session.id !== sessionId),
+          ].sort((a, b) => {
+            const aTime = a.closed_at ? new Date(a.closed_at).getTime() : 0;
+            const bTime = b.closed_at ? new Date(b.closed_at).getTime() : 0;
+            return bTime - aTime;
+          })
+        );
+      }
       await Promise.all([loadTopics(), loadHistory()]);
     } catch (err) {
       setError(
@@ -464,12 +510,6 @@ export default function TrainingsModule() {
     [topics]
   );
 
-  const activeTopics = useMemo(
-    () =>
-      sortedTopics.filter((topic) => topic.sessions.some((session) => session.status === "open")),
-    [sortedTopics]
-  );
-
   return (
     <div style={{ display: "grid", gap: 16, padding: "24px 0" }}>
       <div style={panelStyle()}>
@@ -512,7 +552,7 @@ export default function TrainingsModule() {
             <div style={{ color: "#6b7280" }}>No hay temas registrados todavia.</div>
           ) : (
             sortedTopics.map((topic) => {
-              const activeSessions = topic.sessions.filter((session) => session.status === "open");
+              const openSessions = topic.sessions.filter((session) => session.status === "open");
               const publicLink = origin ? `${origin}/formaciones/registro/${topic.qr_token}` : `/formaciones/registro/${topic.qr_token}`;
 
               return (
@@ -569,7 +609,7 @@ export default function TrainingsModule() {
                           fontSize: 14,
                         }}
                       >
-                        <b>Sesiones activas:</b> {activeSessions.length}
+                        <b>Sesiones activas:</b> {openSessions.length}
                       </div>
                       <input
                         value={sessionLabels[topic.id] ?? ""}
@@ -591,10 +631,10 @@ export default function TrainingsModule() {
 
                   <div style={{ marginTop: 16, display: "grid", gap: 10 }}>
                     <div style={{ fontWeight: 800, fontSize: 16 }}>Sesiones activas</div>
-                    {activeSessions.length === 0 ? (
+                    {openSessions.length === 0 ? (
                       <div style={{ color: "#6b7280" }}>No hay sesiones activas para este tema.</div>
                     ) : (
-                      activeSessions.map((session) => (
+                      openSessions.map((session) => (
                         <div
                           key={session.id}
                           style={{
@@ -614,7 +654,6 @@ export default function TrainingsModule() {
                               </div>
                               <div style={{ fontSize: 13, color: "#6b7280" }}>
                                 Inicio: {formatDateTime(session.opened_at)}
-                                {session.closed_at ? ` · Cierre: ${formatDateTime(session.closed_at)}` : ""}
                               </div>
                             </div>
 
@@ -643,90 +682,7 @@ export default function TrainingsModule() {
                       ))
                     )}
                   </div>
-                </div>
-              );
-            })
-          )}
-        </div>
-      </div>
 
-      <div style={panelStyle()}>
-        <div style={{ fontSize: 22, fontWeight: 800 }}>Formaciones abiertas</div>
-        <div style={{ marginTop: 6, color: "#4b5563", lineHeight: 1.5 }}>
-          Solo temas que actualmente tienen al menos una sesion abierta.
-        </div>
-
-        <div style={{ marginTop: 14, display: "grid", gap: 12 }}>
-          {loading ? (
-            <div style={{ color: "#6b7280" }}>Cargando formaciones abiertas...</div>
-          ) : activeTopics.length === 0 ? (
-            <div style={{ color: "#6b7280" }}>No hay formaciones abiertas en este momento.</div>
-          ) : (
-            activeTopics.map((topic) => {
-              const activeSessions = topic.sessions.filter((session) => session.status === "open");
-
-              return (
-                <div key={topic.id} style={{ border: "1px solid #e5e7eb", borderRadius: 12, padding: 16, background: "#fff" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
-                    <div>
-                      <div style={{ fontSize: 18, fontWeight: 800 }}>{topic.title}</div>
-                      <div style={{ marginTop: 4, fontSize: 13, color: "#4b5563" }}>
-                        <b>Area:</b> {topic.area_name || "Sin area"}
-                      </div>
-                    </div>
-                    <div
-                      style={{
-                        border: "1px solid #d1d5db",
-                        borderRadius: 999,
-                        padding: "6px 10px",
-                        fontSize: 13,
-                        background: "#fff",
-                        height: "fit-content",
-                      }}
-                    >
-                      Sesiones activas: <b>{activeSessions.length}</b>
-                    </div>
-                  </div>
-
-                  <div style={{ marginTop: 12, display: "grid", gap: 10 }}>
-                    {activeSessions.map((session) => (
-                      <div
-                        key={session.id}
-                        style={{
-                          border: "1px solid #e5e7eb",
-                          borderRadius: 10,
-                          padding: 12,
-                          background: "#ecfdf5",
-                        }}
-                      >
-                        <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
-                          <div style={{ display: "grid", gap: 4 }}>
-                            <div style={{ fontWeight: 700 }}>
-                              {session.session_label?.trim() || "Sesion sin label"} · Abierta
-                            </div>
-                            <div style={{ fontSize: 14, color: "#4b5563" }}>
-                              Supervisor: {session.supervisor_name_snapshot || "Sin nombre"}
-                            </div>
-                            <div style={{ fontSize: 13, color: "#6b7280" }}>
-                              Inicio: {formatDateTime(session.opened_at)}
-                            </div>
-                          </div>
-                          <div
-                            style={{
-                              border: "1px solid #d1d5db",
-                              borderRadius: 999,
-                              padding: "6px 10px",
-                              fontSize: 13,
-                              background: "#fff",
-                              height: "fit-content",
-                            }}
-                          >
-                            Asistencias: <b>{session.attendance_count}</b>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
                 </div>
               );
             })

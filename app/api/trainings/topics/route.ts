@@ -8,6 +8,15 @@ function jsonError(message: string, status = 400) {
   return NextResponse.json({ ok: false, error: message }, { status });
 }
 
+function jsonNoStore(body: unknown, status = 200) {
+  return NextResponse.json(body, {
+    status,
+    headers: {
+      "Cache-Control": "no-store",
+    },
+  });
+}
+
 function normalizeRole(input: unknown): string {
   return String(input ?? "").trim().toLowerCase();
 }
@@ -152,7 +161,7 @@ export async function GET(request: NextRequest) {
       sessionsByTopic.set(topicId, bucket);
     }
 
-    return NextResponse.json({
+    return jsonNoStore({
       ok: true,
       topics: (topics ?? []).map((topic) => ({
         id: topic.id,
@@ -265,14 +274,14 @@ export async function POST(request: NextRequest) {
       return jsonError(areaError.message, 500);
     }
 
-    return NextResponse.json({
+    return jsonNoStore({
       ok: true,
       topic: {
         ...data,
         area_name: area?.name ?? null,
         sessions: [],
       },
-    });
+    }, 201);
   } catch (error) {
     return jsonError(error instanceof Error ? error.message : "Error inesperado.", 500);
   }
