@@ -16,6 +16,13 @@ type TeamUserRow = {
   id: string;
   full_name: string | null;
   role: string | null;
+  hotel_id?: string | null;
+  active?: boolean | null;
+};
+
+type ViewerProfile = {
+  id: string;
+  role: string | null;
 };
 
 type NameRelation = {
@@ -48,13 +55,16 @@ type AreaTemplateTargetRow = {
 
 type AssignmentRow = {
   id?: string;
-  area_template_target_id?: string | null;
   user_id: string;
   target_count: number;
   active: boolean;
 };
 
 type TemplateAssignmentMap = Record<string, Record<string, AssignmentRow>>;
+type FeedbackState = {
+  type: "success" | "info";
+  text: string;
+} | null;
 
 function buildBtn(): CSSProperties {
   return {
@@ -90,10 +100,17 @@ function getPeriodLabel(period: string) {
   return period;
 }
 
-function getAssignmentStatus(targetCount: number, assignedTotal: number) {
-  if (assignedTotal === targetCount) return "complete";
-  if (assignedTotal < targetCount) return "pending";
-  return "over_assigned";
+function normalizeAssignmentValue(value: number) {
+  if (!Number.isFinite(value)) return 0;
+  return Math.max(0, Math.floor(value));
+}
+
+function getAssignmentStatus(targetCount: number, assignedTotal: number, hasGoal: boolean) {
+  if (!hasGoal) return "Sin objetivo";
+  if (assignedTotal === 0) return "Pendiente";
+  if (assignedTotal < targetCount) return "Parcial";
+  if (assignedTotal === targetCount) return "Completo";
+  return "Excedido";
 }
 
 function normalizeRelation(value: MaybeRelation): NameRelation | null {
@@ -120,8 +137,10 @@ export default function TeamTargetAssignmentsCard({
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [feedback, setFeedback] = useState<FeedbackState>(null);
 
   const [managerId, setManagerId] = useState<string | null>(null);
+  const [viewerProfile, setViewerProfile] = useState<ViewerProfile | null>(null);
   const [areas, setAreas] = useState<AreaRow[]>([]);
   const [selectedAreaId, setSelectedAreaId] = useState<string>("");
   const [selectedPeriod, setSelectedPeriod] = useState<PeriodKey>("daily");
@@ -129,6 +148,7 @@ export default function TeamTargetAssignmentsCard({
   const [teamUsers, setTeamUsers] = useState<TeamUserRow[]>([]);
   const [templateTargets, setTemplateTargets] = useState<AreaTemplateTargetRow[]>([]);
   const [assignmentsByTemplate, setAssignmentsByTemplate] = useState<TemplateAssignmentMap>({});
+  const [initialAssignmentsByTemplate, setInitialAssignmentsByTemplate] = useState<TemplateAssignmentMap>({});
 
   useEffect(() => {
     loadInitial();
@@ -144,6 +164,7 @@ export default function TeamTargetAssignmentsCard({
   async function loadInitial() {
     setLoading(true);
     setError(null);
+    setFeedback(null);
 
     const auth = await supabase.auth.getUser();
     const uid = auth.data.user?.id ?? null;
@@ -155,21 +176,57 @@ export default function TeamTargetAssignmentsCard({
       return;
     }
 
-    const a = await supabase
-      .from("user_area_access")
-      .select("area_id")
-      .eq("user_id", uid)
-      .eq("hotel_id", hotelId);
+    const profileResp = await supabase
+      .from("profiles")
+      .select("id, role")
+      .eq("id", uid)
+      .single();
 
-    if (a.error) {
-      setError(a.error.message);
+    if (profileResp.error) {
+      setError(profileResp.error.message);
+      setLoading(false);
+      return;
+    }
+
+    const profile = profileResp.data as ViewerProfile;
+    setViewerProfile(profile);
+
+    const canConfigure = ["manager", "quality", "admin", "superadmin"].includes(
+      profile.role ?? ""
+    );
+
+    if (!canConfigure) {
+      setError("No tienes permisos para configurar objetivos del equipo.");
+      setLoading(false);
+      return;
+    }
+
+    const areaScopeResp =
+      profile.role === "manager"
+        ? await supabase
+            .from("user_area_access")
+            .select("area_id")
+            .eq("user_id", uid)
+            .eq("hotel_id", hotelId)
+        : await supabase
+            .from("areas")
+            .select("id")
+            .eq("hotel_id", hotelId)
+            .eq("active", true);
+
+    if (areaScopeResp.error) {
+      setError(areaScopeResp.error.message);
       setLoading(false);
       return;
     }
 
     const areaIds = Array.from(
-      new Set((a.data ?? []).map((row: any) => row.area_id).filter(Boolean))
-    );
+      new Set(
+        (areaScopeResp.data ?? [])
+          .map((row: { area_id?: string | null; id?: string | null }) => row.area_id ?? row.id)
+          .filter(Boolean)
+      )
+    ) as string[];
 
     if (areaIds.length === 0) {
       setAreas([]);
@@ -210,6 +267,7 @@ export default function TeamTargetAssignmentsCard({
   async function loadAreaContext(areaId: string, period: PeriodKey) {
     setLoading(true);
     setError(null);
+    setFeedback(null);
 
     // 1) Targets por template para el área + periodo
     const targetsResp = await supabase
@@ -271,20 +329,19 @@ export default function TeamTargetAssignmentsCard({
       new Set((uaaResp.data ?? []).map((row: any) => row.user_id).filter(Boolean))
     );
 
-    const candidateUserIds = Array.from(
-      new Set([...(areaUserIds ?? []), uid].filter(Boolean))
-    ) as string[];
+    const candidateUserIds = Array.from(new Set(areaUserIds)) as string[];
 
     if (candidateUserIds.length === 0) {
       setTeamUsers([]);
       setAssignmentsByTemplate({});
+      setInitialAssignmentsByTemplate({});
       setLoading(false);
       return;
     }
 
     const profilesResp = await supabase
       .from("profiles")
-      .select("id, full_name, role")
+      .select("id, full_name, role, hotel_id, active")
       .in("id", candidateUserIds);
 
     if (profilesResp.error) {
@@ -294,7 +351,10 @@ export default function TeamTargetAssignmentsCard({
     }
 
     let users: TeamUserRow[] = ((profilesResp.data ?? []) as TeamUserRow[]).filter(
-      (x) => x.role === "auditor" || x.id === uid
+      (x) =>
+        (x.role === "auditor" || x.role === "manager") &&
+        x.active !== false &&
+        (x.hotel_id ?? hotelId) === hotelId
     );
 
     users = Object.values(
@@ -311,6 +371,7 @@ export default function TeamTargetAssignmentsCard({
 
     if (templateIds.length === 0) {
       setAssignmentsByTemplate({});
+      setInitialAssignmentsByTemplate({});
       setLoading(false);
       return;
     }
@@ -319,7 +380,6 @@ export default function TeamTargetAssignmentsCard({
       .from("area_template_target_assignments")
       .select(`
         id,
-        area_template_target_id,
         area_id,
         audit_template_id,
         user_id,
@@ -352,7 +412,6 @@ export default function TeamTargetAssignmentsCard({
 
       nextMap[auditTemplateId][userId] = {
         id: (row as any).id,
-        area_template_target_id: (row as any).area_template_target_id ?? null,
         user_id: userId,
         target_count: Number((row as any).target_count ?? 0),
         active: Boolean((row as any).active ?? true),
@@ -366,7 +425,6 @@ export default function TeamTargetAssignmentsCard({
       for (const user of users) {
         if (!nextMap[templateId][user.id]) {
           nextMap[templateId][user.id] = {
-            area_template_target_id: target.id,
             user_id: user.id,
             target_count: 0,
             active: true,
@@ -376,11 +434,13 @@ export default function TeamTargetAssignmentsCard({
     }
 
     setAssignmentsByTemplate(nextMap);
+    setInitialAssignmentsByTemplate(JSON.parse(JSON.stringify(nextMap)) as TemplateAssignmentMap);
     setLoading(false);
   }
 
   function updateAssignment(templateId: string, userId: string, value: number) {
     const target = templateTargets.find((x) => x.audit_template_id === templateId);
+    const nextValue = normalizeAssignmentValue(value);
 
     setAssignmentsByTemplate((prev) => ({
       ...prev,
@@ -390,13 +450,10 @@ export default function TeamTargetAssignmentsCard({
           ...(prev[templateId]?.[userId] ?? {
             user_id: userId,
             active: true,
-            area_template_target_id: target?.id ?? null,
           }),
           user_id: userId,
-          target_count: Number.isFinite(value) ? value : 0,
+          target_count: nextValue,
           active: true,
-          area_template_target_id:
-            prev[templateId]?.[userId]?.area_template_target_id ?? target?.id ?? null,
         },
       },
     }));
@@ -420,12 +477,43 @@ export default function TeamTargetAssignmentsCard({
     return {
       totalTarget,
       totalAssigned,
-      remaining: totalTarget - totalAssigned,
-      status: getAssignmentStatus(totalTarget, totalAssigned),
+      remaining: Math.max(totalTarget - totalAssigned, 0),
+      status: getAssignmentStatus(totalTarget, totalAssigned, templateTargets.length > 0),
     };
   }, [templateTargets, assignmentsByTemplate]);
 
-  async function saveAssignments() {
+  const changedAssignmentsByTemplate = useMemo(() => {
+    const next: Record<string, AssignmentRow[]> = {};
+
+    for (const target of templateTargets) {
+      const templateId = target.audit_template_id;
+      const currentRows = assignmentsByTemplate[templateId] ?? {};
+      const initialRows = initialAssignmentsByTemplate[templateId] ?? {};
+
+      next[templateId] = Object.values(currentRows).filter((row) => {
+        const initialRow = initialRows[row.user_id];
+        return (
+          !initialRow ||
+          normalizeAssignmentValue(row.target_count) !==
+            normalizeAssignmentValue(initialRow.target_count) ||
+          Boolean(row.active) !== Boolean(initialRow.active)
+        );
+      });
+    }
+
+    return next;
+  }, [assignmentsByTemplate, initialAssignmentsByTemplate, templateTargets]);
+
+  const totalChangedAssignments = useMemo(
+    () =>
+      Object.values(changedAssignmentsByTemplate).reduce(
+        (acc, rows) => acc + rows.length,
+        0
+      ),
+    [changedAssignmentsByTemplate]
+  );
+
+  async function saveAssignments(templateId?: string) {
     if (!selectedAreaId) {
       setError("Selecciona un área.");
       return;
@@ -436,26 +524,44 @@ export default function TeamTargetAssignmentsCard({
       return;
     }
 
+    if (!viewerProfile || !["manager", "quality", "admin", "superadmin"].includes(viewerProfile.role ?? "")) {
+      setError("No tienes permisos para guardar esta configuración.");
+      return;
+    }
+
     setSaving(true);
     setError(null);
+    setFeedback(null);
 
     const auth = await supabase.auth.getUser();
     const createdBy = auth.data.user?.id ?? null;
+    const targetsToSave = templateId
+      ? templateTargets.filter((target) => target.audit_template_id === templateId)
+      : templateTargets;
 
-    for (const target of templateTargets) {
+    const changedRows = targetsToSave.flatMap(
+      (target) => changedAssignmentsByTemplate[target.audit_template_id] ?? []
+    );
+
+    if (changedRows.length === 0) {
+      setFeedback({ type: "info", text: "No hay cambios por guardar." });
+      setSaving(false);
+      return;
+    }
+
+    for (const target of targetsToSave) {
       const templateId = target.audit_template_id;
-      const templateAssignments = assignmentsByTemplate[templateId] ?? {};
+      const templateAssignments = changedAssignmentsByTemplate[templateId] ?? [];
 
-      for (const row of Object.values(templateAssignments)) {
+      for (const row of templateAssignments) {
         const payload: any = {
           id: row.id ?? undefined,
           hotel_id: hotelId,
           area_id: selectedAreaId,
-          area_template_target_id: row.area_template_target_id ?? target.id,
           audit_template_id: templateId,
           user_id: row.user_id,
           period: selectedPeriod,
-          target_count: Number(row.target_count ?? 0),
+          target_count: normalizeAssignmentValue(Number(row.target_count ?? 0)),
           active: row.active,
           created_by: createdBy,
         };
@@ -519,6 +625,13 @@ export default function TeamTargetAssignmentsCard({
     }
 
     await loadAreaContext(selectedAreaId, selectedPeriod);
+    setFeedback({
+      type: "success",
+      text:
+        changedRows.length === 1
+          ? "Se guardó 1 asignación."
+          : `Se guardaron ${changedRows.length} asignaciones.`,
+    });
     setSaving(false);
   }
 
@@ -563,6 +676,26 @@ export default function TeamTargetAssignmentsCard({
           }}
         >
           <b>Error:</b> {error}
+        </div>
+      ) : null}
+
+      {feedback ? (
+        <div
+          style={{
+            marginTop: 12,
+            padding: 12,
+            borderRadius: 14,
+            border:
+              feedback.type === "success"
+                ? "1px solid rgba(16,185,129,0.28)"
+                : "1px solid rgba(255,255,255,0.14)",
+            background:
+              feedback.type === "success"
+                ? "rgba(16,185,129,0.08)"
+                : "rgba(255,255,255,0.04)",
+          }}
+        >
+          {feedback.text}
         </div>
       ) : null}
 
@@ -615,22 +748,22 @@ export default function TeamTargetAssignmentsCard({
 
           <div>
             <div style={{ opacity: 0.8, fontSize: 12, marginBottom: 6 }}>Objetivo total</div>
-            <div style={input}>{templateTargets.length ? overallSummary.totalTarget : "—"}</div>
+            <div style={input}>{selectedAreaId ? overallSummary.totalTarget : "—"}</div>
           </div>
 
           <div>
             <div style={{ opacity: 0.8, fontSize: 12, marginBottom: 6 }}>Asignado</div>
-            <div style={input}>{templateTargets.length ? overallSummary.totalAssigned : "—"}</div>
+            <div style={input}>{selectedAreaId ? overallSummary.totalAssigned : "—"}</div>
           </div>
 
           <div>
             <div style={{ opacity: 0.8, fontSize: 12, marginBottom: 6 }}>Pendiente</div>
-            <div style={input}>{templateTargets.length ? overallSummary.remaining : "—"}</div>
+            <div style={input}>{selectedAreaId ? overallSummary.remaining : "—"}</div>
           </div>
 
           <div>
             <div style={{ opacity: 0.8, fontSize: 12, marginBottom: 6 }}>Estado</div>
-            <div style={input}>{templateTargets.length ? overallSummary.status : "—"}</div>
+            <div style={input}>{selectedAreaId ? overallSummary.status : "—"}</div>
           </div>
         </div>
       </div>
@@ -665,8 +798,9 @@ export default function TeamTargetAssignmentsCard({
               );
 
               const targetCount = Number(target.target_count ?? 0);
-              const remaining = targetCount - assignedTotal;
-              const status = getAssignmentStatus(targetCount, assignedTotal);
+              const remaining = Math.max(targetCount - assignedTotal, 0);
+              const status = getAssignmentStatus(targetCount, assignedTotal, true);
+              const templateChanges = changedAssignmentsByTemplate[templateId] ?? [];
 
               return (
                 <div
@@ -718,7 +852,6 @@ export default function TeamTargetAssignmentsCard({
                         user_id: user.id,
                         target_count: 0,
                         active: true,
-                        area_template_target_id: target.id,
                       };
 
                       return (
@@ -753,15 +886,45 @@ export default function TeamTargetAssignmentsCard({
                               style={input}
                               type="number"
                               min={0}
+                              step={1}
                               value={row.target_count}
                               onChange={(e) =>
-                                updateAssignment(templateId, user.id, Number(e.target.value))
+                                updateAssignment(
+                                  templateId,
+                                  user.id,
+                                  Number(e.target.value)
+                                )
                               }
                             />
                           </div>
                         </div>
                       );
                     })}
+                  </div>
+
+                  <div
+                    style={{
+                      marginTop: 12,
+                      display: "flex",
+                      justifyContent: "space-between",
+                      gap: 10,
+                      alignItems: "center",
+                      flexWrap: "wrap",
+                    }}
+                  >
+                    <div style={{ opacity: 0.8, fontSize: 12.5 }}>
+                      {templateChanges.length === 0
+                        ? "Sin cambios pendientes en este template."
+                        : `${templateChanges.length} cambio${templateChanges.length === 1 ? "" : "s"} pendiente${templateChanges.length === 1 ? "" : "s"} en este template.`}
+                    </div>
+
+                    <button
+                      style={btn}
+                      onClick={() => saveAssignments(templateId)}
+                      disabled={saving || loading || templateChanges.length === 0}
+                    >
+                      {saving ? "Guardando…" : "Guardar template"}
+                    </button>
                   </div>
                 </div>
               );
@@ -773,10 +936,10 @@ export default function TeamTargetAssignmentsCard({
       <div style={{ marginTop: 14, display: "flex", gap: 10, flexWrap: "wrap" }}>
         <button
           style={btn}
-          onClick={saveAssignments}
+          onClick={() => saveAssignments()}
           disabled={saving || loading || !selectedAreaId || templateTargets.length === 0}
         >
-          {saving ? "Guardando…" : "Guardar reparto"}
+          {saving ? "Guardando…" : totalChangedAssignments > 0 ? `Guardar ${totalChangedAssignments} cambio${totalChangedAssignments === 1 ? "" : "s"}` : "Guardar cambios"}
         </button>
       </div>
     </div>
