@@ -539,6 +539,11 @@ export default function AuditReportPage() {
                 <div>
                   <strong>Estado:</strong> {report.run.status ?? "-"}
                 </div>
+                {report.run.room_number ? (
+                  <div>
+                    <strong>Habitación:</strong> {report.run.room_number}
+                  </div>
+                ) : null}
                 <div>
                   <strong>Ejecutada:</strong>{" "}
                   {report.run.executed_at

@@ -38,6 +38,9 @@ export default function AuditPageShell({
   answersByQ,
   teamMembers,
   selectedMember,
+  roomNumber,
+  savingRoomNumber,
+  isHousekeeping,
   saving,
   uploading,
   submitting,
@@ -50,6 +53,8 @@ export default function AuditPageShell({
   canGoNext,
   onSelectSection,
   onSelectMember,
+  onChangeRoomNumber,
+  onSaveRoomNumber,
   onSelectAnswer,
   onChangeComment,
   onUploadPhoto,
@@ -66,6 +71,9 @@ export default function AuditPageShell({
   answersByQ: Record<string, AnswerRow>;
   teamMembers: TeamMemberLite[];
   selectedMember: string;
+  roomNumber: string;
+  savingRoomNumber: boolean;
+  isHousekeeping: boolean;
   saving: boolean;
   uploading: boolean;
   submitting: boolean;
@@ -78,6 +86,8 @@ export default function AuditPageShell({
   canGoNext: boolean;
   onSelectSection: (sectionId: string) => void;
   onSelectMember: (memberId: string) => void;
+  onChangeRoomNumber: (value: string) => void;
+  onSaveRoomNumber: (value: string) => void;
   onSelectAnswer: (questionId: string, value: AnswerValue) => void;
   onChangeComment: (questionId: string, value: string) => void;
   onUploadPhoto: (questionId: string, file: File) => void;
@@ -106,6 +116,7 @@ export default function AuditPageShell({
         title={template?.name ?? "Auditoría"}
         subtitle={`${area?.name ?? "—"}${area?.type ? ` · ${area.type}` : ""}`}
         meta={`Fecha: ${fmtDate(run.executed_at ?? null)}`}
+        roomNumber={run.room_number}
       />
     </div>
   );
@@ -134,6 +145,20 @@ export default function AuditPageShell({
             </option>
           ))}
         </select>
+
+        {isHousekeeping ? (
+          <div className="mt-3">
+            <div className="mb-2 text-sm font-extrabold text-slate-900">Room number</div>
+            <input
+              value={roomNumber}
+              disabled={submitted || savingRoomNumber}
+              onChange={(event) => onChangeRoomNumber(event.target.value)}
+              onBlur={(event) => onSaveRoomNumber(event.target.value)}
+              placeholder="Ej. 1204A"
+              className="min-h-[48px] w-full rounded-xl border border-slate-200 bg-white px-3.5 text-sm font-semibold text-slate-900 disabled:opacity-60"
+            />
+          </div>
+        ) : null}
       </div>
 
       {sections.map((section) => {

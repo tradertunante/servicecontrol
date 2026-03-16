@@ -13,6 +13,7 @@ type AuditRun = {
   audit_template_id: string;
   status: string | null;
   score: number | null;
+  room_number?: string | null;
   executed_at: string | null;
   created_at?: string | null;
 };
@@ -177,7 +178,7 @@ export default function AuditRunSectionDetailPage() {
 
         const { data: runData, error: runErr } = await supabase
           .from("audit_runs")
-          .select("id,area_id,audit_template_id,status,score,executed_at,created_at")
+          .select("id,area_id,audit_template_id,status,score,room_number,executed_at,created_at")
           .eq("id", runId)
           .single();
 
@@ -453,6 +454,13 @@ export default function AuditRunSectionDetailPage() {
                 <div style={{ fontSize: 12, opacity: 0.6, fontWeight: 800 }}>Estado</div>
                 <div style={{ fontWeight: 900 }}>{run?.status ?? "-"}</div>
               </div>
+
+              {run?.room_number ? (
+                <div>
+                  <div style={{ fontSize: 12, opacity: 0.6, fontWeight: 800 }}>Habitación</div>
+                  <div style={{ fontWeight: 900 }}>{run.room_number}</div>
+                </div>
+              ) : null}
 
               <div>
                 <div style={{ fontSize: 12, opacity: 0.6, fontWeight: 800 }}>Score</div>

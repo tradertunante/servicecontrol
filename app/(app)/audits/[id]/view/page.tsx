@@ -11,6 +11,7 @@ type AuditRunRow = {
   status: string | null;
   score: number | null;
   notes: string | null;
+  room_number: string | null;
   executed_at: string | null;
   executed_by: string | null;
   audit_template_id: string;
@@ -174,7 +175,7 @@ export default function AuditRunViewPage() {
         // Run
         const { data: runData, error: runErr } = await supabase
           .from("audit_runs")
-          .select("id,status,score,notes,executed_at,executed_by,audit_template_id,area_id")
+          .select("id,status,score,notes,room_number,executed_at,executed_by,audit_template_id,area_id")
           .eq("id", auditRunId)
           .single();
 
@@ -467,6 +468,11 @@ export default function AuditRunViewPage() {
             <div>
               <strong>Estado:</strong> {run.status ?? "—"}
             </div>
+            {run.room_number ? (
+              <div>
+                <strong>Habitación:</strong> {run.room_number}
+              </div>
+            ) : null}
             <div>
               <strong>Fecha:</strong> {fmtDate(run.executed_at)}
             </div>

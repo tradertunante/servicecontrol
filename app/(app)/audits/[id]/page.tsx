@@ -44,6 +44,9 @@ export default function AuditRunPage() {
         answersByQ={session.answersByQ}
         teamMembers={session.teamMembers}
         selectedMember={session.selectedMember}
+        roomNumber={session.roomNumber}
+        savingRoomNumber={session.savingRoomNumber}
+        isHousekeeping={session.isHousekeeping}
         saving={session.saving}
         uploading={session.uploading}
         submitting={session.submitting}
@@ -56,6 +59,8 @@ export default function AuditRunPage() {
         canGoNext={navigation.hasNext}
         onSelectSection={navigation.goToSection}
         onSelectMember={session.saveTeamMember}
+        onChangeRoomNumber={session.setRoomNumber}
+        onSaveRoomNumber={session.saveRoomNumber}
         onSelectAnswer={session.setAnswer}
         onChangeComment={session.setComment}
         onUploadPhoto={session.uploadPhoto}
