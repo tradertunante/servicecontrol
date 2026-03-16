@@ -5,13 +5,14 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { requireRoleOrRedirect } from "@/lib/auth/RequireRole";
 import Card from "@/components/ui/Card";
 import { useTeamWorkspace } from "./_hooks/useTeamWorkspace";
+import { getDepartmentRedirectTarget } from "../_lib/departmentAccess";
 
 export default function TeamPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
   requireRoleOrRedirect(
-    ["superadmin", "admin", "manager", "quality", "engineering", "systems"],
+    ["superadmin", "admin", "manager", "quality", "engineering", "systems", "it"],
     router
   );
 
@@ -47,8 +48,12 @@ export default function TeamPage() {
       return;
     }
 
-    if (profile.role === "engineering" || profile.role === "systems") {
-      router.replace("/team/formaciones");
+    if (
+      profile.role === "engineering" ||
+      profile.role === "systems" ||
+      profile.role === "it"
+    ) {
+      router.replace(getDepartmentRedirectTarget(profile.role, null));
       return;
     }
 

@@ -6,6 +6,7 @@ export type Role =
   | "auditor"
   | "quality"
   | "engineering"
+  | "it"
   | "systems";
 
 export type Profile = {
