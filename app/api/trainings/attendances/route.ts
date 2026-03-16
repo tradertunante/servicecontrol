@@ -75,8 +75,7 @@ export async function POST(request: NextRequest) {
 
     const { data: member, error: memberError } = await admin
       .from("team_members")
-      .select("id, full_name, active, employee_number, hotel_id")
-      .eq("hotel_id", session.hotel_id)
+      .select("id, full_name, employee_number")
       .eq("employee_number", employeeNumber)
       .maybeSingle();
 
@@ -84,7 +83,7 @@ export async function POST(request: NextRequest) {
       return jsonError(memberError.message, 500);
     }
 
-    const resolvedMember = member && member.active !== false ? member : null;
+    const resolvedMember = member ?? null;
 
     if (resolvedMember && topicAreaId) {
       const { data: areaLink, error: areaLinkError } = await admin
