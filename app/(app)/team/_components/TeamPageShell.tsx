@@ -1,10 +1,16 @@
 "use client";
 
 import Card from "@/components/ui/Card";
-import { useMemo } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { useEffect, useMemo } from "react";
 import type { CSSProperties, ReactNode } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { Profile } from "@/lib/types";
+import {
+  fetchDepartmentCorrectiveActions,
+  getDepartmentCorrectiveActionsQueryKey,
+} from "@/hooks/useDepartmentCorrectiveActions";
 
 function buildBtnStyle(): CSSProperties {
   return {
@@ -36,7 +42,29 @@ export default function TeamPageShell({
   areaLabel?: string | null;
 }) {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const btn = useMemo(() => buildBtnStyle(), []);
+
+  useEffect(() => {
+    router.prefetch("/it");
+    router.prefetch("/engineering");
+  }, [router]);
+
+  useEffect(() => {
+    if (!profile?.id) return;
+
+    void queryClient.prefetchQuery({
+      queryKey: getDepartmentCorrectiveActionsQueryKey(profile.id, "it"),
+      queryFn: () => fetchDepartmentCorrectiveActions(profile.id, "it"),
+      staleTime: 5 * 60 * 1000,
+    });
+
+    void queryClient.prefetchQuery({
+      queryKey: getDepartmentCorrectiveActionsQueryKey(profile.id, "engineering"),
+      queryFn: () => fetchDepartmentCorrectiveActions(profile.id, "engineering"),
+      staleTime: 5 * 60 * 1000,
+    });
+  }, [profile?.id, queryClient]);
 
   const showSummaryTab =
     profile?.role === "superadmin" ||
@@ -154,15 +182,15 @@ export default function TeamPageShell({
         ) : null}
 
         {showDepartmentNav ? (
-          <button style={tabStyle(false)} onClick={() => router.push("/it")}>
+          <Link href="/it" prefetch style={tabStyle(false)}>
             IT
-          </button>
+          </Link>
         ) : null}
 
         {showDepartmentNav ? (
-          <button style={tabStyle(false)} onClick={() => router.push("/engineering")}>
+          <Link href="/engineering" prefetch style={tabStyle(false)}>
             Engineering
-          </button>
+          </Link>
         ) : null}
       </div>
 
