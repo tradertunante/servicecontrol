@@ -224,6 +224,37 @@ La fuente de verdad del score final será backend/server-side.
 ## Decisión 8
 
 ### Fecha
+2026-03-16
+
+### Decisión
+Cerrar primero seguridad de rutas y lecturas cliente con una combinación de auth server-side en App Router + RLS versionada.
+
+### Contexto
+El repo dependía de `requireRoleOrRedirect` y de chequeos cliente para impedir acceso por URL a módulos sensibles. Además, muchas pantallas consultan Supabase directo desde `supabaseClient`, por lo que bloquear solo la UI no era suficiente.
+
+### Alternativas consideradas
+- mantener validaciones cliente y endurecer solo botones
+- mover de golpe todas las consultas a APIs dedicadas
+- introducir una capa compartida de permisos server-side y respaldarla con RLS para las tablas expuestas
+
+### Decisión final
+Adoptar:
+
+- `lib/auth/server.ts` como capa común server-side para páginas y endpoints
+- layouts server-side por módulo/segmento para bloquear acceso por URL
+- sincronización mínima de sesión y hotel scope a cookies para que App Router pueda autorizar
+- migración RLS versionada para tablas usadas por `areas`, `reports`, `admin`, `builder`, `users`, `team` y `members`
+
+### Impacto esperado
+- la URL deja de ser un bypass de seguridad
+- frontend y backend comparten la misma matriz de roles base
+- las consultas cliente restantes quedan limitadas por RLS tenant-scoped y por rol
+
+---
+
+## Decisión 8
+
+### Fecha
 2026-03-11
 
 ### Decisión
