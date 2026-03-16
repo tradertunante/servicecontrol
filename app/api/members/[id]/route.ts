@@ -86,6 +86,30 @@ function resolveHotelId(caller: { hotel_id: string | null; role: Role }, request
   return { ok: true as const, hotelId: caller.hotel_id };
 }
 
+async function findDuplicateMemberByEmployeeNumber(
+  admin: ReturnType<typeof supabaseAdmin>,
+  hotelId: string,
+  employeeNumber: string,
+  excludeMemberId?: string
+) {
+  let query = admin
+    .from("team_members")
+    .select("id")
+    .eq("hotel_id", hotelId)
+    .eq("employee_number", employeeNumber)
+    .limit(1);
+
+  if (excludeMemberId) {
+    query = query.neq("id", excludeMemberId);
+  }
+
+  const { data, error } = await query.maybeSingle();
+
+  if (error) throw error;
+
+  return data ? String(data.id) : null;
+}
+
 async function getHotelAreas(admin: ReturnType<typeof supabaseAdmin>, hotelId: string) {
   const { data: areas, error } = await admin
     .from("areas")
@@ -199,6 +223,17 @@ export async function PATCH(
       if (!canSeeMember) {
         return jsonError("Forbidden: miembro fuera de tu alcance.", 403);
       }
+    }
+
+    const duplicateMemberId = await findDuplicateMemberByEmployeeNumber(
+      admin,
+      hotelResult.hotelId,
+      employeeNumber,
+      memberId
+    );
+
+    if (duplicateMemberId) {
+      return jsonError("El numero de colaborador ya existe en este hotel.", 409);
     }
 
     const { error: updateError } = await admin
