@@ -635,75 +635,6 @@ export default function MonthlyAreaReportPage() {
 
           <section className="report-mt-28" style={{ marginTop: 28 }}>
             <h2 className="report-title-lg" style={{ margin: "0 0 14px 0", fontSize: 24 }}>
-              Auditorías del mes
-            </h2>
-
-            {report.audits.length === 0 ? (
-              <div className="report-card" style={sectionCardStyle()}>
-                No hubo auditorías registradas en este mes.
-              </div>
-            ) : (
-              <div className="report-card" style={{ ...sectionCardStyle(), padding: 0, overflow: "hidden" }}>
-                <div style={{ overflowX: "auto" }}>
-                  <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                    <thead>
-                      <tr style={{ background: "rgba(0,0,0,0.03)" }}>
-                        {["Fecha", "Auditor", "Template", "Score", "Estado", "FAIL", "NA", "OK"].map((head) => (
-                          <th
-                            key={head}
-                            style={{
-                              textAlign: "left",
-                              padding: "12px 14px",
-                              fontSize: 12,
-                              fontWeight: 900,
-                              opacity: 0.75,
-                              borderBottom: "1px solid rgba(0,0,0,0.08)",
-                              whiteSpace: "nowrap",
-                            }}
-                          >
-                            {head}
-                          </th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {report.audits.map((audit) => (
-                        <tr key={audit.run_id}>
-                          <td style={{ padding: "12px 14px", borderBottom: "1px solid rgba(0,0,0,0.06)" }}>
-                            {formatDateTime(audit.executed_at)}
-                          </td>
-                          <td style={{ padding: "12px 14px", borderBottom: "1px solid rgba(0,0,0,0.06)" }}>
-                            {audit.auditor_name ?? "—"}
-                          </td>
-                          <td style={{ padding: "12px 14px", borderBottom: "1px solid rgba(0,0,0,0.06)", fontWeight: 800 }}>
-                            {audit.template_name}
-                          </td>
-                          <td style={{ padding: "12px 14px", borderBottom: "1px solid rgba(0,0,0,0.06)", fontWeight: 900 }}>
-                            {formatScore(audit.score)}
-                          </td>
-                          <td style={{ padding: "12px 14px", borderBottom: "1px solid rgba(0,0,0,0.06)" }}>
-                            {formatStatus(audit.status)}
-                          </td>
-                          <td style={{ padding: "12px 14px", borderBottom: "1px solid rgba(0,0,0,0.06)", color: "#b91c1c", fontWeight: 900 }}>
-                            {audit.fail}
-                          </td>
-                          <td style={{ padding: "12px 14px", borderBottom: "1px solid rgba(0,0,0,0.06)", color: "#374151", fontWeight: 900 }}>
-                            {audit.na}
-                          </td>
-                          <td style={{ padding: "12px 14px", borderBottom: "1px solid rgba(0,0,0,0.06)", color: "#15803d", fontWeight: 900 }}>
-                            {audit.ok}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            )}
-          </section>
-
-          <section className="report-mt-28" style={{ marginTop: 28 }}>
-            <h2 className="report-title-lg" style={{ margin: "0 0 14px 0", fontSize: 24 }}>
               Hallazgos más repetidos
             </h2>
 
@@ -819,6 +750,75 @@ export default function MonthlyAreaReportPage() {
                     </div>
                   </div>
                 ))}
+              </div>
+            )}
+          </section>
+
+          <section className="report-mt-28" style={{ marginTop: 28 }}>
+            <h2 className="report-title-lg" style={{ margin: "0 0 14px 0", fontSize: 24 }}>
+              Auditorías del mes
+            </h2>
+
+            {report.audits.length === 0 ? (
+              <div className="report-card" style={sectionCardStyle()}>
+                No hubo auditorías registradas en este mes.
+              </div>
+            ) : (
+              <div className="report-card" style={{ ...sectionCardStyle(), padding: 0, overflow: "hidden" }}>
+                <div style={{ overflowX: "auto" }}>
+                  <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                    <thead>
+                      <tr style={{ background: "rgba(0,0,0,0.03)" }}>
+                        {["Fecha", "Auditor", "Template", "Score", "Estado", "FAIL", "NA", "OK"].map((head) => (
+                          <th
+                            key={head}
+                            style={{
+                              textAlign: "left",
+                              padding: "12px 14px",
+                              fontSize: 12,
+                              fontWeight: 900,
+                              opacity: 0.75,
+                              borderBottom: "1px solid rgba(0,0,0,0.08)",
+                              whiteSpace: "nowrap",
+                            }}
+                          >
+                            {head}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {report.audits.map((audit) => (
+                        <tr key={audit.run_id}>
+                          <td style={{ padding: "12px 14px", borderBottom: "1px solid rgba(0,0,0,0.06)" }}>
+                            {formatDateTime(audit.executed_at)}
+                          </td>
+                          <td style={{ padding: "12px 14px", borderBottom: "1px solid rgba(0,0,0,0.06)" }}>
+                            {audit.auditor_name ?? "—"}
+                          </td>
+                          <td style={{ padding: "12px 14px", borderBottom: "1px solid rgba(0,0,0,0.06)", fontWeight: 800 }}>
+                            {audit.template_name}
+                          </td>
+                          <td style={{ padding: "12px 14px", borderBottom: "1px solid rgba(0,0,0,0.06)", fontWeight: 900 }}>
+                            {formatScore(audit.score)}
+                          </td>
+                          <td style={{ padding: "12px 14px", borderBottom: "1px solid rgba(0,0,0,0.06)" }}>
+                            {formatStatus(audit.status)}
+                          </td>
+                          <td style={{ padding: "12px 14px", borderBottom: "1px solid rgba(0,0,0,0.06)", color: "#b91c1c", fontWeight: 900 }}>
+                            {audit.fail}
+                          </td>
+                          <td style={{ padding: "12px 14px", borderBottom: "1px solid rgba(0,0,0,0.06)", color: "#374151", fontWeight: 900 }}>
+                            {audit.na}
+                          </td>
+                          <td style={{ padding: "12px 14px", borderBottom: "1px solid rgba(0,0,0,0.06)", color: "#15803d", fontWeight: 900 }}>
+                            {audit.ok}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             )}
           </section>
