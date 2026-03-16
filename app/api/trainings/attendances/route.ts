@@ -57,15 +57,13 @@ export async function POST(request: NextRequest) {
       return jsonError(memberError.message, 500);
     }
 
-    if (!member || member.active === false) {
-      return jsonError("Numero de empleado no encontrado.", 404);
-    }
+    const resolvedMember = member && member.active !== false ? member : null;
 
-    if (topicAreaId) {
+    if (resolvedMember && topicAreaId) {
       const { data: areaLink, error: areaLinkError } = await admin
         .from("team_member_areas")
         .select("team_member_id")
-        .eq("team_member_id", member.id)
+        .eq("team_member_id", resolvedMember.id)
         .eq("area_id", topicAreaId)
         .maybeSingle();
 
@@ -82,7 +80,7 @@ export async function POST(request: NextRequest) {
       hotel_id: session.hotel_id,
       topic_id: session.topic_id,
       session_id: session.id,
-      team_member_id: member.id,
+      team_member_id: resolvedMember?.id ?? null,
       employee_number: employeeNumber,
       employee_name_input: employeeNameInput,
     });
@@ -99,10 +97,10 @@ export async function POST(request: NextRequest) {
       ok: true,
       attendance: {
         session_id: session.id,
-        team_member_id: member.id,
+        team_member_id: resolvedMember?.id ?? null,
         employee_number: employeeNumber,
         employee_name_input: employeeNameInput,
-        employee_name_snapshot: member.full_name ?? null,
+        employee_name_snapshot: resolvedMember?.full_name ?? null,
       },
     });
   } catch (error) {
