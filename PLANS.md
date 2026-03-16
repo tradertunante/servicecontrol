@@ -104,6 +104,14 @@ pendiente
 
 ## Estado actual
 
+### Hecho el 2026-03-16
+
+- capa compartida de autorización en `lib/auth/permissions.tsx` y `lib/auth/server.ts`
+- sincronización mínima de sesión y hotel scope a cookies para habilitar auth server-side en App Router
+- layouts server-side para cerrar acceso por URL en `areas`, `reports`, `admin`, `builder`, `users`, `team` y `members`
+- alineación inicial del módulo `users` con hotel scope explícito para `superadmin`
+- versionado de RLS para tablas expuestas por los módulos priorizados en `supabase/migrations/20260316140000_harden_prioritized_module_rls.sql`
+
 ### Hecho
 
 - análisis de arquitectura del repo

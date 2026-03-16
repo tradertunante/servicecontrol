@@ -6,6 +6,8 @@ import { supabase } from "@/lib/supabaseClient";
 import BackButton from "@/app/components/BackButton";
 import type { Role, Profile } from "@/lib/types";
 
+const HOTEL_KEY = "sc_hotel_id";
+
 export default function NewUserPage() {
   const router = useRouter();
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -34,7 +36,8 @@ export default function NewUserPage() {
         const { data: prof, error: profErr } = await supabase.from("profiles").select("id, hotel_id, role, active, full_name").eq("id", authData.user.id).single();
         if (!mounted) return;
         if (profErr || !prof) throw profErr;
-        if (!prof.active || prof.role !== "admin") { router.replace("/"); return; }
+        const role = String(prof.role ?? "").toLowerCase();
+        if (!prof.active || !["admin", "superadmin"].includes(role)) { router.replace("/"); return; }
         setProfile(prof as Profile);
       } catch (e: any) { if (!mounted) return; setError(e?.message ?? "No se pudo cargar el perfil."); }
       finally { if (!mounted) return; setLoadingProfile(false); }
@@ -50,10 +53,21 @@ export default function NewUserPage() {
     if (!passwordsMatch) return setError("Las contraseñas no coinciden.");
     try {
       setBusy(true);
+      const hotelId =
+        profile?.role === "superadmin"
+          ? typeof window !== "undefined"
+            ? window.localStorage.getItem(HOTEL_KEY)
+            : null
+          : profile?.hotel_id ?? null;
+
+      if (!hotelId) {
+        throw new Error("Selecciona un hotel antes de crear usuarios.");
+      }
+
       const { data: sessionData } = await supabase.auth.getSession();
       const accessToken = sessionData?.session?.access_token;
       if (!accessToken) { setError("Sesión inválida."); return; }
-      const res = await fetch("/api/admin/create-user", { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` }, body: JSON.stringify({ full_name: fullName.trim() || null, email: email.trim().toLowerCase(), password, role }) });
+      const res = await fetch("/api/admin/create-user", { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` }, body: JSON.stringify({ full_name: fullName.trim() || null, email: email.trim().toLowerCase(), password, role, hotel_id: hotelId }) });
       const text = await res.text();
       let payload: any = null;
       try { payload = JSON.parse(text); } catch { payload = { error: text?.slice(0, 200) || "Respuesta no-JSON." }; }
@@ -67,7 +81,7 @@ export default function NewUserPage() {
   return (
     <div style={{ padding: 24 }}>
       <h1 style={{ fontSize: 44, fontWeight: 800, margin: 0 }}>Crear usuario</h1>
-      <p style={{ marginTop: 10, opacity: 0.85 }}>Solo admin. El usuario se creará en el mismo hotel.</p>
+      <p style={{ marginTop: 10, opacity: 0.85 }}>Admin / Superadmin. El usuario se creará dentro del hotel activo.</p>
       {error && <div style={{ color: "#b00020", fontWeight: 800, marginTop: 8 }}>{error}</div>}
       {ok && <div style={{ color: "rgba(0,0,0,0.8)", fontWeight: 800, marginTop: 8 }}>✅ {ok}</div>}
       <div style={{ display: "grid", gap: 12, marginTop: 16 }}>

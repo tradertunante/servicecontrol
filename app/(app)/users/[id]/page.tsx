@@ -8,6 +8,7 @@ import type { Role, Profile } from "@/lib/types";
 
 type UserProfile = { id: string; hotel_id: string; role: Role; active: boolean; full_name: string | null; email?: string | null };
 type AreaRow = { id: string; name: string; type: string | null; active: boolean };
+const HOTEL_KEY = "sc_hotel_id";
 
 export default function UserDetailPage() {
   const router = useRouter();
@@ -57,12 +58,23 @@ export default function UserDetailPage() {
       const myP = myProfile as Profile;
       setMe(myP);
       if (!canManageUsers(myP.role)) { router.push("/"); return; }
+      const scopedHotelId =
+        myP.role === "superadmin"
+          ? typeof window !== "undefined"
+            ? window.localStorage.getItem(HOTEL_KEY)
+            : null
+          : myP.hotel_id;
+      if (!scopedHotelId) {
+        setMsg("Selecciona un hotel antes de administrar usuarios.");
+        setLoading(false);
+        return;
+      }
       const { data: target, error: tErr } = await supabase.from("profiles").select("id, hotel_id, role, active, full_name, email").eq("id", userId).single();
       if (tErr || !target) { setMsg("No se encontró el usuario."); setLoading(false); return; }
       const t = target as UserProfile;
-      if (t.hotel_id !== myP.hotel_id) { router.push("/users"); return; }
+      if (t.hotel_id !== scopedHotelId) { router.push("/users"); return; }
       setUserRow(t); setFullName(t.full_name ?? ""); setRole(t.role); setActive(t.active);
-      try { await loadAreasAndAccess(t.id, myP.hotel_id); } catch (e: any) { setMsg(`❌ Error cargando áreas: ${e?.message ?? "desconocido"}`); }
+      try { await loadAreasAndAccess(t.id, scopedHotelId); } catch (e: any) { setMsg(`❌ Error cargando áreas: ${e?.message ?? "desconocido"}`); }
       setLoading(false);
     };
     init();
@@ -78,7 +90,13 @@ export default function UserDetailPage() {
       const { data: sessionData } = await supabase.auth.getSession();
       const accessToken = sessionData?.session?.access_token;
       if (!accessToken) throw new Error("Sesión inválida.");
-      const res = await fetch("/api/admin/user-area-access", { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` }, body: JSON.stringify({ user_id: userRow.id, area_ids: selectedAreaIds }) });
+      const hotelId =
+        me.role === "superadmin"
+          ? typeof window !== "undefined"
+            ? window.localStorage.getItem(HOTEL_KEY)
+            : null
+          : me.hotel_id;
+      const res = await fetch("/api/admin/user-area-access/set", { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` }, body: JSON.stringify({ user_id: userRow.id, hotel_id: hotelId, area_ids: selectedAreaIds }) });
       const payload = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(payload?.error ?? "No se pudo guardar accesos de áreas.");
     } catch (e: any) { setMsg(`❌ Error guardando áreas: ${e?.message ?? "desconocido"}`); setSaving(false); return; }
