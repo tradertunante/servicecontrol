@@ -196,6 +196,43 @@ Si el issue quedó resuelto:
 2026-03-16
 
 ### Síntoma
+El módulo de `members` podía fallar al crear o editar colaboradores por `employee_number` existente en otro hotel, y además resolvía el hotel activo del cliente desde `localStorage` aunque el usuario normal ya tenía `profiles.hotel_id`.
+
+### Causa raíz
+El flujo dependía de dos piezas sueltas:
+
+- el cliente de `members` tomaba `hotel_id` desde `localStorage["sc_hotel_id"]` para todos los roles, en vez de fijar `profiles.hotel_id` como fuente de verdad para usuarios no `superadmin`
+- la API de `members` no hacía una validación previa explícita por `(hotel_id, employee_number)` y confiaba solo en el `23505` devuelto por la base de datos
+
+Aunque en el repo ya existía un índice único compuesto por hotel, seguía faltando blindar el flujo server-side y hacer explícita la resolución de hotel por rol dentro del módulo.
+
+### Solución aplicada
+Se corrigió el módulo para que:
+
+- usuarios normales resuelvan `hotel_id` desde `profiles.hotel_id`
+- `localStorage["sc_hotel_id"]` quede reservado solo para `superadmin`
+- `POST /api/members` y `PATCH /api/members/[id]` validen duplicados por `(hotel_id, employee_number)` antes de insertar o actualizar
+- la base de datos elimine cualquier unicidad global residual sobre `team_members.employee_number` y conserve un único índice parcial compuesto por `(hotel_id, employee_number)`
+
+### Cómo evitarlo en el futuro
+- no usar `localStorage` como fuente primaria de `hotel_id` en módulos que ya pueden resolver el perfil autenticado
+- cuando una regla de unicidad sea multi-tenant, validar siempre con su scope completo en server-side
+- mantener la restricción estructural en DB alineada con la validación lógica del handler
+
+### Archivos relacionados
+- `app/(app)/members/_components/MembersModule.tsx`
+- `app/api/members/route.ts`
+- `app/api/members/[id]/route.ts`
+- `supabase/migrations/20260316123000_fix_team_members_employee_number_scope.sql`
+
+---
+
+## Issue 8
+
+### Fecha
+2026-03-16
+
+### Síntoma
 El registro público de asistencia en `/formaciones/registro/[token]` fallaba en producción con `Could not find the 'team_member_id' column of 'training_attendances' in the schema cache`.
 
 ### Causa raíz

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import MemberForm from "./MemberForm";
 import MembersTable from "./MembersTable";
@@ -29,9 +29,52 @@ function normalizeError(message: string | null | undefined, fallback: string) {
   return safeMessage || fallback;
 }
 
+function normalizeRole(value: unknown) {
+  return String(value ?? "").trim().toLowerCase();
+}
+
 async function getAccessToken() {
   const { data } = await supabase.auth.getSession();
   return data.session?.access_token ?? "";
+}
+
+async function resolveMembersHotelContext() {
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
+
+  if (userError || !user) {
+    throw new Error("Sesion invalida.");
+  }
+
+  const { data: profile, error: profileError } = await supabase
+    .from("profiles")
+    .select("hotel_id, role, active")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  if (profileError || !profile || profile.active === false) {
+    throw new Error("Perfil invalido.");
+  }
+
+  const role = normalizeRole(profile.role);
+  const selectedHotelId = typeof window !== "undefined" ? localStorage.getItem(HOTEL_KEY) : null;
+  const profileHotelId = String(profile.hotel_id ?? "").trim() || null;
+  const hotelId = role === "superadmin" ? selectedHotelId : profileHotelId;
+
+  if (role === "superadmin" && !hotelId) {
+    throw new Error("Selecciona un hotel activo para gestionar miembros.");
+  }
+
+  if (role !== "superadmin" && !hotelId) {
+    throw new Error("hotel_id faltante en perfil.");
+  }
+
+  return {
+    hotelId,
+    role,
+  };
 }
 
 export default function MembersModule() {
@@ -44,6 +87,7 @@ export default function MembersModule() {
   const [editingMemberId, setEditingMemberId] = useState<string | null>(null);
   const [formValues, setFormValues] = useState<FormValues>(emptyForm());
   const [hotelId, setHotelId] = useState<string | null>(null);
+  const [hotelContextReady, setHotelContextReady] = useState(false);
   const [role, setRole] = useState<string>("");
   const [search, setSearch] = useState("");
   const [selectedAreaId, setSelectedAreaId] = useState("ALL");
@@ -51,24 +95,47 @@ export default function MembersModule() {
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
 
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      setHotelId(localStorage.getItem(HOTEL_KEY));
+    let cancelled = false;
+
+    async function bootstrap() {
+      try {
+        setLoading(true);
+        setError(null);
+
+        const context = await resolveMembersHotelContext();
+        if (cancelled) return;
+
+        setHotelId(context.hotelId);
+        setRole(context.role);
+        setHotelContextReady(true);
+      } catch (err) {
+        if (cancelled) return;
+        setError(normalizeError(err instanceof Error ? err.message : null, "No se pudo resolver el hotel activo."));
+        setLoading(false);
+      }
     }
+
+    void bootstrap();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
-  async function loadMembers() {
+  const loadMembers = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
       const token = await getAccessToken();
+      const requestedHotelId = role === "superadmin" ? hotelId : null;
 
       if (!token) {
         throw new Error("Sesion invalida.");
       }
 
       const params = new URLSearchParams();
-      if (hotelId) {
-        params.set("hotel_id", hotelId);
+      if (requestedHotelId) {
+        params.set("hotel_id", requestedHotelId);
       }
       params.set("status", statusFilter);
       const query = params.toString() ? `?${params.toString()}` : "";
@@ -86,18 +153,19 @@ export default function MembersModule() {
 
       setMembers(payload && "members" in payload ? payload.members : []);
       setAreaOptions(payload && "available_areas" in payload ? payload.available_areas : []);
+      setHotelId(payload && "hotel_id" in payload ? payload.hotel_id : hotelId);
       setRole(payload && "role" in payload ? payload.role : "");
     } catch (err) {
       setError(normalizeError(err instanceof Error ? err.message : null, "No se pudo cargar miembros."));
     } finally {
       setLoading(false);
     }
-  }
+  }, [hotelId, role, statusFilter]);
 
   useEffect(() => {
-    if (hotelId === null && typeof window !== "undefined") return;
+    if (!hotelContextReady) return;
     void loadMembers();
-  }, [hotelId, statusFilter]);
+  }, [hotelContextReady, loadMembers]);
 
   const editingMember = useMemo(
     () => members.find((member) => member.id === editingMemberId) ?? null,
@@ -130,8 +198,10 @@ export default function MembersModule() {
         throw new Error("Sesion invalida.");
       }
 
+      const requestedHotelId = role === "superadmin" ? hotelId : null;
+
       const body = JSON.stringify({
-        hotel_id: hotelId,
+        hotel_id: requestedHotelId,
         full_name: formValues.full_name,
         employee_number: formValues.employee_number,
         active: formValues.active,
@@ -179,6 +249,8 @@ export default function MembersModule() {
         throw new Error("Sesion invalida.");
       }
 
+      const requestedHotelId = role === "superadmin" ? hotelId : null;
+
       const res = await fetch(`/api/members/${member.id}`, {
         method: "DELETE",
         headers: {
@@ -186,7 +258,7 @@ export default function MembersModule() {
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
-          hotel_id: hotelId,
+          hotel_id: requestedHotelId,
         }),
       });
 
