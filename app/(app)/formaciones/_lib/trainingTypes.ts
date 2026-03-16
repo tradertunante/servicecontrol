@@ -8,6 +8,16 @@ export type TrainingSession = {
   supervisor_name_snapshot: string | null;
   session_label: string | null;
   attendance_count: number;
+  attendances?: TrainingAttendance[];
+};
+
+export type TrainingAttendance = {
+  id: string;
+  team_member_id: string | null;
+  employee_name_input: string | null;
+  employee_number: string;
+  checked_in_at: string;
+  validated_member_name: string | null;
 };
 
 export type TrainingTopic = {
@@ -40,14 +50,7 @@ export type TrainingHistorySession = {
   attendance_count: number;
 };
 
-export type TrainingHistoryAttendance = {
-  id: string;
-  team_member_id: string | null;
-  employee_name_input: string | null;
-  employee_number: string;
-  checked_in_at: string;
-  validated_member_name: string | null;
-};
+export type TrainingHistoryAttendance = TrainingAttendance;
 
 export type TrainingHistoryResponse = {
   ok: boolean;

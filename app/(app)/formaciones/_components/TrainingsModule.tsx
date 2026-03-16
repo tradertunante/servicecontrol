@@ -5,6 +5,7 @@ import type { CSSProperties } from "react";
 import QRCode from "react-qr-code";
 import { supabase } from "@/lib/supabaseClient";
 import type {
+  TrainingAttendance,
   TrainingHistoryDetailResponse,
   TrainingHistoryResponse,
   TrainingHistorySession,
@@ -109,7 +110,10 @@ function sanitizeTopics(input: TrainingTopic[] | null | undefined): TrainingTopi
           session.topic_id === topic.id &&
           (session.status === "open" || session.status === "closed")
         );
-      }),
+      }).map((session) => ({
+        ...session,
+        attendances: (session.attendances ?? []).filter((attendance) => !!attendance?.id),
+      })),
     }));
 }
 
@@ -133,6 +137,7 @@ export default function TrainingsModule() {
   const [sessionLabels, setSessionLabels] = useState<Record<string, string>>({});
   const [sessionBusyKey, setSessionBusyKey] = useState<string | null>(null);
   const [copiedTopicId, setCopiedTopicId] = useState<string | null>(null);
+  const [expandedActiveSessionIds, setExpandedActiveSessionIds] = useState<Record<string, boolean>>({});
   const [expandedHistorySessionId, setExpandedHistorySessionId] = useState<string | null>(null);
   const [historyDetailBusyId, setHistoryDetailBusyId] = useState<string | null>(null);
   const [historyDetails, setHistoryDetails] = useState<
@@ -542,6 +547,51 @@ export default function TrainingsModule() {
     }
   }
 
+  function toggleActiveSessionDetail(sessionId: string) {
+    setExpandedActiveSessionIds((current) => ({
+      ...current,
+      [sessionId]: !current[sessionId],
+    }));
+  }
+
+  function getAttendanceDisplayName(attendance: TrainingAttendance) {
+    const validated = String(attendance.validated_member_name ?? "").trim();
+    if (validated) return validated;
+    const inputName = String(attendance.employee_name_input ?? "").trim();
+    if (inputName) return inputName;
+    return "Sin nombre capturado";
+  }
+
+  function renderAttendanceList(attendances: TrainingAttendance[]) {
+    if (attendances.length === 0) {
+      return <div style={{ color: "#6b7280" }}>Sin asistencias registradas.</div>;
+    }
+
+    return attendances.map((attendance) => (
+      <div
+        key={attendance.id}
+        style={{
+          border: "1px solid #e5e7eb",
+          borderRadius: 10,
+          padding: 10,
+          background: "#fff",
+          display: "grid",
+          gap: 8,
+          alignItems: "center",
+          gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+        }}
+      >
+        <div style={{ fontWeight: 700 }}>{getAttendanceDisplayName(attendance)}</div>
+        <div style={{ marginTop: 4, fontSize: 13, color: "#4b5563" }}>
+          Numero: {attendance.employee_number || "Sin numero"}
+        </div>
+        <div style={{ marginTop: 4, fontSize: 13, color: "#6b7280" }}>
+          Registro: {formatDateTime(attendance.checked_in_at)}
+        </div>
+      </div>
+    ));
+  }
+
   const topicsWithActiveSessions = useMemo(
     () =>
       topics
@@ -716,15 +766,38 @@ export default function TrainingsModule() {
                             >
                               Asistencias: <b>{session.attendance_count}</b>
                             </div>
-                            <button
-                              onClick={() => void handleCloseSession(session.id)}
-                              disabled={sessionBusyKey === `close:${session.id}`}
-                              style={secondaryButtonStyle(sessionBusyKey === `close:${session.id}`)}
-                            >
-                              {sessionBusyKey === `close:${session.id}` ? "Cerrando..." : "Cerrar sesion"}
-                            </button>
+                            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
+                              <button
+                                type="button"
+                                onClick={() => toggleActiveSessionDetail(session.id)}
+                                style={secondaryButtonStyle(false)}
+                              >
+                                {expandedActiveSessionIds[session.id] ? "Ocultar asistentes" : "Ver asistentes"}
+                              </button>
+                              <button
+                                onClick={() => void handleCloseSession(session.id)}
+                                disabled={sessionBusyKey === `close:${session.id}`}
+                                style={secondaryButtonStyle(sessionBusyKey === `close:${session.id}`)}
+                              >
+                                {sessionBusyKey === `close:${session.id}` ? "Cerrando..." : "Cerrar sesion"}
+                              </button>
+                            </div>
                           </div>
                         </div>
+
+                        {expandedActiveSessionIds[session.id] ? (
+                          <div
+                            style={{
+                              marginTop: 12,
+                              borderTop: "1px solid #d1fae5",
+                              paddingTop: 12,
+                              display: "grid",
+                              gap: 8,
+                            }}
+                          >
+                            {renderAttendanceList(session.attendances ?? [])}
+                          </div>
+                        ) : null}
                       </div>
                     ))}
                   </div>
@@ -818,30 +891,7 @@ export default function TrainingsModule() {
                     ) : (historyDetails[session.id] ?? []).length === 0 ? (
                       <div style={{ color: "#6b7280" }}>Sin asistencias registradas.</div>
                     ) : (
-                      (historyDetails[session.id] ?? []).map((attendance) => (
-                        <div
-                          key={attendance.id}
-                          style={{
-                            border: "1px solid #e5e7eb",
-                            borderRadius: 10,
-                            padding: 10,
-                            background: "#fff",
-                          }}
-                        >
-                          <div style={{ fontWeight: 700 }}>
-                            {attendance.employee_name_input?.trim() || "Sin nombre capturado"}
-                          </div>
-                          <div style={{ marginTop: 4, fontSize: 13, color: "#4b5563" }}>
-                            Numero: {attendance.employee_number}
-                          </div>
-                          <div style={{ marginTop: 4, fontSize: 13, color: "#4b5563" }}>
-                            Colaborador validado: {attendance.validated_member_name || "No disponible"}
-                          </div>
-                          <div style={{ marginTop: 4, fontSize: 13, color: "#6b7280" }}>
-                            Registro: {formatDateTime(attendance.checked_in_at)}
-                          </div>
-                        </div>
-                      ))
+                      renderAttendanceList(historyDetails[session.id] ?? [])
                     )}
                   </div>
                 ) : null}

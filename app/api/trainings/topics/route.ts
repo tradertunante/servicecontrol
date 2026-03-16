@@ -127,7 +127,11 @@ export async function GET(request: NextRequest) {
 
     const sessionIds = (sessions ?? []).map((session) => session.id as string);
     const { data: attendances, error: attendancesError } = sessionIds.length
-      ? await admin.from("training_attendances").select("session_id").in("session_id", sessionIds)
+      ? await admin
+          .from("training_attendances")
+          .select("id, session_id, team_member_id, employee_name_input, employee_number, checked_in_at")
+          .in("session_id", sessionIds)
+          .order("checked_in_at", { ascending: false })
       : { data: [], error: null };
 
     if (attendancesError) {
@@ -135,11 +139,38 @@ export async function GET(request: NextRequest) {
     }
 
     const attendanceCountBySession = new Map<string, number>();
+    const attendanceRowsBySession = new Map<string, any[]>();
+    const memberIds = Array.from(
+      new Set((attendances ?? []).map((attendance) => String(attendance.team_member_id ?? "")).filter(Boolean))
+    );
+    const { data: members, error: membersError } = memberIds.length
+      ? await admin.from("team_members").select("id, full_name").in("id", memberIds)
+      : { data: [], error: null };
+
+    if (membersError) {
+      return jsonError(membersError.message, 500);
+    }
+
+    const memberNameById = new Map<string, string | null>();
+
+    for (const member of members ?? []) {
+      memberNameById.set(String(member.id), (member.full_name as string | null) ?? null);
+    }
 
     for (const attendance of attendances ?? []) {
       const sessionId = String(attendance.session_id ?? "");
       if (!sessionId) continue;
       attendanceCountBySession.set(sessionId, (attendanceCountBySession.get(sessionId) ?? 0) + 1);
+      const bucket = attendanceRowsBySession.get(sessionId) ?? [];
+      bucket.push({
+        id: attendance.id,
+        team_member_id: attendance.team_member_id ?? null,
+        employee_name_input: attendance.employee_name_input ?? null,
+        employee_number: attendance.employee_number,
+        checked_in_at: attendance.checked_in_at,
+        validated_member_name: memberNameById.get(String(attendance.team_member_id ?? "")) ?? null,
+      });
+      attendanceRowsBySession.set(sessionId, bucket);
     }
 
     const sessionsByTopic = new Map<string, any[]>();
@@ -158,6 +189,7 @@ export async function GET(request: NextRequest) {
         supervisor_name_snapshot: session.supervisor_name_snapshot ?? null,
         session_label: session.session_label ?? null,
         attendance_count: attendanceCountBySession.get(String(session.id)) ?? 0,
+        attendances: attendanceRowsBySession.get(String(session.id)) ?? [],
       });
       sessionsByTopic.set(topicId, bucket);
     }
