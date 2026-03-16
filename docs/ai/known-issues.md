@@ -190,6 +190,41 @@ Si el issue quedó resuelto:
 
 ---
 
+## Issue 7
+
+### Fecha
+2026-03-16
+
+### Síntoma
+El registro público de asistencia en `/formaciones/registro/[token]` fallaba en producción con `Could not find the 'team_member_id' column of 'training_attendances' in the schema cache`.
+
+### Causa raíz
+El flujo actual de formaciones ya insertaba `team_member_id`, pero el esquema histórico de `training_attendances` seguía dependiendo de `employee_profile_id not null`. Además, había entornos donde el schema cache de PostgREST no estaba refrescado tras introducir `team_member_id`.
+
+### Solución aplicada
+Se agregó una migración aditiva para:
+
+- asegurar `training_attendances.team_member_id`
+- mantener `employee_profile_id` pero quitarle el `not null`
+- refrescar el schema cache con `notify pgrst, 'reload schema'`
+
+También se ajustó `app/api/trainings/attendances/route.ts` para que:
+
+- resuelva `team_member_id` por `employee_number` cuando exista match
+- permita registrar asistencia manual aunque no exista match en `team_members`
+- deje `team_member_id = null` en esos casos sin romper el insert
+
+### Cómo evitarlo en el futuro
+- no dejar rutas activas apuntando a columnas nuevas sin una migración idempotente que también refresque PostgREST
+- cuando un flujo migra de `profiles` a `team_members`, mantener compatibilidad con columnas heredadas hasta terminar la transición
+- para registros públicos, tolerar identidad parcial y no depender de una relación estricta si el negocio permite captura manual
+
+### Archivos relacionados
+- `supabase/migrations/20260316103000_fix_training_attendances_schema_for_manual_registration.sql`
+- `app/api/trainings/attendances/route.ts`
+
+---
+
 ## Issue 6
 
 ### Fecha
