@@ -24,7 +24,7 @@ export default function TeamPage() {
     const requestedTab = searchParams.get("tab");
 
     if (requestedTab === "actions") {
-      router.replace("/team/formaciones");
+      router.replace("/formaciones");
       return;
     }
 

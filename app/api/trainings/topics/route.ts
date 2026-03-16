@@ -88,6 +88,7 @@ export async function GET(request: NextRequest) {
       .from("training_topics")
       .select("id, hotel_id, area_id, title, description, qr_token, is_active, created_at")
       .eq("hotel_id", caller.profile.hotel_id)
+      .eq("is_active", true)
       .order("created_at", { ascending: false });
 
     if (topicsError) {
@@ -161,20 +162,33 @@ export async function GET(request: NextRequest) {
       sessionsByTopic.set(topicId, bucket);
     }
 
+    const activeTopicIds = new Set((topics ?? []).map((topic) => String(topic.id ?? "")).filter(Boolean));
+
     return jsonNoStore({
       ok: true,
-      topics: (topics ?? []).map((topic) => ({
-        id: topic.id,
-        hotel_id: topic.hotel_id,
-        area_id: topic.area_id ?? null,
-        area_name: areaNameById.get(String(topic.area_id ?? "")) ?? null,
-        title: topic.title,
-        description: topic.description ?? null,
-        qr_token: topic.qr_token,
-        is_active: topic.is_active,
-        created_at: topic.created_at,
-        sessions: (sessionsByTopic.get(String(topic.id)) ?? []).slice(0, 12),
-      })),
+      topics: (topics ?? [])
+        .filter((topic) => {
+          return (
+            !!topic?.id &&
+            !!String(topic.title ?? "").trim() &&
+            !!String(topic.qr_token ?? "").trim() &&
+            topic.is_active !== false
+          );
+        })
+        .map((topic) => ({
+          id: topic.id,
+          hotel_id: topic.hotel_id,
+          area_id: topic.area_id ?? null,
+          area_name: areaNameById.get(String(topic.area_id ?? "")) ?? null,
+          title: topic.title,
+          description: topic.description ?? null,
+          qr_token: topic.qr_token,
+          is_active: topic.is_active,
+          created_at: topic.created_at,
+          sessions: (sessionsByTopic.get(String(topic.id)) ?? [])
+            .filter((session) => activeTopicIds.has(String(session.topic_id ?? "")))
+            .slice(0, 12),
+        })),
     });
   } catch (error) {
     return jsonError(error instanceof Error ? error.message : "Error inesperado.", 500);

@@ -102,13 +102,17 @@ export async function GET(request: NextRequest) {
 
       const { data: topic, error: topicError } = await admin
         .from("training_topics")
-        .select("id, title")
+        .select("id, title, is_active")
         .eq("id", session.topic_id)
         .eq("hotel_id", caller.profile.hotel_id)
         .maybeSingle();
 
       if (topicError) {
         return jsonError(topicError.message, 500);
+      }
+
+      if (!topic || topic.is_active === false) {
+        return jsonError("Sesion historica no disponible.", 404);
       }
 
       const { data: attendances, error: attendancesError } = await admin
@@ -183,7 +187,7 @@ export async function GET(request: NextRequest) {
     );
 
     const { data: topics, error: topicsError } = topicIds.length
-      ? await admin.from("training_topics").select("id, title").in("id", topicIds)
+      ? await admin.from("training_topics").select("id, title, is_active").in("id", topicIds)
       : { data: [], error: null };
 
     if (topicsError) {
@@ -193,10 +197,15 @@ export async function GET(request: NextRequest) {
     const topicTitleById = new Map<string, string>();
 
     for (const topic of topics ?? []) {
+      if (topic.is_active === false) continue;
       topicTitleById.set(String(topic.id), String(topic.title ?? "Tema"));
     }
 
-    const sessionIds = (sessions ?? []).map((session) => String(session.id ?? "")).filter(Boolean);
+    const visibleSessions = (sessions ?? []).filter((session) =>
+      topicTitleById.has(String(session.topic_id ?? ""))
+    );
+
+    const sessionIds = visibleSessions.map((session) => String(session.id ?? "")).filter(Boolean);
     const { data: attendances, error: attendancesError } = sessionIds.length
       ? await admin.from("training_attendances").select("session_id").in("session_id", sessionIds)
       : { data: [], error: null };
@@ -215,7 +224,7 @@ export async function GET(request: NextRequest) {
 
     return jsonNoStore({
       ok: true,
-      sessions: (sessions ?? []).map((session) => ({
+      sessions: visibleSessions.map((session) => ({
         id: session.id,
         topic_id: session.topic_id,
         topic_title: topicTitleById.get(String(session.topic_id)) ?? "Tema",
