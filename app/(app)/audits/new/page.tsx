@@ -28,7 +28,12 @@ type AreaRow = {
   id: string;
   name: string | null;
   hotel_id: string | null;
+  type?: string | null;
 };
+
+function isHousekeepingArea(area: AreaRow | null): boolean {
+  return (area?.type ?? "").toUpperCase() === "HK";
+}
 
 export default function NewAuditPage() {
   const router = useRouter();
@@ -43,6 +48,7 @@ export default function NewAuditPage() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [template, setTemplate] = useState<TemplateRow | null>(null);
   const [area, setArea] = useState<AreaRow | null>(null);
+  const [roomNumber, setRoomNumber] = useState("");
 
   useEffect(() => {
     let alive = true;
@@ -132,7 +138,7 @@ export default function NewAuditPage() {
         const [{ data: tData, error: tErr }, { data: aData, error: aErr }] =
           await Promise.all([
             supabase.from("audit_templates").select("id, name").eq("id", templateId).single(),
-            supabase.from("areas").select("id, name, hotel_id").eq("id", resolvedAreaId).single(),
+            supabase.from("areas").select("id, name, hotel_id, type").eq("id", resolvedAreaId).single(),
           ]);
 
         if (tErr || !tData) throw tErr ?? new Error("Template no encontrado.");
@@ -181,6 +187,7 @@ export default function NewAuditPage() {
       }
 
       const nowIso = new Date().toISOString();
+      const nextRoomNumber = isHousekeepingArea(area) ? roomNumber.trim() || null : null;
 
       const { data, error } = await supabase
         .from("audit_runs")
@@ -191,6 +198,7 @@ export default function NewAuditPage() {
           status: "draft",
           score: null,
           notes: null,
+          room_number: nextRoomNumber,
           executed_at: nowIso,
           executed_by: user.id,
         })
@@ -255,6 +263,27 @@ export default function NewAuditPage() {
             {area?.name ?? "—"}
           </div>
         </div>
+
+        {isHousekeepingArea(area) ? (
+          <div>
+            <div style={{ fontSize: 13, opacity: 0.75 }}>Room number</div>
+            <input
+              value={roomNumber}
+              onChange={(e) => setRoomNumber(e.target.value)}
+              placeholder="Ej. 1204A"
+              style={{
+                width: "100%",
+                marginTop: 4,
+                padding: "10px 12px",
+                borderRadius: 10,
+                border: "1px solid rgba(255,255,255,0.16)",
+                background: "#fff",
+                color: "#111",
+                fontWeight: 600,
+              }}
+            />
+          </div>
+        ) : null}
 
         <div style={{ display: "flex", gap: 10, marginTop: 6, flexWrap: "wrap" }}>
           <button

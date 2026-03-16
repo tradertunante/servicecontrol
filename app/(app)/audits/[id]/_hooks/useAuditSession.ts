@@ -10,6 +10,7 @@ export type AuditRunRow = {
   status: string | null;
   score: number | null;
   notes: string | null;
+  room_number: string | null;
   executed_at: string | null;
   executed_by: string | null;
   audit_template_id: string;
@@ -137,9 +138,12 @@ export function useAuditSession(runId: string | undefined) {
   const [answersByQ, setAnswersByQ] = useState<Record<string, AnswerRow>>({});
   const [teamMembers, setTeamMembers] = useState<TeamMemberLite[]>([]);
   const [selectedMember, setSelectedMember] = useState("");
+  const [roomNumber, setRoomNumber] = useState("");
+  const [savingRoomNumber, setSavingRoomNumber] = useState(false);
 
   const saving = pendingCount > 0;
   const submitted = (run?.status ?? "") === "submitted";
+  const isHousekeeping = (area?.type ?? "").toUpperCase() === "HK";
 
   useEffect(() => {
     if (!runId) return;
@@ -164,7 +168,7 @@ export function useAuditSession(runId: string | undefined) {
         const { data: runData, error: runError } = await supabase
           .from("audit_runs")
           .select(
-            "id,status,score,notes,executed_at,executed_by,audit_template_id,area_id,team_member_id,assigned_auditor_id,is_reaudit,parent_audit_run_id,origin_type,scheduled_for,requires_training,training_confirmed,ready_for_reaudit,blocking_issue_count"
+            "id,status,score,notes,room_number,executed_at,executed_by,audit_template_id,area_id,team_member_id,assigned_auditor_id,is_reaudit,parent_audit_run_id,origin_type,scheduled_for,requires_training,training_confirmed,ready_for_reaudit,blocking_issue_count"
           )
           .eq("id", runId)
           .single();
@@ -178,6 +182,7 @@ export function useAuditSession(runId: string | undefined) {
 
         setRun(currentRun);
         setSelectedMember(currentRun.team_member_id ?? "");
+        setRoomNumber(currentRun.room_number ?? "");
 
         const [{ data: templateData, error: templateError }, { data: areaData, error: areaError }] =
           await Promise.all([
@@ -489,6 +494,30 @@ export function useAuditSession(runId: string | undefined) {
     }
   }
 
+  async function saveRoomNumber(nextValue: string) {
+    if (!run || submitted || !isHousekeeping) return;
+
+    const trimmedValue = nextValue.trim();
+    setSavingRoomNumber(true);
+    setError(null);
+
+    try {
+      const { error: updateError } = await supabase
+        .from("audit_runs")
+        .update({ room_number: trimmedValue || null })
+        .eq("id", run.id);
+
+      if (updateError) throw updateError;
+
+      setRoomNumber(trimmedValue);
+      setRun((prev) => (prev ? { ...prev, room_number: trimmedValue || null } : prev));
+    } catch (roomError: any) {
+      setError(roomError?.message ?? "No se pudo guardar el numero de habitacion.");
+    } finally {
+      setSavingRoomNumber(false);
+    }
+  }
+
   async function uploadPhoto(questionId: string, file: File) {
     if (!runId || submitted) return;
 
@@ -680,14 +709,19 @@ export function useAuditSession(runId: string | undefined) {
     answersByQ,
     teamMembers,
     selectedMember,
+    roomNumber,
+    savingRoomNumber,
+    isHousekeeping,
     totals,
     setAnswer,
     setComment,
     uploadPhoto,
     deletePhoto,
     saveTeamMember,
+    saveRoomNumber,
     submitRun,
     setSelectedMember,
+    setRoomNumber,
     shouldShowField,
   };
 }

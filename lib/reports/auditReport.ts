@@ -12,6 +12,7 @@ type AuditRunRow = {
   audit_template_id: string;
   status: string | null;
   score: number | null;
+  room_number: string | null;
   executed_at: string | null;
 };
 
@@ -62,7 +63,7 @@ function normalizeStatus(a: AnswerRow | undefined): "FAIL" | "NA" | "OK" {
 export async function buildAuditReportData(runId: string): Promise<AuditReportData> {
   const { data: runData, error: runErr } = await supabase
     .from("audit_runs")
-    .select("id,area_id,audit_template_id,status,score,executed_at")
+    .select("id,area_id,audit_template_id,status,score,room_number,executed_at")
     .eq("id", runId)
     .eq("status", "submitted")
     .single();
@@ -249,6 +250,7 @@ export async function buildAuditReportData(runId: string): Promise<AuditReportDa
       audit_template_id: run.audit_template_id,
       status: run.status,
       score: run.score,
+      room_number: run.room_number,
       executed_at: run.executed_at,
     },
     area,
