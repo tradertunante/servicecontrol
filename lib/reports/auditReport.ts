@@ -64,6 +64,7 @@ export async function buildAuditReportData(runId: string): Promise<AuditReportDa
     .from("audit_runs")
     .select("id,area_id,audit_template_id,status,score,executed_at")
     .eq("id", runId)
+    .eq("status", "submitted")
     .single();
 
   if (runErr || !runData) {

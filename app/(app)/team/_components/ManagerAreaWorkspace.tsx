@@ -196,6 +196,7 @@ function ManagerAreaDashboardMode({
 
   return (
     <DashboardPanel
+      areaId={areaId}
       period={period}
       setPeriod={setPeriod}
       templateFilter={templateFilter}

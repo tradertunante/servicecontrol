@@ -1,6 +1,8 @@
 // FILE: app/(app)/areas/[areaId]/_components/DashboardPanel.tsx
 "use client";
 
+import { useMemo } from "react";
+import { useRouter } from "next/navigation";
 import Card from "@/components/ui/Card";
 import type {
   AnswerRow,
@@ -26,6 +28,7 @@ function pillStyle(): React.CSSProperties {
 }
 
 export default function DashboardPanel({
+  areaId,
   period,
   setPeriod,
   templateFilter,
@@ -40,6 +43,7 @@ export default function DashboardPanel({
   onViewRun,
   onOpenFailRuns,
 }: {
+  areaId: string;
   period: PeriodKey;
   setPeriod: (p: PeriodKey) => void;
   templateFilter: string;
@@ -56,8 +60,13 @@ export default function DashboardPanel({
   // ✅ NUEVO: para ir al historial filtrado
   onOpenFailRuns?: (payload: { questionId?: string; classification?: string }) => void;
 }) {
+  const router = useRouter();
   const WINDOW = 4;
   const { startMs, endMs } = getPeriodRange(new Date(), period);
+  const currentMonth = useMemo(() => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  }, []);
 
   const base = runs
     .filter((r) => (r.status ?? "").toLowerCase() === "submitted")
@@ -236,6 +245,24 @@ export default function DashboardPanel({
               ))}
             </select>
           </div>
+
+          <button
+            type="button"
+            onClick={() => router.push(`/reports/monthly/area/${areaId}?month=${currentMonth}`)}
+            style={{
+              padding: "10px 14px",
+              borderRadius: 12,
+              border: "1px solid var(--border)",
+              outline: "none",
+              fontWeight: 900,
+              background: "var(--card-bg)",
+              color: "inherit",
+              cursor: "pointer",
+              whiteSpace: "nowrap",
+            }}
+          >
+            Reporte mensual
+          </button>
         </div>
       </div>
 

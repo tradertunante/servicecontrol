@@ -34,6 +34,11 @@ export default function AreaPage() {
   const [templateFilter, setTemplateFilter] = useState<string>(initialTemplate);
   const [period, setPeriod] = useState<PeriodKey>(initialPeriod);
 
+  const currentMonth = useMemo(() => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  }, []);
+
   const data = useAreaData({
     areaId: String(areaId ?? ""),
     templateFilter,
@@ -167,7 +172,7 @@ export default function AreaPage() {
 
       <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 12, marginBottom: 8 }}>
         <button
-          onClick={() => router.push(`/reports/monthly/area/${areaId}`)}
+          onClick={() => router.push(`/reports/monthly/area/${areaId}?month=${currentMonth}`)}
           style={{
             padding: "10px 14px",
             borderRadius: 12,
@@ -197,6 +202,7 @@ export default function AreaPage() {
 
       {tab === "dashboard" ? (
         <DashboardPanel
+          areaId={String(areaId ?? "")}
           period={period}
           setPeriod={setPeriod}
           templateFilter={templateFilter}
