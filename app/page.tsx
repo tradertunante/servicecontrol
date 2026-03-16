@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { normalizeRole } from "@/lib/auth/permissions";
 import type { Profile } from "@/lib/types";
+import { getDepartmentRedirectTarget } from "@/app/(app)/_lib/departmentAccess";
 
 export default function HomePage() {
   const router = useRouter();
@@ -77,8 +78,12 @@ export default function HomePage() {
 
         setDebug(`uid=${uid} role_raw=${String(prof.role)} role_clean=${role}`);
 
-        if (profile.role === "engineering" || profile.role === "systems") {
-          router.replace("/task");
+        if (
+          profile.role === "engineering" ||
+          profile.role === "systems" ||
+          profile.role === "it"
+        ) {
+          router.replace(getDepartmentRedirectTarget(profile.role, null));
           return;
         }
 

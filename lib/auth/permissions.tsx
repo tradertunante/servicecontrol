@@ -6,6 +6,7 @@ export type Role =
   | "auditor"
   | "quality"
   | "engineering"
+  | "it"
   | "systems";
 
 export function normalizeRole(role: any): Role {
@@ -18,6 +19,7 @@ export function normalizeRole(role: any): Role {
   if (r === "auditor") return "auditor";
   if (r === "quality") return "quality";
   if (r === "engineering") return "engineering";
+  if (r === "it") return "it";
   if (r === "systems") return "systems";
 
   return "auditor";
@@ -29,7 +31,7 @@ function norm(role: Role | string | null | undefined): string {
 
 export function getDefaultHotelRouteByRole(
   role: Role | string | null | undefined
-): "/dashboard" | "/team" | "/my" {
+): "/dashboard" | "/team" | "/my" | "/it" | "/engineering" {
   const r = norm(role);
 
   if (
@@ -47,6 +49,14 @@ export function getDefaultHotelRouteByRole(
 
   if (r === "auditor") {
     return "/my";
+  }
+
+  if (r === "engineering") {
+    return "/engineering";
+  }
+
+  if (r === "systems" || r === "it") {
+    return "/it";
   }
 
   return "/my";
@@ -91,7 +101,7 @@ export function auditChannel(role: Role | string | null | undefined): "quality" 
 
 export function isNonOperationalRole(role: Role | string | null | undefined): boolean {
   const r = norm(role);
-  return r === "engineering" || r === "systems";
+  return r === "engineering" || r === "systems" || r === "it";
 }
 
 export const canEditAreas = canManageAreas;

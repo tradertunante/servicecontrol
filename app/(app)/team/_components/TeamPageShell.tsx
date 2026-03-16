@@ -57,6 +57,12 @@ export default function TeamPageShell({
     profile?.role === "general_manager" ||
     profile?.role === "manager" ||
     profile?.role === "quality";
+  const showDepartmentNav =
+    profile?.role === "superadmin" ||
+    profile?.role === "admin" ||
+    profile?.role === "general_manager" ||
+    profile?.role === "manager" ||
+    profile?.role === "quality";
 
   const tabStyle = (isActive: boolean): CSSProperties => ({
     ...btn,
@@ -144,6 +150,18 @@ export default function TeamPageShell({
         {showMembersLink ? (
           <button style={tabStyle(false)} onClick={() => router.push("/members")}>
             Members
+          </button>
+        ) : null}
+
+        {showDepartmentNav ? (
+          <button style={tabStyle(false)} onClick={() => router.push("/it")}>
+            IT
+          </button>
+        ) : null}
+
+        {showDepartmentNav ? (
+          <button style={tabStyle(false)} onClick={() => router.push("/engineering")}>
+            Engineering
           </button>
         ) : null}
       </div>
