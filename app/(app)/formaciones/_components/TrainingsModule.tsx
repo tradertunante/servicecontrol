@@ -91,6 +91,36 @@ function normalizeTrainingsErrorMessage(message: string | null | undefined, fall
   return safeMessage || fallback;
 }
 
+function sanitizeTopics(input: TrainingTopic[] | null | undefined): TrainingTopic[] {
+  return (input ?? [])
+    .filter((topic) => {
+      return (
+        !!topic?.id &&
+        !!String(topic.title ?? "").trim() &&
+        !!String(topic.qr_token ?? "").trim() &&
+        topic.is_active !== false
+      );
+    })
+    .map((topic) => ({
+      ...topic,
+      sessions: (topic.sessions ?? []).filter((session) => {
+        return (
+          !!session?.id &&
+          session.topic_id === topic.id &&
+          (session.status === "open" || session.status === "closed")
+        );
+      }),
+    }));
+}
+
+function sanitizeHistorySessions(
+  input: TrainingHistorySession[] | null | undefined
+): TrainingHistorySession[] {
+  return (input ?? []).filter((session) => {
+    return !!session?.id && !!session.topic_id && !!String(session.topic_title ?? "").trim();
+  });
+}
+
 export default function TrainingsModule() {
   const [topics, setTopics] = useState<TrainingTopic[]>([]);
   const [historySessions, setHistorySessions] = useState<TrainingHistorySession[]>([]);
@@ -143,7 +173,9 @@ export default function TrainingsModule() {
         );
       }
 
-      setTopics(payload && "topics" in payload ? payload.topics : []);
+      setTopics(
+        sanitizeTopics(payload && "topics" in payload ? payload.topics : [])
+      );
     } catch (err) {
       setError(
         normalizeTrainingsErrorMessage(
@@ -183,7 +215,9 @@ export default function TrainingsModule() {
         );
       }
 
-      setHistorySessions(payload && "sessions" in payload ? payload.sessions : []);
+      setHistorySessions(
+        sanitizeHistorySessions(payload && "sessions" in payload ? payload.sessions : [])
+      );
     } catch (err) {
       setError(
         normalizeTrainingsErrorMessage(
@@ -429,6 +463,19 @@ export default function TrainingsModule() {
         );
       }
 
+      setTopics((current) =>
+        current.map((topic) => ({
+          ...topic,
+          sessions: topic.sessions.filter((session) => session.id !== sessionId),
+        }))
+      );
+      setHistorySessions((current) => current.filter((session) => session.id !== sessionId));
+      setHistoryDetails((current) => {
+        const next = { ...current };
+        delete next[sessionId];
+        return next;
+      });
+      setExpandedHistorySessionId((current) => (current === sessionId ? null : current));
       await Promise.all([loadTopics(), loadHistory()]);
     } catch (err) {
       setError(
@@ -495,18 +542,21 @@ export default function TrainingsModule() {
     }
   }
 
-  const sortedTopics = useMemo(
+  const topicsWithActiveSessions = useMemo(
     () =>
-      [...topics].sort((a, b) => {
-        const aOpen = a.sessions.filter((session) => session.status === "open").length;
-        const bOpen = b.sessions.filter((session) => session.status === "open").length;
+      topics
+        .map((topic) => ({
+          ...topic,
+          sessions: topic.sessions.filter((session) => session.status === "open"),
+        }))
+        .filter((topic) => topic.sessions.length > 0)
+        .sort((a, b) => {
+          if (a.sessions.length !== b.sessions.length) {
+            return b.sessions.length - a.sessions.length;
+          }
 
-        if (aOpen !== bOpen) {
-          return bOpen - aOpen;
-        }
-
-        return a.title.localeCompare(b.title, "es");
-      }),
+          return a.title.localeCompare(b.title, "es");
+        }),
     [topics]
   );
 
@@ -542,17 +592,17 @@ export default function TrainingsModule() {
       <div style={panelStyle()}>
         <div style={{ fontSize: 22, fontWeight: 800 }}>Temas creados</div>
         <div style={{ marginTop: 6, color: "#4b5563", lineHeight: 1.5 }}>
-          Todos los temas registrados para tu alcance actual, aunque todavia no tengan sesiones abiertas.
+          Solo se muestran temas que actualmente tienen al menos una sesion activa.
         </div>
 
         <div style={{ marginTop: 14, display: "grid", gap: 12 }}>
           {loading ? (
             <div style={{ color: "#6b7280" }}>Cargando temas...</div>
-          ) : sortedTopics.length === 0 ? (
-            <div style={{ color: "#6b7280" }}>No hay temas registrados todavia.</div>
+          ) : topicsWithActiveSessions.length === 0 ? (
+            <div style={{ color: "#6b7280" }}>No hay temas con sesiones activas.</div>
           ) : (
-            sortedTopics.map((topic) => {
-              const openSessions = topic.sessions.filter((session) => session.status === "open");
+            topicsWithActiveSessions.map((topic) => {
+              const openSessions = topic.sessions;
               const publicLink = origin ? `${origin}/formaciones/registro/${topic.qr_token}` : `/formaciones/registro/${topic.qr_token}`;
 
               return (
@@ -631,56 +681,52 @@ export default function TrainingsModule() {
 
                   <div style={{ marginTop: 16, display: "grid", gap: 10 }}>
                     <div style={{ fontWeight: 800, fontSize: 16 }}>Sesiones activas</div>
-                    {openSessions.length === 0 ? (
-                      <div style={{ color: "#6b7280" }}>No hay sesiones activas para este tema.</div>
-                    ) : (
-                      openSessions.map((session) => (
-                        <div
-                          key={session.id}
-                          style={{
-                            border: "1px solid #e5e7eb",
-                            borderRadius: 10,
-                            padding: 12,
-                            background: "#ecfdf5",
-                          }}
-                        >
-                          <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
-                            <div style={{ display: "grid", gap: 4 }}>
-                              <div style={{ fontWeight: 700 }}>
-                                {session.session_label?.trim() || "Sesion sin label"} · Abierta
-                              </div>
-                              <div style={{ fontSize: 14, color: "#4b5563" }}>
-                                Supervisor: {session.supervisor_name_snapshot || "Sin nombre"}
-                              </div>
-                              <div style={{ fontSize: 13, color: "#6b7280" }}>
-                                Inicio: {formatDateTime(session.opened_at)}
-                              </div>
+                    {openSessions.map((session) => (
+                      <div
+                        key={session.id}
+                        style={{
+                          border: "1px solid #e5e7eb",
+                          borderRadius: 10,
+                          padding: 12,
+                          background: "#ecfdf5",
+                        }}
+                      >
+                        <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+                          <div style={{ display: "grid", gap: 4 }}>
+                            <div style={{ fontWeight: 700 }}>
+                              {session.session_label?.trim() || "Sesion sin label"} · Abierta
                             </div>
-
-                            <div style={{ display: "grid", gap: 8, justifyItems: "end" }}>
-                              <div
-                                style={{
-                                  border: "1px solid #d1d5db",
-                                  borderRadius: 999,
-                                  padding: "6px 10px",
-                                  fontSize: 13,
-                                  background: "#fff",
-                                }}
-                              >
-                                Asistencias: <b>{session.attendance_count}</b>
-                              </div>
-                              <button
-                                onClick={() => void handleCloseSession(session.id)}
-                                disabled={sessionBusyKey === `close:${session.id}`}
-                                style={secondaryButtonStyle(sessionBusyKey === `close:${session.id}`)}
-                              >
-                                {sessionBusyKey === `close:${session.id}` ? "Cerrando..." : "Cerrar sesion"}
-                              </button>
+                            <div style={{ fontSize: 14, color: "#4b5563" }}>
+                              Supervisor: {session.supervisor_name_snapshot || "Sin nombre"}
+                            </div>
+                            <div style={{ fontSize: 13, color: "#6b7280" }}>
+                              Inicio: {formatDateTime(session.opened_at)}
                             </div>
                           </div>
+
+                          <div style={{ display: "grid", gap: 8, justifyItems: "end" }}>
+                            <div
+                              style={{
+                                border: "1px solid #d1d5db",
+                                borderRadius: 999,
+                                padding: "6px 10px",
+                                fontSize: 13,
+                                background: "#fff",
+                              }}
+                            >
+                              Asistencias: <b>{session.attendance_count}</b>
+                            </div>
+                            <button
+                              onClick={() => void handleCloseSession(session.id)}
+                              disabled={sessionBusyKey === `close:${session.id}`}
+                              style={secondaryButtonStyle(sessionBusyKey === `close:${session.id}`)}
+                            >
+                              {sessionBusyKey === `close:${session.id}` ? "Cerrando..." : "Cerrar sesion"}
+                            </button>
+                          </div>
                         </div>
-                      ))
-                    )}
+                      </div>
+                    ))}
                   </div>
 
                 </div>

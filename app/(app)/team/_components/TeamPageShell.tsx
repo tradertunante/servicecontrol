@@ -167,7 +167,7 @@ export default function TeamPageShell({
           </button>
         ) : null}
 
-        <button style={tabStyle(activeSection === "actions")} onClick={() => router.push("/team/formaciones")}>
+        <button style={tabStyle(activeSection === "actions")} onClick={() => router.push("/formaciones")}>
           Formaciones
         </button>
 
