@@ -7,6 +7,12 @@ function jsonError(message: string, status = 400) {
   return NextResponse.json({ ok: false, error: message }, { status });
 }
 
+type CorrectiveActionStatusRpcResponse = {
+  ok?: boolean;
+  code?: string;
+  message?: string;
+};
+
 export async function POST(request: NextRequest) {
   const caller = await authorizeRouteRequest(request, {
     roles: ["superadmin", "admin", "general_manager", "manager", "quality"],
@@ -26,82 +32,24 @@ export async function POST(request: NextRequest) {
   }
 
   const admin = supabaseAdmin();
-  const { data: action, error: actionErr } = await admin
-    .from("audit_corrective_actions")
-    .select("id, hotel_id, reaudit_run_id")
-    .eq("id", actionId)
-    .maybeSingle();
+  const { data, error } = await admin.rpc("update_corrective_action_status_atomic", {
+    p_action_id: actionId,
+    p_hotel_id: hotelResult.hotelId,
+    p_actor_user_id: caller.profile.id,
+    p_next_status: nextStatus,
+  });
 
-  if (actionErr) return jsonError(actionErr.message, 500);
-  if (!action?.id || String(action.hotel_id ?? "") !== hotelResult.hotelId) {
-    return jsonError("La acción no pertenece al hotel activo.", 404);
-  }
+  if (error) return jsonError(error.message, 500);
 
-  const payload =
-    nextStatus === "resolved"
-      ? {
-          status: nextStatus,
-          resolved_at: new Date().toISOString(),
-          resolved_by: caller.profile.id,
-        }
-      : {
-          status: nextStatus,
-          resolved_at: null,
-          resolved_by: null,
-        };
-
-  const { error: updateErr } = await admin
-    .from("audit_corrective_actions")
-    .update(payload)
-    .eq("id", actionId)
-    .eq("hotel_id", hotelResult.hotelId);
-
-  if (updateErr) return jsonError(updateErr.message, 500);
-
-  if (action.reaudit_run_id) {
-    const { data: linked, error: linkedErr } = await admin
-      .from("audit_corrective_actions")
-      .select("status,blocks_reaudit")
-      .eq("reaudit_run_id", String(action.reaudit_run_id))
-      .eq("hotel_id", hotelResult.hotelId);
-
-    if (linkedErr) return jsonError(linkedErr.message, 500);
-
-    const blockingOpenCount = (linked ?? []).filter(
-      (row: { status?: string | null; blocks_reaudit?: boolean | null }) =>
-        row.blocks_reaudit === true && row.status !== "resolved"
-    ).length;
-
-    const { data: run, error: runErr } = await admin
-      .from("audit_runs")
-      .select("requires_training,training_confirmed")
-      .eq("id", String(action.reaudit_run_id))
-      .eq("hotel_id", hotelResult.hotelId)
-      .maybeSingle();
-
-    if (runErr) return jsonError(runErr.message, 500);
-
-    const requiresTraining = !!run?.requires_training;
-    const trainingConfirmed = !!run?.training_confirmed;
-    const readyForReaudit = blockingOpenCount === 0 && (!requiresTraining || trainingConfirmed);
-    const runStatus =
-      blockingOpenCount > 0
-        ? "blocked_by_non_operational"
-        : requiresTraining && !trainingConfirmed
-          ? "pending_training"
-          : "draft";
-
-    const { error: runUpdateErr } = await admin
-      .from("audit_runs")
-      .update({
-        blocking_issue_count: blockingOpenCount,
-        ready_for_reaudit: readyForReaudit,
-        status: runStatus,
-      })
-      .eq("id", String(action.reaudit_run_id))
-      .eq("hotel_id", hotelResult.hotelId);
-
-    if (runUpdateErr) return jsonError(runUpdateErr.message, 500);
+  const payload = (data ?? null) as CorrectiveActionStatusRpcResponse | null;
+  if (!payload?.ok) {
+    const code = String(payload?.code ?? "");
+    const status =
+      code === "ACTION_NOT_FOUND" ? 404
+      : code === "FORBIDDEN" ? 403
+      : code === "INVALID_STATUS" ? 400
+      : 500;
+    return jsonError(payload?.message ?? "No se pudo actualizar la acción.", status);
   }
 
   return NextResponse.json({ ok: true });

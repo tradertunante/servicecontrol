@@ -25,49 +25,31 @@ export async function POST(req: NextRequest) {
     const admin = supabaseAdmin();
     const hotelId = targetScope.hotelId;
 
-    // Validar que las áreas pertenecen al hotel
-    if (area_ids.length > 0) {
-      const { data: okAreas, error: areasErr } = await admin
-        .from("areas")
-        .select("id")
-        .eq("hotel_id", hotelId)
-        .in("id", area_ids);
+    const uuidAreaIds = area_ids as string[];
+    const { data, error } = await admin.rpc("set_user_area_access_atomic", {
+      p_user_id: user_id,
+      p_hotel_id: hotelId,
+      p_area_ids: uuidAreaIds,
+    });
 
-      if (areasErr) return NextResponse.json({ error: areasErr.message }, { status: 400 });
-
-      const okSet = new Set((okAreas ?? []).map((a: any) => a.id));
-      const invalid = area_ids.filter((id: string) => !okSet.has(id));
-      if (invalid.length) {
-        return NextResponse.json({ error: "Hay áreas que no pertenecen al hotel seleccionado." }, { status: 400 });
-      }
+    if (error) {
+      console.error(`[uaa-set:${reqId}] rpc`, error.message);
+      return NextResponse.json({ error: error.message }, { status: 400 });
     }
 
-    // Reemplazar accesos (delete + insert)
-    const { error: delErr } = await admin
-      .from("user_area_access")
-      .delete()
-      .eq("hotel_id", hotelId)
-      .eq("user_id", user_id);
+    const payload = (data ?? null) as {
+      ok?: boolean;
+      code?: string;
+      message?: string;
+      data?: { count?: number } | null;
+    } | null;
 
-    if (delErr) {
-      console.error(`[uaa-set:${reqId}] delete`, delErr.message);
-      return NextResponse.json({ error: delErr.message }, { status: 400 });
+    if (!payload?.ok) {
+      const status = String(payload?.code ?? "") === "INVALID_AREAS" ? 400 : 500;
+      return NextResponse.json({ error: payload?.message ?? "No se pudo actualizar los accesos." }, { status });
     }
 
-    if (area_ids.length > 0) {
-      const payload = area_ids.map((area_id: string) => ({
-        user_id,
-        area_id,
-        hotel_id: hotelId,
-      }));
-      const { error: insErr } = await admin.from("user_area_access").insert(payload);
-      if (insErr) {
-        console.error(`[uaa-set:${reqId}] insert`, insErr.message);
-        return NextResponse.json({ error: insErr.message }, { status: 400 });
-      }
-    }
-
-    return NextResponse.json({ ok: true, count: area_ids.length });
+    return NextResponse.json({ ok: true, count: Number(payload.data?.count ?? 0) });
   } catch (e: any) {
     console.error(`[uaa-set:${reqId}] Unexpected`, e?.message);
     return NextResponse.json({ error: e?.message ?? "Error inesperado." }, { status: 500 });
