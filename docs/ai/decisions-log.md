@@ -227,6 +227,65 @@ La fuente de verdad del score final será backend/server-side.
 2026-03-16
 
 ### Decisión
+Mover mutaciones globales sensibles de `superadmin` detrás de endpoints explícitos en `app/api/superadmin/**`.
+
+### Contexto
+Aunque las páginas `superadmin` ya estaban cerradas server-side, seguían existiendo escrituras directas desde cliente sobre recursos globales como templates, packs y hoteles.
+
+Eso dejaba una frontera poco explícita para operaciones de alto impacto administrativo y concentraba validación visible en UI + RLS.
+
+### Alternativas consideradas
+- mantener mutaciones en cliente y depender de RLS
+- mover solo una parte pequeña de las escrituras más usadas
+- cerrar todas las mutaciones globales activas de `superadmin` detrás de route handlers dedicados
+
+### Decisión final
+Cerrar las mutaciones globales activas y sensibles del módulo en route handlers dedicados con validación de autenticación, rol `superadmin`, recurso objetivo y payload permitido.
+
+### Impacto esperado
+- menor dependencia del cliente como autoridad para datos globales
+- permisos más claros y reutilizables en servidor
+- base más segura para seguir endureciendo `superadmin` sin refactor masivo
+
+---
+
+## Decisión 9
+
+### Fecha
+2026-03-16
+
+### Decisión
+Eliminar residuos de auth client-side a nivel página cuando el segmento ya está blindado por layouts y helpers server-side.
+
+### Contexto
+Después de cerrar segmentos principales, todavía había páginas sueltas con `requireRoleOrRedirect(...)` o gating equivalente en cliente.
+
+Eso duplicaba reglas, generaba inconsistencias y en al menos un caso (`audits/[id]/view`) restringía más que la política real del servidor.
+
+### Alternativas consideradas
+- mantener los checks cliente como “segunda capa”
+- reemplazarlos por nuevos wrappers cliente
+- eliminar los residuos y confiar solo en la frontera server-side ya existente
+
+### Decisión final
+Eliminar los checks de acceso en cliente a nivel página y dejar como autoridad única:
+
+- layout server-side del segmento
+- helpers `requireRole(...)`, `requireModuleAccess(...)` y `requireAuditRunScope(...)`
+
+### Impacto esperado
+- política de acceso coherente en toda la app
+- cero renderizado dependiente de auth cliente en esas páginas
+- menos riesgo de divergencia entre permisos reales y permisos aparentes
+
+---
+
+## Decisión 8
+
+### Fecha
+2026-03-16
+
+### Decisión
 Resolver autorización de páginas protegidas en App Router desde layouts/páginas server con un helper compuesto, en vez de depender de checks cliente por pantalla.
 
 ### Contexto

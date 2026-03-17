@@ -1,9 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
-import { requireRoleOrRedirect } from "@/lib/auth/RequireRole";
 
 type Row = {
   id: string;
@@ -14,9 +12,6 @@ type Row = {
 };
 
 export default function TasksPage() {
-  const router = useRouter();
-  requireRoleOrRedirect(["superadmin", "admin", "manager", "quality", "auditor"], router);
-
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(true);
 

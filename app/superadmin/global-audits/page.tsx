@@ -4,6 +4,7 @@
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
+import { fetchJsonOrThrow } from "@/lib/superadmin/clientApi";
 
 type PackRow = {
   id: string;
@@ -144,16 +145,15 @@ export default function GlobalAuditsPage() {
 
     setBusyCreate(true);
     try {
-      const { error: e } = await supabase.from("global_audit_packs").insert([
-        {
+      await fetchJsonOrThrow("/api/superadmin/packs", {
+        method: "POST",
+        body: JSON.stringify({
           name: cleanName,
           business_type: businessType,
           description: description.trim() ? description.trim() : null,
           active,
-        },
-      ]);
-
-      if (e) throw e;
+        }),
+      });
 
       setName("");
       setDescription("");

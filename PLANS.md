@@ -115,6 +115,8 @@ pendiente
 - cierre server-side de `dashboard` y de subzonas operativas de `team`, eliminando redirecciones críticas que dependían solo del cliente
 - limpieza residual de auth cliente en `superadmin`, `standards`, `users` y `builder`, eliminando `requireRoleOrRedirect(...)` de segmentos ya blindados por layout server-side
 - endurecimiento de APIs privilegiadas en `admin/user-area-access`, `admin/delete-user` y `audits/submit`, cerrando validación de target role y scope real de run/área en servidor
+- migración de mutaciones globales sensibles de `superadmin` a `app/api/superadmin/**`, cubriendo creación/edición de plantillas globales, import de templates, creación/edición de packs globales, asociación pack-template y alta/estado de hoteles
+- cierre de residuos finales de auth client-side a nivel página en `audits/[id]/view`, `members`, `task`, `my` y `formaciones`, dejando la autoridad real en layouts y helpers server-side ya existentes
 
 ### Hecho
 

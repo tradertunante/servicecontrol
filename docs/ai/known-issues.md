@@ -226,6 +226,93 @@ Se corrigió el módulo para que:
 2026-03-16
 
 ### Síntoma
+El módulo `superadmin` todavía ejecutaba mutaciones globales sensibles desde cliente con `supabase` browser-side.
+
+### Causa raíz
+Las pantallas de `superadmin` hacían `insert`, `update` y `delete` directos sobre recursos globales como:
+
+- `audit_templates`
+- `audit_questions`
+- `audit_sections`
+- `global_audit_packs`
+- `global_audit_pack_templates`
+- `hotels`
+
+Eso dejaba el control visible apoyado en RLS + cliente, con permisos dispersos en UI y sin un borde HTTP explícito reutilizable.
+
+### Solución aplicada
+Se movieron las mutaciones globales activas del módulo detrás de `app/api/superadmin/**` con validación server-side de:
+
+- usuario autenticado
+- rol `superadmin`
+- recurso objetivo válido
+- payload permitido
+
+La UI solo conservó las lecturas con Supabase browser y pasó las escrituras sensibles a `fetch` contra endpoints server-side.
+
+### Cómo evitarlo en el futuro
+- no introducir nuevas mutaciones globales de `superadmin` directo desde `supabaseClient`
+- si una operación crea, edita o asocia recursos globales, exponerla primero en `app/api`
+- tratar RLS como defensa adicional, no como única frontera visible
+
+### Archivos relacionados
+- `app/superadmin/templates/*`
+- `app/superadmin/global-audits/*`
+- `app/superadmin/hotels/*`
+- `app/api/superadmin/**`
+- `lib/superadmin/server.ts`
+
+---
+
+## Issue 9
+
+### Fecha
+2026-03-16
+
+### Síntoma
+Seguían existiendo páginas sueltas que usaban `requireRoleOrRedirect(...)` o gating equivalente en cliente aunque el acceso real del segmento ya estaba o debía estar controlado server-side.
+
+### Causa raíz
+Las primeras pasadas endurecieron segmentos completos, pero quedaron residuos en pages puntuales:
+
+- `app/(app)/audits/[id]/view/page.tsx`
+- `app/(app)/members/page.tsx`
+- `app/(app)/task/page.tsx`
+- `app/(app)/my/page.tsx`
+- `app/(app)/formaciones/page.tsx`
+
+Eso mantenía checks duplicados, incoherentes o más restrictivos que la política real del servidor.
+
+### Solución aplicada
+Se eliminaron los guards client-side a nivel página y se dejó el control real en:
+
+- layouts server-side del segmento
+- `requireRole(...)`
+- `requireModuleAccess(...)`
+- `requireAuditRunScope(...)`
+
+En `audits/[id]/view` se removió además un check cliente que bloqueaba indebidamente a roles ya permitidos por el layout (`superadmin` y `quality`).
+
+### Cómo evitarlo en el futuro
+- no añadir `requireRoleOrRedirect(...)` en pages bajo segmentos ya cerrados server-side
+- si una ruta depende de un recurso concreto, validar ese recurso en layout o helper server-side
+- dejar los componentes cliente solo para UX y carga de datos permitidos
+
+### Archivos relacionados
+- `app/(app)/audits/[id]/view/page.tsx`
+- `app/(app)/members/page.tsx`
+- `app/(app)/task/page.tsx`
+- `app/(app)/my/page.tsx`
+- `app/(app)/formaciones/page.tsx`
+
+---
+
+## Issue 8
+
+### Fecha
+2026-03-16
+
+### Síntoma
 Varias rutas App Router protegidas seguían confiando en `requireRoleOrRedirect(...)` dentro de páginas cliente, por lo que un acceso directo por URL podía iniciar render y bootstrapping antes del control real server-side.
 
 ### Causa raíz

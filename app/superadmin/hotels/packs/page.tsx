@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import HotelHeader from "@/app/components/HotelHeader";
+import { fetchJsonOrThrow } from "@/lib/superadmin/clientApi";
 
 type PackRow = {
   id: string;
@@ -121,31 +122,28 @@ export default function PacksListPage() {
     setSaving(true);
     setError(null);
 
-    const { data, error: e } = await supabase
-      .from("global_audit_packs")
-      .insert({
-        business_type: bt.trim(),
-        name: trimmed,
-        description: desc.trim() ? desc.trim() : null,
-        active,
-      })
-      .select("id")
-      .single();
+    try {
+      const data = await fetchJsonOrThrow<{ pack_id: string }>("/api/superadmin/packs", {
+        method: "POST",
+        body: JSON.stringify({
+          business_type: bt.trim(),
+          name: trimmed,
+          description: desc.trim() ? desc.trim() : null,
+          active,
+        }),
+      });
 
-    if (e) {
-      setError(e.message);
+      setName("");
+      setDesc("");
+      setBt("hotel");
+      setActive(true);
       setSaving(false);
-      return;
+
+      router.push(`/superadmin/hotels/packs/${data.pack_id}`);
+    } catch (e: any) {
+      setError(e?.message ?? "No se pudo crear el pack.");
+      setSaving(false);
     }
-
-    const newId = (data as any)?.id as string;
-    setName("");
-    setDesc("");
-    setBt("hotel");
-    setActive(true);
-    setSaving(false);
-
-    router.push(`/superadmin/hotels/packs/${newId}`);
   }
 
   return (

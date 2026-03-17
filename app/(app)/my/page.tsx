@@ -3,7 +3,6 @@
 import { useRouter } from "next/navigation";
 import { setActiveHotel } from "@/lib/auth/activeHotelClient";
 import { supabase } from "@/lib/supabaseClient";
-import { requireRoleOrRedirect } from "@/lib/auth/RequireRole";
 import { useMyDashboardData } from "./_hooks/useMyDashboardData";
 import { useMyView } from "./_hooks/useMyView";
 import MyHeader from "./_components/MyHeader";
@@ -15,7 +14,6 @@ import MyAccountView from "./_components/MyAccountView";
 
 export default function MyDashboardPage() {
   const router = useRouter();
-  requireRoleOrRedirect(["superadmin", "admin", "manager", "quality", "auditor"], router);
 
   const { selectedPeriod, setSelectedPeriod, viewMode, setViewMode } = useMyView();
 
