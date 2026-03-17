@@ -12,6 +12,7 @@ import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import HotelHeader from "@/app/components/HotelHeader";
+import { fetchJsonOrThrow } from "@/lib/superadmin/clientApi";
 
 type TemplateRow = {
   id: string;
@@ -226,8 +227,13 @@ export default function SuperadminGlobalTemplateBuilderPage() {
     setInfo(null);
 
     try {
-      const { error: upErr } = await supabase.from("audit_questions").update(patch).eq("id", questionId);
-      if (upErr) throw upErr;
+      await fetchJsonOrThrow(`/api/superadmin/templates/${templateId}/questions`, {
+        method: "PATCH",
+        body: JSON.stringify({
+          question_ids: [questionId],
+          patch,
+        }),
+      });
 
       setRows((prev) =>
         prev.map((r) => {
@@ -264,8 +270,10 @@ export default function SuperadminGlobalTemplateBuilderPage() {
     setInfo(null);
 
     try {
-      const { error: upErr } = await supabase.from("audit_templates").update({ name: nextName }).eq("id", templateId);
-      if (upErr) throw upErr;
+      await fetchJsonOrThrow(`/api/superadmin/templates/${templateId}`, {
+        method: "PATCH",
+        body: JSON.stringify({ name: nextName }),
+      });
       setTemplate((t) => (t ? { ...t, name: nextName } : t));
       setInfo("Nombre guardado ✅");
     } catch (e: any) {
@@ -284,8 +292,10 @@ export default function SuperadminGlobalTemplateBuilderPage() {
 
     try {
       const nextActive = template.active === false;
-      const { error: upErr } = await supabase.from("audit_templates").update({ active: nextActive }).eq("id", templateId);
-      if (upErr) throw upErr;
+      await fetchJsonOrThrow(`/api/superadmin/templates/${templateId}`, {
+        method: "PATCH",
+        body: JSON.stringify({ active: nextActive }),
+      });
 
       setTemplate({ ...template, active: nextActive });
       setInfo(nextActive ? "Activada ✅" : "Desactivada ✅");
@@ -315,8 +325,13 @@ export default function SuperadminGlobalTemplateBuilderPage() {
 
       const ids = rows.map((r) => r.questionId);
       if (ids.length) {
-        const { error: upErr } = await supabase.from("audit_questions").update(patch).in("id", ids);
-        if (upErr) throw upErr;
+        await fetchJsonOrThrow(`/api/superadmin/templates/${templateId}/questions`, {
+          method: "PATCH",
+          body: JSON.stringify({
+            question_ids: ids,
+            patch,
+          }),
+        });
 
         setRows((prev) =>
           prev.map((r) => ({

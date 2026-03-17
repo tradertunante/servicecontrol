@@ -3,8 +3,8 @@
 
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { supabase } from "@/lib/supabaseClient";
 import HotelHeader from "@/app/components/HotelHeader";
+import { fetchJsonOrThrow } from "@/lib/superadmin/clientApi";
 
 export default function SuperadminCreateGlobalTemplatePage() {
   const router = useRouter();
@@ -24,22 +24,13 @@ export default function SuperadminCreateGlobalTemplatePage() {
       setError(null);
 
       try {
-        // ✅ Crear GLOBAL (NO hotel_id)
-        const { data: created, error: cErr } = await supabase
-          .from("audit_templates")
-          .insert({
-            name: "Nueva plantilla global",
-            scope: "global",
-            active: true,
-            area_id: null,
-          })
-          .select("id")
-          .single();
-
-        if (cErr || !created?.id) throw cErr ?? new Error("No se pudo crear la plantilla global.");
+        const created = await fetchJsonOrThrow<{ template_id: string }>("/api/superadmin/templates", {
+          method: "POST",
+          body: JSON.stringify({ name: "Nueva plantilla global" }),
+        });
 
         // ✅ Ir directo al builder global (tu ruta existente)
-        router.replace(`/superadmin/templates/${created.id}`);
+        router.replace(`/superadmin/templates/${created.template_id}`);
       } catch (e: any) {
         if (!mounted) return;
         setError(e?.message ?? "Error creando la plantilla global.");

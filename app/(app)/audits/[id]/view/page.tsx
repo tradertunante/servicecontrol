@@ -3,8 +3,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
-import { requireRoleOrRedirect } from "@/lib/auth/RequireRole";
-import { canRunAudits } from "@/lib/auth/permissions";
 
 type AuditRunRow = {
   id: string;
@@ -141,8 +139,6 @@ export default function AuditRunViewPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const [profile, setProfile] = useState<any>(null);
-
   const [run, setRun] = useState<AuditRunRow | null>(null);
   const [area, setArea] = useState<Area | null>(null);
   const [template, setTemplate] = useState<Template | null>(null);
@@ -162,16 +158,6 @@ export default function AuditRunViewPage() {
       setError(null);
 
       try {
-        const p = await requireRoleOrRedirect(router, ["admin", "manager", "auditor"], "/areas");
-        if (!p) return;
-        setProfile(p);
-
-        if (!canRunAudits(p.role)) {
-          setError("No tienes permisos para ver auditorías.");
-          setLoading(false);
-          return;
-        }
-
         // Run
         const { data: runData, error: runErr } = await supabase
           .from("audit_runs")

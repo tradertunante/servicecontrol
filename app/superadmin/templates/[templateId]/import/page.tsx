@@ -5,10 +5,9 @@ import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import HotelHeader from "@/app/components/HotelHeader";
-import { normalizeQuestionOrderForTemplate } from "@/lib/audits/normalizeQuestionOrder";
+import { fetchJsonOrThrow } from "@/lib/superadmin/clientApi";
 
 type ParsedRow = { standard: string; tag: string; classification: string };
-type RequirementType = "never" | "if_fail" | "always";
 
 function normHeader(s: string) {
   return (s ?? "").trim().toUpperCase();
@@ -146,92 +145,16 @@ export default function GlobalTemplateImportPage() {
     setDone(false);
 
     try {
-      const { data: existingSections, error: sErr } = await supabase.from("audit_sections").select("id,name").eq("audit_template_id", templateId);
-      if (sErr) throw sErr;
-
-      const mapByKey = new Map<string, { id: string; name: string }>();
-      (existingSections ?? []).forEach((s: any) => {
-        const name = cleanCell(s.name ?? "");
-        mapByKey.set(normKey(name), { id: s.id, name });
-      });
-
-      const orderedSections: string[] = [];
-      const seen = new Set<string>();
-
-      for (const r of parsed.rows) {
-        const name = cleanCell(r.classification);
-        const key = normKey(name);
-        if (!seen.has(key)) {
-          seen.add(key);
-          orderedSections.push(name);
+      const result = await fetchJsonOrThrow<{ sections_count: number; imported_questions: number }>(
+        `/api/superadmin/templates/${templateId}/import`,
+        {
+          method: "POST",
+          body: JSON.stringify({ rows: parsed.rows }),
         }
-      }
+      );
 
-      for (const secName of orderedSections) {
-        const key = normKey(secName);
-        if (mapByKey.has(key)) continue;
-
-        const { data: insSec, error: insSecErr } = await supabase
-          .from("audit_sections")
-          .insert({ audit_template_id: templateId, name: secName, active: true })
-          .select("id,name")
-          .single();
-
-        if (insSecErr || !insSec) throw insSecErr ?? new Error("No se pudo crear sección (RLS o validación).");
-        mapByKey.set(normKey(insSec.name), { id: insSec.id, name: insSec.name });
-      }
-
-      setDiagSectionsCount(mapByKey.size);
-
-      const missing: Array<{ i: number; classification: string; key: string }> = [];
-      let okCount = 0;
-
-      parsed.rows.forEach((r, idx) => {
-        const cls = cleanCell(r.classification);
-        const key = normKey(cls);
-        const sec = mapByKey.get(key);
-        if (!sec?.id) missing.push({ i: idx + 1, classification: cls, key });
-        else okCount += 1;
-      });
-
-      setDiagMappedOk(okCount);
-
-      if (missing.length) {
-        const first = missing.slice(0, 10);
-        throw new Error(
-          `No puedo importar porque ${missing.length} filas NO encuentran su sección.\n` +
-            `Ejemplos:\n` +
-            first.map((m) => `- Fila ${m.i}: CLASSIFICATION="${m.classification}" (key="${m.key}")`).join("\n") +
-            `\n\nSolución: revisa CLASSIFICATION (espacios raros / nombre distinto).`
-        );
-      }
-
-      const orderCounters = new Map<string, number>();
-
-      const inserts = parsed.rows.map((r) => {
-        const cls = cleanCell(r.classification);
-        const sec = mapByKey.get(normKey(cls))!;
-
-        const current = orderCounters.get(sec.id) ?? 0;
-        const nextOrder = current + 1;
-        orderCounters.set(sec.id, nextOrder);
-
-        return {
-          audit_section_id: sec.id,
-          text: r.standard,
-          tag: r.tag ? r.tag : null,
-          order: nextOrder,
-          active: true,
-          comment_requirement: "never" as RequirementType,
-          photo_requirement: "never" as RequirementType,
-          signature_requirement: "never" as RequirementType,
-        };
-      });
-
-      const { error: insQErr } = await supabase.from("audit_questions").insert(inserts);
-      if (insQErr) throw insQErr;
-
-      await normalizeQuestionOrderForTemplate(templateId);
+      setDiagSectionsCount(result.sections_count);
+      setDiagMappedOk(result.imported_questions);
 
       setInfo(`Importación completada ✅  ${parsed.sectionsCount} secciones · ${parsed.questionsCount} preguntas.`);
       setDone(true);

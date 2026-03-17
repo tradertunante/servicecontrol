@@ -8,6 +8,7 @@ import { supabase } from "@/lib/supabaseClient";
 import { fetchActiveHotel, setActiveHotel } from "@/lib/auth/activeHotelClient";
 import { getDefaultHotelRouteByRole } from "@/lib/auth/permissions";
 import type { Profile as LoadedProfile } from "@/lib/types";
+import { fetchJsonOrThrow } from "@/lib/superadmin/clientApi";
 
 type Hotel = {
   id: string;
@@ -109,14 +110,12 @@ export default function SuperadminHotelsPage() {
     setError("");
 
     try {
-      const { data, error: insErr } = await supabase
-        .from("hotels")
-        .insert([{ name: name.trim(), active: true }])
-        .select("id, name, active, created_at");
+      const result = await fetchJsonOrThrow<{ hotels: Hotel[] }>("/api/superadmin/hotels", {
+        method: "POST",
+        body: JSON.stringify({ name: name.trim() }),
+      });
 
-      if (insErr) throw insErr;
-
-      const created = (data ?? []) as Hotel[];
+      const created = result.hotels;
       setHotels((prev) => [...prev, ...created]);
       setLoading(false);
     } catch (e: any) {
@@ -130,17 +129,13 @@ export default function SuperadminHotelsPage() {
     setError("");
 
     try {
-      const { data, error: updErr } = await supabase
-        .from("hotels")
-        .update({ active: nextActive })
-        .eq("id", hotelId)
-        .select("id, name, active, created_at")
-        .single();
-
-      if (updErr) throw updErr;
+      const result = await fetchJsonOrThrow<{ hotel: Hotel }>(`/api/superadmin/hotels/${hotelId}`, {
+        method: "PATCH",
+        body: JSON.stringify({ active: nextActive }),
+      });
 
       setHotels((prev) =>
-        prev.map((h) => (h.id === hotelId ? ({ ...h, ...(data as Hotel) } as Hotel) : h))
+        prev.map((h) => (h.id === hotelId ? ({ ...h, ...result.hotel } as Hotel) : h))
       );
 
       if (!nextActive && activeHotelId === hotelId) {

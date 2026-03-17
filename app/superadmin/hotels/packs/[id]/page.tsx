@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import HotelHeader from "@/app/components/HotelHeader";
+import { fetchJsonOrThrow } from "@/lib/superadmin/clientApi";
 
 type PackRow = {
   id: string;
@@ -206,17 +207,19 @@ export default function PackDetailPage() {
     setSaving(true);
     setError(null);
 
-    const { error: e } = await supabase
-      .from("global_audit_packs")
-      .update({
-        business_type: bt.trim(),
-        name: name.trim(),
-        description: desc.trim() ? desc.trim() : null,
-        active,
-      })
-      .eq("id", pack.id);
-
-    if (e) setError(e.message);
+    try {
+      await fetchJsonOrThrow(`/api/superadmin/packs/${pack.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({
+          business_type: bt.trim(),
+          name: name.trim(),
+          description: desc.trim() ? desc.trim() : null,
+          active,
+        }),
+      });
+    } catch (e: any) {
+      setError(e?.message ?? "No se pudo guardar el pack.");
+    }
     await load();
     setSaving(false);
   }
@@ -227,16 +230,16 @@ export default function PackDetailPage() {
     setSaving(true);
     setError(null);
 
-    const last = packTemplates.reduce((mx, x) => Math.max(mx, x.position ?? 0), 0);
-    const nextPos = last + 10;
-
-    const { error: e } = await supabase.from("global_audit_pack_templates").insert({
-      pack_id: packId,
-      audit_template_id: templateId,
-      position: nextPos,
-    });
-
-    if (e) setError(e.message);
+    try {
+      await fetchJsonOrThrow(`/api/superadmin/packs/${packId}/templates`, {
+        method: "POST",
+        body: JSON.stringify({
+          template_id: templateId,
+        }),
+      });
+    } catch (e: any) {
+      setError(e?.message ?? "No se pudo agregar la plantilla.");
+    }
     await load();
     setSaving(false);
   }
@@ -247,13 +250,13 @@ export default function PackDetailPage() {
     setSaving(true);
     setError(null);
 
-    const { error: e } = await supabase
-      .from("global_audit_pack_templates")
-      .delete()
-      .eq("pack_id", packId)
-      .eq("audit_template_id", templateId);
-
-    if (e) setError(e.message);
+    try {
+      await fetchJsonOrThrow(`/api/superadmin/packs/${packId}/templates/${templateId}`, {
+        method: "DELETE",
+      });
+    } catch (e: any) {
+      setError(e?.message ?? "No se pudo quitar la plantilla.");
+    }
     await load();
     setSaving(false);
   }
@@ -264,13 +267,14 @@ export default function PackDetailPage() {
     setSaving(true);
     setError(null);
 
-    const { error: e } = await supabase
-      .from("global_audit_pack_templates")
-      .update({ position })
-      .eq("pack_id", packId)
-      .eq("audit_template_id", templateId);
-
-    if (e) setError(e.message);
+    try {
+      await fetchJsonOrThrow(`/api/superadmin/packs/${packId}/templates/${templateId}`, {
+        method: "PATCH",
+        body: JSON.stringify({ position }),
+      });
+    } catch (e: any) {
+      setError(e?.message ?? "No se pudo actualizar la posicion.");
+    }
     await load();
     setSaving(false);
   }
