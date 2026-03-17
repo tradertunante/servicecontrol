@@ -1,9 +1,11 @@
 import type { ReactNode } from "react";
 
-import { requireRole } from "@/lib/auth/server";
+import { requirePageAccess } from "@/lib/auth/server";
 
 export default async function StandardsLayout({ children }: { children: ReactNode }) {
-  await requireRole(["admin", "superadmin"], {
+  await requirePageAccess({
+    roles: ["admin", "superadmin"],
+    requireHotel: true,
     nextPath: "/standards",
     redirectTo: "/dashboard",
   });

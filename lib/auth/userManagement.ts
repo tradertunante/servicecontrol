@@ -83,3 +83,37 @@ export async function loadManagedUser(userId: string, hotelId?: string | null) {
     email: (data.email as string | null) ?? null,
   } satisfies ManagedUserRow;
 }
+
+export async function resolveManagedUserAccess(actorProfile: Profile, userId: string) {
+  const hotelResult = resolveManagedHotelId(actorProfile);
+  if (!hotelResult.ok) {
+    return {
+      ok: false as const,
+      error: hotelResult.error,
+      status: hotelResult.status,
+    };
+  }
+
+  const target = await loadManagedUser(userId, hotelResult.hotelId);
+  if (!target) {
+    return {
+      ok: false as const,
+      error: "Usuario no encontrado.",
+      status: 404,
+    };
+  }
+
+  if (!canManageExistingUser(actorProfile.role, target.role)) {
+    return {
+      ok: false as const,
+      error: "No puedes administrar este usuario.",
+      status: 403,
+    };
+  }
+
+  return {
+    ok: true as const,
+    hotelId: hotelResult.hotelId,
+    target,
+  };
+}

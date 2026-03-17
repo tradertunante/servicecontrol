@@ -3,8 +3,8 @@
 import { useEffect, useMemo, useState } from "react";
 import type { CSSProperties } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { getClientProfile } from "@/lib/auth/clientProfile";
 import { supabase } from "@/lib/supabaseClient";
-import { requireRoleOrRedirect } from "@/lib/auth/RequireRole";
 import { canRunAudits } from "@/lib/auth/permissions";
 
 type AuditRun = {
@@ -166,11 +166,7 @@ export default function AuditRunSectionDetailPage() {
       setError(null);
 
       try {
-        const p = await requireRoleOrRedirect(
-          router,
-          ["admin", "general_manager", "manager", "auditor", "superadmin", "quality"],
-          "/areas"
-        );
+        const p = await getClientProfile();
         if (!p) return;
         setProfile(p);
 

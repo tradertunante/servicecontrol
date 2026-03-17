@@ -4,7 +4,6 @@
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
-import { requireRoleOrRedirect } from "@/lib/auth/RequireRole";
 import HotelHeader from "@/app/components/HotelHeader";
 
 type PackRow = {
@@ -133,12 +132,6 @@ export default function PackDetailPage() {
 
     if (!packId) {
       setError("Falta el ID en la URL. Abre un pack desde la lista.");
-      setLoading(false);
-      return;
-    }
-
-    const p = await requireRoleOrRedirect(router, ["superadmin"], "/dashboard");
-    if (!p) {
       setLoading(false);
       return;
     }

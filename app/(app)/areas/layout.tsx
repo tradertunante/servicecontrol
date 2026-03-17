@@ -1,8 +1,13 @@
 import type { ReactNode } from "react";
 
-import { requireModuleAccess } from "@/lib/auth/server";
+import { requirePageAccess } from "@/lib/auth/server";
 
 export default async function AreasLayout({ children }: { children: ReactNode }) {
-  await requireModuleAccess("areas", { nextPath: "/areas", redirectTo: "/dashboard" });
+  await requirePageAccess({
+    module: "areas",
+    requireHotel: true,
+    nextPath: "/areas",
+    redirectTo: "/dashboard",
+  });
   return <>{children}</>;
 }

@@ -3,11 +3,12 @@
 
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { useRouter } from "next/navigation";
+import { getClientProfile } from "@/lib/auth/clientProfile";
 import { supabase } from "@/lib/supabaseClient";
 import { fetchActiveHotel, setActiveHotel } from "@/lib/auth/activeHotelClient";
-import { requireRoleOrRedirect } from "@/lib/auth/RequireRole";
+import { isRoleAllowed } from "@/lib/auth/permissions";
 import HotelHeader from "@/app/components/HotelHeader";
-import type { Role, Profile } from "@/lib/types";
+import type { Profile } from "@/lib/types";
 
 type HotelRow = { id: string; name: string; created_at?: string | null };
 type AreaRow = { id: string; name: string; type: string | null; hotel_id: string | null; sort_order: number | null };
@@ -70,8 +71,13 @@ export default function OrderAreasPage() {
     (async () => {
       setLoading(true); setError(null);
       try {
-        const p = (await requireRoleOrRedirect(router, ["admin", "superadmin"], "/dashboard")) as Profile | null;
+        const p = await getClientProfile();
         if (!alive || !p) return;
+        if (!isRoleAllowed(p.role, ["admin", "superadmin"])) {
+          setError("No tienes permisos para ordenar áreas.");
+          setLoading(false);
+          return;
+        }
         setProfile(p);
 
         if (p.role === "superadmin") {
@@ -96,7 +102,7 @@ export default function OrderAreasPage() {
       }
     })();
     return () => { alive = false; };
-  }, [router]);
+  }, []);
 
   const move = (index: number, dir: -1 | 1) => {
     setAreas((prev) => {

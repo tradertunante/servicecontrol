@@ -111,6 +111,10 @@ pendiente
 - layouts server-side para cerrar acceso por URL en `areas`, `reports`, `admin`, `builder`, `users`, `team` y `members`
 - alineación inicial del módulo `users` con hotel scope explícito para `superadmin`
 - versionado de RLS para tablas expuestas por los módulos priorizados en `supabase/migrations/20260316140000_harden_prioritized_module_rls.sql`
+- endurecimiento adicional de acceso App Router con `requirePageAccess(...)` para combinar rol/módulo + hotel scope server-side
+- cierre server-side de `dashboard` y de subzonas operativas de `team`, eliminando redirecciones críticas que dependían solo del cliente
+- limpieza residual de auth cliente en `superadmin`, `standards`, `users` y `builder`, eliminando `requireRoleOrRedirect(...)` de segmentos ya blindados por layout server-side
+- endurecimiento de APIs privilegiadas en `admin/user-area-access`, `admin/delete-user` y `audits/submit`, cerrando validación de target role y scope real de run/área en servidor
 
 ### Hecho
 

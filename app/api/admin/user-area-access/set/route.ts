@@ -1,7 +1,8 @@
 // app/api/admin/user-area-access/set/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
-import { authorizeRouteRequest, resolveRouteHotelScope } from "@/lib/auth/server";
+import { authorizeRouteRequest } from "@/lib/auth/server";
+import { resolveManagedUserAccess } from "@/lib/auth/userManagement";
 
 export async function POST(req: NextRequest) {
   const reqId = Math.random().toString(16).slice(2, 8);
@@ -16,28 +17,20 @@ export async function POST(req: NextRequest) {
     const area_ids = area_ids_raw.map((x: any) => String(x)).filter(Boolean);
 
     if (!user_id) return NextResponse.json({ error: "Falta user_id." }, { status: 400 });
-    const hotelResult = resolveRouteHotelScope(caller.profile, null);
-    if (!hotelResult.ok) return NextResponse.json({ error: hotelResult.error }, { status: hotelResult.status });
+    const targetScope = await resolveManagedUserAccess(caller.profile, user_id);
+    if (!targetScope.ok) {
+      return NextResponse.json({ error: targetScope.error }, { status: targetScope.status });
+    }
 
     const admin = supabaseAdmin();
-
-    const { data: targetUser, error: targetUserErr } = await admin
-      .from("profiles")
-      .select("id, hotel_id")
-      .eq("id", user_id)
-      .maybeSingle();
-
-    if (targetUserErr) return NextResponse.json({ error: targetUserErr.message }, { status: 400 });
-    if (!targetUser?.id || String(targetUser.hotel_id ?? "") !== hotelResult.hotelId) {
-      return NextResponse.json({ error: "El usuario no pertenece al hotel activo." }, { status: 404 });
-    }
+    const hotelId = targetScope.hotelId;
 
     // Validar que las áreas pertenecen al hotel
     if (area_ids.length > 0) {
       const { data: okAreas, error: areasErr } = await admin
         .from("areas")
         .select("id")
-        .eq("hotel_id", hotelResult.hotelId)
+        .eq("hotel_id", hotelId)
         .in("id", area_ids);
 
       if (areasErr) return NextResponse.json({ error: areasErr.message }, { status: 400 });
@@ -53,7 +46,7 @@ export async function POST(req: NextRequest) {
     const { error: delErr } = await admin
       .from("user_area_access")
       .delete()
-      .eq("hotel_id", hotelResult.hotelId)
+      .eq("hotel_id", hotelId)
       .eq("user_id", user_id);
 
     if (delErr) {
@@ -65,7 +58,7 @@ export async function POST(req: NextRequest) {
       const payload = area_ids.map((area_id: string) => ({
         user_id,
         area_id,
-        hotel_id: hotelResult.hotelId,
+        hotel_id: hotelId,
       }));
       const { error: insErr } = await admin.from("user_area_access").insert(payload);
       if (insErr) {

@@ -2,12 +2,12 @@ import type { ReactNode } from "react";
 
 import { requirePageAccess } from "@/lib/auth/server";
 
-export default async function ReportsLayout({ children }: { children: ReactNode }) {
+export default async function DashboardLayout({ children }: { children: ReactNode }) {
   await requirePageAccess({
-    module: "reports",
+    roles: ["admin", "general_manager", "quality", "superadmin"],
     requireHotel: true,
-    nextPath: "/reports",
-    redirectTo: "/areas",
+    nextPath: "/dashboard",
   });
+
   return <>{children}</>;
 }

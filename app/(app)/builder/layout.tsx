@@ -1,8 +1,13 @@
 import type { ReactNode } from "react";
 
-import { requireModuleAccess } from "@/lib/auth/server";
+import { requirePageAccess } from "@/lib/auth/server";
 
 export default async function BuilderLayout({ children }: { children: ReactNode }) {
-  await requireModuleAccess("builder", { nextPath: "/builder", redirectTo: "/dashboard" });
+  await requirePageAccess({
+    module: "builder",
+    requireHotel: true,
+    nextPath: "/builder",
+    redirectTo: "/dashboard",
+  });
   return <>{children}</>;
 }

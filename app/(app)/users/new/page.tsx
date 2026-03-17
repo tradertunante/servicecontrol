@@ -2,10 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { getClientProfile } from "@/lib/auth/clientProfile";
 import { supabase } from "@/lib/supabaseClient";
 import { fetchActiveHotel } from "@/lib/auth/activeHotelClient";
 import BackButton from "@/app/components/BackButton";
-import { getAssignableRoles } from "@/lib/auth/permissions";
+import { canManageUsers, getAssignableRoles } from "@/lib/auth/permissions";
 import type { Role, Profile } from "@/lib/types";
 
 export default function NewUserPage() {
@@ -32,20 +33,17 @@ export default function NewUserPage() {
     async function loadProfile() {
       try {
         setLoadingProfile(true); setError(null);
-        const { data: authData, error: authErr } = await supabase.auth.getUser();
-        if (authErr || !authData?.user) { router.replace("/login"); return; }
-        const { data: prof, error: profErr } = await supabase.from("profiles").select("id, hotel_id, role, active, full_name").eq("id", authData.user.id).single();
+        const prof = await getClientProfile();
         if (!mounted) return;
-        if (profErr || !prof) throw profErr;
-        const role = String(prof.role ?? "").toLowerCase();
-        if (!prof.active || !["admin", "superadmin"].includes(role)) { router.replace("/"); return; }
+        if (!prof) throw new Error("No se pudo cargar el perfil.");
+        if (!canManageUsers(prof.role)) throw new Error("No tienes permisos para crear usuarios.");
         setProfile(prof as Profile);
       } catch (e: any) { if (!mounted) return; setError(e?.message ?? "No se pudo cargar el perfil."); }
       finally { if (!mounted) return; setLoadingProfile(false); }
     }
     loadProfile();
     return () => { mounted = false; };
-  }, [router]);
+  }, []);
 
   useEffect(() => {
     if (assignableRoles.length === 0) return;

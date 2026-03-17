@@ -11,7 +11,6 @@
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
-import { requireRoleOrRedirect } from "@/lib/auth/RequireRole";
 import HotelHeader from "@/app/components/HotelHeader";
 
 type TemplateRow = {
@@ -115,12 +114,6 @@ export default function SuperadminGlobalTemplateBuilderPage() {
 
       setLoading(true);
 
-      const p = await requireRoleOrRedirect(router, ["superadmin"], "/dashboard");
-      if (!p) {
-        if (mounted) setLoading(false);
-        return;
-      }
-
       try {
         const [templateRes, sectionsRes] = await Promise.all([
           supabase.from("audit_templates").select("id,name,active,area_id,created_at,scope").eq("id", templateId).single(),
@@ -223,7 +216,7 @@ export default function SuperadminGlobalTemplateBuilderPage() {
     return () => {
       mounted = false;
     };
-  }, [templateId, router]);
+  }, [templateId]);
 
   const totalCount = rows.length;
 

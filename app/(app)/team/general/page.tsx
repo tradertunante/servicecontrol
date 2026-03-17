@@ -2,7 +2,6 @@
 
 import { useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { requireRoleOrRedirect } from "@/lib/auth/RequireRole";
 import TeamPageShell from "../_components/TeamPageShell";
 import ManagerAreaWorkspace, {
   type ManagerAreaHistoryFilters,
@@ -12,8 +11,6 @@ import { useTeamWorkspace } from "../_hooks/useTeamWorkspace";
 export default function TeamGeneralPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-
-  requireRoleOrRedirect(["manager"], router);
 
   const {
     profile,

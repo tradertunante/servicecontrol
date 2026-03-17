@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
-import { requireRoleOrRedirect } from "@/lib/auth/RequireRole";
 import HotelHeader from "@/app/components/HotelHeader";
 
 type PackRow = {
@@ -132,9 +131,6 @@ export default function PackDetailPage() {
       setLoading(false);
       return;
     }
-
-    const p = await requireRoleOrRedirect(router, ["superadmin"], "/dashboard");
-    if (!p) return;
 
     const { data: packData, error: pErr } = await supabase
       .from("global_audit_packs")
