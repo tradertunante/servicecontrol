@@ -3,7 +3,6 @@
 
 import { useEffect, useMemo, useState } from "react";
 import type { CSSProperties } from "react";
-import { fetchActiveHotel } from "@/lib/auth/activeHotelClient";
 
 import DepartmentsModule from "../_modules/departments/DepartmentsModule";
 import UsersModule from "../_modules/users/UsersModule";
@@ -81,8 +80,8 @@ function buildPillStyle(): CSSProperties {
   };
 }
 
-export default function AdminShell() {
-  const [activeHotelId, setActiveHotelId] = useState<string | null>(null);
+export default function AdminShell({ initialHotelId }: { initialHotelId: string }) {
+  const [activeHotelId] = useState<string | null>(initialHotelId);
   const [viewMode, setViewMode] = useState<ViewMode>("hotel-info");
   const [isNarrow, setIsNarrow] = useState(false);
 
@@ -90,10 +89,6 @@ export default function AdminShell() {
     const onResize = () => setIsNarrow(window.innerWidth < 900);
     onResize();
     window.addEventListener("resize", onResize);
-
-    void fetchActiveHotel().then((payload) => setActiveHotelId(payload.hotel_id ?? null)).catch(() => {
-      setActiveHotelId(null);
-    });
 
     return () => {
       window.removeEventListener("resize", onResize);
@@ -195,9 +190,9 @@ export default function AdminShell() {
               <b>Selecciona un hotel</b> (HotelPicker) para poder administrar módulos por hotel.
             </div>
           ) : viewMode === "hotel-info" ? (
-            <HotelInfoModule />
+            <HotelInfoModule hotelId={activeHotelId} />
           ) : viewMode === "departments" ? (
-            <DepartmentsModule />
+            <DepartmentsModule hotelId={activeHotelId} />
           ) : viewMode === "users" ? (
             <UsersModule />
           ) : viewMode === "access-by-area" ? (

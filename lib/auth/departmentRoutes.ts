@@ -9,7 +9,7 @@ import {
   resolveDepartmentCode,
   type DepartmentCode,
 } from "@/app/(app)/_lib/departmentAccess";
-import { requireAuthenticatedUser } from "@/lib/auth/server";
+import { requireHotelScope } from "@/lib/auth/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
 type DepartmentRoute = Exclude<DepartmentCode, null>;
@@ -18,7 +18,7 @@ export async function requireDepartmentRouteAccess(
   routeDepartment: DepartmentRoute,
   nextPath: string
 ) {
-  const auth = await requireAuthenticatedUser(nextPath);
+  const auth = await requireHotelScope(undefined, { nextPath });
   const admin = supabaseAdmin();
 
   const { data: profileRow, error: profileError } = await admin
@@ -51,7 +51,7 @@ export async function requireDepartmentRouteAccess(
     );
   }
 
-  const hotelId = auth.profile.hotel_id ?? null;
+  const hotelId = auth.hotelId;
   let hasAreaScope = false;
 
   if (hotelId) {

@@ -3,7 +3,11 @@ import "server-only";
 import { createHash, createHmac, randomUUID, timingSafeEqual } from "crypto";
 import type { NextRequest } from "next/server";
 
-import { authorizeRouteRequest, getAllowedAreaIdsForProfile } from "@/lib/auth/server";
+import {
+  authorizeRouteRequest,
+  getAllowedAreaIdsForProfile,
+  resolveRouteHotelScope,
+} from "@/lib/auth/server";
 import type { Role } from "@/lib/auth/permissions";
 import type { Profile } from "@/lib/types";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
@@ -187,15 +191,16 @@ export async function getTrainingsCaller(
     return { ok: false as const, error: "No autorizado.", status: 401 };
   }
 
-  if (!caller.profile.hotel_id) {
-    return { ok: false as const, error: "hotel_id faltante en perfil.", status: 400 };
+  const hotelResult = resolveRouteHotelScope(caller.profile, null);
+  if (!hotelResult.ok) {
+    return hotelResult;
   }
 
   return {
     ok: true as const,
     caller: {
       profile: caller.profile,
-      hotelId: caller.profile.hotel_id,
+      hotelId: hotelResult.hotelId,
     },
   };
 }

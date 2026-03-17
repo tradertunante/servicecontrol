@@ -13,5 +13,11 @@ export default async function AreaPage({
     redirectTo: "/areas",
   });
 
-  return <AreaPageClient areaId={params.areaId} initialProfile={auth.profile} />;
+  return (
+    <AreaPageClient
+      areaId={params.areaId}
+      initialProfile={auth.profile}
+      initialHotelId={auth.hotelId}
+    />
+  );
 }

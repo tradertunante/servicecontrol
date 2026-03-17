@@ -1,15 +1,14 @@
-"use client";
+import { requirePageAccess } from "@/lib/auth/server";
 
-import ReauditsPanel from "../_components/ReauditsPanel";
-import TeamPageShell from "../_components/TeamPageShell";
-import { useTeamWorkspace } from "../_hooks/useTeamWorkspace";
+import TeamRecuperacionPageClient from "./TeamRecuperacionPageClient";
 
-export default function TeamRecuperacionPage() {
-  const { profile, profileError, hotelId } = useTeamWorkspace();
+export default async function TeamRecuperacionPage() {
+  const { profile, hotelId } = await requirePageAccess({
+    module: "team",
+    requireHotel: true,
+    nextPath: "/team/recuperacion",
+    redirectTo: "/dashboard",
+  });
 
-  return (
-    <TeamPageShell profile={profile} profileError={profileError} activeSection="reaudits">
-      <ReauditsPanel profile={profile} hotelId={hotelId} />
-    </TeamPageShell>
-  );
+  return <TeamRecuperacionPageClient initialProfile={profile} initialHotelId={hotelId} />;
 }

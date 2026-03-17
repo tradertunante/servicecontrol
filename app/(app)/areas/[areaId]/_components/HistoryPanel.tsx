@@ -4,7 +4,6 @@
 import Card from "@/components/ui/Card";
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { fetchActiveHotel } from "@/lib/auth/activeHotelClient";
 import { supabase } from "@/lib/supabaseClient";
 
 import type { AuditRunRow, AuditTemplate, PeriodKey, Role } from "../_lib/areaTypes";
@@ -83,6 +82,7 @@ export default function HistoryPanel({
   embeddedPeriod,
   embeddedFailQuestionId,
   embeddedFailClassification,
+  hotelId,
 }: {
   areaId: string;
   profileRole: Role | null;
@@ -93,6 +93,7 @@ export default function HistoryPanel({
   embeddedPeriod?: PeriodKey | null;
   embeddedFailQuestionId?: string | null;
   embeddedFailClassification?: string | null;
+  hotelId: string;
 }) {
   const searchParams = useSearchParams();
   const now = new Date();
@@ -106,7 +107,7 @@ export default function HistoryPanel({
   const [histError, setHistError] = useState<string | null>(null);
   const [histRuns, setHistRuns] = useState<AuditRunRow[]>([]);
   const [deletingRunId, setDeletingRunId] = useState<string | null>(null);
-  const [activeHotelId, setActiveHotelId] = useState<string | null>(null);
+  const activeHotelId = hotelId;
 
   const showDelete = canDeleteAudits(profileRole);
 
@@ -124,26 +125,6 @@ export default function HistoryPanel({
       setHistTemplateId(templates[0].id);
     }
   }, [templates, histTemplateId]);
-
-  useEffect(() => {
-    let alive = true;
-
-    void (async () => {
-      try {
-        const payload = await fetchActiveHotel();
-        if (!alive) return;
-        setActiveHotelId(payload.hotel_id ?? null);
-      } catch (error: any) {
-        if (!alive) return;
-        setHistError(error?.message ?? "No se pudo resolver el hotel activo.");
-        setActiveHotelId(null);
-      }
-    })();
-
-    return () => {
-      alive = false;
-    };
-  }, []);
 
   // -------------------------
   // Query helpers

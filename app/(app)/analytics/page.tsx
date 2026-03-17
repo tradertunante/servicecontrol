@@ -1,19 +1,19 @@
-import { getActiveHotel, requireRole } from "@/lib/auth/server";
+import { requirePageAccess } from "@/lib/auth/server";
 
 import AnalyticsPageClient from "./AnalyticsPageClient";
 
 export default async function AnalyticsPage() {
-  const { profile } = await requireRole(["admin", "manager", "superadmin"], {
+  const { profile, hotelId } = await requirePageAccess({
+    roles: ["admin", "manager", "superadmin"],
+    requireHotel: true,
     nextPath: "/analytics",
     redirectTo: "/dashboard",
   });
 
-  const activeHotel = await getActiveHotel(null, profile);
-
   return (
     <AnalyticsPageClient
       initialProfile={profile}
-      initialHotelId={activeHotel.ok ? activeHotel.hotelId : null}
+      initialHotelId={hotelId}
     />
   );
 }

@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
-import { fetchActiveHotel } from "@/lib/auth/activeHotelClient";
 import { supabase } from "@/lib/supabaseClient";
 import type { Profile } from "@/lib/types";
 
@@ -138,8 +137,7 @@ export default function NewAuditPageClient({
     setError(null);
 
     try {
-      const hotelIdToUse =
-        profile.hotel_id ?? area.hotel_id ?? (await fetchActiveHotel()).hotel_id ?? null;
+      const hotelIdToUse = initialHotelId ?? area.hotel_id ?? null;
 
       if (!hotelIdToUse) {
         throw new Error("No se pudo determinar el hotel para crear la auditoría.");

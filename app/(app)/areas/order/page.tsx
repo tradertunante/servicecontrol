@@ -1,19 +1,15 @@
-import { getServerSelectedHotelId, requirePermission } from "@/lib/auth/server";
+import { requireHotelScope } from "@/lib/auth/server";
 
 import OrderAreasPageClient from "./OrderAreasPageClient";
 
 export default async function OrderAreasPage() {
-  const auth = await requirePermission("areas.manage", {
+  const { profile, hotelId } = await requireHotelScope(undefined, {
     nextPath: "/areas/order",
     redirectTo: "/areas",
+    permission: "areas.manage",
   });
 
-  const activeHotelId =
-    auth.profile.role === "superadmin"
-      ? getServerSelectedHotelId() ?? ""
-      : auth.profile.hotel_id ?? "";
-
   return (
-    <OrderAreasPageClient initialProfile={auth.profile} initialActiveHotelId={activeHotelId} />
+    <OrderAreasPageClient initialProfile={profile} initialActiveHotelId={hotelId} />
   );
 }

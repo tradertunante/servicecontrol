@@ -1,51 +1,23 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { fetchActiveHotel } from "@/lib/auth/activeHotelClient";
 import { supabase } from "@/lib/supabaseClient";
 import type { Profile } from "@/lib/types";
 import type { ManagerAreaOption } from "../_components/ManagerAreaWorkspace";
 
-export function useTeamWorkspace() {
-  const [profile, setProfile] = useState<Profile | null>(null);
-  const [hotelId, setHotelId] = useState("");
+export function useTeamWorkspace({
+  initialProfile,
+  initialHotelId,
+}: {
+  initialProfile: Profile;
+  initialHotelId: string;
+}) {
+  const [profile] = useState<Profile | null>(initialProfile);
+  const [hotelId] = useState(initialHotelId);
   const [profileError, setProfileError] = useState<string | null>(null);
   const [managerAreasLoading, setManagerAreasLoading] = useState(false);
   const [managerAreasError, setManagerAreasError] = useState<string | null>(null);
   const [managerAreaOptions, setManagerAreaOptions] = useState<ManagerAreaOption[]>([]);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    async function loadProfile() {
-      try {
-        setProfileError(null);
-
-        const { data: authData, error: authErr } = await supabase.auth.getUser();
-        if (authErr) throw authErr;
-
-        const uid = authData.user?.id;
-        if (!uid) throw new Error("No hay usuario autenticado.");
-
-        const { data: p, error: pErr } = await supabase
-          .from("profiles")
-          .select("id, full_name, role, hotel_id, active")
-          .eq("id", uid)
-          .single();
-
-        if (pErr) throw pErr;
-        if (!cancelled) setProfile(p as Profile);
-      } catch (e: any) {
-        if (!cancelled) setProfileError(e?.message ?? "No se pudo cargar el perfil.");
-      }
-    }
-
-    void loadProfile();
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -62,17 +34,11 @@ export function useTeamWorkspace() {
         setManagerAreasLoading(true);
         setManagerAreasError(null);
 
-        const hotelIdToUse =
-          profile.hotel_id ??
-          (await fetchActiveHotel()).hotel_id ??
-          "";
-        if (!cancelled) setHotelId(hotelIdToUse);
-
         const { data: accessData, error: accessError } = await supabase
           .from("user_area_access")
           .select("area_id")
           .eq("user_id", profile.id)
-          .eq("hotel_id", hotelIdToUse);
+          .eq("hotel_id", initialHotelId);
 
         if (accessError) throw accessError;
 
@@ -107,7 +73,7 @@ export function useTeamWorkspace() {
     return () => {
       cancelled = true;
     };
-  }, [profile]);
+  }, [initialHotelId, profile]);
 
   return {
     profile,

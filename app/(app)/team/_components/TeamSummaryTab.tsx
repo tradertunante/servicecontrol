@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Card from "@/components/ui/Card";
+import type { Profile } from "@/lib/types";
 import TeamTargetAssignmentsCard from "./TeamTargetAssignmentsCard";
 import { useTeamData, type TeamPeriodKey } from "../_hooks/useTeamData";
 
@@ -21,13 +22,15 @@ function formatPct(n: number | null | undefined) {
 export default function TeamSummaryTab({
   selectedPeriod,
   hotelId,
+  initialProfile,
 }: {
   selectedPeriod: TeamPeriodKey;
   hotelId: string;
+  initialProfile: Profile;
 }) {
   const [showAssignmentsConfig, setShowAssignmentsConfig] = useState(false);
   const { loading, error, leaderboard, teamTargets, teamRecentRuns, teamTemplateProgress, summary } =
-    useTeamData(selectedPeriod);
+    useTeamData({ selectedPeriod, initialHotelId: hotelId, initialProfile });
 
   const overviewSummary = useMemo(() => {
     let totalTargets = 0;
