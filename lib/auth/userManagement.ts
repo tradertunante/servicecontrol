@@ -196,6 +196,12 @@ export async function createManagedUser(
     email,
     password,
     email_confirm: true,
+    user_metadata: {
+      full_name: fullName,
+      role: roleResult.role,
+      hotel_id: hotelResult.hotelId,
+      active: true,
+    },
   });
 
   if (authErr) {
@@ -207,22 +213,6 @@ export async function createManagedUser(
   }
 
   const userId = authUser.user.id;
-  const { error: profileErr } = await admin.from("profiles").insert({
-    id: userId,
-    email,
-    full_name: fullName,
-    role: roleResult.role,
-    hotel_id: hotelResult.hotelId,
-    active: true,
-  });
-
-  if (profileErr) {
-    return {
-      ok: false as const,
-      error: profileErr.message,
-      status: 500,
-    };
-  }
 
   return {
     ok: true as const,
@@ -254,19 +244,6 @@ export async function deleteManagedUser(actorProfile: Profile, userId: string) {
   }
 
   const admin = supabaseAdmin();
-
-  await admin
-    .from("user_area_access")
-    .delete()
-    .eq("user_id", targetUserId)
-    .eq("hotel_id", targetScope.hotelId);
-
-  await admin
-    .from("profiles")
-    .delete()
-    .eq("id", targetUserId)
-    .eq("hotel_id", targetScope.hotelId);
-
   const { error: delAuthErr } = await admin.auth.admin.deleteUser(targetUserId);
   if (delAuthErr) {
     return {

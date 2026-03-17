@@ -16,6 +16,17 @@ function jsonError(message: string, status = 400) {
   return NextResponse.json({ ok: false, error: message }, { status });
 }
 
+type ReauditActionRpcResponse = {
+  ok?: boolean;
+  code?: string;
+  message?: string;
+  data?: {
+    status?: string | null;
+    ready_for_reaudit?: boolean | null;
+    assigned_auditor_id?: string | null;
+  } | null;
+};
+
 export async function POST(request: NextRequest) {
   const caller = await authorizeRouteRequest(request, {
     roles: ["manager", "quality", "admin", "superadmin"],
@@ -71,48 +82,41 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const blockingIssueCount = Number(run.blocking_issue_count ?? 0);
-    const nextReady = blockingIssueCount === 0;
-    const nextStatus = nextReady ? "draft" : "blocked_by_non_operational";
     const confirmedByName = caller.profile.full_name?.trim() || caller.profile.id || "unknown";
-    const confirmedAt = new Date().toISOString();
-    const nextNotes = appendNoteBlock(
-      String(run.notes ?? ""),
-      buildTrainingConfirmationBlock({
-        explanation,
-        confirmedBy: confirmedByName,
-      })
-    );
-
-    const { error: updateErr } = await admin
-      .from("audit_runs")
-      .update({
-        training_confirmed: true,
-        blocking_issue_count: blockingIssueCount,
-        ready_for_reaudit: nextReady,
-        status: nextStatus,
-        notes: nextNotes,
-      })
-      .eq("id", runId)
-      .eq("hotel_id", hotelResult.hotelId);
-
-    if (updateErr) return jsonError(updateErr.message, 500);
-
-    const { error: logErr } = await admin.from("reaudit_training_logs").insert({
-      hotel_id: hotelResult.hotelId,
-      reaudit_run_id: runId,
-      team_member_id: run.team_member_id ?? null,
-      confirmed_by: caller.profile.id,
-      confirmed_at: confirmedAt,
+    const noteBlock = buildTrainingConfirmationBlock({
       explanation,
+      confirmedBy: confirmedByName,
     });
 
-    if (logErr) return jsonError(logErr.message, 500);
+    const { data, error } = await admin.rpc("process_reaudit_action", {
+      p_action: action,
+      p_hotel_id: hotelResult.hotelId,
+      p_run_id: runId,
+      p_actor_user_id: caller.profile.id,
+      p_note_block: noteBlock,
+      p_explanation: explanation,
+      p_next_auditor_id: null,
+    });
+
+    if (error) return jsonError(error.message, 500);
+
+    const payload = (data ?? null) as ReauditActionRpcResponse | null;
+    if (!payload?.ok) {
+      const code = String(payload?.code ?? "");
+      const status =
+        code === "RUN_NOT_FOUND" ? 404
+        : code === "FORBIDDEN" ? 403
+        : code === "NOT_REAUDIT" ? 400
+        : code === "MISSING_EXPLANATION" || code === "EXPLANATION_TOO_SHORT" || code === "INVALID_ACTION" ? 400
+        : code === "ACTOR_INVALID" ? 403
+        : 500;
+      return jsonError(payload?.message ?? "No se pudo procesar la acción.", status);
+    }
 
     return NextResponse.json({
       ok: true,
-      status: nextStatus,
-      ready_for_reaudit: nextReady,
+      status: payload.data?.status ?? null,
+      ready_for_reaudit: payload.data?.ready_for_reaudit ?? false,
     });
   }
 
@@ -157,43 +161,42 @@ export async function POST(request: NextRequest) {
   }
 
   const changedByName = caller.profile.full_name?.trim() || caller.profile.id || "unknown";
-  const changedAt = new Date().toISOString();
-  const nextNotes = appendNoteBlock(
-    String(run.notes ?? ""),
-    buildReassignmentBlock({
-      previousAuditorId: run.assigned_auditor_id ? String(run.assigned_auditor_id) : null,
-      previousAuditorName: null,
-      newAuditorId: nextAuditorId,
-      newAuditorName: nextAuditor.full_name ?? null,
-      changedBy: changedByName,
-      reason: note,
-      note,
-    })
-  );
-
-  const { error: updateErr } = await admin
-    .from("audit_runs")
-    .update({
-      assigned_auditor_id: nextAuditorId,
-      notes: nextNotes,
-    })
-    .eq("id", runId)
-    .eq("hotel_id", hotelResult.hotelId);
-
-  if (updateErr) return jsonError(updateErr.message, 500);
-
-  const { error: logErr } = await admin.from("reaudit_assignment_logs").insert({
-    hotel_id: hotelResult.hotelId,
-    reaudit_run_id: runId,
-    previous_auditor_id: run.assigned_auditor_id ?? null,
-    new_auditor_id: nextAuditorId,
-    changed_by: caller.profile.id,
-    changed_at: changedAt,
-    reason: note || null,
-    note: note || null,
+  const noteBlock = buildReassignmentBlock({
+    previousAuditorId: run.assigned_auditor_id ? String(run.assigned_auditor_id) : null,
+    previousAuditorName: null,
+    newAuditorId: nextAuditorId,
+    newAuditorName: nextAuditor.full_name ?? null,
+    changedBy: changedByName,
+    reason: note,
+    note,
   });
 
-  if (logErr) return jsonError(logErr.message, 500);
+  const { data, error } = await admin.rpc("process_reaudit_action", {
+    p_action: action,
+    p_hotel_id: hotelResult.hotelId,
+    p_run_id: runId,
+    p_actor_user_id: caller.profile.id,
+    p_note_block: noteBlock,
+    p_explanation: note || null,
+    p_next_auditor_id: nextAuditorId,
+  });
 
-  return NextResponse.json({ ok: true, assigned_auditor_id: nextAuditorId });
+  if (error) return jsonError(error.message, 500);
+
+  const payload = (data ?? null) as ReauditActionRpcResponse | null;
+  if (!payload?.ok) {
+    const code = String(payload?.code ?? "");
+    const status =
+      code === "RUN_NOT_FOUND" ? 404
+      : code === "FORBIDDEN" || code === "AUDITOR_OUT_OF_SCOPE" || code === "AUDITOR_NO_AREA_ACCESS" ? 403
+      : code === "NOT_REAUDIT" || code === "MISSING_AUDITOR" || code === "SAME_AUDITOR" || code === "RUN_ALREADY_SUBMITTED" || code === "INVALID_ACTION" ? 400
+      : code === "ACTOR_INVALID" ? 403
+      : 500;
+    return jsonError(payload?.message ?? "No se pudo procesar la acción.", status);
+  }
+
+  return NextResponse.json({
+    ok: true,
+    assigned_auditor_id: payload.data?.assigned_auditor_id ?? nextAuditorId,
+  });
 }

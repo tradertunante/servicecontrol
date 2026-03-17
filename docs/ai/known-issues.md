@@ -62,6 +62,46 @@ Resuelto de forma más completa en capas complementarias:
 
 ---
 
+## Issue 8
+
+### Fecha
+2026-03-17
+
+### Síntoma
+Reauditorías, corrective actions y lifecycle de usuarios seguían teniendo riesgo de estado parcial por updates/logs/sincronizaciones ejecutadas en pasos separados.
+
+### Causa raíz
+Persistían superficies con mutaciones multi-tabla fuera de una transacción real:
+
+- `POST /api/reaudits/actions` hacía update de `audit_runs` y luego insert en `reaudit_*_logs`
+- `POST /api/corrective-actions/status` hacía update de `audit_corrective_actions` y después recalculaba `audit_runs`
+- `user_area_access/set` reemplazaba accesos con `delete + insert`
+- create/delete user separaba Supabase Auth de `profiles` y accesos locales
+
+### Solución aplicada
+Resuelto el 2026-03-17.
+
+Se movieron las mutaciones críticas a SQL transaccional:
+
+- `process_reaudit_action(...)`
+- `update_corrective_action_status_atomic(...)`
+- `set_user_area_access_atomic(...)`
+
+Además, `profiles` y `user_area_access` quedaron sincronizados con create/delete de `auth.users` mediante triggers server-side.
+
+### Cómo evitarlo en el futuro
+- no dejar `update + log + recálculo` repartidos entre varias queries Node para superficies críticas
+- si el lifecycle depende de `auth.users`, mover sincronización local a triggers o acoplamiento DB real
+- no usar `delete + insert` fuera de una misma transacción para reemplazos completos
+
+### Archivos relacionados
+- `app/api/reaudits/actions/route.ts`
+- `app/api/corrective-actions/status/route.ts`
+- `app/api/admin/user-area-access/set/route.ts`
+- `lib/auth/userManagement.ts`
+
+---
+
 ## Issue 2
 
 ### Fecha
