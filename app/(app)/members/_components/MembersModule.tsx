@@ -29,6 +29,36 @@ function normalizeError(message: string | null | undefined, fallback: string) {
   return safeMessage || fallback;
 }
 
+function buildSaveErrorMessage(payload: {
+  error?: string;
+  conflict_member?: { id?: string; full_name?: string; active?: boolean } | null;
+  debug?: {
+    effective_hotel_id?: string;
+    edited_member_id?: string;
+    requested_employee_number?: string;
+    duplicate_member_id?: string;
+    duplicate_member_active?: boolean;
+    duplicate_member_within_visible_scope?: boolean;
+  };
+} | null) {
+  const baseMessage = normalizeError(payload?.error, "No se pudo guardar el miembro.");
+
+  if (!payload?.debug) {
+    return baseMessage;
+  }
+
+  const bits = [
+    `hotel_id=${payload.debug.effective_hotel_id ?? "?"}`,
+    `member_id=${payload.debug.edited_member_id ?? "?"}`,
+    `employee_number=${payload.debug.requested_employee_number ?? "?"}`,
+    `duplicate_member_id=${payload.debug.duplicate_member_id ?? "?"}`,
+    `duplicate_active=${String(payload.debug.duplicate_member_active ?? "?")}`,
+    `duplicate_visible_scope=${String(payload.debug.duplicate_member_within_visible_scope ?? "?")}`,
+  ];
+
+  return `${baseMessage} [debug: ${bits.join(", ")}]`;
+}
+
 function normalizeRole(value: unknown) {
   return String(value ?? "").trim().toLowerCase();
 }
@@ -217,10 +247,21 @@ export default function MembersModule() {
         body,
       });
 
-      const payload = (await res.json().catch(() => null)) as { error?: string } | null;
+      const payload = (await res.json().catch(() => null)) as {
+        error?: string;
+        conflict_member?: { id?: string; full_name?: string; active?: boolean } | null;
+        debug?: {
+          effective_hotel_id?: string;
+          edited_member_id?: string;
+          requested_employee_number?: string;
+          duplicate_member_id?: string;
+          duplicate_member_active?: boolean;
+          duplicate_member_within_visible_scope?: boolean;
+        };
+      } | null;
 
       if (!res.ok) {
-        throw new Error(normalizeError(payload?.error, "No se pudo guardar el miembro."));
+        throw new Error(buildSaveErrorMessage(payload));
       }
 
       beginCreate();
