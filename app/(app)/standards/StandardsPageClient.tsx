@@ -3,9 +3,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { getClientProfile } from "@/lib/auth/clientProfile";
 import { supabase } from "@/lib/supabaseClient";
-import { fetchActiveHotel, setActiveHotel } from "@/lib/auth/activeHotelClient";
+import { setActiveHotel } from "@/lib/auth/activeHotelClient";
 import HotelHeader from "@/app/components/HotelHeader";
 import BackButton from "@/app/components/BackButton";
 import type { Profile } from "@/lib/types";
@@ -14,12 +13,18 @@ type GlobalPack = { id: string; business_type: string; name: string; description
 type Area = { id: string; name: string; type: string | null };
 type HotelTemplate = { id: string; name: string; active: boolean | null; hotel_id: string | null; pack_id: string | null; area_id: string | null; source_template_id: string | null };
 
-export default function StandardsPage() {
+export default function StandardsPageClient({
+  initialProfile,
+  hotelId,
+}: {
+  initialProfile: Profile;
+  hotelId: string;
+}) {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [profile, setProfile] = useState<Profile | null>(null);
-  const [hotelIdInUse, setHotelIdInUse] = useState<string | null>(null);
+  const [profile] = useState<Profile>(initialProfile);
+  const [hotelIdInUse] = useState<string | null>(hotelId || null);
   const [globalPacks, setGlobalPacks] = useState<GlobalPack[]>([]);
   const [busyPackId, setBusyPackId] = useState<string | null>(null);
   const [areas, setAreas] = useState<Area[]>([]);
@@ -52,29 +57,18 @@ export default function StandardsPage() {
     (async () => {
       setLoading(true); setError(null);
       try {
-        const p = await getClientProfile();
-        if (!alive || !p) return;
-        setProfile(p);
-
-        let hotelIdToUse: string | null = null;
-        if (p.role === "superadmin") {
-          hotelIdToUse = (await fetchActiveHotel()).hotel_id;
-          if (!hotelIdToUse) { router.replace("/superadmin/hotels"); return; }
-        } else {
-          hotelIdToUse = p.hotel_id;
-          if (!hotelIdToUse) { setError("No tienes un hotel asignado."); setLoading(false); return; }
-        }
-
-        setHotelIdInUse(hotelIdToUse);
-        await loadAll(hotelIdToUse);
+        if (!hotelId) throw new Error("No hay hotel activo seleccionado.");
+        await loadAll(hotelId);
+        if (!alive) return;
         setLoading(false);
       } catch (e: any) {
+        if (!alive) return;
         setError(e?.message ?? "Error al cargar la biblioteca.");
         setLoading(false);
       }
     })();
     return () => { alive = false; };
-  }, []);
+  }, [hotelId]);
 
   const hotelBadge = useMemo(() => {
     if (!profile || profile.role !== "superadmin" || !hotelIdInUse) return null;

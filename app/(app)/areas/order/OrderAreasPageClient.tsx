@@ -3,24 +3,28 @@
 
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { useRouter } from "next/navigation";
-import { getClientProfile } from "@/lib/auth/clientProfile";
 import { supabase } from "@/lib/supabaseClient";
-import { fetchActiveHotel, setActiveHotel } from "@/lib/auth/activeHotelClient";
-import { isRoleAllowed } from "@/lib/auth/permissions";
+import { setActiveHotel } from "@/lib/auth/activeHotelClient";
 import HotelHeader from "@/app/components/HotelHeader";
 import type { Profile } from "@/lib/types";
 
 type HotelRow = { id: string; name: string; created_at?: string | null };
 type AreaRow = { id: string; name: string; type: string | null; hotel_id: string | null; sort_order: number | null };
 
-export default function OrderAreasPage() {
+export default function OrderAreasPageClient({
+  initialProfile,
+  initialActiveHotelId,
+}: {
+  initialProfile: Profile;
+  initialActiveHotelId: string;
+}) {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [busySave, setBusySave] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [profile, setProfile] = useState<Profile | null>(null);
+  const [profile] = useState<Profile>(initialProfile);
   const [hotels, setHotels] = useState<HotelRow[]>([]);
-  const [activeHotelId, setActiveHotelId] = useState<string | null>(null);
+  const [activeHotelId, setActiveHotelId] = useState<string | null>(initialActiveHotelId || null);
   const [areas, setAreas] = useState<AreaRow[]>([]);
 
   const fg = "var(--text)";
@@ -71,30 +75,18 @@ export default function OrderAreasPage() {
     (async () => {
       setLoading(true); setError(null);
       try {
-        const p = await getClientProfile();
-        if (!alive || !p) return;
-        if (!isRoleAllowed(p.role, ["admin", "superadmin"])) {
-          setError("No tienes permisos para ordenar áreas.");
-          setLoading(false);
-          return;
-        }
-        setProfile(p);
-
-        if (p.role === "superadmin") {
-          const stored = (await fetchActiveHotel()).hotel_id;
-          setActiveHotelId(stored || null);
+        if (profile.role === "superadmin") {
           const { data: hData, error: hErr } = await supabase.from("hotels").select("id,name,created_at").order("created_at", { ascending: false });
           if (hErr) throw hErr;
           if (!alive) return;
           setHotels((hData ?? []) as HotelRow[]);
-          if (stored) await loadAreas(stored);
+          if (initialActiveHotelId) await loadAreas(initialActiveHotelId);
           setLoading(false);
           return;
         }
 
-        if (!p.hotel_id) { setError("Tu usuario no tiene hotel asignado."); setLoading(false); return; }
-        setActiveHotelId(p.hotel_id);
-        await loadAreas(p.hotel_id);
+        if (!initialActiveHotelId) { setError("Tu usuario no tiene hotel asignado."); setLoading(false); return; }
+        await loadAreas(initialActiveHotelId);
         setLoading(false);
       } catch (e: any) {
         setError(e?.message ?? "No se pudo cargar el orden de áreas.");
@@ -102,7 +94,7 @@ export default function OrderAreasPage() {
       }
     })();
     return () => { alive = false; };
-  }, []);
+  }, [initialActiveHotelId, profile.role]);
 
   const move = (index: number, dir: -1 | 1) => {
     setAreas((prev) => {

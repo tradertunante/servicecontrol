@@ -712,3 +712,32 @@ Tras cerrar `REPAIR 1.1`, seguían repitiéndose patrones equivalentes fuera de 
 - `trainings` deja de aceptar registros arbitrarios y managers quedan limitados a sus áreas
 - `standards` y `superadmin` quedan cerrados por URL antes de renderizar
 - la superficie legacy se reduce a una sola fuente viva
+
+---
+
+## Decisión 14
+
+### Fecha
+2026-03-17
+
+### Decisión
+Terminar `REPAIR 1` quitando el gating cliente residual en rutas reales de `areas`, `reports`, `standards` e `history`.
+
+### Contexto
+Aunque los layouts server-side ya cerraban el acceso principal, varias rutas reales seguían:
+
+- leyendo `profile` o `session` en cliente para decidir si continuar
+- resolviendo `hotel_id` desde navegador para arrancar pantallas protegidas
+- mezclando wrappers server-side con pages cliente que todavía actuaban como pseudo-barrera
+
+Eso mantenía un modelo híbrido y hacía ambiguo dónde vivía la autoridad real.
+
+### Decisión final
+- convertir las pages reales pendientes en wrappers server-side que inyectan `profile`, `hotelId`, `areaId` o `runId`
+- dejar los `*PageClient` y hooks solo con UI, lectura de datos permitidos y `fetch` autenticado para mutaciones
+- eliminar guards por rol/sesión en navegador en `standards`, `areas`, `reports` y `history`
+
+### Impacto esperado
+- autoridad de acceso concentrada en `layout.tsx`, `page.tsx` server-side y helpers `require*`
+- menos ambigüedad entre UX cliente y seguridad real
+- cierre binario real de `REPAIR 1`

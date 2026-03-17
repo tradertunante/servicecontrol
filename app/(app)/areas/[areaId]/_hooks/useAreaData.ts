@@ -2,10 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { getClientProfile } from "@/lib/auth/clientProfile";
 import { supabase } from "@/lib/supabaseClient";
-import { fetchActiveHotel } from "@/lib/auth/activeHotelClient";
-import { canRunAudits } from "@/lib/auth/permissions";
+import type { Profile } from "@/lib/types";
 
 import type {
   Area,
@@ -20,10 +18,12 @@ export function useAreaData({
   areaId,
   templateFilter,
   setTemplateFilter,
+  initialProfile,
 }: {
   areaId: string;
   templateFilter: string;
   setTemplateFilter: (v: string) => void;
+  initialProfile?: Profile;
 }) {
   const router = useRouter();
 
@@ -31,7 +31,7 @@ export function useAreaData({
   const [starting, setStarting] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const [profile, setProfile] = useState<any>(null);
+  const [profile] = useState<Profile | null>(initialProfile ?? null);
   const [area, setArea] = useState<Area | null>(null);
 
   const [templates, setTemplates] = useState<AuditTemplate[]>([]);
@@ -54,22 +54,6 @@ export function useAreaData({
       setError(null);
 
       try {
-        const p = await getClientProfile();
-        if (!p) return;
-        setProfile(p);
-
-        // ✅ permitir quality aunque canRunAudits no lo contemple
-        const allowed =
-          p.role === "superadmin"
-            ? true
-            : canRunAudits(p.role) || p.role === "quality" || p.role === "general_manager";
-
-        if (!allowed) {
-          setError("No tienes permisos para acceder a esta sección.");
-          setLoading(false);
-          return;
-        }
-
         // 1) Área
         const { data: areaData, error: areaErr } = await supabase
           .from("areas")
@@ -280,25 +264,12 @@ export function useAreaData({
 
   // ✅ FIX: crear auditoría con audit_channel válido (internal | quality)
   async function handleStart(templateId: string) {
-    if (!profile || !areaId) return;
+    if (!areaId) return;
 
     setStarting(templateId);
     setError(null);
 
     try {
-      const {
-        data: { user },
-        error: userErr,
-      } = await supabase.auth.getUser();
-
-      if (userErr || !user) throw userErr ?? new Error("No hay sesión activa.");
-
-      const hotelIdToUse = area?.hotel_id ?? profile?.hotel_id ?? (await fetchActiveHotel()).hotel_id;
-
-      if (!hotelIdToUse) throw new Error("No se pudo determinar el hotel_id para crear la auditoría.");
-
-      const channel: "quality" | "internal" = profile.role === "quality" ? "quality" : "internal";
-
       const { data: sessionData } = await supabase.auth.getSession();
       const accessToken = sessionData?.session?.access_token;
       if (!accessToken) throw new Error("Sesión inválida.");

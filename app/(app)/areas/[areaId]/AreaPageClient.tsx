@@ -2,10 +2,11 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import BackButton from "@/app/components/BackButton";
+import type { Profile } from "@/lib/types";
 
-import type { PeriodKey, TabKey } from "./_lib/areaTypes";
+import type { PeriodKey, Role as AreaRole, TabKey } from "./_lib/areaTypes";
 import { safePeriod } from "./_lib/areaUtils";
 
 import AreaHeader from "./_components/AreaHeader";
@@ -16,13 +17,15 @@ import TemplatesPanel from "./_components/TemplatesPanel";
 
 import { useAreaData } from "./_hooks/useAreaData";
 
-export default function AreaPage() {
+export default function AreaPageClient({
+  areaId,
+  initialProfile,
+}: {
+  areaId: string;
+  initialProfile: Profile;
+}) {
   const router = useRouter();
-  const params = useParams();
   const searchParams = useSearchParams();
-
-  // ✅ soporta carpeta [id] o [areaId]
-  const areaId = (params as any)?.areaId ?? (params as any)?.id;
 
   // ✅ default dashboard
   const tab = (searchParams.get("tab") ?? "dashboard") as TabKey;
@@ -40,9 +43,10 @@ export default function AreaPage() {
   }, []);
 
   const data = useAreaData({
-    areaId: String(areaId ?? ""),
+    areaId,
     templateFilter,
     setTemplateFilter,
+    initialProfile,
   });
 
   // ✅ si vienen sin tab, lo fijamos a dashboard
@@ -136,23 +140,11 @@ export default function AreaPage() {
     );
   }
 
-  const standaloneAllowed =
-    data.profile?.role === "general_manager" ||
-    data.profile?.role === "admin" ||
-    data.profile?.role === "quality" ||
-    data.profile?.role === "manager" ||
-    data.profile?.role === "auditor" ||
-    data.profile?.role === "superadmin";
-
-  if (data.profile && !standaloneAllowed) {
-    return null;
-  }
-
   return (
     <main style={{ padding: 24 }}>
       {HeaderRow}
 
-      <AreaHeader area={data.area} role={data.profile?.role ?? null} />
+      <AreaHeader area={data.area} role={(data.profile?.role as AreaRole | null) ?? null} />
 
       <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 12, marginBottom: 8 }}>
         <button
@@ -206,7 +198,7 @@ export default function AreaPage() {
       {tab === "history" ? (
         <HistoryPanel
           areaId={String(areaId ?? "")}
-          profileRole={data.profile?.role ?? null}
+          profileRole={(data.profile?.role as AreaRole | null) ?? null}
           templates={data.templates}
           onViewRun={(runId) => router.push(`/audits/${runId}`)}
           onDeleteSuccess={(deletedId) => data.removeRunEverywhere(deletedId)}

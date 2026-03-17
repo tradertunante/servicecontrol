@@ -2,10 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import type { CSSProperties } from "react";
-import { useParams, useRouter, useSearchParams } from "next/navigation";
-import { fetchActiveHotel } from "@/lib/auth/activeHotelClient";
-import { getClientProfile } from "@/lib/auth/clientProfile";
-import { canRunAudits } from "@/lib/auth/permissions";
+import { useRouter, useSearchParams } from "next/navigation";
 import { buildMonthlyAreaReport } from "@/lib/reports/buildMonthlyAreaReport";
 import type { MonthlyAreaReportData } from "@/lib/reports/monthlyReportTypes";
 
@@ -184,12 +181,15 @@ function summaryToneStyle(tone: "good" | "warning" | "critical"): CSSProperties 
   };
 }
 
-export default function MonthlyAreaReportPage() {
+export default function MonthlyAreaReportPageClient({
+  areaId,
+  hotelId,
+}: {
+  areaId: string;
+  hotelId: string;
+}) {
   const router = useRouter();
-  const params = useParams<{ areaId: string }>();
   const searchParams = useSearchParams();
-
-  const areaId = params?.areaId;
   const monthParam = searchParams.get("month");
 
   const [loading, setLoading] = useState(true);
@@ -206,23 +206,9 @@ export default function MonthlyAreaReportPage() {
       setError(null);
 
       try {
-        const profile = await getClientProfile();
-        if (!profile) return;
-
-        if (!canRunAudits(profile.role) && profile.role !== "quality") {
-          setError("No tienes permisos para ver este reporte.");
-          setLoading(false);
-          return;
-        }
-
-        const activeHotelId = (await fetchActiveHotel()).hotel_id;
-        if (!activeHotelId) {
-          throw new Error("No hay hotel activo seleccionado.");
-        }
-
         const data = await buildMonthlyAreaReport({
           areaId,
-          hotelId: activeHotelId,
+          hotelId,
           month: effectiveMonth.month,
         });
 
@@ -233,7 +219,7 @@ export default function MonthlyAreaReportPage() {
         setLoading(false);
       }
     })();
-  }, [areaId, effectiveMonth.month]);
+  }, [areaId, effectiveMonth.month, hotelId]);
 
   const monthlySummary = useMemo(() => {
     if (!report) {

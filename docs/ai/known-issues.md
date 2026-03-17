@@ -385,6 +385,48 @@ Se completó la limpieza residual:
 
 ---
 
+## Issue 11
+
+### Fecha
+2026-03-17
+
+### Síntoma
+Rutas protegidas de `areas`, `reports`, `standards` e `history` seguían leyendo perfil o sesión cliente para decidir acceso o bootstrap crítico.
+
+### Causa raíz
+El layout server-side ya existía, pero faltaba completar la última milla en páginas reales e hooks:
+
+- `standards/page`
+- `areas/page`
+- `areas/order/page`
+- `areas/[areaId]`
+- `areas/[areaId]/history`
+- `areas/[areaId]/history/[runId]`
+- `reports/weekly/area/[areaId]`
+- `reports/monthly/area/[areaId]`
+- `reports/audit/[runId]`
+
+### Solución aplicada
+Se reemplazaron las pages reales por wrappers server-side y se dejaron los clients solo con props ya autorizadas y `fetch` autenticado para acciones.
+
+Se eliminaron:
+
+- `getClientProfile()` como barrera en esas rutas
+- checks cliente de rol/permisos
+- resolución de hotel en navegador para decidir acceso en esas pantallas
+
+### Cómo evitarlo en el futuro
+- si una ruta ya está cerrada por layout o helper server-side, no volver a consultar sesión cliente para decidir acceso
+- usar `supabase.auth.getSession()` en cliente solo para adjuntar bearer tokens a APIs permitidas
+- si un client necesita rol o hotel para render, recibirlo por props desde un wrapper server-side
+
+### Archivos relacionados
+- `app/(app)/standards/*`
+- `app/(app)/areas/*`
+- `app/(app)/reports/*`
+
+---
+
 ## Issue 10
 
 ### Fecha
