@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import MemberForm from "./MemberForm";
+import MembersImportPanel from "./MembersImportPanel";
 import MembersTable from "./MembersTable";
 import type { MemberAreaOption, MemberRecord, MembersResponse } from "../_lib/memberTypes";
 
@@ -448,6 +449,15 @@ export default function MembersModule() {
           </select>
         </div>
       </div>
+
+      <MembersImportPanel
+        hotelId={hotelId}
+        role={role}
+        areaOptions={areaOptions}
+        onImported={async () => {
+          await loadMembers();
+        }}
+      />
 
       <MemberForm
         title={editingMember ? `Editar miembro: ${editingMember.full_name}` : "Crear miembro"}

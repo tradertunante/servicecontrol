@@ -20,3 +20,39 @@ export type MembersResponse = {
   hotel_id: string;
   role: string;
 };
+
+export type MemberImportPreviewRow = {
+  row_number: number;
+  full_name: string;
+  employee_number: string;
+  active: string;
+  areas: string;
+};
+
+export type MemberImportRowResult = {
+  row_number: number;
+  status: "created" | "skipped" | "error";
+  message: string;
+  employee_number: string;
+  full_name: string;
+};
+
+export type MemberImportCreatedMember = {
+  id: string;
+  full_name: string;
+  employee_number: string;
+  active: boolean;
+  area_ids: string[];
+  area_names: string[];
+};
+
+export type MemberImportResponse = {
+  ok: boolean;
+  hotel_id: string;
+  total_rows: number;
+  created_count: number;
+  skipped_count: number;
+  error_count: number;
+  created_members: MemberImportCreatedMember[];
+  row_results: MemberImportRowResult[];
+};
