@@ -4,8 +4,8 @@ import { supabaseWithToken } from "@/lib/supabaseServer";
 
 type Role = "manager" | "quality" | "general_manager" | "admin" | "superadmin";
 
-function jsonError(message: string, status = 400) {
-  return NextResponse.json({ ok: false, error: message }, { status });
+function jsonError(message: string, status = 400, extra?: Record<string, unknown>) {
+  return NextResponse.json({ ok: false, error: message, ...(extra ?? {}) }, { status });
 }
 
 function normalizeRole(input: unknown): string {
@@ -94,7 +94,7 @@ async function findDuplicateMemberByEmployeeNumber(
 ) {
   let query = admin
     .from("team_members")
-    .select("id")
+    .select("id, full_name, active")
     .eq("hotel_id", hotelId)
     .eq("employee_number", employeeNumber)
     .limit(1);
@@ -107,7 +107,21 @@ async function findDuplicateMemberByEmployeeNumber(
 
   if (error) throw error;
 
-  return data ? String(data.id) : null;
+  return data
+    ? {
+        id: String(data.id),
+        full_name: String(data.full_name ?? ""),
+        active: data.active ?? true,
+      }
+    : null;
+}
+
+function canSeeMemberWithinScope(role: Role, allowedAreaSet: Set<string>, memberAreaIds: string[]) {
+  if (role !== "manager") {
+    return true;
+  }
+
+  return memberAreaIds.some((areaId) => allowedAreaSet.has(areaId));
 }
 
 async function getHotelAreas(admin: ReturnType<typeof supabaseAdmin>, hotelId: string) {
@@ -225,15 +239,58 @@ export async function PATCH(
       }
     }
 
-    const duplicateMemberId = await findDuplicateMemberByEmployeeNumber(
+    const duplicateMember = await findDuplicateMemberByEmployeeNumber(
       admin,
       hotelResult.hotelId,
       employeeNumber,
       memberId
     );
 
-    if (duplicateMemberId) {
-      return jsonError("El numero de colaborador ya existe en este hotel.", 409);
+    if (duplicateMember) {
+      const { data: duplicateLinks, error: duplicateLinksError } = await admin
+        .from("team_member_areas")
+        .select("area_id")
+        .eq("team_member_id", duplicateMember.id)
+        .in("area_id", hotelAreaIds);
+
+      if (duplicateLinksError) {
+        return jsonError(duplicateLinksError.message, 500);
+      }
+
+      const duplicateAreaIds = uniqueStrings((duplicateLinks ?? []).map((row) => row.area_id));
+      const duplicateWithinVisibleScope = canSeeMemberWithinScope(
+        callerResult.caller.role,
+        allowedAreaSet,
+        duplicateAreaIds
+      );
+      const canRevealDuplicateIdentity = callerResult.caller.role !== "manager";
+      const duplicateMessage = canRevealDuplicateIdentity
+        ? `El numero de colaborador ya esta asignado a ${duplicateMember.full_name || "otro miembro"} (${duplicateMember.id}) dentro de este hotel.`
+        : "El numero de colaborador ya esta asignado a otro miembro de este hotel, posiblemente fuera de tu alcance visible.";
+      const debugInfo =
+        process.env.NODE_ENV !== "production"
+          ? {
+              debug: {
+                effective_hotel_id: hotelResult.hotelId,
+                edited_member_id: memberId,
+                requested_employee_number: employeeNumber,
+                duplicate_member_id: duplicateMember.id,
+                duplicate_member_active: duplicateMember.active,
+                duplicate_member_within_visible_scope: duplicateWithinVisibleScope,
+              },
+            }
+          : undefined;
+
+      return jsonError(duplicateMessage, 409, {
+        conflict_member: canRevealDuplicateIdentity
+          ? {
+              id: duplicateMember.id,
+              full_name: duplicateMember.full_name,
+              active: duplicateMember.active,
+            }
+          : null,
+        ...(debugInfo ?? {}),
+      });
     }
 
     const { error: updateError } = await admin
