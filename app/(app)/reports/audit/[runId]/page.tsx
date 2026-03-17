@@ -178,7 +178,7 @@ export default function AuditReportPage() {
       try {
         const profile = await requireRoleOrRedirect(
           router,
-          ["admin", "manager", "auditor"],
+          ["admin", "manager", "auditor", "quality", "superadmin"],
           "/areas"
         );
         if (!profile) return;

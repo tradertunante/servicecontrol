@@ -40,13 +40,17 @@ export default function UsersPage() {
         return;
       }
 
-      const { data, error: uErr } = await supabase
-        .from("profiles")
-        .select("id, full_name, email, role, active")
-        .eq("hotel_id", hotelId)
-        .order("full_name", { ascending: true });
-      if (uErr) throw uErr;
-      setUsers((data ?? []) as UserRow[]);
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData?.session?.access_token;
+      if (!accessToken) throw new Error("Sesión inválida.");
+
+      const search = new URLSearchParams({ hotel_id: hotelId });
+      const res = await fetch(`/api/admin/users?${search.toString()}`, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      const payload = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(payload?.error ?? "No se pudieron cargar los usuarios.");
+      setUsers((payload?.users ?? []) as UserRow[]);
     } catch (e: any) { setError(e?.message ?? "No se pudieron cargar los usuarios."); }
     finally { setLoading(false); }
   }

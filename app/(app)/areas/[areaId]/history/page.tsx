@@ -261,11 +261,16 @@ export default function AreaPage() {
       setError(null);
 
       try {
-        const p = await requireRoleOrRedirect(router, ["admin", "manager", "auditor", "superadmin"], "/login");
+        const p = await requireRoleOrRedirect(
+          router,
+          ["admin", "general_manager", "manager", "auditor", "superadmin", "quality"],
+          "/login"
+        );
         if (!p) return;
         setProfile(p);
 
-        const allowed = p.role === "superadmin" ? true : canRunAudits(p.role);
+        const allowed =
+          p.role === "superadmin" || p.role === "general_manager" ? true : canRunAudits(p.role);
         if (!allowed) {
           setError("No tienes permisos para acceder a esta sección.");
           setLoading(false);
@@ -327,8 +332,19 @@ export default function AreaPage() {
 
         // 5) Nombres ejecutores
         if (executorIds.length) {
-          const { data: pData, error: pErr } = await supabase.from("profiles").select("id,full_name").in("id", executorIds);
-          if (!pErr && pData) {
+          const { data: sessionData } = await supabase.auth.getSession();
+          const accessToken = sessionData?.session?.access_token;
+          if (accessToken) {
+            const response = await fetch("/api/profiles/names", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${accessToken}`,
+              },
+              body: JSON.stringify({ ids: executorIds, area_id: areaId, hotel_id: areaData.hotel_id }),
+            });
+            const payload = await response.json().catch(() => ({}));
+            const pData = Array.isArray(payload?.items) ? payload.items : [];
             const map: Record<string, string> = {};
             for (const row of pData as any[]) map[row.id] = row.full_name ?? row.id;
             setExecutorNameById(map);

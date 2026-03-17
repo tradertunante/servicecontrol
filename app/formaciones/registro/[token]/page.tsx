@@ -119,6 +119,7 @@ export default function TrainingRegistrationPage({ params }: { params: { token: 
         },
         body: JSON.stringify({
           session_id: selectedSessionId,
+          registration_token: selectedSession?.registration_token ?? null,
           employee_number: employeeNumber.trim(),
           employee_name_input: employeeNameInput.trim() || null,
         }),

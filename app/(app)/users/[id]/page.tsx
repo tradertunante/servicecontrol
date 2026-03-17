@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
-import { canManageUsers } from "@/lib/auth/permissions";
+import { canManageUsers, getAssignableRoles } from "@/lib/auth/permissions";
 import type { Role, Profile } from "@/lib/types";
 
 type UserProfile = { id: string; hotel_id: string; role: Role; active: boolean; full_name: string | null; email?: string | null };
@@ -31,6 +31,16 @@ export default function UserDetailPage() {
   const [deleting, setDeleting] = useState(false);
 
   const invalidId = useMemo(() => !userId || typeof userId !== "string", [userId]);
+  const assignableRoles = useMemo(
+    () => getAssignableRoles(me?.role).filter((candidate) => candidate !== "superadmin"),
+    [me?.role]
+  );
+  const availableRoleOptions = useMemo(() => {
+    if (!userRow) return assignableRoles;
+    return assignableRoles.includes(userRow.role)
+      ? assignableRoles
+      : [userRow.role, ...assignableRoles];
+  }, [assignableRoles, userRow]);
 
   function toggleArea(areaId: string) {
     setSelectedAreaIds((prev) => prev.includes(areaId) ? prev.filter((x) => x !== areaId) : [...prev, areaId]);
@@ -69,9 +79,23 @@ export default function UserDetailPage() {
         setLoading(false);
         return;
       }
-      const { data: target, error: tErr } = await supabase.from("profiles").select("id, hotel_id, role, active, full_name, email").eq("id", userId).single();
-      if (tErr || !target) { setMsg("No se encontró el usuario."); setLoading(false); return; }
-      const t = target as UserProfile;
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData?.session?.access_token;
+      if (!accessToken) {
+        router.push("/login");
+        return;
+      }
+      const search = new URLSearchParams({ hotel_id: scopedHotelId });
+      const response = await fetch(`/api/admin/users/${userId}?${search.toString()}`, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok || !payload?.user) {
+        setMsg(payload?.error ?? "No se encontró el usuario.");
+        setLoading(false);
+        return;
+      }
+      const t = payload.user as UserProfile;
       if (t.hotel_id !== scopedHotelId) { router.push("/users"); return; }
       setUserRow(t); setFullName(t.full_name ?? ""); setRole(t.role); setActive(t.active);
       try { await loadAreasAndAccess(t.id, scopedHotelId); } catch (e: any) { setMsg(`❌ Error cargando áreas: ${e?.message ?? "desconocido"}`); }
@@ -84,8 +108,6 @@ export default function UserDetailPage() {
     if (!me || !userRow) return;
     setSaving(true); setMsg(null);
     if (userRow.id === me.id && active === false) { setMsg("No puedes desactivarte a ti mismo."); setSaving(false); return; }
-    const { error } = await supabase.from("profiles").update({ full_name: fullName.trim() || null, role, active }).eq("id", userRow.id);
-    if (error) { setMsg(`❌ Error: ${error.message}`); setSaving(false); return; }
     try {
       const { data: sessionData } = await supabase.auth.getSession();
       const accessToken = sessionData?.session?.access_token;
@@ -96,6 +118,20 @@ export default function UserDetailPage() {
             ? window.localStorage.getItem(HOTEL_KEY)
             : null
           : me.hotel_id;
+      const updateRes = await fetch(`/api/admin/users/${userRow.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
+        body: JSON.stringify({
+          hotel_id: hotelId,
+          full_name: fullName.trim() || null,
+          role,
+          active,
+        }),
+      });
+      const updatePayload = await updateRes.json().catch(() => ({}));
+      if (!updateRes.ok) {
+        throw new Error(updatePayload?.error ?? "No se pudo guardar el usuario.");
+      }
       const res = await fetch("/api/admin/user-area-access/set", { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` }, body: JSON.stringify({ user_id: userRow.id, hotel_id: hotelId, area_ids: selectedAreaIds }) });
       const payload = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(payload?.error ?? "No se pudo guardar accesos de áreas.");
@@ -172,12 +208,11 @@ export default function UserDetailPage() {
         <label style={{ display: "grid", gap: 6 }}>
           <span style={{ fontWeight: 900 }}>Rol</span>
           <select value={role} onChange={(e) => setRole(e.target.value as Role)} style={{ padding: 12, borderRadius: 10, border: "1px solid #ddd" }}>
-            <option value="auditor">auditor</option>
-            <option value="manager">manager</option>
-            <option value="admin">admin</option>
-            <option value="quality">quality</option>
-            <option value="engineering">engineering</option>
-            <option value="systems">systems</option>
+            {availableRoleOptions.map((candidateRole) => (
+              <option key={candidateRole} value={candidateRole}>
+                {candidateRole}
+              </option>
+            ))}
           </select>
 
           {role === "quality" && (

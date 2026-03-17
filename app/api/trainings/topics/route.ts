@@ -1,8 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabaseAdmin } from "@/lib/supabaseAdmin";
-import { supabaseWithToken } from "@/lib/supabaseServer";
 
-type Role = "admin" | "quality" | "manager" | "general_manager";
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import {
+  getTrainingsCaller,
+  getTrainingsVisibleAreaIds,
+  type TrainingRole,
+} from "@/lib/trainings/server";
+
+const TRAINING_ALLOWED_ROLES: TrainingRole[] = [
+  "admin",
+  "quality",
+  "manager",
+  "general_manager",
+];
 
 function jsonError(message: string, status = 400) {
   return NextResponse.json({ ok: false, error: message }, { status });
@@ -17,78 +27,27 @@ function jsonNoStore(body: unknown, status = 200) {
   });
 }
 
-function normalizeRole(input: unknown): string {
-  return String(input ?? "").trim().toLowerCase();
-}
-
-function getBearerToken(request: NextRequest) {
-  const authHeader = request.headers.get("authorization") || "";
-  return authHeader.startsWith("Bearer ") ? authHeader.slice(7).trim() : "";
-}
-
-async function getCaller(request: NextRequest, allowedRoles: Role[]) {
-  const token = getBearerToken(request);
-
-  if (!token) {
-    return { ok: false as const, error: "No autorizado.", status: 401 };
-  }
-
-  const client = supabaseWithToken(token);
-  const {
-    data: { user },
-    error: authError,
-  } = await client.auth.getUser(token);
-
-  if (authError || !user) {
-    return { ok: false as const, error: "No autorizado.", status: 401 };
-  }
-
-  const { data: profile, error: profileError } = await client
-    .from("profiles")
-    .select("id, hotel_id, role, active, full_name")
-    .eq("id", user.id)
-    .maybeSingle();
-
-  if (profileError || !profile) {
-    return { ok: false as const, error: "Perfil invalido.", status: 403 };
-  }
-
-  const role = normalizeRole(profile.role);
-  const active = profile.active ?? true;
-
-  if (!active || !allowedRoles.includes(role as Role)) {
-    return { ok: false as const, error: "Forbidden.", status: 403 };
-  }
-
-  if (!profile.hotel_id) {
-    return { ok: false as const, error: "hotel_id faltante en perfil.", status: 400 };
-  }
-
-  return {
-    ok: true as const,
-    profile: {
-      id: profile.id as string,
-      hotel_id: profile.hotel_id as string,
-      role,
-      full_name: (profile.full_name as string | null) ?? null,
-    },
-  };
-}
-
 export async function GET(request: NextRequest) {
   try {
-    const caller = await getCaller(request, ["admin", "quality", "manager", "general_manager"]);
-
-    if (!caller.ok) {
-      return jsonError(caller.error, caller.status);
-    }
+    const callerResult = await getTrainingsCaller(request, TRAINING_ALLOWED_ROLES);
+    if (!callerResult.ok) return jsonError(callerResult.error, callerResult.status);
 
     const admin = supabaseAdmin();
+    const allowedAreaIds = await getTrainingsVisibleAreaIds(
+      callerResult.caller.profile,
+      callerResult.caller.hotelId
+    );
+
+    if (allowedAreaIds.length === 0) {
+      return jsonNoStore({ ok: true, topics: [], available_areas: [] });
+    }
+
     const { data: topics, error: topicsError } = await admin
       .from("training_topics")
       .select("id, hotel_id, area_id, title, description, qr_token, is_active, created_at")
-      .eq("hotel_id", caller.profile.hotel_id)
+      .eq("hotel_id", callerResult.caller.hotelId)
       .eq("is_active", true)
+      .in("area_id", allowedAreaIds)
       .order("created_at", { ascending: false });
 
     if (topicsError) {
@@ -107,7 +66,6 @@ export async function GET(request: NextRequest) {
     }
 
     const areaNameById = new Map<string, string>();
-
     for (const area of areas ?? []) {
       areaNameById.set(String(area.id), String(area.name ?? "Area"));
     }
@@ -152,7 +110,6 @@ export async function GET(request: NextRequest) {
     }
 
     const memberNameById = new Map<string, string | null>();
-
     for (const member of members ?? []) {
       memberNameById.set(String(member.id), (member.full_name as string | null) ?? null);
     }
@@ -174,7 +131,6 @@ export async function GET(request: NextRequest) {
     }
 
     const sessionsByTopic = new Map<string, any[]>();
-
     for (const session of sessions ?? []) {
       const topicId = String(session.topic_id ?? "");
       if (!topicId) continue;
@@ -194,33 +150,26 @@ export async function GET(request: NextRequest) {
       sessionsByTopic.set(topicId, bucket);
     }
 
-    const activeTopicIds = new Set((topics ?? []).map((topic) => String(topic.id ?? "")).filter(Boolean));
+    const availableAreas = (areas ?? []).map((area) => ({
+      id: String(area.id),
+      name: String(area.name ?? "Area"),
+    }));
 
     return jsonNoStore({
       ok: true,
-      topics: (topics ?? [])
-        .filter((topic) => {
-          return (
-            !!topic?.id &&
-            !!String(topic.title ?? "").trim() &&
-            !!String(topic.qr_token ?? "").trim() &&
-            topic.is_active !== false
-          );
-        })
-        .map((topic) => ({
-          id: topic.id,
-          hotel_id: topic.hotel_id,
-          area_id: topic.area_id ?? null,
-          area_name: areaNameById.get(String(topic.area_id ?? "")) ?? null,
-          title: topic.title,
-          description: topic.description ?? null,
-          qr_token: topic.qr_token,
-          is_active: topic.is_active,
-          created_at: topic.created_at,
-          sessions: (sessionsByTopic.get(String(topic.id)) ?? [])
-            .filter((session) => activeTopicIds.has(String(session.topic_id ?? "")))
-            .slice(0, 12),
-        })),
+      available_areas: availableAreas,
+      topics: (topics ?? []).map((topic) => ({
+        id: topic.id,
+        hotel_id: topic.hotel_id,
+        area_id: topic.area_id ?? null,
+        area_name: areaNameById.get(String(topic.area_id ?? "")) ?? null,
+        title: topic.title,
+        description: topic.description ?? null,
+        qr_token: topic.qr_token,
+        is_active: topic.is_active,
+        created_at: topic.created_at,
+        sessions: sessionsByTopic.get(String(topic.id)) ?? [],
+      })),
     });
   } catch (error) {
     return jsonError(error instanceof Error ? error.message : "Error inesperado.", 500);
@@ -229,79 +178,62 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const caller = await getCaller(request, ["admin", "quality", "manager"]);
-
-    if (!caller.ok) {
-      return jsonError(caller.error, caller.status);
-    }
+    const callerResult = await getTrainingsCaller(request, [
+      "admin",
+      "quality",
+      "manager",
+      "general_manager",
+    ]);
+    if (!callerResult.ok) return jsonError(callerResult.error, callerResult.status);
 
     const body = await request.json().catch(() => null);
     const title = String(body?.title ?? "").trim();
     const description = body?.description == null ? null : String(body.description).trim() || null;
+    const requestedAreaId = String(body?.area_id ?? "").trim();
 
     if (!title) {
       return jsonError("title es obligatorio.");
     }
 
+    if (!requestedAreaId) {
+      return jsonError("area_id es obligatorio.");
+    }
+
     const admin = supabaseAdmin();
-    const { data: areaAccessRows, error: areaAccessError } = await admin
-      .from("user_area_access")
-      .select("area_id")
-      .eq("hotel_id", caller.profile.hotel_id)
-      .eq("user_id", caller.profile.id);
-
-    if (areaAccessError) {
-      return jsonError(areaAccessError.message, 500);
-    }
-
-    const rawAreaIds = Array.from(
-      new Set((areaAccessRows ?? []).map((row) => String(row.area_id ?? "")).filter(Boolean))
+    const allowedAreaIds = await getTrainingsVisibleAreaIds(
+      callerResult.caller.profile,
+      callerResult.caller.hotelId
     );
 
-    const { data: areaRows, error: areaRowsError } = rawAreaIds.length
-      ? await admin
-          .from("areas")
-          .select("id, active, hotel_id")
-          .eq("hotel_id", caller.profile.hotel_id)
-          .in("id", rawAreaIds)
-      : { data: [], error: null };
-
-    if (areaRowsError) {
-      return jsonError(areaRowsError.message, 500);
+    if (!allowedAreaIds.includes(requestedAreaId)) {
+      return jsonError("Forbidden: area fuera de alcance.", 403);
     }
 
-    const areaIds = Array.from(
-      new Set(
-        (areaRows ?? [])
-          .filter((row) => row.active !== false)
-          .map((row) => String(row.id ?? ""))
-          .filter(Boolean)
-      )
-    );
+    const { data: area, error: areaError } = await admin
+      .from("areas")
+      .select("id, hotel_id, active, name")
+      .eq("id", requestedAreaId)
+      .eq("hotel_id", callerResult.caller.hotelId)
+      .maybeSingle();
 
-    if (areaIds.length === 0) {
-      return jsonError("No tienes un area asignada para crear formaciones.", 409);
+    if (areaError) {
+      return jsonError(areaError.message, 500);
     }
 
-    if (areaIds.length > 1) {
-      return jsonError(
-        "Tu usuario tiene mas de un area asignada. Este flujo requiere un area unica para crear la formacion.",
-        409
-      );
+    if (!area || area.active === false) {
+      return jsonError("Area no encontrada o inactiva.", 404);
     }
 
-    const areaId = areaIds[0];
     const qrToken = crypto.randomUUID().replace(/-/g, "");
-
     const { data, error } = await admin
       .from("training_topics")
       .insert({
-        hotel_id: caller.profile.hotel_id,
-        area_id: areaId,
+        hotel_id: callerResult.caller.hotelId,
+        area_id: requestedAreaId,
         title,
         description,
         qr_token: qrToken,
-        created_by: caller.profile.id,
+        created_by: callerResult.caller.profile.id,
       })
       .select("id, hotel_id, area_id, title, description, qr_token, is_active, created_at")
       .single();
@@ -310,24 +242,17 @@ export async function POST(request: NextRequest) {
       return jsonError(error?.message ?? "No se pudo crear el tema.", 500);
     }
 
-    const { data: area, error: areaError } = await admin
-      .from("areas")
-      .select("id, name")
-      .eq("id", areaId)
-      .maybeSingle();
-
-    if (areaError) {
-      return jsonError(areaError.message, 500);
-    }
-
-    return jsonNoStore({
-      ok: true,
-      topic: {
-        ...data,
-        area_name: area?.name ?? null,
-        sessions: [],
+    return jsonNoStore(
+      {
+        ok: true,
+        topic: {
+          ...data,
+          area_name: area.name ?? null,
+          sessions: [],
+        },
       },
-    }, 201);
+      201
+    );
   } catch (error) {
     return jsonError(error instanceof Error ? error.message : "Error inesperado.", 500);
   }

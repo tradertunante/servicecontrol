@@ -1,6 +1,9 @@
 import HotelHeader from "@/app/components/HotelHeader";
+import { requireAuthenticatedUser } from "@/lib/auth/server";
 
-export default function AppLayout({ children }: { children: React.ReactNode }) {
+export default async function AppLayout({ children }: { children: React.ReactNode }) {
+  await requireAuthenticatedUser();
+
   return (
     <div className="min-h-screen bg-[var(--bg)]">
       <HotelHeader />

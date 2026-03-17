@@ -3,9 +3,17 @@ import "server-only";
 import type { NextRequest } from "next/server";
 
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
-import { supabaseWithToken } from "@/lib/supabaseServer";
+import {
+  authorizeRouteRequest,
+  getAllowedAreaIdsForProfile,
+  resolveRouteHotelScope,
+} from "@/lib/auth/server";
+import type { Role } from "@/lib/auth/permissions";
 
-export type MemberRole = "manager" | "quality" | "general_manager" | "admin" | "superadmin";
+export type MemberRole = Extract<
+  Role,
+  "manager" | "quality" | "general_manager" | "admin" | "superadmin"
+>;
 
 export type MemberCaller = {
   id: string;
@@ -26,82 +34,31 @@ export type HotelAreaRecord = {
   hotel_id: string;
 };
 
-function normalizeRole(input: unknown): string {
-  return String(input ?? "").trim().toLowerCase();
-}
-
 export function uniqueStrings(values: unknown[]) {
   return Array.from(new Set(values.map((value) => String(value ?? "").trim()).filter(Boolean)));
 }
 
-export function getBearerToken(request: NextRequest) {
-  const authHeader = request.headers.get("authorization") || "";
-  return authHeader.startsWith("Bearer ") ? authHeader.slice(7).trim() : "";
-}
-
 export async function getMembersCaller(request: NextRequest) {
-  const token = getBearerToken(request);
+  const caller = await authorizeRouteRequest(request, {
+    roles: ["manager", "quality", "general_manager", "admin", "superadmin"],
+  });
 
-  if (!token) {
+  if (!caller) {
     return { ok: false as const, error: "No autorizado.", status: 401 };
-  }
-
-  const client = supabaseWithToken(token);
-  const {
-    data: { user },
-    error: authError,
-  } = await client.auth.getUser(token);
-
-  if (authError || !user) {
-    return { ok: false as const, error: "No autorizado.", status: 401 };
-  }
-
-  const { data: profile, error: profileError } = await client
-    .from("profiles")
-    .select("id, hotel_id, role, active")
-    .eq("id", user.id)
-    .maybeSingle();
-
-  if (profileError || !profile) {
-    return { ok: false as const, error: "Perfil invalido.", status: 403 };
-  }
-
-  const role = normalizeRole(profile.role);
-  const active = profile.active ?? true;
-  const allowedRoles: MemberRole[] = ["manager", "quality", "general_manager", "admin", "superadmin"];
-
-  if (!active || !allowedRoles.includes(role as MemberRole)) {
-    return { ok: false as const, error: "Forbidden.", status: 403 };
   }
 
   return {
     ok: true as const,
     caller: {
-      id: String(profile.id),
-      hotel_id: (profile.hotel_id as string | null) ?? null,
-      role: role as MemberRole,
+      id: caller.profile.id,
+      hotel_id: caller.profile.hotel_id ?? null,
+      role: caller.profile.role as MemberRole,
     } satisfies MemberCaller,
   };
 }
 
 export function resolveMembersHotelId(caller: MemberCaller, requestedHotelId: string | null) {
-  if (caller.role === "superadmin") {
-    if (!requestedHotelId) {
-      return { ok: false as const, error: "Falta hotel_id para superadmin.", status: 400 };
-    }
-
-    return { ok: true as const, hotelId: requestedHotelId };
-  }
-
-  if (!caller.hotel_id) {
-    return { ok: false as const, error: "hotel_id faltante en perfil.", status: 400 };
-  }
-
-  if (requestedHotelId && requestedHotelId !== caller.hotel_id) {
-    return { ok: false as const, error: "Forbidden: hotel incorrecto.", status: 403 };
-  }
-
-  return { ok: true as const, hotelId: caller.hotel_id };
+  return resolveRouteHotelScope(caller, requestedHotelId);
 }
 
 export async function getHotelAreas(admin: ReturnType<typeof supabaseAdmin>, hotelId: string) {
@@ -131,22 +88,9 @@ export async function getAllowedAreaIds(
   hotelId: string,
   hotelAreaIds: string[]
 ) {
-  if (caller.role !== "manager") {
-    return hotelAreaIds;
-  }
-
-  const { data: rows, error } = await admin
-    .from("user_area_access")
-    .select("area_id")
-    .eq("hotel_id", hotelId)
-    .eq("user_id", caller.id);
-
-  if (error) {
-    throw error;
-  }
-
   const hotelAreaIdSet = new Set(hotelAreaIds);
-  return uniqueStrings((rows ?? []).map((row) => row.area_id)).filter((areaId) => hotelAreaIdSet.has(areaId));
+  const allowedAreaIds = await getAllowedAreaIdsForProfile(caller, hotelId);
+  return allowedAreaIds.filter((areaId) => hotelAreaIdSet.has(areaId));
 }
 
 export async function findDuplicateMemberByEmployeeNumber(

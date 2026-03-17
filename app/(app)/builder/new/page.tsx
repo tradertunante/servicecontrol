@@ -10,6 +10,7 @@ import BackButton from "@/app/components/BackButton";
 import type { Profile } from "@/lib/types";
 
 type Area = { id: string; name: string };
+const HOTEL_KEY = "sc_hotel_id";
 
 export default function NewTemplatePage() {
   const router = useRouter();
@@ -29,12 +30,18 @@ export default function NewTemplatePage() {
     (async () => {
       setLoading(true); setError(null);
       try {
-        const p = await requireRoleOrRedirect(router, ["admin"], "/dashboard");
+        const p = await requireRoleOrRedirect(router, ["admin", "superadmin"], "/dashboard");
         if (!p) return;
         setProfile(p);
-        if (!p.hotel_id) { setAreas([]); setError("No tienes un hotel asignado."); setLoading(false); return; }
+        const hotelId =
+          p.role === "superadmin"
+            ? typeof window !== "undefined"
+              ? window.localStorage.getItem(HOTEL_KEY)
+              : null
+            : p.hotel_id;
+        if (!hotelId) { setAreas([]); setError("Selecciona un hotel antes de crear plantillas."); setLoading(false); return; }
 
-        const { data: areasData, error: areasErr } = await supabase.from("areas").select("id, name").eq("hotel_id", p.hotel_id).order("name", { ascending: true });
+        const { data: areasData, error: areasErr } = await supabase.from("areas").select("id, name").eq("hotel_id", hotelId).order("name", { ascending: true });
         if (areasErr) throw areasErr;
 
         const areasList = (areasData ?? []) as Area[];
@@ -58,7 +65,13 @@ export default function NewTemplatePage() {
 
   async function handleCreate() {
     setError(null); setSuccess(null);
-    if (!profile?.hotel_id) { setError("No tienes un hotel asignado."); return; }
+    const hotelId =
+      profile?.role === "superadmin"
+        ? typeof window !== "undefined"
+          ? window.localStorage.getItem(HOTEL_KEY)
+          : null
+        : profile?.hotel_id ?? null;
+    if (!hotelId) { setError("Selecciona un hotel antes de crear plantillas."); return; }
     if (!selectedAreaId) { setError("Selecciona un área."); return; }
     if (!areas.some((a) => a.id === selectedAreaId)) { setError("Área no válida para tu hotel."); return; }
     if (!templateName.trim()) { setError("El nombre de la auditoría no puede estar vacío."); return; }
@@ -66,7 +79,7 @@ export default function NewTemplatePage() {
     try {
       const { data: newTemplate, error: createErr } = await supabase
         .from("audit_templates")
-        .insert({ name: templateName.trim(), area_id: selectedAreaId, hotel_id: profile.hotel_id, active: true })
+        .insert({ name: templateName.trim(), area_id: selectedAreaId, hotel_id: hotelId, active: true })
         .select("id").single();
       if (createErr) throw createErr;
       setSuccess("¡Auditoría creada! Redirigiendo al editor...");

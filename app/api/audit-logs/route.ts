@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
-import { supabaseWithToken } from "@/lib/supabaseServer";
+import {
+  authorizeRouteRequest,
+  hasAreaScopeForProfile,
+  resolveRouteHotelScope,
+} from "@/lib/auth/server";
 import { readAuditLogs, writeAuditLogs } from "@/lib/auditLogs";
 import type { AuditLogEntryInput } from "@/lib/auditLogTypes";
-
-type CallerRole = "superadmin" | "admin" | "manager" | "quality";
 
 function jsonError(message: string, status = 400) {
   return NextResponse.json({ ok: false, error: message }, { status });
@@ -18,76 +20,23 @@ function jsonNoStore(body: unknown) {
   });
 }
 
-function getBearerToken(request: NextRequest) {
-  const authHeader = request.headers.get("authorization") || "";
-  return authHeader.startsWith("Bearer ") ? authHeader.slice(7).trim() : "";
-}
-
-function normalizeRole(input: unknown) {
-  return String(input ?? "").trim().toLowerCase();
-}
-
 async function getCaller(request: NextRequest) {
-  const token = getBearerToken(request);
+  const caller = await authorizeRouteRequest(request, {
+    roles: ["superadmin", "admin", "manager", "quality"],
+  });
 
-  if (!token) return { ok: false as const, error: "No autorizado.", status: 401 };
-
-  const client = supabaseWithToken(token);
-  const {
-    data: { user },
-    error: authError,
-  } = await client.auth.getUser(token);
-
-  if (authError || !user) {
+  if (!caller) {
     return { ok: false as const, error: "No autorizado.", status: 401 };
-  }
-
-  const { data: profile, error: profileError } = await client
-    .from("profiles")
-    .select("id, hotel_id, role, active")
-    .eq("id", user.id)
-    .maybeSingle();
-
-  if (profileError || !profile) {
-    return { ok: false as const, error: "Perfil invalido.", status: 403 };
-  }
-
-  if (profile.active === false) {
-    return { ok: false as const, error: "Usuario desactivado.", status: 403 };
-  }
-
-  const role = normalizeRole(profile.role) as CallerRole;
-  if (!["superadmin", "admin", "manager", "quality"].includes(role)) {
-    return { ok: false as const, error: "Forbidden.", status: 403 };
   }
 
   return {
     ok: true as const,
-    client,
     profile: {
-      id: String(profile.id),
-      hotel_id: String(profile.hotel_id ?? ""),
-      role,
+      id: caller.profile.id,
+      hotel_id: caller.profile.hotel_id,
+      role: caller.profile.role,
     },
   };
-}
-
-async function managerHasAreaAccess(
-  client: ReturnType<typeof supabaseWithToken>,
-  userId: string,
-  hotelId: string,
-  areaId: string
-) {
-  const { data, error } = await client
-    .from("user_area_access")
-    .select("area_id")
-    .eq("user_id", userId)
-    .eq("hotel_id", hotelId)
-    .eq("area_id", areaId)
-    .maybeSingle();
-
-  if (error) throw error;
-  return Boolean(data?.area_id);
 }
 
 export async function GET(request: NextRequest) {
@@ -95,7 +44,11 @@ export async function GET(request: NextRequest) {
     const caller = await getCaller(request);
     if (!caller.ok) return jsonError(caller.error, caller.status);
 
-    const hotelId = request.nextUrl.searchParams.get("hotel_id")?.trim() || caller.profile.hotel_id;
+    const requestedHotelId = request.nextUrl.searchParams.get("hotel_id")?.trim() || null;
+    const hotelResult = resolveRouteHotelScope(caller.profile, requestedHotelId);
+    if (!hotelResult.ok) return jsonError(hotelResult.error, hotelResult.status);
+
+    const hotelId = hotelResult.hotelId;
     const areaId = request.nextUrl.searchParams.get("area_id")?.trim() || "";
     const period = request.nextUrl.searchParams.get("period")?.trim() || "";
     const entityId = request.nextUrl.searchParams.get("entity_id")?.trim() || "";
@@ -111,18 +64,12 @@ export async function GET(request: NextRequest) {
 
     if (!hotelId) return jsonError("hotel_id es requerido.", 400);
 
-    if (caller.profile.role !== "superadmin" && hotelId !== caller.profile.hotel_id) {
-      return jsonError("Forbidden: hotel fuera de alcance.", 403);
-    }
+    if (caller.profile.role === "manager") {
+      if (!areaId) {
+        return jsonError("Los managers deben consultar audit logs por area_id.", 400);
+      }
 
-    if (caller.profile.role === "manager" && areaId) {
-      const hasAccess = await managerHasAreaAccess(
-        caller.client,
-        caller.profile.id,
-        hotelId,
-        areaId
-      );
-
+      const hasAccess = await hasAreaScopeForProfile(caller.profile, hotelId, areaId);
       if (!hasAccess) return jsonError("Forbidden: area fuera de alcance.", 403);
     }
 
@@ -155,27 +102,25 @@ export async function POST(request: NextRequest) {
     const sanitized: AuditLogEntryInput[] = [];
 
     for (const entry of entries) {
-      const hotelId = String(entry.hotel_id ?? "");
-      if (!hotelId) return jsonError("Cada log requiere hotel_id.", 400);
+      const requestedHotelId = String(entry.hotel_id ?? "").trim() || null;
+      const hotelResult = resolveRouteHotelScope(caller.profile, requestedHotelId);
+      if (!hotelResult.ok) return jsonError(hotelResult.error, hotelResult.status);
 
-      if (caller.profile.role !== "superadmin" && hotelId !== caller.profile.hotel_id) {
-        return jsonError("Forbidden: hotel fuera de alcance.", 403);
-      }
+      const hotelId = hotelResult.hotelId;
 
       const areaId = String(entry.metadata?.area_id ?? "");
-      if (caller.profile.role === "manager" && areaId) {
-        const hasAccess = await managerHasAreaAccess(
-          caller.client,
-          caller.profile.id,
-          hotelId,
-          areaId
-        );
+      if (caller.profile.role === "manager") {
+        if (!areaId) {
+          return jsonError("Los managers deben registrar audit logs con metadata.area_id.", 400);
+        }
 
+        const hasAccess = await hasAreaScopeForProfile(caller.profile, hotelId, areaId);
         if (!hasAccess) return jsonError("Forbidden: area fuera de alcance.", 403);
       }
 
       sanitized.push({
         ...entry,
+        hotel_id: hotelId,
         actor_user_id: caller.profile.id,
       });
     }

@@ -138,12 +138,20 @@ export function useAreaData({
 
         // 5) Nombres ejecutores
         if (executorIds.length) {
-          const { data: pData, error: pErr } = await supabase
-            .from("profiles")
-            .select("id,full_name")
-            .in("id", executorIds);
+          const { data: sessionData } = await supabase.auth.getSession();
+          const accessToken = sessionData?.session?.access_token;
 
-          if (!pErr && pData) {
+          if (accessToken) {
+            const response = await fetch("/api/profiles/names", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${accessToken}`,
+              },
+              body: JSON.stringify({ ids: executorIds, area_id: areaId, hotel_id: areaData.hotel_id }),
+            });
+            const payload = await response.json().catch(() => ({}));
+            const pData = Array.isArray(payload?.items) ? payload.items : [];
             const map: Record<string, string> = {};
             for (const row of pData as any[]) map[row.id] = row.full_name ?? row.id;
             setExecutorNameById(map);

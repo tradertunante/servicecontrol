@@ -19,14 +19,18 @@ import {
   type Role,
 } from "@/lib/auth/permissions";
 
-type AuthContext = {
+export type AuthContext = {
   token: string;
   profile: Profile;
 };
 
-type RequestAuthContext = AuthContext & {
+export type RequestAuthContext = AuthContext & {
   requestedHotelId: string | null;
 };
+
+export type ScopedHotelResult =
+  | { ok: true; hotelId: string }
+  | { ok: false; error: string; status: number };
 
 type BasicProfileRow = {
   id: string;
@@ -192,6 +196,75 @@ async function userHasExplicitAreaAccess(userId: string, hotelId: string, areaId
 
   if (error) return false;
   return Boolean(data?.area_id);
+}
+
+export function resolveRouteHotelScope(
+  profile: Profile,
+  requestedHotelId?: string | null
+): ScopedHotelResult {
+  if (profile.role === "superadmin") {
+    const hotelId = requestedHotelId ?? null;
+    if (!hotelId) {
+      return { ok: false, error: "Falta hotel_id para superadmin.", status: 400 };
+    }
+
+    return { ok: true, hotelId };
+  }
+
+  if (!profile.hotel_id) {
+    return { ok: false, error: "hotel_id faltante en perfil.", status: 400 };
+  }
+
+  if (requestedHotelId && requestedHotelId !== profile.hotel_id) {
+    return { ok: false, error: "Forbidden: hotel fuera de alcance.", status: 403 };
+  }
+
+  return { ok: true, hotelId: profile.hotel_id };
+}
+
+export async function getAllowedAreaIdsForProfile(profile: Profile, hotelId: string) {
+  if (profile.role !== "manager") {
+    const admin = supabaseAdmin();
+    const { data, error } = await admin
+      .from("areas")
+      .select("id")
+      .eq("hotel_id", hotelId)
+      .eq("active", true);
+
+    if (error) throw error;
+    return (data ?? []).map((row) => String(row.id));
+  }
+
+  const admin = supabaseAdmin();
+  const { data, error } = await admin
+    .from("user_area_access")
+    .select("area_id")
+    .eq("hotel_id", hotelId)
+    .eq("user_id", profile.id);
+
+  if (error) throw error;
+  return Array.from(new Set((data ?? []).map((row) => String(row.area_id ?? "")).filter(Boolean)));
+}
+
+export async function hasAreaScopeForProfile(
+  profile: Profile,
+  hotelId: string,
+  areaId: string
+) {
+  const elevatedRoles: Role[] = ["superadmin", "admin", "general_manager", "quality"];
+
+  if (elevatedRoles.includes(profile.role)) {
+    const scopedHotel = resolveRouteHotelScope(profile, hotelId);
+    return scopedHotel.ok;
+  }
+
+  if (profile.role === "manager" || profile.role === "auditor") {
+    const scopedHotel = resolveRouteHotelScope(profile, hotelId);
+    if (!scopedHotel.ok) return false;
+    return userHasExplicitAreaAccess(profile.id, scopedHotel.hotelId, areaId);
+  }
+
+  return false;
 }
 
 export async function requireHotelScope(

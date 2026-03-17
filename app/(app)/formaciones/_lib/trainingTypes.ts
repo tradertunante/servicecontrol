@@ -8,6 +8,7 @@ export type TrainingSession = {
   supervisor_name_snapshot: string | null;
   session_label: string | null;
   attendance_count: number;
+  registration_token?: string | null;
   attendances?: TrainingAttendance[];
 };
 
@@ -36,6 +37,7 @@ export type TrainingTopic = {
 export type TrainingTopicsResponse = {
   ok: boolean;
   topics: TrainingTopic[];
+  available_areas?: Array<{ id: string; name: string }>;
 };
 
 export type TrainingHistorySession = {

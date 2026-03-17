@@ -96,8 +96,24 @@ export default function StandardsPage() {
     if (!hotelIdInUse) return alert("No hay hotel seleccionado.");
     setBusyPackId(packId);
     try {
-      const { error } = await supabase.rpc("clone_global_audit_pack_to_hotel", { p_pack_id: packId, p_target_hotel_id: hotelIdInUse });
-      if (error) throw error;
+      const { data } = await supabase.auth.getSession();
+      const token = data.session?.access_token ?? "";
+      if (!token) throw new Error("Sesion invalida.");
+
+      const res = await fetch("/api/standards/actions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          action: "clone_pack",
+          pack_id: packId,
+          hotel_id: hotelIdInUse,
+        }),
+      });
+      const payload = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(payload?.error ?? "No se pudo duplicar el pack.");
       alert("Pack duplicado correctamente en el hotel.");
       await loadAll(hotelIdInUse);
     } catch (e: any) { alert(e?.message ?? "No se pudo duplicar el pack."); }
@@ -108,8 +124,25 @@ export default function StandardsPage() {
     if (!hotelIdInUse) return;
     setSavingTemplateId(templateId);
     try {
-      const { error } = await supabase.from("audit_templates").update({ area_id: areaId }).eq("id", templateId).eq("hotel_id", hotelIdInUse);
-      if (error) throw error;
+      const { data } = await supabase.auth.getSession();
+      const token = data.session?.access_token ?? "";
+      if (!token) throw new Error("Sesion invalida.");
+
+      const res = await fetch("/api/standards/actions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          action: "set_template_area",
+          template_id: templateId,
+          area_id: areaId,
+          hotel_id: hotelIdInUse,
+        }),
+      });
+      const payload = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(payload?.error ?? "No se pudo asignar el area.");
       await loadAll(hotelIdInUse);
     } catch (e: any) { alert(e?.message ?? "No se pudo asignar el área."); }
     finally { setSavingTemplateId(null); }
@@ -121,8 +154,25 @@ export default function StandardsPage() {
     if (!name) return;
     setDuplicatingTemplateId(template.id);
     try {
-      const { error } = await supabase.rpc("clone_hotel_audit_template", { p_template_id: template.id, p_target_hotel_id: hotelIdInUse, p_new_name: name });
-      if (error) throw error;
+      const { data } = await supabase.auth.getSession();
+      const token = data.session?.access_token ?? "";
+      if (!token) throw new Error("Sesion invalida.");
+
+      const res = await fetch("/api/standards/actions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          action: "clone_template",
+          template_id: template.id,
+          new_name: name,
+          hotel_id: hotelIdInUse,
+        }),
+      });
+      const payload = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(payload?.error ?? "No se pudo duplicar la auditoria.");
       await loadAll(hotelIdInUse);
     } catch (e: any) { alert(e?.message ?? "No se pudo duplicar la auditoría."); }
     finally { setDuplicatingTemplateId(null); }

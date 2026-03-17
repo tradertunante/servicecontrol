@@ -3,38 +3,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { authorizeRouteRequest } from "@/lib/auth/server";
-
-type Role =
-  | "admin"
-  | "manager"
-  | "auditor"
-  | "quality"
-  | "engineering"
-  | "systems"
-  | "superadmin";
+import {
+  assertRoleAssignable,
+  resolveManagedHotelId,
+} from "@/lib/auth/userManagement";
 
 function jsonError(message: string, status = 400) {
   return NextResponse.json({ ok: false, error: message }, { status });
-}
-
-const allowedRoles: Role[] = [
-  "admin",
-  "manager",
-  "auditor",
-  "quality",
-  "engineering",
-  "systems",
-  "superadmin",
-];
-
-function normalizeRole(input: unknown): Role {
-  const role = String(input ?? "").trim().toLowerCase();
-
-  if (allowedRoles.includes(role as Role)) {
-    return role as Role;
-  }
-
-  return "auditor";
 }
 
 export async function POST(req: NextRequest) {
@@ -47,19 +22,22 @@ export async function POST(req: NextRequest) {
     const email = String(body.email ?? "").trim().toLowerCase();
     const password = String(body.password ?? "");
     const full_name = body.full_name ?? null;
-    const role = normalizeRole(body.role);
-    const hotel_id = String(body.hotel_id ?? "").trim();
+    const hotelResult = resolveManagedHotelId(
+      caller.profile,
+      String(body.hotel_id ?? "").trim() || null
+    );
 
     if (!email || !password) {
       return jsonError("Email y password son obligatorios.");
     }
 
-    if (!hotel_id) {
-      return jsonError("hotel_id es obligatorio.");
+    if (!hotelResult.ok) {
+      return jsonError(hotelResult.error, hotelResult.status);
     }
 
-    if (caller.profile.role !== "superadmin" && caller.profile.hotel_id !== hotel_id) {
-      return jsonError("Forbidden.", 403);
+    const roleResult = assertRoleAssignable(caller.profile.role, body.role);
+    if (!roleResult.ok) {
+      return jsonError(roleResult.error, roleResult.status);
     }
 
     const admin = supabaseAdmin();
@@ -83,8 +61,8 @@ export async function POST(req: NextRequest) {
         id: userId,
         email,
         full_name,
-        role,
-        hotel_id,
+        role: roleResult.role,
+        hotel_id: hotelResult.hotelId,
         active: true,
       });
 

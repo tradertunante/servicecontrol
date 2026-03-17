@@ -127,12 +127,14 @@ function sanitizeHistorySessions(
 
 export default function TrainingsModule() {
   const [topics, setTopics] = useState<TrainingTopic[]>([]);
+  const [availableAreas, setAvailableAreas] = useState<Array<{ id: string; name: string }>>([]);
   const [historySessions, setHistorySessions] = useState<TrainingHistorySession[]>([]);
   const [loading, setLoading] = useState(true);
   const [historyLoading, setHistoryLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
+  const [selectedAreaId, setSelectedAreaId] = useState("");
   const [creating, setCreating] = useState(false);
   const [sessionLabels, setSessionLabels] = useState<Record<string, string>>({});
   const [sessionBusyKey, setSessionBusyKey] = useState<string | null>(null);
@@ -180,6 +182,9 @@ export default function TrainingsModule() {
 
       setTopics(
         sanitizeTopics(payload && "topics" in payload ? payload.topics : [])
+      );
+      setAvailableAreas(
+        payload && "available_areas" in payload ? payload.available_areas ?? [] : []
       );
     } catch (err) {
       setError(
@@ -240,11 +245,28 @@ export default function TrainingsModule() {
     void loadHistory();
   }, []);
 
+  useEffect(() => {
+    if (!availableAreas.length) return;
+
+    setSelectedAreaId((current) => {
+      if (current && availableAreas.some((area) => area.id === current)) {
+        return current;
+      }
+
+      return availableAreas[0]?.id ?? "";
+    });
+  }, [availableAreas]);
+
   async function handleCreateTopic() {
     const safeTitle = title.trim();
 
     if (!safeTitle) {
       setError("El titulo del tema es obligatorio.");
+      return;
+    }
+
+    if (!selectedAreaId) {
+      setError("Selecciona el area del tema.");
       return;
     }
 
@@ -266,6 +288,7 @@ export default function TrainingsModule() {
         body: JSON.stringify({
           title: safeTitle,
           description: description.trim() || null,
+          area_id: selectedAreaId,
         }),
       });
 
@@ -279,6 +302,7 @@ export default function TrainingsModule() {
 
       setTitle("");
       setDescription("");
+      setSelectedAreaId("");
       await Promise.all([loadTopics(), loadHistory()]);
     } catch (err) {
       setError(
@@ -630,6 +654,18 @@ export default function TrainingsModule() {
             placeholder="Descripcion opcional"
             style={{ ...inputStyle(), minHeight: 88, resize: "vertical" }}
           />
+          <select
+            value={selectedAreaId}
+            onChange={(event) => setSelectedAreaId(event.target.value)}
+            style={inputStyle()}
+          >
+            <option value="">Selecciona un area</option>
+            {availableAreas.map((area) => (
+              <option key={area.id} value={area.id}>
+                {area.name}
+              </option>
+            ))}
+          </select>
           <div>
             <button onClick={() => void handleCreateTopic()} disabled={creating} style={buttonStyle(creating)}>
               {creating ? "Creando..." : "Crear tema"}

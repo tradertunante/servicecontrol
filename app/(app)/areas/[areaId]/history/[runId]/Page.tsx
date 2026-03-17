@@ -166,11 +166,15 @@ export default function AuditRunSectionDetailPage() {
       setError(null);
 
       try {
-        const p = await requireRoleOrRedirect(router, ["admin", "manager", "auditor"], "/areas");
+        const p = await requireRoleOrRedirect(
+          router,
+          ["admin", "general_manager", "manager", "auditor", "superadmin", "quality"],
+          "/areas"
+        );
         if (!p) return;
         setProfile(p);
 
-        if (!canRunAudits(p.role)) {
+        if (!(p.role === "general_manager" || canRunAudits(p.role))) {
           setError("No tienes permisos para ver este detalle.");
           setLoading(false);
           return;
