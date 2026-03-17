@@ -121,6 +121,7 @@ pendiente
 ### Hecho el 2026-03-17
 
 - `POST /api/audits/start` ahora crea el `audit_run` y siembra las filas iniciales de `audit_answers` desde servidor
+- `POST /api/audits/start` dejó de depender de deletes compensatorios; el create inicial ahora corre mediante la RPC transaccional `start_audit_run(...)`
 - nuevas rutas `POST /api/audits/[id]/draft` y `PATCH /api/audits/[id]/metadata` para sacar del cliente los writes directos sobre `audit_answers` y `audit_runs`
 - validación server-side compartida para hotel scope, área, ownership del auditor y bloqueo de edición cuando el run ya está `submitted`
 - eliminación del sync final browser-side antes de `POST /api/audits/submit`; el submit ahora depende solo de drafts ya persistidos server-side

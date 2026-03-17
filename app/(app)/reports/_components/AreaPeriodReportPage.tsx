@@ -334,10 +334,11 @@ export default function AreaPeriodReportPage({
   rangeRows = [],
 }: AreaPeriodReportPageProps) {
   const router = useRouter();
+  const printStyles = renderPrintStyles(kpis.length);
 
   return (
     <main style={pageStyle()}>
-      <style jsx global>{renderPrintStyles(kpis.length)}</style>
+      <style jsx global>{printStyles}</style>
 
       <div className="report-paper" style={paperStyle()}>
         <div

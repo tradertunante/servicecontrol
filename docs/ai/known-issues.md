@@ -40,13 +40,11 @@ La implementación actual en `app/(app)/audits/[id]/page.tsx` resuelve en fronte
 Esto deja la operación sin atomicidad real y con riesgo de inconsistencias.
 
 ### Solución aplicada
-Resuelto parcialmente en dos capas complementarias:
+Resuelto de forma más completa en capas complementarias:
 
 - `POST /api/audits/submit` delega el submit final a la RPC transaccional `submit_audit_run(...)`
 - `POST /api/audits/[id]/draft` y `PATCH /api/audits/[id]/metadata` eliminan los writes directos desde `useAuditSession`
-- `POST /api/audits/start` siembra respuestas draft desde servidor para que la auditoría no dependa de seed cliente
-
-Queda pendiente únicamente seguir endureciendo atomicidad del create inicial si se quiere llevar también esa fase a RPC.
+- `POST /api/audits/start` ya no hace create + seed en pasos sueltos; ahora delega la creación inicial a la RPC transaccional `start_audit_run(...)`, evitando estado parcial entre `audit_runs` y `audit_answers`
 
 ### Cómo evitarlo en el futuro
 - no implementar operaciones críticas multi-tabla en cliente
