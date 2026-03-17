@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
-import { fetchActiveHotel } from "@/lib/auth/activeHotelClient";
 
 type AreaRow = {
   id: string;
@@ -15,8 +14,8 @@ type AreaRow = {
   sort_order?: number | null;
 };
 
-export default function DepartmentsModule() {
-  const [activeHotelId, setActiveHotelId] = useState<string | null>(null);
+export default function DepartmentsModule({ hotelId }: { hotelId: string }) {
+  const [activeHotelId] = useState<string | null>(hotelId);
 
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -40,13 +39,6 @@ export default function DepartmentsModule() {
   const [sortOrder, setSortOrder] = useState<string>("");
   const [active, setActive] = useState(true);
   const [saving, setSaving] = useState(false);
-
-  // hotel activo (localStorage)
-  useEffect(() => {
-    void fetchActiveHotel().then((payload) => setActiveHotelId(payload.hotel_id ?? null)).catch(() => {
-      setActiveHotelId(null);
-    });
-  }, []);
 
   async function load() {
     setError("");

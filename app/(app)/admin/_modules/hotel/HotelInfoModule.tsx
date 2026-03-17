@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
-import { fetchActiveHotel } from "@/lib/auth/activeHotelClient";
 import QualityThresholdsCard from "./QualityThresholdsCard";
 
 type HotelRow = {
@@ -11,17 +10,10 @@ type HotelRow = {
   created_at: string | null;
 };
 
-export default function HotelInfoModule() {
-  const [hotelId, setHotelId] = useState<string | null>(null);
+export default function HotelInfoModule({ hotelId }: { hotelId: string }) {
   const [hotel, setHotel] = useState<HotelRow | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-
-  useEffect(() => {
-    void fetchActiveHotel().then((payload) => setHotelId(payload.hotel_id ?? null)).catch(() => {
-      setHotelId(null);
-    });
-  }, []);
 
   async function load() {
     setError("");

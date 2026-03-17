@@ -134,24 +134,29 @@ El contexto multi-hotel está repartido entre `profiles.hotel_id` y `localStorag
 El sistema soporta escenarios distintos para usuarios normales y `superadmin`, pero el contexto de hotel no está completamente centralizado.
 
 ### Solución aplicada
-Se introdujo una mitigación estructural:
+Resuelto el 2026-03-17.
 
-- sincronización de `sc_hotel_id` a cookie para hacerlo visible al servidor
-- helpers server-side que resuelven hotel scope explícitamente
-- layouts App Router que redirigen a `superadmin` a selección de hotel cuando el contexto no existe
+Se cerró la ambigüedad con una única resolución canónica server-side:
 
-La ambigüedad no desaparece por completo porque la selección de hotel sigue originándose en cliente para `superadmin`, pero ya no queda invisible para la capa server-side.
+- `lib/auth/server.ts` concentra la resolución de hotel activo para todos los roles
+- usuarios normales quedan anclados a `profiles.hotel_id`
+- `superadmin` usa el hotel seleccionado en cookie, pero ya no como excepción repartida por páginas/hooks sino a través de la misma abstracción server-side
+- páginas server-side relevantes entregan `hotelId` ya resuelto al cliente
+- hooks y módulos cliente críticos dejaron de decidir scope mezclando `profile.hotel_id` con `fetchActiveHotel()`
 
 ### Cómo evitarlo en el futuro
-- no ampliar esta mezcla sin una decisión explícita
-- si se toca contexto de hotel, documentar la fuente de verdad por caso de uso
-- tender a una resolución server-side o a una capa de contexto centralizada
+- no leer `profile.hotel_id` ni `sc_hotel_id` directamente en páginas/hooks para decidir scope real
+- entrar siempre por `requirePageAccess(..., requireHotel: true)`, `requireHotelScope(...)` o `resolveRouteHotelScope(...)`
+- si una superficie cliente necesita el hotel activo, recibirlo como prop desde el borde server-side
 
 ### Archivos relacionados
 - `app/(app)/home/page.tsx`
 - `app/components/HotelHeader.tsx`
 - `app/(app)/dashboard/_hooks/useDashboardData.ts`
 - `app/(app)/admin/_components/AdminShell.tsx`
+- `lib/auth/server.ts`
+- `app/(app)/team/_hooks/useTeamWorkspace.ts`
+- `app/(app)/members/_components/MembersModule.tsx`
 
 ---
 

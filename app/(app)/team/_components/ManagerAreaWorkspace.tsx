@@ -26,6 +26,7 @@ export type ManagerAreaHistoryFilters = {
 export default function ManagerAreaWorkspace({
   mode,
   profileRole,
+  hotelId,
   areasLoading,
   areasError,
   areaOptions,
@@ -36,6 +37,7 @@ export default function ManagerAreaWorkspace({
 }: {
   mode: "dashboard" | "history" | "templates";
   profileRole: string | null | undefined;
+  hotelId: string;
   areasLoading: boolean;
   areasError: string | null;
   areaOptions: ManagerAreaOption[];
@@ -139,6 +141,7 @@ export default function ManagerAreaWorkspace({
         <ManagerAreaHistoryMode
           areaId={selectedAreaId}
           profileRole={profileRole}
+          hotelId={hotelId}
           historyFilters={historyFilters}
         />
       ) : null}
@@ -147,6 +150,7 @@ export default function ManagerAreaWorkspace({
         <ManagerAreaTemplatesMode
           areaId={selectedAreaId}
           profileRole={profileRole}
+          hotelId={hotelId}
         />
       ) : null}
     </div>
@@ -224,14 +228,16 @@ function ManagerAreaDashboardMode({
 function ManagerAreaHistoryMode({
   areaId,
   profileRole,
+  hotelId,
   historyFilters,
 }: {
   areaId: string;
   profileRole: string | null | undefined;
+  hotelId: string;
   historyFilters: ManagerAreaHistoryFilters;
 }) {
   const router = useRouter();
-  const templatesData = useManagerAreaTemplates({ areaId, profileRole });
+  const templatesData = useManagerAreaTemplates({ areaId, profileRole, initialHotelId: hotelId });
 
   if (templatesData.loading) {
     return <div style={{ fontWeight: 900 }}>Cargando información del área…</div>;
@@ -257,6 +263,7 @@ function ManagerAreaHistoryMode({
       areaId={areaId}
       profileRole={(profileRole ?? null) as any}
       templates={templatesData.templates}
+      hotelId={hotelId}
       onViewRun={(runId) => router.push(`/audits/${runId}`)}
       onDeleteSuccess={() => {}}
       embeddedTemplateFilter={historyFilters?.templateFilter ?? null}
@@ -270,11 +277,13 @@ function ManagerAreaHistoryMode({
 function ManagerAreaTemplatesMode({
   areaId,
   profileRole,
+  hotelId,
 }: {
   areaId: string;
   profileRole: string | null | undefined;
+  hotelId: string;
 }) {
-  const templatesData = useManagerAreaTemplates({ areaId, profileRole });
+  const templatesData = useManagerAreaTemplates({ areaId, profileRole, initialHotelId: hotelId });
 
   if (templatesData.loading) {
     return <div style={{ fontWeight: 900 }}>Cargando información del área…</div>;

@@ -6,7 +6,13 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import type { Profile } from "@/lib/types";
 
-export default function NewAreaPageClient({ profile }: { profile: Profile }) {
+export default function NewAreaPageClient({
+  profile,
+  hotelId,
+}: {
+  profile: Profile;
+  hotelId: string;
+}) {
   const router = useRouter();
   const [name, setName] = useState("");
   const [type, setType] = useState("HK");
@@ -25,7 +31,7 @@ export default function NewAreaPageClient({ profile }: { profile: Profile }) {
     setSaving(true);
 
     const { error: insertError } = await supabase.from("areas").insert({
-      hotel_id: profile.hotel_id,
+      hotel_id: hotelId,
       name: cleanName,
       type,
       active: true,
@@ -113,7 +119,7 @@ export default function NewAreaPageClient({ profile }: { profile: Profile }) {
       </div>
 
       <p style={{ marginTop: 18, fontSize: 12, opacity: 0.7 }}>
-        Hotel: <span style={{ fontFamily: "monospace" }}>{profile.hotel_id}</span> · Rol:{" "}
+        Hotel: <span style={{ fontFamily: "monospace" }}>{hotelId}</span> · Rol:{" "}
         <b>{profile.role}</b>
       </p>
     </main>

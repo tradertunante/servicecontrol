@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { fetchActiveHotel } from "@/lib/auth/activeHotelClient";
 import { supabase } from "@/lib/supabaseClient";
 import type { Profile } from "@/lib/types";
 
@@ -95,11 +94,19 @@ function mapRpcSummary(
   };
 }
 
-export function useTeamData(selectedPeriod: TeamPeriodKey) {
+export function useTeamData({
+  selectedPeriod,
+  initialHotelId,
+  initialProfile,
+}: {
+  selectedPeriod: TeamPeriodKey;
+  initialHotelId: string;
+  initialProfile: Profile;
+}) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const [profile, setProfile] = useState<Profile | null>(null);
+  const [profile] = useState<Profile | null>(initialProfile);
   const [leaderboard, setLeaderboard] = useState<LeaderboardRow[]>([]);
   const [teamTargets, setTeamTargets] = useState<TeamTargetRow[]>([]);
   const [teamRecentRuns, setTeamRecentRuns] = useState<TeamRecentRunRow[]>([]);
@@ -114,30 +121,13 @@ export function useTeamData(selectedPeriod: TeamPeriodKey) {
         setLoading(true);
         setError(null);
 
-        const hotelId = (await fetchActiveHotel()).hotel_id;
-        if (!hotelId) throw new Error("No hay hotel seleccionado.");
-
-        const { data: authData, error: authErr } = await supabase.auth.getUser();
-        if (authErr) throw authErr;
-
-        const uid = authData.user?.id;
-        if (!uid) throw new Error("No hay usuario autenticado.");
-
-        const { data: p, error: pErr } = await supabase
-          .from("profiles")
-          .select("id, full_name, role, hotel_id, active")
-          .eq("id", uid)
-          .single();
-
-        if (pErr) throw pErr;
-
-        const prof = p as Profile;
+        const hotelId = initialHotelId;
+        const uid = initialProfile.id;
+        const prof = initialProfile;
 
         if (!canAccessTeam(prof.role)) {
           throw new Error("No tienes acceso a la vista de equipo.");
         }
-
-        if (!cancelled) setProfile(prof);
 
         // NOTE: Use rpc_team_summary_v2 instead of rpc_team_summary.
         // The original RPC caused PostgREST schema cache resolution issues.
@@ -179,7 +169,7 @@ export function useTeamData(selectedPeriod: TeamPeriodKey) {
     return () => {
       cancelled = true;
     };
-  }, [selectedPeriod]);
+  }, [initialHotelId, initialProfile, selectedPeriod]);
 
   return {
     loading,

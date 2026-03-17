@@ -122,8 +122,8 @@ export default function HotelHeader() {
         };
         setProfile(prof);
 
-        const hotelContext = role === "superadmin" ? await fetchActiveHotel() : null;
-        const hotelIdToUse = role === "superadmin" ? (hotelContext?.hotel_id ?? null) : (prof.hotel_id ?? null);
+        const hotelContext = await fetchActiveHotel().catch(() => null);
+        const hotelIdToUse = hotelContext?.hotel_id ?? null;
         setActiveHotelId(hotelIdToUse);
         if (!hotelIdToUse) { setHotelName(null); setLoading(false); return; }
 

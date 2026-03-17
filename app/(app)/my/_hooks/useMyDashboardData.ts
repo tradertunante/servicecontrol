@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { fetchActiveHotel } from "@/lib/auth/activeHotelClient";
 import { supabase } from "@/lib/supabaseClient";
 
 export type MyPeriodKey = "daily" | "weekly" | "monthly";
@@ -104,11 +103,19 @@ function getDateRange(period: MyPeriodKey) {
   return { startISO: start.toISOString(), endISO: end.toISOString() };
 }
 
-export function useMyDashboardData(selectedPeriod: MyPeriodKey) {
+export function useMyDashboardData({
+  selectedPeriod,
+  initialProfile,
+  initialHotelId,
+}: {
+  selectedPeriod: MyPeriodKey;
+  initialProfile: MyProfile;
+  initialHotelId: string;
+}) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const [profile, setProfile] = useState<MyProfile | null>(null);
+  const [profile, setProfile] = useState<MyProfile | null>(initialProfile);
   const [hotelName, setHotelName] = useState<string | null>(null);
   const [areaNames, setAreaNames] = useState<string[]>([]);
   const [myTargets, setMyTargets] = useState<MyTargetRow[]>([]);
@@ -149,23 +156,20 @@ export function useMyDashboardData(selectedPeriod: MyPeriodKey) {
         setLoading(true);
         setError(null);
 
-        const hotelId = (await fetchActiveHotel()).hotel_id;
-        if (!hotelId) throw new Error("No hay hotel seleccionado.");
-
-        const { data: authData, error: authErr } = await supabase.auth.getUser();
-        if (authErr) throw authErr;
-
-        const uid = authData.user?.id;
-        if (!uid) throw new Error("No hay usuario autenticado.");
-
-        const { data: p, error: pErr } = await supabase
-          .from("profiles")
-          .select("id, full_name, role, hotel_id, email, active")
-          .eq("id", uid)
-          .single();
-
-        if (pErr) throw pErr;
-        if (!cancelled) setProfile(p as MyProfile);
+        const hotelId = initialHotelId;
+        const uid = initialProfile.id;
+        const authResp = await supabase.auth.getUser();
+        if (authResp.error) throw authResp.error;
+        if (!cancelled) {
+          setProfile((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  email: authResp.data.user?.email ?? prev.email ?? null,
+                }
+              : prev
+          );
+        }
 
         const hotelResp = await supabase
           .from("hotels")
@@ -316,7 +320,7 @@ export function useMyDashboardData(selectedPeriod: MyPeriodKey) {
             return {
               target_id: row.templateId,
               auditor_user_id: uid,
-              auditor: p?.full_name ?? null,
+              auditor: initialProfile.full_name ?? null,
               template: row.template,
               target: Number(row.target ?? 0),
               completed,
@@ -353,7 +357,7 @@ export function useMyDashboardData(selectedPeriod: MyPeriodKey) {
     return () => {
       cancelled = true;
     };
-  }, [range.endISO, range.startISO, selectedPeriod]);
+  }, [initialHotelId, initialProfile, range.endISO, range.startISO, selectedPeriod]);
 
   return {
     loading,

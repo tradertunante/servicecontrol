@@ -3,15 +3,16 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
-import { fetchActiveHotel } from "@/lib/auth/activeHotelClient";
 import type { AuditTemplate } from "@/app/(app)/areas/[areaId]/_lib/areaTypes";
 
 export function useManagerAreaTemplates({
   areaId,
   profileRole,
+  initialHotelId,
 }: {
   areaId: string;
   profileRole: string | null | undefined;
+  initialHotelId: string;
 }) {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
@@ -77,7 +78,7 @@ export function useManagerAreaTemplates({
 
       if (userErr || !user) throw userErr ?? new Error("No hay sesión activa.");
 
-      const hotelIdToUse = areaHotelId ?? (await fetchActiveHotel()).hotel_id;
+      const hotelIdToUse = areaHotelId ?? initialHotelId;
       if (!hotelIdToUse) throw new Error("No se pudo determinar el hotel_id para crear la auditoría.");
       const { data: sessionData } = await supabase.auth.getSession();
       const accessToken = sessionData?.session?.access_token;

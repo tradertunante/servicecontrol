@@ -47,11 +47,16 @@ export async function getMembersCaller(request: NextRequest) {
     return { ok: false as const, error: "No autorizado.", status: 401 };
   }
 
+  const hotelResult = resolveRouteHotelScope(caller.profile, null);
+  if (!hotelResult.ok) {
+    return hotelResult;
+  }
+
   return {
     ok: true as const,
     caller: {
       id: caller.profile.id,
-      hotel_id: caller.profile.hotel_id ?? null,
+      hotel_id: hotelResult.hotelId,
       role: caller.profile.role as MemberRole,
     } satisfies MemberCaller,
   };

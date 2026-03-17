@@ -259,6 +259,36 @@ El cliente queda limitado a estado local, lectura y llamadas HTTP autorizadas.
 
 ---
 
+## Decisión 11
+
+### Fecha
+2026-03-17
+
+### Decisión
+Resolver el hotel activo exclusivamente desde una abstracción server-side canónica y propagar ese resultado a las superficies cliente.
+
+### Contexto
+El repo venía conviviendo con dos caminos reales:
+
+- non-superadmin usando `profiles.hotel_id`
+- `superadmin` usando `sc_hotel_id` / cookie de hotel seleccionado
+
+Además, varias páginas y hooks reconstruían ese scope en frontend de forma ad hoc.
+
+### Alternativas consideradas
+- mantener helpers separados por rol y tolerar reconciliación en cliente
+- crear un contexto cliente global como autoridad
+- centralizar la resolución en servidor y tratar al frontend solo como consumidor del resultado
+
+### Decisión final
+Usar `lib/auth/server.ts` como única capa canónica para resolver hotel activo y exigir que páginas/rutas relevantes entren por helpers server-side que ya devuelven `hotelId` scoped.
+
+### Impacto esperado
+- una sola fuente de verdad operativa para hotel activo
+- mismo contrato para `superadmin` y usuarios normales
+- menos filtros y permisos ad hoc en frontend
+- menor riesgo de scope incorrecto por superficie
+
 ## Decisión 8
 
 ### Fecha

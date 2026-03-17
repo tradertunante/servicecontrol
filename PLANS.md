@@ -125,6 +125,9 @@ pendiente
 - validación server-side compartida para hotel scope, área, ownership del auditor y bloqueo de edición cuando el run ya está `submitted`
 - eliminación del sync final browser-side antes de `POST /api/audits/submit`; el submit ahora depende solo de drafts ya persistidos server-side
 - cierre de `REPAIR 1` en `areas`, `reports`, `standards` e `history`, reemplazando pages cliente con wrappers server-side y quitando gating de sesión/perfil en navegador
+- cierre estructural de `REPAIR 2` para hotel context con una sola resolución canónica en `lib/auth/server.ts`
+- páginas server-side de `admin`, `members`, `my`, `team/*`, `analytics`, `areas`, `builder`, `users`, `audits/new` y `areas/[areaId]` ya reciben `hotelId` resuelto desde servidor y lo propagan al cliente
+- hooks y módulos cliente de `team`, `members`, `my`, historial de áreas y `admin` dejaron de resolver hotel con mezcla ad hoc de `profile.hotel_id` y `fetchActiveHotel()`
 
 ### Hecho
 
@@ -142,7 +145,7 @@ pendiente
 ### En curso
 
 - documentación permanente para agentes de IA
-- cierre de reparaciones prioritarias y verificación binaria final
+- cierre de reparaciones prioritarias restantes y verificación binaria final
 
 ### No iniciado
 

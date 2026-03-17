@@ -9,18 +9,17 @@ type NewTemplatePageProps = {
 };
 
 export default async function NewTemplatePage({ searchParams }: NewTemplatePageProps) {
-  const auth = await requirePageAccess({
+  const { profile, hotelId } = await requirePageAccess({
     module: "builder",
     requireHotel: true,
     nextPath: "/builder/new",
     redirectTo: "/dashboard",
   });
-  const hotelId = "hotelId" in auth ? auth.hotelId : auth.profile.hotel_id;
 
   return (
     <NewTemplatePageClient
-      initialProfile={auth.profile}
-      hotelId={hotelId ?? ""}
+      initialProfile={profile}
+      hotelId={hotelId}
       initialAreaId={searchParams?.area_id ?? null}
     />
   );

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
-import { fetchActiveHotel } from "@/lib/auth/activeHotelClient";
+import type { Profile } from "@/lib/types";
 import MemberForm from "./MemberForm";
 import MembersImportPanel from "./MembersImportPanel";
 import MembersTable from "./MembersTable";
@@ -68,46 +68,13 @@ async function getAccessToken() {
   return data.session?.access_token ?? "";
 }
 
-async function resolveMembersHotelContext() {
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser();
-
-  if (userError || !user) {
-    throw new Error("Sesion invalida.");
-  }
-
-  const { data: profile, error: profileError } = await supabase
-    .from("profiles")
-    .select("hotel_id, role, active")
-    .eq("id", user.id)
-    .maybeSingle();
-
-  if (profileError || !profile || profile.active === false) {
-    throw new Error("Perfil invalido.");
-  }
-
-  const role = normalizeRole(profile.role);
-  const activeHotelId = role === "superadmin" ? (await fetchActiveHotel()).hotel_id : null;
-  const profileHotelId = String(profile.hotel_id ?? "").trim() || null;
-  const hotelId = role === "superadmin" ? activeHotelId : profileHotelId;
-
-  if (role === "superadmin" && !hotelId) {
-    throw new Error("Selecciona un hotel activo para gestionar miembros.");
-  }
-
-  if (role !== "superadmin" && !hotelId) {
-    throw new Error("hotel_id faltante en perfil.");
-  }
-
-  return {
-    hotelId,
-    role,
-  };
-}
-
-export default function MembersModule() {
+export default function MembersModule({
+  initialHotelId,
+  initialProfile,
+}: {
+  initialHotelId: string;
+  initialProfile: Profile;
+}) {
   const [members, setMembers] = useState<MemberRecord[]>([]);
   const [areaOptions, setAreaOptions] = useState<MemberAreaOption[]>([]);
   const [loading, setLoading] = useState(true);
@@ -116,9 +83,9 @@ export default function MembersModule() {
   const [busyMemberId, setBusyMemberId] = useState<string | null>(null);
   const [editingMemberId, setEditingMemberId] = useState<string | null>(null);
   const [formValues, setFormValues] = useState<FormValues>(emptyForm());
-  const [hotelId, setHotelId] = useState<string | null>(null);
-  const [hotelContextReady, setHotelContextReady] = useState(false);
-  const [role, setRole] = useState<string>("");
+  const [hotelId, setHotelId] = useState<string | null>(initialHotelId);
+  const [hotelContextReady] = useState(true);
+  const [role, setRole] = useState<string>(normalizeRole(initialProfile.role));
   const [search, setSearch] = useState("");
   const [selectedAreaId, setSelectedAreaId] = useState("ALL");
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive">("active");
@@ -132,12 +99,9 @@ export default function MembersModule() {
         setLoading(true);
         setError(null);
 
-        const context = await resolveMembersHotelContext();
-        if (cancelled) return;
-
-        setHotelId(context.hotelId);
-        setRole(context.role);
-        setHotelContextReady(true);
+        if (!initialHotelId) {
+          throw new Error("No se pudo resolver el hotel activo.");
+        }
       } catch (err) {
         if (cancelled) return;
         setError(normalizeError(err instanceof Error ? err.message : null, "No se pudo resolver el hotel activo."));
@@ -150,7 +114,7 @@ export default function MembersModule() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [initialHotelId]);
 
   const loadMembers = useCallback(async () => {
     try {
@@ -185,7 +149,7 @@ export default function MembersModule() {
     } finally {
       setLoading(false);
     }
-  }, [hotelId, role, statusFilter]);
+  }, [hotelId, statusFilter]);
 
   useEffect(() => {
     if (!hotelContextReady) return;

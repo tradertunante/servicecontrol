@@ -20,9 +20,11 @@ import { useAreaData } from "./_hooks/useAreaData";
 export default function AreaPageClient({
   areaId,
   initialProfile,
+  initialHotelId,
 }: {
   areaId: string;
   initialProfile: Profile;
+  initialHotelId: string;
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -200,6 +202,7 @@ export default function AreaPageClient({
           areaId={String(areaId ?? "")}
           profileRole={(data.profile?.role as AreaRole | null) ?? null}
           templates={data.templates}
+          hotelId={initialHotelId}
           onViewRun={(runId) => router.push(`/audits/${runId}`)}
           onDeleteSuccess={(deletedId) => data.removeRunEverywhere(deletedId)}
         />
