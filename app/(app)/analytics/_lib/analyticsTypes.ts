@@ -103,3 +103,33 @@ export type MemberTopStandardRow = {
   classification: string | null;
   fail_count: number;
 };
+
+export type AnalyticsFiltersState = {
+  selectedAreaId: string;
+  selectedAreaLabel: string;
+  period: "30" | "60" | "90" | "365" | "custom";
+  customFrom: string;
+  customTo: string;
+  fromISO: string;
+  toISO: string;
+  rankingMode: string;
+  selectedMemberId: string;
+  memberAuditMode: string;
+  tab: TabKey;
+};
+
+export type AnalyticsPagePayload = {
+  hotel: HotelRow | null;
+  areas: AreaRow[];
+  bootError: string | null;
+  dataError: string | null;
+  filters: AnalyticsFiltersState;
+  templates: TemplateLite[];
+  membersForArea: TeamMemberLite[];
+  ranking: RankingRow[];
+  commonByPeople: CommonStandardRow[];
+  commonByFails: CommonStandardRow[];
+  memberReport: MemberReport | null;
+  memberTrend: MemberTrendRow[];
+  memberTopStandards: MemberTopStandardRow[];
+};

@@ -200,6 +200,32 @@ Considerar como unidad natural una sola corrective action por `audit_run_id + qu
 ## Decisión 7
 
 ### Fecha
+2026-03-17
+
+### Decisión
+Mover analytics y reportes a una arquitectura server-first con módulos `server-only` como vía principal.
+
+### Contexto
+`analytics` construía KPIs desde hooks cliente cargando `audit_runs`, `audit_answers`, `audit_questions`, `audit_templates` y `team_members` para luego agregar en React. Los reportes semanal, mensual y por auditoría llamaban builders con `supabaseClient` desde componentes `use client`.
+
+### Alternativas consideradas
+- mantener la agregación en cliente y solo envolverla en más hooks
+- crear rutas API para cada pantalla y seguir resolviendo parte del shape en frontend
+- resolver el dataset agregado en server components y módulos `server-only`
+
+### Decisión final
+Adoptar una capa server-first compuesta por:
+
+- `lib/analytics/server.ts` para boot, joins y agregaciones de analytics
+- `lib/reports/*` endurecidos como módulos `server-only`
+- páginas `app/(app)/reports/**/page.tsx` y `app/(app)/analytics/page.tsx` como borde server-side que entregan al cliente el shape final
+
+### Impacto esperado
+- elimina el fan-out principal en frontend para KPIs y reportes
+- reduce dependencia de `supabaseClient` como fuente de verdad en reporting
+- deja al cliente centrado en filtros, navegación y render
+
+### Fecha
 2026-03-10
 
 ### Decisión

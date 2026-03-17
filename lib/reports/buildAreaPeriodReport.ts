@@ -1,4 +1,6 @@
-import { supabase } from "@/lib/supabaseClient";
+import "server-only";
+
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import type {
   AreaPeriodAuditRow,
   AreaPeriodReportData,
@@ -65,12 +67,13 @@ export async function buildAreaPeriodReport(args: {
   rangeLabel: string;
 }): Promise<AreaPeriodReportData> {
   const { areaId, hotelId, startDate, endDate, rangeLabel } = args;
+  const admin = supabaseAdmin();
 
   const endExclusive = new Date(`${endDate}T00:00:00`);
   endExclusive.setDate(endExclusive.getDate() + 1);
   const endExclusiveStr = endExclusive.toISOString().slice(0, 10);
 
-  const { data: areaData, error: areaErr } = await supabase
+  const { data: areaData, error: areaErr } = await admin
     .from("areas")
     .select("id,name,type,hotel_id")
     .eq("id", areaId)
@@ -86,7 +89,7 @@ export async function buildAreaPeriodReport(args: {
 
   let hotel: HotelRow | null = null;
   if (area.hotel_id) {
-    const { data: hotelData, error: hotelErr } = await supabase
+    const { data: hotelData, error: hotelErr } = await admin
       .from("hotels")
       .select("id,name")
       .eq("id", area.hotel_id)
@@ -96,7 +99,7 @@ export async function buildAreaPeriodReport(args: {
     hotel = (hotelData as HotelRow | null) ?? null;
   }
 
-  const { data: runData, error: runErr } = await supabase
+  const { data: runData, error: runErr } = await admin
     .from("audit_runs")
     .select("id,area_id,audit_template_id,score,status,executed_at")
     .eq("area_id", areaId)
@@ -114,7 +117,7 @@ export async function buildAreaPeriodReport(args: {
 
   let templates: TemplateRow[] = [];
   if (templateIds.length > 0) {
-    const { data, error } = await supabase
+    const { data, error } = await admin
       .from("audit_templates")
       .select("id,name")
       .in("id", templateIds);
@@ -125,7 +128,7 @@ export async function buildAreaPeriodReport(args: {
 
   let answers: AnswerRow[] = [];
   if (runIds.length > 0) {
-    const { data, error } = await supabase
+    const { data, error } = await admin
       .from("audit_answers")
       .select("audit_run_id,question_id,result,answer")
       .in("audit_run_id", runIds);
@@ -138,7 +141,7 @@ export async function buildAreaPeriodReport(args: {
 
   let questions: QuestionRow[] = [];
   if (questionIds.length > 0) {
-    const { data, error } = await supabase
+    const { data, error } = await admin
       .from("audit_questions")
       .select("id,text,audit_section_id")
       .in("id", questionIds);
@@ -157,7 +160,7 @@ export async function buildAreaPeriodReport(args: {
 
   let sections: SectionRow[] = [];
   if (sectionIds.length > 0) {
-    const { data, error } = await supabase
+    const { data, error } = await admin
       .from("audit_sections")
       .select("id,name")
       .in("id", sectionIds);

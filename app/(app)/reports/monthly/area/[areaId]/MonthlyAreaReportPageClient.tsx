@@ -1,47 +1,14 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import type { CSSProperties } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
-import { buildMonthlyAreaReport } from "@/lib/reports/buildMonthlyAreaReport";
+import { useRouter } from "next/navigation";
 import type { MonthlyAreaReportData } from "@/lib/reports/monthlyReportTypes";
 
 const SUCCESS_SCORE_MIN = 90;
 const WARNING_SCORE_MIN = 75;
 const SUCCESS_FAIL_RATE_MAX = 5;
 const WARNING_FAIL_RATE_MAX = 15;
-
-function isValidMonth(value: string | null | undefined): value is string {
-  if (typeof value !== "string" || !/^\d{4}-\d{2}$/.test(value)) return false;
-  const month = Number(value.slice(5, 7));
-  return month >= 1 && month <= 12;
-}
-
-function getPreviousFullMonthFrom(baseMonth?: string | null) {
-  if (isValidMonth(baseMonth)) {
-    const [yearStr, monthStr] = baseMonth.split("-");
-    const year = Number(yearStr);
-    const monthIndex = Number(monthStr) - 1;
-    const start = new Date(year, monthIndex, 1);
-    const end = new Date(year, monthIndex + 1, 0);
-
-    return {
-      month: baseMonth,
-      monthStart: start.toISOString().slice(0, 10),
-      monthEnd: end.toISOString().slice(0, 10),
-    };
-  }
-
-  const today = new Date();
-  const start = new Date(today.getFullYear(), today.getMonth() - 1, 1);
-  const end = new Date(today.getFullYear(), today.getMonth(), 0);
-
-  return {
-    month: `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, "0")}`,
-    monthStart: start.toISOString().slice(0, 10),
-    monthEnd: end.toISOString().slice(0, 10),
-  };
-}
 
 function formatDateTime(value: string | null) {
   if (!value) return "—";
@@ -181,51 +148,10 @@ function summaryToneStyle(tone: "good" | "warning" | "critical"): CSSProperties 
   };
 }
 
-export default function MonthlyAreaReportPageClient({
-  areaId,
-  hotelId,
-}: {
-  areaId: string;
-  hotelId: string;
-}) {
+export default function MonthlyAreaReportPageClient({ report }: { report: MonthlyAreaReportData }) {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const monthParam = searchParams.get("month");
-
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [report, setReport] = useState<MonthlyAreaReportData | null>(null);
-
-  const effectiveMonth = useMemo(() => getPreviousFullMonthFrom(monthParam), [monthParam]);
-
-  useEffect(() => {
-    if (!areaId) return;
-
-    (async () => {
-      setLoading(true);
-      setError(null);
-
-      try {
-        const data = await buildMonthlyAreaReport({
-          areaId,
-          hotelId,
-          month: effectiveMonth.month,
-        });
-
-        setReport(data);
-        setLoading(false);
-      } catch (e: any) {
-        setError(e?.message ?? "Error generando el reporte mensual del área.");
-        setLoading(false);
-      }
-    })();
-  }, [areaId, effectiveMonth.month, hotelId]);
 
   const monthlySummary = useMemo(() => {
-    if (!report) {
-      return { label: "", tone: "warning" as const, text: "" };
-    }
-
     const score = report.summary.avg_score;
     const failRate = report.summary.fail_rate_pct;
 
@@ -289,39 +215,6 @@ export default function MonthlyAreaReportPageClient({
         : "El área cerró el mes por debajo del umbral esperado. Se recomienda acción correctiva prioritaria y seguimiento específico de los hallazgos detectados.",
     };
   }, [report]);
-
-  if (loading) {
-    return (
-      <main style={pageStyle()}>
-        <div style={paperStyle()}>
-          <div style={{ padding: 24 }}>
-            <h1 style={{ margin: 0, fontSize: 38 }}>Reporte mensual del área</h1>
-            <p style={{ marginTop: 10 }}>Cargando reporte mensual…</p>
-          </div>
-        </div>
-      </main>
-    );
-  }
-
-  if (error || !report) {
-    return (
-      <main style={pageStyle()}>
-        <div style={paperStyle()}>
-          <div style={{ padding: 24 }}>
-            <h1 style={{ margin: 0, fontSize: 38 }}>Reporte mensual del área</h1>
-            <p style={{ marginTop: 10, color: "crimson", fontWeight: 800 }}>
-              {error ?? "No se pudo generar el reporte mensual."}
-            </p>
-            <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 16 }}>
-              <button onClick={() => router.back()} style={btnStyle(false)}>
-                Volver
-              </button>
-            </div>
-          </div>
-        </div>
-      </main>
-    );
-  }
 
   return (
     <main style={pageStyle()}>

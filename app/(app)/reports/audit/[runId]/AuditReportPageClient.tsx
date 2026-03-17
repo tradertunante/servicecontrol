@@ -1,9 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import type { CSSProperties } from "react";
 import { useRouter } from "next/navigation";
-import { buildAuditReportData } from "@/lib/reports/auditReport";
 import type { AuditReportData } from "@/lib/reports/auditReportTypes";
 
 const SUCCESS_SCORE_MIN = 90;
@@ -153,40 +152,16 @@ function pct(value: number): string {
 }
 
 export default function AuditReportPageClient({
-  runId,
-  hotelId,
+  report,
 }: {
-  runId: string;
-  hotelId: string;
+  report: AuditReportData;
 }) {
   const router = useRouter();
-
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [report, setReport] = useState<AuditReportData | null>(null);
 
   const [trainingAction, setTrainingAction] = useState("");
   const [trainingDate, setTrainingDate] = useState("");
   const [employeeName, setEmployeeName] = useState("");
   const [trainerName, setTrainerName] = useState("");
-
-  useEffect(() => {
-    if (!runId) return;
-
-    (async () => {
-      setLoading(true);
-      setError(null);
-
-      try {
-        const data = await buildAuditReportData(runId, hotelId);
-        setReport(data);
-        setLoading(false);
-      } catch (e: any) {
-        setError(e?.message ?? "Error generando el reporte.");
-        setLoading(false);
-      }
-    })();
-  }, [hotelId, runId]);
 
   const failedItems = useMemo(() => {
     return (report?.sections ?? []).flatMap((section) =>
@@ -285,40 +260,6 @@ export default function AuditReportPageClient({
         : "La auditoría presenta un resultado por debajo del umbral esperado. Se recomienda acción correctiva prioritaria y seguimiento específico de los hallazgos detectados.",
     };
   }, [report, failRatePct]);
-
-  if (loading) {
-    return (
-      <main style={pageStyle()}>
-        <div style={paperStyle()}>
-          <div style={{ padding: 24 }}>
-            <h1 style={{ margin: 0, fontSize: 38 }}>Audit Report</h1>
-            <p style={{ marginTop: 10 }}>Cargando reporte…</p>
-          </div>
-        </div>
-      </main>
-    );
-  }
-
-  if (error || !report) {
-    return (
-      <main style={pageStyle()}>
-        <div style={paperStyle()}>
-          <div style={{ padding: 24 }}>
-            <h1 style={{ margin: 0, fontSize: 38 }}>Audit Report</h1>
-            <p style={{ marginTop: 10, color: "crimson", fontWeight: 800 }}>
-              {error ?? "No se pudo generar el reporte."}
-            </p>
-
-            <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 16 }}>
-              <button onClick={() => router.back()} style={btnStyle(false)}>
-                Volver
-              </button>
-            </div>
-          </div>
-        </div>
-      </main>
-    );
-  }
 
   const scoreLabel =
     typeof report.run.score === "number"

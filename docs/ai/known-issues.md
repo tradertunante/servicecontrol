@@ -191,6 +191,49 @@ Solución recomendada:
 
 ---
 
+## Issue 6
+
+### Fecha
+2026-03-17
+
+### Síntoma
+Analytics y reportes construían datasets agregados críticos desde el navegador.
+
+### Causa raíz
+La implementación anterior distribuía el trabajo en:
+
+- hooks cliente de analytics con fan-out sobre `audit_runs`, `audit_answers`, `audit_questions`, `audit_templates` y `team_members`
+- builders de reportes semanal, mensual y por auditoría ejecutados desde componentes `use client`
+
+Esto dejaba la vía principal de KPIs/reporting dependiente de Supabase browser-side y de agregación en React.
+
+### Solución aplicada
+Resuelto el 2026-03-17.
+
+Se migró la vía principal a server-first:
+
+- `lib/analytics/server.ts` ahora resuelve boot, joins, agregaciones y shape final de analytics
+- `app/(app)/analytics/page.tsx` entrega el payload agregado al cliente mediante server component
+- `lib/reports/buildAreaPeriodReport.ts`, `lib/reports/buildWeeklyAreaReport.ts`, `lib/reports/buildMonthlyAreaReport.ts` y `lib/reports/auditReport.ts` quedaron como módulos `server-only`
+- `app/(app)/reports/**/page.tsx` ejecuta los builders en servidor y los clientes quedaron como vistas imprimibles/render
+
+### Cómo evitarlo en el futuro
+- no construir KPIs cargando tablas base desde hooks cliente
+- no usar `supabaseClient` como ruta principal para reportes agregados
+- si una pantalla necesita joins/agregación, resolverla en server component, route handler o RPC antes de renderizar
+
+### Archivos relacionados
+- `app/(app)/analytics/page.tsx`
+- `app/(app)/analytics/AnalyticsPageClient.tsx`
+- `lib/analytics/server.ts`
+- `app/(app)/reports/weekly/area/[areaId]/page.tsx`
+- `app/(app)/reports/monthly/area/[areaId]/page.tsx`
+- `app/(app)/reports/audit/[runId]/page.tsx`
+- `lib/reports/buildAreaPeriodReport.ts`
+- `lib/reports/auditReport.ts`
+
+---
+
 ## Cómo registrar nuevos issues
 
 Añadir nuevas entradas siguiendo exactamente este formato.

@@ -128,6 +128,8 @@ pendiente
 - cierre estructural de `REPAIR 2` para hotel context con una sola resolución canónica en `lib/auth/server.ts`
 - páginas server-side de `admin`, `members`, `my`, `team/*`, `analytics`, `areas`, `builder`, `users`, `audits/new` y `areas/[areaId]` ya reciben `hotelId` resuelto desde servidor y lo propagan al cliente
 - hooks y módulos cliente de `team`, `members`, `my`, historial de áreas y `admin` dejaron de resolver hotel con mezcla ad hoc de `profile.hotel_id` y `fetchActiveHotel()`
+- `analytics` dejó de hacer fan-out en hooks cliente; `lib/analytics/server.ts` ahora resuelve áreas, runs, answers, questions, templates, members y KPIs en servidor
+- reportes weekly/monthly/audit dejaron de ejecutar builders con `supabaseClient` en browser; `page.tsx` de cada reporte ahora arma el payload en servidor y el cliente queda limitado a render/print UX
 
 ### Hecho
 
