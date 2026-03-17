@@ -3,6 +3,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import type { CSSProperties } from "react";
+import { fetchActiveHotel } from "@/lib/auth/activeHotelClient";
 
 import DepartmentsModule from "../_modules/departments/DepartmentsModule";
 import UsersModule from "../_modules/users/UsersModule";
@@ -18,9 +19,6 @@ type ViewMode =
   | "access-by-area"
   | "area-audits"
   | "audit-targets";
-
-const HOTEL_KEY = "sc_hotel_id";
-const HOTEL_CHANGED_EVENT = "sc-hotel-changed";
 
 function v(name: string, fallback: string) {
   return `var(${name}, ${fallback})`;
@@ -89,22 +87,15 @@ export default function AdminShell() {
   const [isNarrow, setIsNarrow] = useState(false);
 
   useEffect(() => {
-    const saved = localStorage.getItem(HOTEL_KEY);
-    if (saved) setActiveHotelId(saved);
-
-    const handler = () => {
-      const next = localStorage.getItem(HOTEL_KEY);
-      setActiveHotelId(next);
-    };
-
-    window.addEventListener(HOTEL_CHANGED_EVENT, handler);
-
     const onResize = () => setIsNarrow(window.innerWidth < 900);
     onResize();
     window.addEventListener("resize", onResize);
 
+    void fetchActiveHotel().then((payload) => setActiveHotelId(payload.hotel_id ?? null)).catch(() => {
+      setActiveHotelId(null);
+    });
+
     return () => {
-      window.removeEventListener(HOTEL_CHANGED_EVENT, handler);
       window.removeEventListener("resize", onResize);
     };
   }, []);

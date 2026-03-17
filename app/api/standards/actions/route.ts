@@ -15,10 +15,7 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json().catch(() => null);
     const action = String(body?.action ?? "").trim();
-    const hotelResult = resolveManagedHotelId(
-      caller.profile,
-      String(body?.hotel_id ?? "").trim() || null
-    );
+    const hotelResult = resolveManagedHotelId(caller.profile);
 
     if (!hotelResult.ok) {
       return jsonError(hotelResult.error, hotelResult.status);

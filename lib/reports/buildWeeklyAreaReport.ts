@@ -22,13 +22,15 @@ function formatWeekRangeLabel(weekStart: string, weekEnd: string): string {
 
 export async function buildWeeklyAreaReport(args: {
   areaId: string;
+  hotelId: string;
   weekStart: string;
   weekEnd: string;
 }): Promise<WeeklyAreaReportData> {
-  const { areaId, weekStart, weekEnd } = args;
+  const { areaId, hotelId, weekStart, weekEnd } = args;
 
   const report = await buildAreaPeriodReport({
     areaId,
+    hotelId,
     startDate: weekStart,
     endDate: weekEnd,
     rangeLabel: formatWeekRangeLabel(weekStart, weekEnd),

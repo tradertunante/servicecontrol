@@ -23,8 +23,7 @@ export async function PATCH(
     if (!callerResult.ok) return jsonError(callerResult.error, callerResult.status);
 
     const body = await request.json().catch(() => null);
-    const requestedHotelId = String(body?.hotel_id ?? "").trim() || null;
-    const hotelResult = resolveMembersHotelId(callerResult.caller, requestedHotelId);
+    const hotelResult = resolveMembersHotelId(callerResult.caller);
     if (!hotelResult.ok) return jsonError(hotelResult.error, hotelResult.status);
 
     const memberId = String(params.id ?? "").trim();
@@ -202,9 +201,8 @@ export async function DELETE(
     const callerResult = await getMembersCaller(request);
     if (!callerResult.ok) return jsonError(callerResult.error, callerResult.status);
 
-    const body = await request.json().catch(() => null);
-    const requestedHotelId = String(body?.hotel_id ?? "").trim() || null;
-    const hotelResult = resolveMembersHotelId(callerResult.caller, requestedHotelId);
+    await request.json().catch(() => null);
+    const hotelResult = resolveMembersHotelId(callerResult.caller);
     if (!hotelResult.ok) return jsonError(hotelResult.error, hotelResult.status);
 
     const memberId = String(params.id ?? "").trim();

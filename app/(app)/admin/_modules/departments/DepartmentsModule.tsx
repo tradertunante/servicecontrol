@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
+import { fetchActiveHotel } from "@/lib/auth/activeHotelClient";
 
 type AreaRow = {
   id: string;
@@ -13,9 +14,6 @@ type AreaRow = {
   active?: boolean | null;
   sort_order?: number | null;
 };
-
-const HOTEL_KEY = "sc_hotel_id";
-const HOTEL_CHANGED_EVENT = "sc-hotel-changed";
 
 export default function DepartmentsModule() {
   const [activeHotelId, setActiveHotelId] = useState<string | null>(null);
@@ -45,22 +43,9 @@ export default function DepartmentsModule() {
 
   // hotel activo (localStorage)
   useEffect(() => {
-    const readHotel = () => {
-      try {
-        setActiveHotelId(localStorage.getItem(HOTEL_KEY));
-      } catch {
-        setActiveHotelId(null);
-      }
-    };
-
-    readHotel();
-    window.addEventListener(HOTEL_CHANGED_EVENT, readHotel);
-    window.addEventListener("storage", readHotel);
-
-    return () => {
-      window.removeEventListener(HOTEL_CHANGED_EVENT, readHotel);
-      window.removeEventListener("storage", readHotel);
-    };
+    void fetchActiveHotel().then((payload) => setActiveHotelId(payload.hotel_id ?? null)).catch(() => {
+      setActiveHotelId(null);
+    });
   }, []);
 
   async function load() {

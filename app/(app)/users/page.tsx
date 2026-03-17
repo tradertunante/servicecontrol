@@ -3,13 +3,13 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
+import { fetchActiveHotel } from "@/lib/auth/activeHotelClient";
 import BackButton from "@/app/components/BackButton";
 import { requireRoleOrRedirect } from "@/lib/auth/RequireRole";
 import { canManageUsers } from "@/lib/auth/permissions";
 import type { Role, Profile } from "@/lib/types";
 
 type UserRow = { id: string; full_name: string | null; email: string | null; role: Role; active: boolean };
-const HOTEL_KEY = "sc_hotel_id";
 
 export default function UsersPage() {
   const router = useRouter();
@@ -28,9 +28,7 @@ export default function UsersPage() {
       setProfile(p as Profile);
       const hotelId =
         p.role === "superadmin"
-          ? typeof window !== "undefined"
-            ? window.localStorage.getItem(HOTEL_KEY)
-            : null
+          ? (await fetchActiveHotel()).hotel_id
           : p.hotel_id;
 
       if (!hotelId) {
@@ -44,8 +42,7 @@ export default function UsersPage() {
       const accessToken = sessionData?.session?.access_token;
       if (!accessToken) throw new Error("Sesión inválida.");
 
-      const search = new URLSearchParams({ hotel_id: hotelId });
-      const res = await fetch(`/api/admin/users?${search.toString()}`, {
+      const res = await fetch("/api/admin/users", {
         headers: { Authorization: `Bearer ${accessToken}` },
       });
       const payload = await res.json().catch(() => ({}));
@@ -97,7 +94,7 @@ export default function UsersPage() {
       <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
         <div>
           <h1 style={{ fontSize: 56, marginBottom: 6 }}>Usuarios</h1>
-          <div style={{ opacity: 0.8 }}>Admin / Superadmin · Hotel: <span style={{ fontFamily: "monospace" }}>{profile?.role === "superadmin" ? (typeof window !== "undefined" ? window.localStorage.getItem(HOTEL_KEY) ?? "—" : "—") : profile?.hotel_id ?? "—"}</span></div>
+          <div style={{ opacity: 0.8 }}>Admin / Superadmin · Hotel: <span style={{ fontFamily: "monospace" }}>{profile?.hotel_id ?? "selección server-side"}</span></div>
         </div>
         <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
           <button style={topBtn} onClick={() => router.push("/users/new")}>+ Crear usuario</button>

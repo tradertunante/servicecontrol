@@ -4,9 +4,8 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
+import { setActiveHotel } from "@/lib/auth/activeHotelClient";
 import { getDefaultHotelRouteByRole } from "@/lib/auth/permissions";
-
-const HOTEL_KEY = "sc_hotel_id";
 
 type ProfileRow = {
   id: string;
@@ -68,13 +67,8 @@ export default function HomeRedirectPage() {
           }
         }
 
-        // Guardar hotel en localStorage si existe
-        if (typeof window !== "undefined") {
-          if (resolvedHotelId) {
-            localStorage.setItem(HOTEL_KEY, resolvedHotelId);
-          } else {
-            localStorage.removeItem(HOTEL_KEY);
-          }
+        if (role === "superadmin") {
+          await setActiveHotel(resolvedHotelId);
         }
 
         if (cancelled) return;

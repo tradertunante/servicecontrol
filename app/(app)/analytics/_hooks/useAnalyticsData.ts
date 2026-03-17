@@ -140,6 +140,7 @@ export function useAnalyticsData({
           const { data: tData, error: tErr } = await supabase
             .from("audit_templates")
             .select("id,name")
+            .or(`hotel_id.eq.${hotelId},hotel_id.is.null`)
             .in("id", templateIds);
 
           if (tErr) throw tErr;
@@ -179,6 +180,7 @@ export function useAnalyticsData({
         const { data: tmData, error: tmErr } = await supabase
           .from("team_members")
           .select("id,full_name,position,employee_number")
+          .eq("hotel_id", hotelId)
           .in("id", memberIds);
 
         if (tmErr) throw tmErr;

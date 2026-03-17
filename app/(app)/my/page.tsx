@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { setActiveHotel } from "@/lib/auth/activeHotelClient";
 import { supabase } from "@/lib/supabaseClient";
 import { requireRoleOrRedirect } from "@/lib/auth/RequireRole";
 import { useMyDashboardData } from "./_hooks/useMyDashboardData";
@@ -31,7 +32,7 @@ export default function MyDashboardPage() {
 
   async function logout() {
     await supabase.auth.signOut();
-    localStorage.removeItem("sc_hotel_id");
+    await setActiveHotel(null);
     router.replace("/login");
   }
 

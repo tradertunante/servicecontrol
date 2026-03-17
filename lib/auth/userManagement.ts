@@ -26,8 +26,8 @@ const KNOWN_ROLES: Role[] = [
   "systems",
 ];
 
-export function resolveManagedHotelId(profile: Profile, requestedHotelId?: string | null) {
-  return resolveRouteHotelScope(profile, requestedHotelId ?? null);
+export function resolveManagedHotelId(profile: Profile) {
+  return resolveRouteHotelScope(profile, null);
 }
 
 export function assertRoleAssignable(actorRole: Role, requestedRole: unknown) {

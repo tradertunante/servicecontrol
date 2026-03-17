@@ -27,13 +27,15 @@ function formatMonthLabel(month: string): string {
 
 export async function buildMonthlyAreaReport(args: {
   areaId: string;
+  hotelId: string;
   month: string;
 }): Promise<MonthlyAreaReportData> {
-  const { areaId, month } = args;
+  const { areaId, hotelId, month } = args;
   const { monthStart, monthEnd } = getMonthBoundaries(month);
 
   const report = await buildAreaPeriodReport({
     areaId,
+    hotelId,
     startDate: monthStart,
     endDate: monthEnd,
     rangeLabel: formatMonthLabel(month),

@@ -1,10 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { fetchActiveHotel } from "@/lib/auth/activeHotelClient";
 import { supabase } from "@/lib/supabaseClient";
 import type { Profile } from "@/lib/types";
-
-const HOTEL_KEY = "sc_hotel_id";
 
 export type TeamPeriodKey = "daily" | "weekly" | "monthly";
 
@@ -115,7 +114,7 @@ export function useTeamData(selectedPeriod: TeamPeriodKey) {
         setLoading(true);
         setError(null);
 
-        const hotelId = typeof window !== "undefined" ? localStorage.getItem(HOTEL_KEY) : null;
+        const hotelId = (await fetchActiveHotel()).hotel_id;
         if (!hotelId) throw new Error("No hay hotel seleccionado.");
 
         const { data: authData, error: authErr } = await supabase.auth.getUser();

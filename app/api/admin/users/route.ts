@@ -13,10 +13,7 @@ export async function GET(request: NextRequest) {
     const caller = await authorizeRouteRequest(request, { roles: ["admin", "superadmin"] });
     if (!caller) return jsonError("No autorizado.", 401);
 
-    const hotelResult = resolveManagedHotelId(
-      caller.profile,
-      request.nextUrl.searchParams.get("hotel_id")?.trim() || null
-    );
+    const hotelResult = resolveManagedHotelId(caller.profile);
     if (!hotelResult.ok) {
       return jsonError(hotelResult.error, hotelResult.status);
     }

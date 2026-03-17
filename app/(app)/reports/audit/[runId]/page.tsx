@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { CSSProperties } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { fetchActiveHotel } from "@/lib/auth/activeHotelClient";
 import { requireRoleOrRedirect } from "@/lib/auth/RequireRole";
 import { canRunAudits } from "@/lib/auth/permissions";
 import { buildAuditReportData } from "@/lib/reports/auditReport";
@@ -189,7 +190,12 @@ export default function AuditReportPage() {
           return;
         }
 
-        const data = await buildAuditReportData(runId);
+        const activeHotelId = profile.role === "superadmin"
+          ? (await fetchActiveHotel()).hotel_id
+          : profile.hotel_id;
+        if (!activeHotelId) throw new Error("No hay hotel activo seleccionado.");
+
+        const data = await buildAuditReportData(runId, activeHotelId);
         setReport(data);
         setLoading(false);
       } catch (e: any) {

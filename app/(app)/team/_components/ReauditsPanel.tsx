@@ -22,7 +22,6 @@ export default function ReauditsPanel({
     loading,
     error: dataError,
     rows,
-    auditorOptions,
     auditorOptionsByAreaId,
     stats,
     loadData,
@@ -54,7 +53,6 @@ export default function ReauditsPanel({
     saveReassignment,
   } = useReauditActions({
     profile,
-    auditorOptions,
     onReload: loadData,
   });
 

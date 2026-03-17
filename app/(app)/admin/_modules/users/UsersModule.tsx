@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
+import { fetchActiveHotel } from "@/lib/auth/activeHotelClient";
 import type { Role } from "@/lib/types";
 
 type UserRow = {
@@ -22,9 +23,6 @@ type AreaRow = {
   active?: boolean | null;
   sort_order?: number | null;
 };
-
-const HOTEL_KEY = "sc_hotel_id";
-const HOTEL_CHANGED_EVENT = "sc-hotel-changed";
 
 const EDITABLE_ROLES = ["admin", "manager", "auditor", "quality", "engineering", "systems"] as const;
 type EditableRole = (typeof EDITABLE_ROLES)[number];
@@ -60,22 +58,9 @@ export default function UsersModule() {
   const [areasUser, setAreasUser] = useState<UserRow | null>(null);
 
   useEffect(() => {
-    const readHotel = () => {
-      try {
-        setActiveHotelId(localStorage.getItem(HOTEL_KEY));
-      } catch {
-        setActiveHotelId(null);
-      }
-    };
-
-    readHotel();
-    window.addEventListener(HOTEL_CHANGED_EVENT, readHotel);
-    window.addEventListener("storage", readHotel);
-
-    return () => {
-      window.removeEventListener(HOTEL_CHANGED_EVENT, readHotel);
-      window.removeEventListener("storage", readHotel);
-    };
+    void fetchActiveHotel().then((payload) => setActiveHotelId(payload.hotel_id ?? null)).catch(() => {
+      setActiveHotelId(null);
+    });
   }, []);
 
   async function getBearer() {
@@ -161,7 +146,6 @@ export default function UsersModule() {
         },
         body: JSON.stringify({
           user_id: userId,
-          hotel_id: activeHotelId,
           role: nextRole,
         }),
       });
@@ -198,7 +182,6 @@ export default function UsersModule() {
         },
         body: JSON.stringify({
           user_id: userId,
-          hotel_id: activeHotelId,
           active: nextActive,
         }),
       });
@@ -235,7 +218,6 @@ export default function UsersModule() {
         },
         body: JSON.stringify({
           user_id: userId,
-          hotel_id: activeHotelId,
         }),
       });
 
@@ -278,7 +260,6 @@ export default function UsersModule() {
           email,
           password,
           role: createRole,
-          hotel_id: activeHotelId,
         }),
       });
 
@@ -346,7 +327,6 @@ export default function UsersModule() {
         },
         body: JSON.stringify({
           user_id: user.id,
-          hotel_id: activeHotelId,
         }),
       });
 
@@ -382,7 +362,6 @@ export default function UsersModule() {
         },
         body: JSON.stringify({
           user_id: areasUser.id,
-          hotel_id: activeHotelId,
           area_ids: Array.from(selectedAreaIds),
         }),
       });

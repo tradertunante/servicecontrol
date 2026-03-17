@@ -3,11 +3,9 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
+import { fetchActiveHotel } from "@/lib/auth/activeHotelClient";
 import { supabase } from "@/lib/supabaseClient";
 import type { Profile, Role } from "@/lib/types";
-
-const HOTEL_KEY = "sc_hotel_id";
-const HOTEL_CHANGED_EVENT = "sc-hotel-changed";
 
 function getPageTitle(pathname: string | null): string {
   if (!pathname) return "";
@@ -39,7 +37,7 @@ function getBackTarget(pathname: string | null): string | null {
   return "/dashboard";
 }
 
-async function resolveAuditTarget() {
+async function resolveAuditTarget(hotelId?: string | null) {
   const {
     data: { user },
     error: userError,
@@ -52,7 +50,8 @@ async function resolveAuditTarget() {
   const { data, error } = await supabase
     .from("user_area_access")
     .select("area_id")
-    .eq("user_id", user.id);
+    .eq("user_id", user.id)
+    .eq("hotel_id", hotelId ?? "");
 
   if (error) throw error;
 
@@ -78,7 +77,7 @@ export default function HotelHeader() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const [isHoveringHotel, setIsHoveringHotel] = useState(false);
-  const [lsHotelId, setLsHotelId] = useState<string | null>(null);
+  const [activeHotelId, setActiveHotelId] = useState<string | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   useEffect(() => {
@@ -92,19 +91,6 @@ export default function HotelHeader() {
   }, []);
 
   useEffect(() => { setMobileMenuOpen(false); }, [pathname]);
-
-  useEffect(() => {
-    const read = () => { try { const v = localStorage.getItem(HOTEL_KEY); setLsHotelId(v || null); } catch { setLsHotelId(null); } };
-    read();
-    const onStorage = (e: StorageEvent) => { if (e.key === HOTEL_KEY) read(); };
-    const onCustom = () => read();
-    window.addEventListener("storage", onStorage);
-    window.addEventListener(HOTEL_CHANGED_EVENT, onCustom as EventListener);
-    const t = window.setInterval(() => {
-      try { const v = localStorage.getItem(HOTEL_KEY); const next = v || null; setLsHotelId((prev) => (prev === next ? prev : next)); } catch {}
-    }, 800);
-    return () => { window.removeEventListener("storage", onStorage); window.removeEventListener(HOTEL_CHANGED_EVENT, onCustom as EventListener); window.clearInterval(t); };
-  }, []);
 
   const pageTitle = useMemo(() => getPageTitle(pathname), [pathname]);
 
@@ -136,7 +122,9 @@ export default function HotelHeader() {
         };
         setProfile(prof);
 
-        const hotelIdToUse = role === "superadmin" ? (lsHotelId ?? null) : (prof.hotel_id ?? null);
+        const hotelContext = role === "superadmin" ? await fetchActiveHotel() : null;
+        const hotelIdToUse = role === "superadmin" ? (hotelContext?.hotel_id ?? null) : (prof.hotel_id ?? null);
+        setActiveHotelId(hotelIdToUse);
         if (!hotelIdToUse) { setHotelName(null); setLoading(false); return; }
 
         const { data: hotel, error: hotelErr } = await supabase.from("hotels").select("name").eq("id", hotelIdToUse).single();
@@ -152,7 +140,7 @@ export default function HotelHeader() {
       }
     })();
     return () => { alive = false; };
-  }, [pathname, lsHotelId]);
+  }, [pathname]);
 
   const isAdmin = profile?.role === "admin" || profile?.role === "superadmin";
   const displayHotel = hotelName ?? (loading ? "Cargando…" : "Selecciona hotel");
@@ -167,7 +155,7 @@ export default function HotelHeader() {
         return;
       }
 
-      const target = await resolveAuditTarget();
+      const target = await resolveAuditTarget(activeHotelId);
       if (!target) {
         alert("No tienes ningún área asignada para auditar.");
         return;

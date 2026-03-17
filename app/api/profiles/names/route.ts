@@ -27,12 +27,11 @@ export async function POST(request: NextRequest) {
       )
     );
     const areaId = String(body?.area_id ?? "").trim();
-    const requestedHotelId = String(body?.hotel_id ?? "").trim() || null;
 
     if (!areaId) return jsonError("area_id es obligatorio.", 400);
     if (ids.length === 0) return NextResponse.json({ ok: true, items: [] });
 
-    const hotelResult = resolveRouteHotelScope(caller.profile, requestedHotelId);
+    const hotelResult = resolveRouteHotelScope(caller.profile, null);
     if (!hotelResult.ok) return jsonError(hotelResult.error, hotelResult.status);
 
     const hasAccess = await hasAreaScopeForProfile(caller.profile, hotelResult.hotelId, areaId);

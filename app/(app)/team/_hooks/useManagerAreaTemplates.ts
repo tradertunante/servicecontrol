@@ -3,9 +3,8 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
+import { fetchActiveHotel } from "@/lib/auth/activeHotelClient";
 import type { AuditTemplate } from "@/app/(app)/areas/[areaId]/_lib/areaTypes";
-
-const HOTEL_KEY = "sc_hotel_id";
 
 export function useManagerAreaTemplates({
   areaId,
@@ -78,35 +77,29 @@ export function useManagerAreaTemplates({
 
       if (userErr || !user) throw userErr ?? new Error("No hay sesión activa.");
 
-      const nowIso = new Date().toISOString();
-      const hotelIdFromLocalStorage =
-        typeof window !== "undefined" ? localStorage.getItem(HOTEL_KEY) : null;
-
-      const hotelIdToUse = areaHotelId ?? hotelIdFromLocalStorage;
+      const hotelIdToUse = areaHotelId ?? (await fetchActiveHotel()).hotel_id;
       if (!hotelIdToUse) throw new Error("No se pudo determinar el hotel_id para crear la auditoría.");
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData?.session?.access_token;
+      if (!accessToken) throw new Error("Sesión inválida.");
 
-      const channel: "quality" | "internal" =
-        profileRole === "quality" ? "quality" : "internal";
-
-      const { data, error } = await supabase
-        .from("audit_runs")
-        .insert({
-          hotel_id: hotelIdToUse,
+      const response = await fetch("/api/audits/start", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({
           area_id: areaId,
           audit_template_id: templateId,
-          status: "draft",
-          score: null,
-          notes: null,
-          executed_at: nowIso,
-          executed_by: user.id,
-          audit_channel: channel,
-        })
-        .select("id")
-        .single();
+        }),
+      });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok || !payload?.run_id) {
+        throw new Error(payload?.error ?? "No se pudo crear la auditoría.");
+      }
 
-      if (error || !data) throw error ?? new Error("No se pudo crear la auditoría.");
-
-      router.push(`/audits/${data.id}`);
+      router.push(`/audits/${payload.run_id}`);
     } catch (e: any) {
       setError(e?.message ?? "No se pudo iniciar la auditoría.");
     } finally {

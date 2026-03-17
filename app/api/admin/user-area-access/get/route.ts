@@ -1,7 +1,7 @@
 // app/api/admin/user-area-access/get/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
-import { authorizeRouteRequest } from "@/lib/auth/server";
+import { authorizeRouteRequest, resolveRouteHotelScope } from "@/lib/auth/server";
 
 export async function POST(req: NextRequest) {
   const reqId = Math.random().toString(16).slice(2, 8);
@@ -12,21 +12,17 @@ export async function POST(req: NextRequest) {
 
     const body = await req.json().catch(() => null);
     const user_id = String(body?.user_id ?? "");
-    const hotel_id = String(body?.hotel_id ?? "");
 
     if (!user_id) return NextResponse.json({ error: "Falta user_id." }, { status: 400 });
-    if (!hotel_id) return NextResponse.json({ error: "Falta hotel_id." }, { status: 400 });
-
-    if (caller.profile.role !== "superadmin" && caller.profile.hotel_id !== hotel_id) {
-      return NextResponse.json({ error: "Forbidden: hotel no coincide con tu perfil." }, { status: 403 });
-    }
+    const hotelResult = resolveRouteHotelScope(caller.profile, null);
+    if (!hotelResult.ok) return NextResponse.json({ error: hotelResult.error }, { status: hotelResult.status });
 
     const admin = supabaseAdmin();
 
     const { data: rows, error: rowsErr } = await admin
       .from("user_area_access")
       .select("area_id")
-      .eq("hotel_id", hotel_id)
+      .eq("hotel_id", hotelResult.hotelId)
       .eq("user_id", user_id);
 
     if (rowsErr) {

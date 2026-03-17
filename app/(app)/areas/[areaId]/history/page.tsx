@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { CSSProperties } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
+import { fetchActiveHotel } from "@/lib/auth/activeHotelClient";
 import { requireRoleOrRedirect, type Profile } from "@/lib/auth/RequireRole";
 import { canRunAudits } from "@/lib/auth/permissions";
 import BackButton from "@/app/components/BackButton";
@@ -74,8 +75,6 @@ type QuestionMeta = {
 };
 
 type PeriodKey = "THIS_MONTH" | "LAST_3_MONTHS" | "THIS_YEAR";
-
-const HOTEL_KEY = "sc_hotel_id";
 
 function fmtDate(iso: string | null) {
   if (!iso) return "—";
@@ -341,7 +340,7 @@ export default function AreaPage() {
                 "Content-Type": "application/json",
                 Authorization: `Bearer ${accessToken}`,
               },
-              body: JSON.stringify({ ids: executorIds, area_id: areaId, hotel_id: areaData.hotel_id }),
+              body: JSON.stringify({ ids: executorIds, area_id: areaId }),
             });
             const payload = await response.json().catch(() => ({}));
             const pData = Array.isArray(payload?.items) ? payload.items : [];
@@ -484,31 +483,30 @@ export default function AreaPage() {
 
       if (userErr || !user) throw userErr ?? new Error("No hay sesión activa.");
 
-      const nowIso = new Date().toISOString();
-
-      const hotelIdFromLocalStorage = typeof window !== "undefined" ? localStorage.getItem(HOTEL_KEY) : null;
-      const hotelIdToUse = area?.hotel_id ?? profile?.hotel_id ?? hotelIdFromLocalStorage;
+      const hotelIdToUse = area?.hotel_id ?? profile?.hotel_id ?? (await fetchActiveHotel()).hotel_id;
 
       if (!hotelIdToUse) throw new Error("No se pudo determinar el hotel_id para crear la auditoría.");
 
-      const { data, error } = await supabase
-        .from("audit_runs")
-        .insert({
-          hotel_id: hotelIdToUse,
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData?.session?.access_token;
+      if (!accessToken) throw new Error("Sesión inválida.");
+      const response = await fetch("/api/audits/start", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({
           area_id: areaId,
           audit_template_id: templateId,
-          status: "draft",
-          score: null,
-          notes: null,
-          executed_at: nowIso,
-          executed_by: user.id,
-        })
-        .select("id")
-        .single();
+        }),
+      });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok || !payload?.run_id) {
+        throw new Error(payload?.error ?? "No se pudo crear la auditoría.");
+      }
 
-      if (error || !data) throw error ?? new Error("No se pudo crear la auditoría.");
-
-      router.push(`/audits/${data.id}`);
+      router.push(`/audits/${payload.run_id}`);
     } catch (e: any) {
       setError(e?.message ?? "No se pudo iniciar la auditoría.");
     } finally {

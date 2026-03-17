@@ -3,12 +3,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
+import { fetchActiveHotel } from "@/lib/auth/activeHotelClient";
 import { canManageUsers, getAssignableRoles } from "@/lib/auth/permissions";
 import type { Role, Profile } from "@/lib/types";
 
 type UserProfile = { id: string; hotel_id: string; role: Role; active: boolean; full_name: string | null; email?: string | null };
 type AreaRow = { id: string; name: string; type: string | null; active: boolean };
-const HOTEL_KEY = "sc_hotel_id";
 
 export default function UserDetailPage() {
   const router = useRouter();
@@ -70,9 +70,7 @@ export default function UserDetailPage() {
       if (!canManageUsers(myP.role)) { router.push("/"); return; }
       const scopedHotelId =
         myP.role === "superadmin"
-          ? typeof window !== "undefined"
-            ? window.localStorage.getItem(HOTEL_KEY)
-            : null
+          ? (await fetchActiveHotel()).hotel_id
           : myP.hotel_id;
       if (!scopedHotelId) {
         setMsg("Selecciona un hotel antes de administrar usuarios.");
@@ -85,8 +83,7 @@ export default function UserDetailPage() {
         router.push("/login");
         return;
       }
-      const search = new URLSearchParams({ hotel_id: scopedHotelId });
-      const response = await fetch(`/api/admin/users/${userId}?${search.toString()}`, {
+      const response = await fetch(`/api/admin/users/${userId}`, {
         headers: { Authorization: `Bearer ${accessToken}` },
       });
       const payload = await response.json().catch(() => ({}));
@@ -114,15 +111,12 @@ export default function UserDetailPage() {
       if (!accessToken) throw new Error("Sesión inválida.");
       const hotelId =
         me.role === "superadmin"
-          ? typeof window !== "undefined"
-            ? window.localStorage.getItem(HOTEL_KEY)
-            : null
+          ? (await fetchActiveHotel()).hotel_id
           : me.hotel_id;
       const updateRes = await fetch(`/api/admin/users/${userRow.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
         body: JSON.stringify({
-          hotel_id: hotelId,
           full_name: fullName.trim() || null,
           role,
           active,
@@ -132,7 +126,7 @@ export default function UserDetailPage() {
       if (!updateRes.ok) {
         throw new Error(updatePayload?.error ?? "No se pudo guardar el usuario.");
       }
-      const res = await fetch("/api/admin/user-area-access/set", { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` }, body: JSON.stringify({ user_id: userRow.id, hotel_id: hotelId, area_ids: selectedAreaIds }) });
+      const res = await fetch("/api/admin/user-area-access/set", { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` }, body: JSON.stringify({ user_id: userRow.id, area_ids: selectedAreaIds }) });
       const payload = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(payload?.error ?? "No se pudo guardar accesos de áreas.");
     } catch (e: any) { setMsg(`❌ Error guardando áreas: ${e?.message ?? "desconocido"}`); setSaving(false); return; }

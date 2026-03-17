@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
+import { fetchActiveHotel } from "@/lib/auth/activeHotelClient";
 import QualityThresholdsCard from "./QualityThresholdsCard";
 
 type HotelRow = {
@@ -10,9 +11,6 @@ type HotelRow = {
   created_at: string | null;
 };
 
-const HOTEL_KEY = "sc_hotel_id";
-const HOTEL_CHANGED_EVENT = "sc-hotel-changed";
-
 export default function HotelInfoModule() {
   const [hotelId, setHotelId] = useState<string | null>(null);
   const [hotel, setHotel] = useState<HotelRow | null>(null);
@@ -20,22 +18,9 @@ export default function HotelInfoModule() {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    const readHotel = () => {
-      try {
-        setHotelId(localStorage.getItem(HOTEL_KEY));
-      } catch {
-        setHotelId(null);
-      }
-    };
-
-    readHotel();
-    window.addEventListener(HOTEL_CHANGED_EVENT, readHotel);
-    window.addEventListener("storage", readHotel);
-
-    return () => {
-      window.removeEventListener(HOTEL_CHANGED_EVENT, readHotel);
-      window.removeEventListener("storage", readHotel);
-    };
+    void fetchActiveHotel().then((payload) => setHotelId(payload.hotel_id ?? null)).catch(() => {
+      setHotelId(null);
+    });
   }, []);
 
   async function load() {

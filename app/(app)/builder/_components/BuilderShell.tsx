@@ -2,11 +2,10 @@
 
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { fetchActiveHotel } from "@/lib/auth/activeHotelClient";
 import { requireRoleOrRedirect } from "@/lib/auth/RequireRole";
 import BuilderEmbedded from "@/app/components/BuilderEmbedded";
 import type { Profile } from "@/lib/types";
-
-const HOTEL_KEY = "sc_hotel_id";
 
 export default function BuilderShell({
   hotelId,
@@ -36,7 +35,7 @@ export default function BuilderShell({
 
         let hotelIdToUse: string | null = null;
         if (p.role === "superadmin") {
-          hotelIdToUse = typeof window !== "undefined" ? localStorage.getItem(HOTEL_KEY) : null;
+          hotelIdToUse = (await fetchActiveHotel()).hotel_id;
           if (!hotelIdToUse) { router.replace("/superadmin/hotels"); return; }
         } else {
           hotelIdToUse = p.hotel_id;

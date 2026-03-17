@@ -5,24 +5,13 @@ import { useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import type { Profile } from "@/lib/types";
 
-import type {
-  EnrichedReauditRow,
-  ProfileLite,
-} from "../_lib/reauditTypes";
-
-import {
-  appendNoteBlock,
-  buildReassignmentBlock,
-  buildTrainingConfirmationBlock,
-} from "../_lib/reauditUtils";
+import type { EnrichedReauditRow } from "../_lib/reauditTypes";
 
 export function useReauditActions({
   profile,
-  auditorOptions,
   onReload,
 }: {
   profile: Profile | null;
-  auditorOptions: ProfileLite[];
   onReload: () => Promise<void>;
 }) {
   const [savingId, setSavingId] = useState<string | null>(null);
@@ -64,63 +53,33 @@ export function useReauditActions({
       return false;
     }
 
-    const hotelId = row.hotel_id || profile.hotel_id || null;
-    if (!hotelId) {
-      setActionError("No se pudo identificar el hotel de la re-auditoría.");
-      setMessage("");
-      return false;
-    }
-
     setSavingId(row.id);
     setActionError("");
     setMessage("");
 
     try {
-      const blockingIssueCount = Number(row.blocking_issue_count ?? 0);
-      const nextReady = blockingIssueCount === 0;
-      const nextStatus = nextReady ? "draft" : "blocked_by_non_operational";
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData?.session?.access_token;
+      if (!accessToken) throw new Error("Sesión inválida.");
 
-      const confirmedByName =
-        profile.full_name?.trim() || profile.id || "unknown";
-
-      const trainingBlock = buildTrainingConfirmationBlock({
-        explanation: cleanExplanation,
-        confirmedBy: confirmedByName,
-      });
-
-      const nextNotes = appendNoteBlock(row.notes, trainingBlock);
-      const confirmedAt = new Date().toISOString();
-
-      const { error: updateErr } = await supabase
-        .from("audit_runs")
-        .update({
-          training_confirmed: true,
-          blocking_issue_count: blockingIssueCount,
-          ready_for_reaudit: nextReady,
-          status: nextStatus,
-          notes: nextNotes,
-        })
-        .eq("id", row.id);
-
-      if (updateErr) throw updateErr;
-
-      const { error: logErr } = await supabase
-        .from("reaudit_training_logs")
-        .insert({
-          hotel_id: hotelId,
-          reaudit_run_id: row.id,
-          team_member_id: row.team_member_id ?? null,
-          confirmed_by: profile.id,
-          confirmed_at: confirmedAt,
+      const response = await fetch("/api/reaudits/actions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({
+          action: "confirm_training",
+          run_id: row.id,
           explanation: cleanExplanation,
-        });
-
-      if (logErr) {
-        throw new Error(
-          logErr.message ||
-            "Se actualizó la re-auditoría, pero falló el guardado del log de training."
-        );
+        }),
+      });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(payload?.error ?? "No se pudo confirmar el training.");
       }
+
+      const nextReady = Boolean(payload?.ready_for_reaudit);
 
       setMessage(
         nextReady
@@ -181,62 +140,31 @@ export function useReauditActions({
       return false;
     }
 
-    const hotelId = row.hotel_id || profile.hotel_id || null;
-    if (!hotelId) {
-      setActionError("No se pudo identificar el hotel de la re-auditoría.");
-      setMessage("");
-      return false;
-    }
-
     setSavingId(row.id);
     setActionError("");
     setMessage("");
 
     try {
-      const newAuditor = auditorOptions.find((p) => p.id === cleanAuditorId);
-      const changedByName = profile.full_name?.trim() || profile.id || "unknown";
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData?.session?.access_token;
+      if (!accessToken) throw new Error("Sesión inválida.");
 
-      const reassignBlock = buildReassignmentBlock({
-        previousAuditorId: row.assigned_auditor_id,
-        previousAuditorName: row.assigned_auditor_name,
-        newAuditorId: cleanAuditorId,
-        newAuditorName: newAuditor?.full_name ?? null,
-        changedBy: changedByName,
-        reason: cleanNote ?? "",
-        note: cleanNote,
+      const response = await fetch("/api/reaudits/actions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({
+          action: "reassign_auditor",
+          run_id: row.id,
+          next_auditor_id: cleanAuditorId,
+          note: cleanNote,
+        }),
       });
-
-      const nextNotes = appendNoteBlock(row.notes, reassignBlock);
-      const changedAt = new Date().toISOString();
-
-      const { error: updateErr } = await supabase
-        .from("audit_runs")
-        .update({
-          assigned_auditor_id: cleanAuditorId,
-          notes: nextNotes,
-        })
-        .eq("id", row.id);
-
-      if (updateErr) throw updateErr;
-
-      const { error: logErr } = await supabase
-        .from("reaudit_assignment_logs")
-        .insert({
-          hotel_id: hotelId,
-          reaudit_run_id: row.id,
-          previous_auditor_id: row.assigned_auditor_id ?? null,
-          new_auditor_id: cleanAuditorId,
-          changed_by: profile.id,
-          changed_at: changedAt,
-          reason: cleanNote || null,
-          note: cleanNote || null,
-        });
-
-      if (logErr) {
-        throw new Error(
-          logErr.message ||
-            "Se actualizó la re-auditoría, pero falló el guardado del log de reasignación."
-        );
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(payload?.error ?? "No se pudo reasignar el auditor.");
       }
 
       setMessage("Auditor reasignado correctamente para la re-auditoría.");

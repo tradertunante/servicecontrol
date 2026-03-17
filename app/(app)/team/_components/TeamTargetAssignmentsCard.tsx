@@ -284,6 +284,7 @@ export default function TeamTargetAssignmentsCard({
     const areaRowsResp = await supabase
       .from("areas")
       .select("id,name")
+      .eq("hotel_id", hotelId)
       .in("id", areaIds)
       .order("sort_order", { ascending: true })
       .order("name", { ascending: true });
@@ -388,6 +389,7 @@ export default function TeamTargetAssignmentsCard({
     const profilesResp = await supabase
       .from("profiles")
       .select("id, full_name, role, hotel_id, active")
+      .eq("hotel_id", hotelId)
       .in("id", candidateUserIds);
 
     if (profilesResp.error) {
@@ -756,6 +758,13 @@ export default function TeamTargetAssignmentsCard({
 
     const auth = await supabase.auth.getUser();
     const createdBy = auth.data.user?.id ?? null;
+    const { data: sessionData } = await supabase.auth.getSession();
+    const accessToken = sessionData?.session?.access_token;
+    if (!accessToken) {
+      setError("Sesión inválida.");
+      setSaving(false);
+      return;
+    }
     const logEntries: AuditLogEntryInput[] = [];
     const targetsToSave = templateId
       ? templateTargets.filter((target) => target.audit_template_id === templateId)
@@ -771,22 +780,35 @@ export default function TeamTargetAssignmentsCard({
       return;
     }
 
+    const saveResponse = await fetch("/api/team/target-assignments", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify({
+        area_id: selectedAreaId,
+        period: selectedPeriod,
+        templates: targetsToSave.map((target) => ({
+          audit_template_id: target.audit_template_id,
+          rows: templateDirtyState[target.audit_template_id]?.changedRows ?? [],
+        })),
+      }),
+    });
+
+    const savePayload = await saveResponse.json().catch(() => null);
+    if (!saveResponse.ok) {
+      setError(savePayload?.error ?? "No se pudo guardar la configuración.");
+      setSaving(false);
+      return;
+    }
+
     for (const target of targetsToSave) {
       const templateId = target.audit_template_id;
       const templateAssignments = templateDirtyState[templateId]?.changedRows ?? [];
 
       for (const row of templateAssignments) {
         const normalizedTargetCount = normalizeAssignmentValue(Number(row.target_count ?? 0));
-        const payload: any = {
-          hotel_id: hotelId,
-          area_id: selectedAreaId,
-          audit_template_id: templateId,
-          user_id: row.user_id,
-          period: selectedPeriod,
-          target_count: normalizedTargetCount,
-          active: row.active,
-          created_by: createdBy,
-        };
         const oldRow = initialAssignmentsByTemplate[templateId]?.[row.user_id];
         const oldTargetCount = normalizeAssignmentValue(Number(oldRow?.target_count ?? 0));
         const action =
@@ -795,77 +817,6 @@ export default function TeamTargetAssignmentsCard({
             : oldTargetCount > 0 && normalizedTargetCount === 0
               ? "unassign"
               : "update";
-
-        const existingResp = await supabase
-          .from("area_template_target_assignments")
-          .select("id")
-          .eq("hotel_id", hotelId)
-          .eq("area_id", selectedAreaId)
-          .eq("audit_template_id", templateId)
-          .eq("user_id", row.user_id)
-          .eq("period", selectedPeriod)
-          .eq("active", true);
-
-        if (existingResp.error) {
-          setError(existingResp.error.message);
-          setSaving(false);
-          return;
-        }
-
-        const existingRows = ((existingResp.data ?? []) as Array<{ id: string }>).filter(
-          (item) => item?.id
-        );
-
-        const canonicalId =
-          row.id ??
-          row.source_ids?.[0] ??
-          existingRows[0]?.id ??
-          undefined;
-
-        const duplicateIds = Array.from(
-          new Set(
-            [
-              ...(row.source_ids ?? []),
-              ...existingRows.map((item) => item.id),
-            ].filter((id) => id && id !== canonicalId)
-          )
-        );
-
-        if (canonicalId) {
-          const updateResp = await supabase
-            .from("area_template_target_assignments")
-            .update(payload)
-            .eq("id", canonicalId);
-
-          if (updateResp.error) {
-            setError(updateResp.error.message);
-            setSaving(false);
-            return;
-          }
-        } else {
-          const insertResp = await supabase
-            .from("area_template_target_assignments")
-            .insert(payload);
-
-          if (insertResp.error) {
-            setError(insertResp.error.message);
-            setSaving(false);
-            return;
-          }
-        }
-
-        if (duplicateIds.length > 0) {
-          const deactivateResp = await supabase
-            .from("area_template_target_assignments")
-            .update({ active: false })
-            .in("id", duplicateIds);
-
-          if (deactivateResp.error) {
-            setError(deactivateResp.error.message);
-            setSaving(false);
-            return;
-          }
-        }
 
         if (oldTargetCount !== normalizedTargetCount) {
           const userName =

@@ -4,14 +4,13 @@
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
+import { fetchActiveHotel, setActiveHotel } from "@/lib/auth/activeHotelClient";
 import { requireRoleOrRedirect } from "@/lib/auth/RequireRole";
 import HotelHeader from "@/app/components/HotelHeader";
 import type { Role, Profile } from "@/lib/types";
 
 type HotelRow = { id: string; name: string; created_at?: string | null };
 type AreaRow = { id: string; name: string; type: string | null; hotel_id: string | null; sort_order: number | null };
-
-const HOTEL_KEY = "sc_hotel_id";
 
 export default function OrderAreasPage() {
   const router = useRouter();
@@ -20,7 +19,7 @@ export default function OrderAreasPage() {
   const [error, setError] = useState<string | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [hotels, setHotels] = useState<HotelRow[]>([]);
-  const [selectedHotelId, setSelectedHotelId] = useState<string | null>(null);
+  const [activeHotelId, setActiveHotelId] = useState<string | null>(null);
   const [areas, setAreas] = useState<AreaRow[]>([]);
 
   const fg = "var(--text)";
@@ -76,8 +75,8 @@ export default function OrderAreasPage() {
         setProfile(p);
 
         if (p.role === "superadmin") {
-          const stored = typeof window !== "undefined" ? localStorage.getItem(HOTEL_KEY) : null;
-          setSelectedHotelId(stored || null);
+          const stored = (await fetchActiveHotel()).hotel_id;
+          setActiveHotelId(stored || null);
           const { data: hData, error: hErr } = await supabase.from("hotels").select("id,name,created_at").order("created_at", { ascending: false });
           if (hErr) throw hErr;
           if (!alive) return;
@@ -88,7 +87,7 @@ export default function OrderAreasPage() {
         }
 
         if (!p.hotel_id) { setError("Tu usuario no tiene hotel asignado."); setLoading(false); return; }
-        setSelectedHotelId(p.hotel_id);
+        setActiveHotelId(p.hotel_id);
         await loadAreas(p.hotel_id);
         setLoading(false);
       } catch (e: any) {
@@ -114,13 +113,25 @@ export default function OrderAreasPage() {
   };
 
   const save = async () => {
-    if (!selectedHotelId) return;
+    if (!activeHotelId) return;
     setBusySave(true); setError(null);
     try {
-      const results = await Promise.all(areas.map((a, idx) => supabase.from("areas").update({ sort_order: idx + 1 }).eq("id", a.id)));
-      const firstErr = results.find((r) => r.error)?.error;
-      if (firstErr) throw firstErr;
-      await loadAreas(selectedHotelId);
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData?.session?.access_token;
+      if (!accessToken) throw new Error("Sesión inválida.");
+      const response = await fetch("/api/areas/reorder", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({
+          area_ids: areas.map((area) => area.id),
+        }),
+      });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) throw new Error(payload?.error ?? "No se pudo guardar el orden.");
+      await loadAreas(activeHotelId);
     } catch (e: any) {
       setError(e?.message ?? "No se pudo guardar el orden.");
     } finally {
@@ -131,7 +142,7 @@ export default function OrderAreasPage() {
   if (loading) return <main style={styles.page}><HotelHeader /><div style={{ opacity: 0.8 }}>Cargando…</div></main>;
   if (error) return <main style={styles.page}><HotelHeader /><div style={{ color: "var(--danger, crimson)", fontWeight: 900 }}>{error}</div></main>;
 
-  if (profile?.role === "superadmin" && !selectedHotelId) {
+  if (profile?.role === "superadmin" && !activeHotelId) {
     return (
       <main style={styles.page}>
         <HotelHeader />
@@ -140,7 +151,7 @@ export default function OrderAreasPage() {
           <div style={styles.sub}>Primero selecciona el hotel para ordenar sus áreas.</div>
           <div style={{ marginTop: 16, display: "grid", gap: 10 }}>
             {hotels.length === 0 ? <div style={{ opacity: 0.7 }}>No hay hoteles creados todavía.</div> : hotels.map((h) => (
-              <button key={h.id} onClick={async () => { localStorage.setItem(HOTEL_KEY, h.id); setSelectedHotelId(h.id); setLoading(true); try { await loadAreas(h.id); } finally { setLoading(false); } }} style={styles.btn}>
+              <button key={h.id} onClick={async () => { await setActiveHotel(h.id); setActiveHotelId(h.id); setLoading(true); try { await loadAreas(h.id); } finally { setLoading(false); } }} style={styles.btn}>
                 <span style={{ fontWeight: 950 }}>{h.name}</span> <span style={{ opacity: 0.7 }}>· Entrar →</span>
               </button>
             ))}
@@ -150,7 +161,7 @@ export default function OrderAreasPage() {
     );
   }
 
-  const selectedHotelName = hotels.find((h) => h.id === selectedHotelId)?.name ?? "Hotel";
+  const selectedHotelName = hotels.find((h) => h.id === activeHotelId)?.name ?? "Hotel";
 
   return (
     <main style={styles.page}>
@@ -164,7 +175,7 @@ export default function OrderAreasPage() {
           <button style={styles.btn} onClick={() => router.push("/dashboard")}>← Volver al dashboard</button>
           <button style={styles.btn} onClick={resetAZ}>Reset A→Z</button>
           {profile?.role === "superadmin" && (
-            <button style={styles.btn} onClick={() => { localStorage.removeItem(HOTEL_KEY); setSelectedHotelId(null); setAreas([]); }}>Cambiar hotel</button>
+            <button style={styles.btn} onClick={() => { void setActiveHotel(null).then(() => { setActiveHotelId(null); setAreas([]); }); }}>Cambiar hotel</button>
           )}
           <button style={{ ...styles.btnDark, opacity: busySave ? 0.7 : 1, cursor: busySave ? "not-allowed" : "pointer" }} onClick={save} disabled={busySave}>
             {busySave ? "Guardando…" : "Guardar orden"}

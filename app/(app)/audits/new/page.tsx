@@ -4,9 +4,8 @@
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
+import { fetchActiveHotel } from "@/lib/auth/activeHotelClient";
 import type { Profile } from "@/lib/types";
-
-const HOTEL_KEY = "sc_hotel_id";
 
 type AssignmentRow = {
   id: string;
@@ -88,11 +87,8 @@ export default function NewAuditPage() {
           return;
         }
 
-        const hotelIdFromLocalStorage =
-          typeof window !== "undefined" ? localStorage.getItem(HOTEL_KEY) : null;
-
         const hotelIdToUse =
-          (profileData as any)?.hotel_id ?? hotelIdFromLocalStorage ?? null;
+          (profileData as any)?.hotel_id ?? (await fetchActiveHotel()).hotel_id ?? null;
 
         if (!hotelIdToUse) {
           throw new Error("No hay hotel seleccionado.");
@@ -176,40 +172,36 @@ export default function NewAuditPage() {
 
       if (userErr || !user) throw userErr ?? new Error("No hay sesión activa.");
 
-      const hotelIdFromLocalStorage =
-        typeof window !== "undefined" ? localStorage.getItem(HOTEL_KEY) : null;
-
       const hotelIdToUse =
-        (profile as any)?.hotel_id ?? area.hotel_id ?? hotelIdFromLocalStorage ?? null;
+        (profile as any)?.hotel_id ?? area.hotel_id ?? (await fetchActiveHotel()).hotel_id ?? null;
 
       if (!hotelIdToUse) {
         throw new Error("No se pudo determinar el hotel para crear la auditoría.");
       }
 
-      const nowIso = new Date().toISOString();
       const nextRoomNumber = isHousekeepingArea(area) ? roomNumber.trim() || null : null;
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData?.session?.access_token;
+      if (!accessToken) throw new Error("Sesión inválida.");
 
-      const { data, error } = await supabase
-        .from("audit_runs")
-        .insert({
-          hotel_id: hotelIdToUse,
+      const response = await fetch("/api/audits/start", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({
           area_id: area.id,
           audit_template_id: templateId,
-          status: "draft",
-          score: null,
-          notes: null,
           room_number: nextRoomNumber,
-          executed_at: nowIso,
-          executed_by: user.id,
-        })
-        .select("id")
-        .single();
-
-      if (error || !data) {
-        throw error ?? new Error("No se pudo crear la auditoría.");
+        }),
+      });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok || !payload?.run_id) {
+        throw new Error(payload?.error ?? "No se pudo crear la auditoría.");
       }
 
-      router.replace(`/audits/${data.id}`);
+      router.replace(`/audits/${payload.run_id}`);
     } catch (e: any) {
       setError(e?.message ?? "No se pudo iniciar la auditoría.");
       setStarting(false);

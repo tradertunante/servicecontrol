@@ -1,7 +1,5 @@
 import type { Role } from "./analyticsTypes";
 
-export const HOTEL_KEY = "sc_hotel_id";
-
 export function canSeeAnalytics(role: Role) {
   return role === "admin" || role === "manager" || role === "superadmin";
 }

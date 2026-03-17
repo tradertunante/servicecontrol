@@ -59,11 +59,12 @@ function normalizeStatus(a: { result: string | null; answer: string | null }): "
 
 export async function buildAreaPeriodReport(args: {
   areaId: string;
+  hotelId: string;
   startDate: string;
   endDate: string;
   rangeLabel: string;
 }): Promise<AreaPeriodReportData> {
-  const { areaId, startDate, endDate, rangeLabel } = args;
+  const { areaId, hotelId, startDate, endDate, rangeLabel } = args;
 
   const endExclusive = new Date(`${endDate}T00:00:00`);
   endExclusive.setDate(endExclusive.getDate() + 1);
@@ -73,6 +74,7 @@ export async function buildAreaPeriodReport(args: {
     .from("areas")
     .select("id,name,type,hotel_id")
     .eq("id", areaId)
+    .eq("hotel_id", hotelId)
     .maybeSingle();
 
   if (areaErr) throw areaErr;
@@ -98,6 +100,7 @@ export async function buildAreaPeriodReport(args: {
     .from("audit_runs")
     .select("id,area_id,audit_template_id,score,status,executed_at")
     .eq("area_id", areaId)
+    .eq("hotel_id", hotelId)
     .eq("status", "submitted")
     .gte("executed_at", `${startDate}T00:00:00`)
     .lt("executed_at", `${endExclusiveStr}T00:00:00`)

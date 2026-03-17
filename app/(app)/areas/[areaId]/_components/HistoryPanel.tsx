@@ -4,6 +4,7 @@
 import Card from "@/components/ui/Card";
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import { fetchActiveHotel } from "@/lib/auth/activeHotelClient";
 import { supabase } from "@/lib/supabaseClient";
 
 import type { AuditRunRow, AuditTemplate, PeriodKey, Role } from "../_lib/areaTypes";
@@ -105,6 +106,7 @@ export default function HistoryPanel({
   const [histError, setHistError] = useState<string | null>(null);
   const [histRuns, setHistRuns] = useState<AuditRunRow[]>([]);
   const [deletingRunId, setDeletingRunId] = useState<string | null>(null);
+  const [activeHotelId, setActiveHotelId] = useState<string | null>(null);
 
   const showDelete = canDeleteAudits(profileRole);
 
@@ -123,11 +125,36 @@ export default function HistoryPanel({
     }
   }, [templates, histTemplateId]);
 
+  useEffect(() => {
+    let alive = true;
+
+    void (async () => {
+      try {
+        const payload = await fetchActiveHotel();
+        if (!alive) return;
+        setActiveHotelId(payload.hotel_id ?? null);
+      } catch (error: any) {
+        if (!alive) return;
+        setHistError(error?.message ?? "No se pudo resolver el hotel activo.");
+        setActiveHotelId(null);
+      }
+    })();
+
+    return () => {
+      alive = false;
+    };
+  }, []);
+
   // -------------------------
   // Query helpers
   // -------------------------
   async function fetchRunsByPeriodAndViewAndFail() {
     if (!areaId) return;
+    if (!activeHotelId) {
+      setHistError("No hay hotel activo seleccionado.");
+      setHistRuns([]);
+      return;
+    }
 
     setHistLoading(true);
     setHistError(null);
@@ -141,6 +168,7 @@ export default function HistoryPanel({
       let q = supabase
         .from("audit_runs")
         .select("id,status,score,notes,executed_at,executed_by,audit_template_id,area_id")
+        .eq("hotel_id", activeHotelId)
         .eq("area_id", areaId)
         .eq("status", "submitted")
         .gte("executed_at", startISO)
@@ -236,6 +264,11 @@ export default function HistoryPanel({
 
   async function handleSearchHistoryMonthMode() {
     if (!areaId || !histTemplateId) return;
+    if (!activeHotelId) {
+      setHistError("No hay hotel activo seleccionado.");
+      setHistRuns([]);
+      return;
+    }
 
     setHistLoading(true);
     setHistError(null);
@@ -246,6 +279,7 @@ export default function HistoryPanel({
       const { data, error: rErr } = await supabase
         .from("audit_runs")
         .select("id,status,score,notes,executed_at,executed_by,audit_template_id,area_id")
+        .eq("hotel_id", activeHotelId)
         .eq("area_id", areaId)
         .eq("status", "submitted")
         .eq("audit_template_id", histTemplateId)
@@ -276,11 +310,20 @@ export default function HistoryPanel({
     setHistError(null);
 
     try {
-      const { error: aErr } = await supabase.from("audit_answers").delete().eq("audit_run_id", runId);
-      if (aErr) throw aErr;
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData?.session?.access_token;
+      if (!accessToken) throw new Error("Sesión inválida.");
 
-      const { error: rErr } = await supabase.from("audit_runs").delete().eq("id", runId);
-      if (rErr) throw rErr;
+      const response = await fetch(`/api/audit-runs/${runId}`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(payload?.error ?? "No se pudo borrar la auditoría.");
+      }
 
       setHistRuns((prev) => prev.filter((x) => x.id !== runId));
       onDeleteSuccess(runId);
@@ -295,9 +338,10 @@ export default function HistoryPanel({
   useEffect(() => {
     if (!areaId) return;
     if (!isFailMode) return;
+    if (!activeHotelId) return;
     fetchRunsByPeriodAndViewAndFail();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [areaId, urlTemplate, urlPeriod, urlFailQ, urlFailCls]);
+  }, [areaId, activeHotelId, urlTemplate, urlPeriod, urlFailQ, urlFailCls]);
 
   const activeChips = useMemo(() => {
     const out: { label: string }[] = [];
