@@ -221,6 +221,44 @@ La fuente de verdad del score final será backend/server-side.
 
 ---
 
+## Decisión 10
+
+### Fecha
+2026-03-17
+
+### Decisión
+Eliminar cualquier write cliente residual sobre `audit_answers` y metadatos editables de `audit_runs`.
+
+### Contexto
+Aunque `submit_audit_run` ya existía, el flujo seguía híbrido porque `useAuditSession` hacía:
+
+- `upsert` directo a `audit_answers`
+- `update` directo a `audit_runs` para `team_member_id` y `room_number`
+- un sync final de answers desde browser antes del submit
+
+Eso impedía considerar cerrado el core de auditorías con criterio binario real.
+
+### Alternativas consideradas
+- mantener autosave directo a Supabase con más checks en cliente
+- mover solo el submit final y tolerar drafts híbridos
+- sacar todos los writes críticos a routes server-side dedicadas
+
+### Decisión final
+Usar routes server-side específicas para:
+
+- draft answers
+- patch de metadata editable del run
+- seed inicial de respuestas al crear la auditoría
+
+El cliente queda limitado a estado local, lectura y llamadas HTTP autorizadas.
+
+### Impacto esperado
+- cierre real del flujo híbrido
+- validaciones uniformes de hotel, área, ownership y estado
+- eliminación de dependencia en un sync final del navegador antes del submit
+
+---
+
 ## Decisión 8
 
 ### Fecha
