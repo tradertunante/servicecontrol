@@ -328,3 +328,69 @@ Se corrigió el problema en dos capas:
 - `app/(app)/audits/[id]/_hooks/useAuditAutosave.ts`
 - `app/(app)/audits/[id]/_hooks/useAuditSession.ts`
 - `supabase/migrations/20260310_120000_submit_audit_run_rpc.sql`
+
+---
+
+## Issue 8
+
+### Fecha
+2026-03-16
+
+### Síntoma
+Los módulos priorizados de seguridad seguían teniendo huecos concretos de escalada y scope: `admin` podía crear/promover `superadmin`, `auditor` podía leer `profiles` same-hotel, `manager` podía consultar `audit_logs` sin `area_id` y la RLS de builder/team members seguía más amplia que las reglas de negocio.
+
+### Solución aplicada
+- roles asignables centralizados y aplicados en `create-user` y `update user`
+- edición sensible de usuarios movida a API server-side
+- `profiles` endurecida con lectura propia + lectura same-hotel solo para roles operativos elevados
+- endpoint limitado `/api/profiles/names` para resolver nombres en áreas sin reabrir `profiles`
+- templates globales mutables solo por `superadmin`
+- `team_members` y `team_member_areas` bloqueados para mutación directa de manager
+- `audit-logs` endurecido para exigir `area_id` a managers
+
+### Archivos relacionados
+- `lib/auth/permissions.tsx`
+- `lib/auth/server.ts`
+- `lib/auth/userManagement.ts`
+- `app/api/admin/create-user/route.ts`
+- `app/api/admin/users/route.ts`
+- `app/api/admin/users/[id]/route.ts`
+- `app/api/audit-logs/route.ts`
+- `app/api/profiles/names/route.ts`
+- `supabase/migrations/20260316170000_close_remaining_security_gaps.sql`
+
+---
+
+## Issue 9
+
+### Fecha
+2026-03-16
+
+### Síntoma
+Fuera de los módulos priorizados seguían existiendo patrones repetidos de seguridad: `trainings` con endpoint público demasiado abierto, `superadmin` y `standards` protegidos solo en cliente, rutas secundarias sin auth server-side y tablas globales/secundarias sin cobertura RLS clara.
+
+### Solución aplicada
+- `trainings/attendances` ahora exige `registration_token` firmado y consumible una sola vez
+- `trainings/topics`, `trainings/sessions` y `trainings/history` validan hotel scope y area scope real
+- layouts server-side añadidos para `superadmin`, `standards`, `audits`, `analytics`, `task`, `my` y `formaciones`
+- mutaciones de `standards` movidas a `/api/standards/actions`
+- endpoints legacy `user-management/*` delegados a la capa admin actual
+- migración `20260316190000_preventive_hardening_secondary_surfaces.sql` versiona RLS para assets globales, standards, tasks y tokens de registro
+
+### Archivos relacionados
+- `lib/trainings/server.ts`
+- `app/api/trainings/topics/route.ts`
+- `app/api/trainings/sessions/route.ts`
+- `app/api/trainings/history/route.ts`
+- `app/api/trainings/attendances/route.ts`
+- `app/api/standards/actions/route.ts`
+- `app/(app)/layout.tsx`
+- `app/superadmin/layout.tsx`
+- `app/(app)/standards/layout.tsx`
+- `app/(app)/audits/layout.tsx`
+- `app/(app)/audits/[id]/layout.tsx`
+- `app/(app)/analytics/layout.tsx`
+- `app/(app)/task/layout.tsx`
+- `app/(app)/my/layout.tsx`
+- `app/(app)/formaciones/layout.tsx`
+- `supabase/migrations/20260316190000_preventive_hardening_secondary_surfaces.sql`

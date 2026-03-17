@@ -1,69 +1,24 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabaseAdmin } from "@/lib/supabaseAdmin";
-import { supabaseWithToken } from "@/lib/supabaseServer";
 
-type Role = "admin" | "quality" | "manager" | "general_manager";
+import {
+  enforceTrainingAreaScope,
+  getTrainingsCaller,
+  issueTrainingRegistrationToken,
+  loadTrainingSession,
+  loadTrainingTopic,
+} from "@/lib/trainings/server";
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
 function jsonError(message: string, status = 400) {
   return NextResponse.json({ ok: false, error: message }, { status });
 }
 
-function normalizeRole(input: unknown): string {
-  return String(input ?? "").trim().toLowerCase();
-}
-
-function getBearerToken(request: NextRequest) {
-  const authHeader = request.headers.get("authorization") || "";
-  return authHeader.startsWith("Bearer ") ? authHeader.slice(7).trim() : "";
-}
-
-async function getCaller(request: NextRequest, allowedRoles: Role[]) {
-  const token = getBearerToken(request);
-
-  if (!token) {
-    return { ok: false as const, error: "No autorizado.", status: 401 };
-  }
-
-  const client = supabaseWithToken(token);
-  const {
-    data: { user },
-    error: authError,
-  } = await client.auth.getUser(token);
-
-  if (authError || !user) {
-    return { ok: false as const, error: "No autorizado.", status: 401 };
-  }
-
-  const { data: profile, error: profileError } = await client
-    .from("profiles")
-    .select("id, hotel_id, role, active, full_name")
-    .eq("id", user.id)
-    .maybeSingle();
-
-  if (profileError || !profile) {
-    return { ok: false as const, error: "Perfil invalido.", status: 403 };
-  }
-
-  const role = normalizeRole(profile.role);
-  const active = profile.active ?? true;
-
-  if (!active || !allowedRoles.includes(role as Role)) {
-    return { ok: false as const, error: "Forbidden.", status: 403 };
-  }
-
-  if (!profile.hotel_id) {
-    return { ok: false as const, error: "hotel_id faltante en perfil.", status: 400 };
-  }
-
-  return {
-    ok: true as const,
-    profile: {
-      id: profile.id as string,
-      hotel_id: profile.hotel_id as string,
-      role,
-      full_name: (profile.full_name as string | null) ?? null,
+function jsonNoStore(body: unknown) {
+  return NextResponse.json(body, {
+    headers: {
+      "Cache-Control": "no-store",
     },
-  };
+  });
 }
 
 export async function GET(request: NextRequest) {
@@ -77,66 +32,68 @@ export async function GET(request: NextRequest) {
     const admin = supabaseAdmin();
     const { data: topic, error: topicError } = await admin
       .from("training_topics")
-      .select("id, title, description, qr_token, hotel_id, is_active")
+      .select("id, hotel_id, title, description, qr_token, is_active")
       .eq("qr_token", token)
+      .eq("is_active", true)
       .maybeSingle();
 
-    if (topicError) {
-      return jsonError(topicError.message, 500);
-    }
-
-    if (!topic || topic.is_active === false) {
-      return jsonError("Tema no encontrado.", 404);
-    }
+    if (topicError) return jsonError(topicError.message, 500);
+    if (!topic) return jsonError("Tema no encontrado.", 404);
 
     const { data: sessions, error: sessionsError } = await admin
       .from("training_sessions")
-      .select("id, topic_id, hotel_id, status, opened_at, closed_at, supervisor_name_snapshot, session_label")
+      .select("id, hotel_id, topic_id, status, opened_at, closed_at, supervisor_name_snapshot, session_label")
       .eq("topic_id", topic.id)
       .eq("hotel_id", topic.hotel_id)
       .eq("status", "open")
       .order("opened_at", { ascending: false });
 
-    if (sessionsError) {
-      return jsonError(sessionsError.message, 500);
-    }
+    if (sessionsError) return jsonError(sessionsError.message, 500);
 
-    const sessionIds = (sessions ?? []).map((session) => session.id as string);
+    const sessionIds = (sessions ?? []).map((session) => String(session.id));
     const { data: attendances, error: attendancesError } = sessionIds.length
       ? await admin.from("training_attendances").select("session_id").in("session_id", sessionIds)
       : { data: [], error: null };
 
-    if (attendancesError) {
-      return jsonError(attendancesError.message, 500);
-    }
+    if (attendancesError) return jsonError(attendancesError.message, 500);
 
     const attendanceCountBySession = new Map<string, number>();
-
     for (const attendance of attendances ?? []) {
       const sessionId = String(attendance.session_id ?? "");
       if (!sessionId) continue;
       attendanceCountBySession.set(sessionId, (attendanceCountBySession.get(sessionId) ?? 0) + 1);
     }
 
-    return NextResponse.json({
+    const serializedSessions = await Promise.all(
+      (sessions ?? []).map(async (session) => ({
+        id: String(session.id),
+        hotel_id: String(session.hotel_id),
+        topic_id: String(session.topic_id),
+        status: "open" as const,
+        opened_at: String(session.opened_at),
+        closed_at: session.closed_at ? String(session.closed_at) : null,
+        supervisor_name_snapshot: session.supervisor_name_snapshot
+          ? String(session.supervisor_name_snapshot)
+          : null,
+        session_label: session.session_label ? String(session.session_label) : null,
+        attendance_count: attendanceCountBySession.get(String(session.id)) ?? 0,
+        registration_token: await issueTrainingRegistrationToken(
+          String(session.id),
+          String(topic.id),
+          String(topic.hotel_id)
+        ),
+      }))
+    );
+
+    return jsonNoStore({
       ok: true,
       topic: {
-        id: topic.id,
-        title: topic.title,
-        description: topic.description ?? null,
-        qr_token: topic.qr_token,
+        id: String(topic.id),
+        title: String(topic.title ?? "Tema"),
+        description: topic.description ? String(topic.description) : null,
+        qr_token: String(topic.qr_token),
       },
-      sessions: (sessions ?? []).map((session) => ({
-        id: session.id,
-        topic_id: session.topic_id,
-        hotel_id: session.hotel_id,
-        status: session.status,
-        opened_at: session.opened_at,
-        closed_at: session.closed_at,
-        supervisor_name_snapshot: session.supervisor_name_snapshot ?? null,
-        session_label: session.session_label ?? null,
-        attendance_count: attendanceCountBySession.get(String(session.id)) ?? 0,
-      })),
+      sessions: serializedSessions,
     });
   } catch (error) {
     return jsonError(error instanceof Error ? error.message : "Error inesperado.", 500);
@@ -145,61 +102,68 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const caller = await getCaller(request, ["admin", "quality", "manager", "general_manager"]);
+    const caller = await getTrainingsCaller(request, [
+      "admin",
+      "quality",
+      "manager",
+      "general_manager",
+    ]);
 
-    if (!caller.ok) {
-      return jsonError(caller.error, caller.status);
-    }
+    if (!caller.ok) return jsonError(caller.error, caller.status);
 
     const body = await request.json().catch(() => null);
     const topicId = String(body?.topic_id ?? "").trim();
-    const sessionLabel = body?.session_label == null ? null : String(body.session_label).trim() || null;
+    const sessionLabel =
+      body?.session_label == null ? null : String(body.session_label).trim() || null;
 
-    if (!topicId) {
-      return jsonError("topic_id es obligatorio.");
-    }
+    if (!topicId) return jsonError("topic_id es obligatorio.", 400);
 
-    const admin = supabaseAdmin();
-    const { data: topic, error: topicError } = await admin
-      .from("training_topics")
-      .select("id, hotel_id, is_active")
-      .eq("id", topicId)
-      .eq("hotel_id", caller.profile.hotel_id)
-      .maybeSingle();
-
-    if (topicError) {
-      return jsonError(topicError.message, 500);
-    }
-
+    const topic = await loadTrainingTopic(topicId);
     if (!topic || topic.is_active === false) {
       return jsonError("Tema no encontrado.", 404);
     }
 
-    const supervisorNameSnapshot = caller.profile.full_name?.trim() || "Supervisor";
+    if (String(topic.hotel_id ?? "") !== caller.caller.hotelId) {
+      return jsonError("Forbidden: tema fuera de tu hotel.", 403);
+    }
+
+    const areaScope = await enforceTrainingAreaScope(
+      caller.caller.profile,
+      caller.caller.hotelId,
+      (topic.area_id as string | null) ?? null
+    );
+    if (!areaScope.ok) return jsonError(areaScope.error, areaScope.status);
+
+    const admin = supabaseAdmin();
+    const { data: existingOpenSession, error: existingOpenSessionError } = await admin
+      .from("training_sessions")
+      .select("id")
+      .eq("topic_id", topicId)
+      .eq("hotel_id", caller.caller.hotelId)
+      .eq("status", "open")
+      .maybeSingle();
+
+    if (existingOpenSessionError) return jsonError(existingOpenSessionError.message, 500);
+    if (existingOpenSession?.id) {
+      return jsonError("Ya existe una sesion abierta para este tema.", 409);
+    }
 
     const { data, error } = await admin
       .from("training_sessions")
       .insert({
-        hotel_id: caller.profile.hotel_id,
-        topic_id: topic.id,
-        opened_by_profile_id: caller.profile.id,
-        supervisor_name_snapshot: supervisorNameSnapshot,
+        hotel_id: caller.caller.hotelId,
+        topic_id: topicId,
+        status: "open",
+        opened_by_profile_id: caller.caller.profile.id,
+        supervisor_name_snapshot: caller.caller.profile.full_name ?? null,
         session_label: sessionLabel,
       })
-      .select("id, topic_id, hotel_id, status, opened_at, closed_at, supervisor_name_snapshot, session_label")
-      .single();
+      .select("id")
+      .maybeSingle();
 
-    if (error || !data) {
-      return jsonError(error?.message ?? "No se pudo abrir la sesion.", 500);
-    }
+    if (error) return jsonError(error.message, 500);
 
-    return NextResponse.json({
-      ok: true,
-      session: {
-        ...data,
-        attendance_count: 0,
-      },
-    });
+    return NextResponse.json({ ok: true, session_id: data?.id ?? null });
   } catch (error) {
     return jsonError(error instanceof Error ? error.message : "Error inesperado.", 500);
   }
@@ -207,53 +171,53 @@ export async function POST(request: NextRequest) {
 
 export async function PATCH(request: NextRequest) {
   try {
-    const caller = await getCaller(request, ["admin", "quality", "manager", "general_manager"]);
+    const caller = await getTrainingsCaller(request, [
+      "admin",
+      "quality",
+      "manager",
+      "general_manager",
+    ]);
 
-    if (!caller.ok) {
-      return jsonError(caller.error, caller.status);
-    }
+    if (!caller.ok) return jsonError(caller.error, caller.status);
 
     const body = await request.json().catch(() => null);
     const sessionId = String(body?.session_id ?? "").trim();
 
-    if (!sessionId) {
-      return jsonError("session_id es obligatorio.");
+    if (!sessionId) return jsonError("session_id es obligatorio.", 400);
+
+    const session = await loadTrainingSession(sessionId);
+    if (!session) return jsonError("Sesion no encontrada.", 404);
+
+    if (String(session.hotel_id ?? "") !== caller.caller.hotelId) {
+      return jsonError("Forbidden: sesion fuera de tu hotel.", 403);
     }
 
-    const admin = supabaseAdmin();
-    const { data: session, error: sessionError } = await admin
-      .from("training_sessions")
-      .select("id, hotel_id, status")
-      .eq("id", sessionId)
-      .eq("hotel_id", caller.profile.hotel_id)
-      .maybeSingle();
+    const topic = await loadTrainingTopic(String(session.topic_id ?? ""));
+    if (!topic) return jsonError("Tema no encontrado.", 404);
 
-    if (sessionError) {
-      return jsonError(sessionError.message, 500);
+    const areaScope = await enforceTrainingAreaScope(
+      caller.caller.profile,
+      caller.caller.hotelId,
+      (topic.area_id as string | null) ?? null
+    );
+    if (!areaScope.ok) return jsonError(areaScope.error, areaScope.status);
+
+    if (String(session.status ?? "") !== "open") {
+      return jsonError("La sesion ya esta cerrada.", 409);
     }
 
-    if (!session) {
-      return jsonError("Sesion no encontrada.", 404);
-    }
-
-    if (session.status === "closed") {
-      return NextResponse.json({ ok: true, already_closed: true });
-    }
-
-    const { error } = await admin
+    const { error } = await supabaseAdmin()
       .from("training_sessions")
       .update({
         status: "closed",
         closed_at: new Date().toISOString(),
-        closed_by_profile_id: caller.profile.id,
+        closed_by_profile_id: caller.caller.profile.id,
       })
-      .eq("id", session.id)
-      .eq("hotel_id", caller.profile.hotel_id);
+      .eq("id", sessionId)
+      .eq("hotel_id", caller.caller.hotelId)
+      .eq("status", "open");
 
-    if (error) {
-      return jsonError(error.message, 500);
-    }
-
+    if (error) return jsonError(error.message, 500);
     return NextResponse.json({ ok: true });
   } catch (error) {
     return jsonError(error instanceof Error ? error.message : "Error inesperado.", 500);
@@ -262,48 +226,66 @@ export async function PATCH(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
-    const caller = await getCaller(request, ["admin", "quality", "manager", "general_manager"]);
+    const caller = await getTrainingsCaller(request, [
+      "admin",
+      "quality",
+      "manager",
+      "general_manager",
+    ]);
 
-    if (!caller.ok) {
-      return jsonError(caller.error, caller.status);
-    }
+    if (!caller.ok) return jsonError(caller.error, caller.status);
 
     const body = await request.json().catch(() => null);
     const sessionId = String(body?.session_id ?? "").trim();
 
-    if (!sessionId) {
-      return jsonError("session_id es obligatorio.");
+    if (!sessionId) return jsonError("session_id es obligatorio.", 400);
+
+    const session = await loadTrainingSession(sessionId);
+    if (!session) return jsonError("Sesion no encontrada.", 404);
+
+    if (String(session.hotel_id ?? "") !== caller.caller.hotelId) {
+      return jsonError("Forbidden: sesion fuera de tu hotel.", 403);
+    }
+
+    const topic = await loadTrainingTopic(String(session.topic_id ?? ""));
+    if (!topic) return jsonError("Tema no encontrado.", 404);
+
+    const areaScope = await enforceTrainingAreaScope(
+      caller.caller.profile,
+      caller.caller.hotelId,
+      (topic.area_id as string | null) ?? null
+    );
+    if (!areaScope.ok) return jsonError(areaScope.error, areaScope.status);
+
+    if (String(session.status ?? "") !== "closed") {
+      return jsonError("Solo puedes eliminar sesiones cerradas.", 409);
     }
 
     const admin = supabaseAdmin();
-    const { data: session, error: sessionError } = await admin
-      .from("training_sessions")
-      .select("id, hotel_id, status")
-      .eq("id", sessionId)
-      .eq("hotel_id", caller.profile.hotel_id)
-      .maybeSingle();
+    const { error: attendancesError } = await admin
+      .from("training_attendances")
+      .delete()
+      .eq("session_id", sessionId)
+      .eq("hotel_id", caller.caller.hotelId);
 
-    if (sessionError) {
-      return jsonError(sessionError.message, 500);
-    }
+    if (attendancesError) return jsonError(attendancesError.message, 500);
 
-    if (!session) {
-      return jsonError("Sesion no encontrada.", 404);
-    }
+    const { error: tokensError } = await admin
+      .from("training_registration_tokens")
+      .delete()
+      .eq("session_id", sessionId)
+      .eq("hotel_id", caller.caller.hotelId);
 
-    if (session.status !== "closed") {
-      return jsonError("Solo se pueden eliminar sesiones cerradas.", 409);
-    }
+    if (tokensError) return jsonError(tokensError.message, 500);
 
-    const { error } = await admin
+    const { error: sessionDeleteError } = await admin
       .from("training_sessions")
       .delete()
-      .eq("id", session.id)
-      .eq("hotel_id", caller.profile.hotel_id);
+      .eq("id", sessionId)
+      .eq("hotel_id", caller.caller.hotelId)
+      .eq("status", "closed");
 
-    if (error) {
-      return jsonError(error.message, 500);
-    }
+    if (sessionDeleteError) return jsonError(sessionDeleteError.message, 500);
 
     return NextResponse.json({ ok: true });
   } catch (error) {

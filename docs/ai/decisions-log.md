@@ -450,3 +450,56 @@ Se necesitaba trazabilidad inicial para cambios críticos de operación sin ensu
 - trazabilidad inicial para objetivos y asignaciones
 - menor riesgo de romper flujos existentes por fallos de logging
 - UI más limpia al mantener el historial fuera del layout principal
+
+---
+
+## Decisión 12
+
+### Fecha
+2026-03-16
+
+### Decisión
+Cerrar las brechas pendientes de permisos manteniendo la seguridad real en API + RLS y dejando al cliente solo como capa UX.
+
+### Contexto
+La primera reparación ya había movido el acceso por URL a layouts server-side y había versionado RLS, pero seguían abiertos vectores concretos: creación/promoción a `superadmin`, lectura excesiva de `profiles`, mutación global de templates, mutación directa de `team_members` por managers y lectura hotel-wide de `audit_logs`.
+
+### Decisión final
+- definir una matriz única de roles asignables por actor en `lib/auth/permissions.tsx`
+- mover la edición sensible de usuarios a `/api/admin/users/[id]`
+- endurecer RLS de `profiles`, `audit_templates`, `audit_sections`, `audit_questions`, `team_members` y `team_member_areas`
+- introducir `/api/profiles/names` para resolver nombres operativos sin reabrir lectura completa de `profiles`
+- reutilizar `lib/auth/server.ts` desde `members` y `audit-logs` para hotel scope y area scope
+
+### Impacto esperado
+- un `admin` ya no puede crear ni promover `superadmin`
+- un `auditor` ya no puede enumerar `profiles` same-hotel
+- un `admin` tenant-scoped ya no puede mutar templates globales
+- un `manager` ya no puede mutar miembros fuera de sus áreas ni leer logs hotel-wide omitiendo `area_id`
+
+---
+
+## Decisión 13
+
+### Fecha
+2026-03-16
+
+### Decisión
+Endurecer superficies secundarias con el mismo patrón que los módulos prioritarios: guard server-side en árbol, endpoints centrales por dominio y RLS explícita para assets globales/standards/tasks.
+
+### Contexto
+Tras cerrar `REPAIR 1.1`, seguían repitiéndose patrones equivalentes fuera de los módulos priorizados: árbol `superadmin` protegido solo en cliente, `standards` con mutaciones cliente directas, `trainings` con QR público demasiado abierto, rutas secundarias sin auth server-side y endpoints legacy aún vivos.
+
+### Decisión final
+- mover el registro público de trainings a un flujo de token firmado + consumible una sola vez respaldado por `training_registration_tokens`
+- centralizar hotel scope y area scope de trainings en `lib/trainings/server.ts`
+- cerrar `/superadmin`, `/standards`, `/audits`, `/analytics`, `/task`, `/my` y `/formaciones` con layouts server-side
+- encapsular mutaciones sensibles de `standards` en `/api/standards/actions`
+- delegar `user-management/*` a la capa admin nueva
+- versionar RLS para `global_audit_*`, `standard_*`, `tasks` y `task_assignments`
+
+### Impacto esperado
+- los módulos secundarios ya no dependen de `requireRoleOrRedirect` como barrera principal
+- `trainings` deja de aceptar registros arbitrarios y managers quedan limitados a sus áreas
+- `standards` y `superadmin` quedan cerrados por URL antes de renderizar
+- la superficie legacy se reduce a una sola fuente viva

@@ -331,3 +331,48 @@ Reducir la latencia percibida del módulo Team separando los flujos pesados en p
 - [ ] verificar creación de logs al guardar asignaciones Team
 - [ ] verificar creación de logs al guardar objetivos Admin
 - [ ] validar filtros de modal por hotel/área/periodo
+
+---
+
+## Repair 1.1 cierre de brechas
+
+### Estado
+- [x] `create-user` ya valida matriz explícita de roles asignables por actor
+- [x] edición sensible de usuarios movida a API server-side
+- [x] `profiles` cerrada para auditores y flujos operativos limitados por endpoint de nombres
+- [x] assets globales de builder mutables solo por `superadmin` en RLS
+- [x] `team_members` y `team_member_areas` ya no aceptan mutación directa de manager por hotel completo
+- [x] `audit-logs` ya rechaza consultas manager sin `area_id`
+- [x] reglas cliente alineadas con layouts server-side en rutas priorizadas
+- [x] `members` y `audit-logs` consumen la capa común de auth server-side
+
+### Riesgos residuales
+- falta aplicar y probar en la instancia real la migración `20260316170000_close_remaining_security_gaps.sql`
+- algunos componentes Team siguen leyendo `profiles` same-hotel para uso operativo de manager/quality; eso quedó permitido de forma explícita en RLS y no para auditores
+
+### Verificación
+- [x] `npx tsc --noEmit` pasó
+- [x] `npm run lint` pasó con warnings previos no relacionados
+
+---
+
+## Repair 1.2 hardening preventivo fuera de módulos priorizados
+
+### Estado
+- [x] `trainings/attendances` ya no acepta registros públicos sin token firmado y consumible una sola vez
+- [x] `trainings/topics`, `trainings/sessions` y `trainings/history` ya aplican hotel scope y area scope real para `manager`
+- [x] árbol `/superadmin` cerrado con layout server-side
+- [x] árbol `/standards` cerrado con layout server-side y mutaciones sensibles movidas a API
+- [x] rutas secundarias `audits`, `analytics`, `task`, `my` y `formaciones` ahora validan server-side antes de renderizar
+- [x] endpoints legacy `user-management/*` delegan a la capa nueva
+- [x] shell `app/(app)` exige autenticación server-side
+- [x] migración nueva versiona RLS para superficies secundarias y tokens de registro de trainings
+
+### Riesgos residuales
+- falta aplicar y probar en la instancia real la migración `20260316190000_preventive_hardening_secondary_surfaces.sql`
+- `training_*` y `audit_logs` siguen encapsulados por backend/service-role; su acceso directo cliente permanece bloqueado por RLS sin policies públicas
+
+### Verificación
+- [ ] ejecutar `npx tsc --noEmit`
+- [ ] ejecutar `npm run lint`
+- [ ] aplicar migración en Supabase

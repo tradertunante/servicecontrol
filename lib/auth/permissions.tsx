@@ -53,6 +53,36 @@ const PERMISSION_ROLE_MAP: Record<Permission, Role[]> = {
   "members.manage": MODULE_ROLE_MAP.members,
 };
 
+const ASSIGNABLE_ROLE_MAP: Record<Role, Role[]> = {
+  superadmin: [
+    "admin",
+    "general_manager",
+    "manager",
+    "auditor",
+    "quality",
+    "engineering",
+    "it",
+    "systems",
+  ],
+  admin: [
+    "admin",
+    "general_manager",
+    "manager",
+    "auditor",
+    "quality",
+    "engineering",
+    "it",
+    "systems",
+  ],
+  general_manager: [],
+  manager: [],
+  auditor: [],
+  quality: [],
+  engineering: [],
+  it: [],
+  systems: [],
+};
+
 export function normalizeRole(role: any): Role {
   const r = (role ?? "").toString().toLowerCase().trim();
 
@@ -101,6 +131,19 @@ export function hasPermission(
   permission: Permission
 ): boolean {
   return isRoleAllowed(role, PERMISSION_ROLE_MAP[permission]);
+}
+
+export function getAssignableRoles(
+  actorRole: Role | string | null | undefined
+): readonly Role[] {
+  return ASSIGNABLE_ROLE_MAP[normalizeRole(actorRole)];
+}
+
+export function canAssignRole(
+  actorRole: Role | string | null | undefined,
+  targetRole: Role | string | null | undefined
+): boolean {
+  return getAssignableRoles(actorRole).includes(normalizeRole(targetRole));
 }
 
 export function getDefaultHotelRouteByRole(

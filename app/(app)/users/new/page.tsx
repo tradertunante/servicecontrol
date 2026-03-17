@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import BackButton from "@/app/components/BackButton";
+import { getAssignableRoles } from "@/lib/auth/permissions";
 import type { Role, Profile } from "@/lib/types";
 
 const HOTEL_KEY = "sc_hotel_id";
@@ -25,6 +26,7 @@ export default function NewUserPage() {
   const passwordStrongEnough = password.length >= 8;
   const passwordsMatch = password.length > 0 && password === password2;
   const canSubmit = !busy && !loadingProfile && !!profile && email.trim().length > 0 && passwordStrongEnough && passwordsMatch;
+  const assignableRoles = getAssignableRoles(profile?.role).filter((candidate) => candidate !== "superadmin");
 
   useEffect(() => {
     let mounted = true;
@@ -45,6 +47,13 @@ export default function NewUserPage() {
     loadProfile();
     return () => { mounted = false; };
   }, [router]);
+
+  useEffect(() => {
+    if (assignableRoles.length === 0) return;
+    if (!assignableRoles.includes(role)) {
+      setRole(assignableRoles[0]);
+    }
+  }, [assignableRoles, role]);
 
   async function handleCreate() {
     setError(null); setOk(null);
@@ -92,12 +101,12 @@ export default function NewUserPage() {
         <button type="button" onClick={() => setShowPasswords((v) => !v)} style={{ padding: 12, fontWeight: 900 }}>{showPasswords ? "Ocultar contraseñas" : "Mostrar contraseñas"}</button>
         {!passwordStrongEnough && password.length > 0 && <div style={{ color: "#b00020", fontWeight: 800 }}>La contraseña debe tener al menos 8 caracteres.</div>}
         {password2.length > 0 && !passwordsMatch && <div style={{ color: "#b00020", fontWeight: 800 }}>Las contraseñas no coinciden.</div>}
-        {/* ✅ quality incluido */}
         <select value={role} onChange={(e) => setRole(e.target.value as Role)} style={{ padding: 12 }}>
-          <option value="auditor">auditor — Equipo operativo</option>
-          <option value="manager">manager — Supervisor</option>
-          <option value="admin">admin — Administrador</option>
-          <option value="quality">quality 🔍 — Depto. de Calidad</option>
+          {assignableRoles.map((candidateRole) => (
+            <option key={candidateRole} value={candidateRole}>
+              {candidateRole}
+            </option>
+          ))}
         </select>
         {role === "quality" && (
           <div style={{ padding: "8px 12px", borderRadius: 10, background: "rgba(147,51,234,0.06)", border: "1px solid rgba(147,51,234,0.2)", fontSize: 13, fontWeight: 700, color: "rgb(126,34,206)" }}>
