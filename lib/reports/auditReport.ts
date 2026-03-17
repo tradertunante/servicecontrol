@@ -1,4 +1,6 @@
-import { supabase } from "@/lib/supabaseClient";
+import "server-only";
+
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import type {
   AuditReportData,
   AuditReportItem,
@@ -61,7 +63,9 @@ function normalizeStatus(a: AnswerRow | undefined): "FAIL" | "NA" | "OK" {
 }
 
 export async function buildAuditReportData(runId: string, hotelId: string): Promise<AuditReportData> {
-  const { data: runData, error: runErr } = await supabase
+  const admin = supabaseAdmin();
+
+  const { data: runData, error: runErr } = await admin
     .from("audit_runs")
     .select("id,hotel_id,area_id,audit_template_id,status,score,room_number,executed_at")
     .eq("id", runId)
@@ -82,22 +86,22 @@ export async function buildAuditReportData(runId: string, hotelId: string): Prom
     { data: trainingLogsData, error: trainingErr },
     { data: assignmentLogsData, error: assignmentErr },
   ] = await Promise.all([
-    supabase.from("areas").select("id,name,type").eq("id", run.area_id).single(),
-    supabase
+    admin.from("areas").select("id,name,type").eq("id", run.area_id).single(),
+    admin
       .from("audit_templates")
       .select("id,name")
       .eq("id", run.audit_template_id)
       .single(),
-    supabase
+    admin
       .from("audit_answers")
       .select("question_id,result,answer,comment")
       .eq("audit_run_id", runId),
-    supabase
+    admin
       .from("reaudit_training_logs")
       .select("confirmed_at")
       .eq("reaudit_run_id", runId)
       .order("confirmed_at", { ascending: true }),
-    supabase
+    admin
       .from("reaudit_assignment_logs")
       .select("changed_at")
       .eq("reaudit_run_id", runId)
@@ -120,7 +124,7 @@ export async function buildAuditReportData(runId: string, hotelId: string): Prom
   let sections: AuditReportSection[] = [];
 
   if (qids.length > 0) {
-    const { data: questionsData, error: questionsErr } = await supabase
+    const { data: questionsData, error: questionsErr } = await admin
       .from("audit_questions")
       .select("id,text,audit_section_id")
       .in("id", qids);
@@ -140,7 +144,7 @@ export async function buildAuditReportData(runId: string, hotelId: string): Prom
     let sectionRows: SectionRow[] = [];
 
     if (sectionIds.length > 0) {
-      const { data: sectionsData, error: sectionsErr } = await supabase
+      const { data: sectionsData, error: sectionsErr } = await admin
         .from("audit_sections")
         .select("id,name")
         .in("id", sectionIds);

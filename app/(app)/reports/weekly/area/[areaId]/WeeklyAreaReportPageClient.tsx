@@ -1,38 +1,14 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import type { CSSProperties } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
-import { buildWeeklyAreaReport } from "@/lib/reports/buildWeeklyAreaReport";
+import { useRouter } from "next/navigation";
 import type { WeeklyAreaReportData } from "@/lib/reports/weeklyReportTypes";
 
 const SUCCESS_SCORE_MIN = 90;
 const WARNING_SCORE_MIN = 75;
 const SUCCESS_FAIL_RATE_MAX = 5;
 const WARNING_FAIL_RATE_MAX = 15;
-
-function getPreviousWeekRangeFrom(baseDate?: string) {
-  const base = baseDate ? new Date(`${baseDate}T00:00:00`) : new Date();
-  const current = new Date(base);
-  current.setHours(0, 0, 0, 0);
-
-  const day = current.getDay();
-  const diffToMonday = day === 0 ? -6 : 1 - day;
-
-  const currentWeekMonday = new Date(current);
-  currentWeekMonday.setDate(current.getDate() + diffToMonday);
-
-  const previousWeekMonday = new Date(currentWeekMonday);
-  previousWeekMonday.setDate(currentWeekMonday.getDate() - 7);
-
-  const previousWeekSunday = new Date(previousWeekMonday);
-  previousWeekSunday.setDate(previousWeekMonday.getDate() + 6);
-
-  return {
-    weekStart: previousWeekMonday.toISOString().slice(0, 10),
-    weekEnd: previousWeekSunday.toISOString().slice(0, 10),
-  };
-}
 
 function formatDateTime(value: string | null) {
   if (!value) return "—";
@@ -168,54 +144,10 @@ function summaryToneStyle(tone: "good" | "warning" | "critical"): CSSProperties 
   };
 }
 
-export default function WeeklyAreaReportPageClient({
-  areaId,
-  hotelId,
-}: {
-  areaId: string;
-  hotelId: string;
-}) {
+export default function WeeklyAreaReportPageClient({ report }: { report: WeeklyAreaReportData }) {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const weekStartParam = searchParams.get("weekStart");
-
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [report, setReport] = useState<WeeklyAreaReportData | null>(null);
-
-  const effectiveRange = useMemo(() => {
-    return getPreviousWeekRangeFrom(weekStartParam ?? undefined);
-  }, [weekStartParam]);
-
-  useEffect(() => {
-    if (!areaId) return;
-
-    (async () => {
-      setLoading(true);
-      setError(null);
-
-      try {
-        const data = await buildWeeklyAreaReport({
-          areaId,
-          hotelId,
-          weekStart: effectiveRange.weekStart,
-          weekEnd: effectiveRange.weekEnd,
-        });
-
-        setReport(data);
-        setLoading(false);
-      } catch (e: any) {
-        setError(e?.message ?? "Error generando el reporte semanal del área.");
-        setLoading(false);
-      }
-    })();
-  }, [areaId, effectiveRange.weekStart, effectiveRange.weekEnd, hotelId]);
 
   const weeklySummary = useMemo(() => {
-    if (!report) {
-      return { label: "", tone: "warning" as const, text: "" };
-    }
-
     const score = report.summary.avg_score;
     const failRate = report.summary.fail_rate_pct;
 
@@ -279,39 +211,6 @@ export default function WeeklyAreaReportPageClient({
         : "El área cerró la semana por debajo del umbral esperado. Se recomienda acción correctiva prioritaria y seguimiento específico de los hallazgos detectados.",
     };
   }, [report]);
-
-  if (loading) {
-    return (
-      <main style={pageStyle()}>
-        <div style={paperStyle()}>
-          <div style={{ padding: 24 }}>
-            <h1 style={{ margin: 0, fontSize: 38 }}>Weekly Area Report</h1>
-            <p style={{ marginTop: 10 }}>Cargando reporte semanal…</p>
-          </div>
-        </div>
-      </main>
-    );
-  }
-
-  if (error || !report) {
-    return (
-      <main style={pageStyle()}>
-        <div style={paperStyle()}>
-          <div style={{ padding: 24 }}>
-            <h1 style={{ margin: 0, fontSize: 38 }}>Weekly Area Report</h1>
-            <p style={{ marginTop: 10, color: "crimson", fontWeight: 800 }}>
-              {error ?? "No se pudo generar el reporte semanal."}
-            </p>
-            <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 16 }}>
-              <button onClick={() => router.back()} style={btnStyle(false)}>
-                Volver
-              </button>
-            </div>
-          </div>
-        </div>
-      </main>
-    );
-  }
 
   return (
     <main style={pageStyle()}>

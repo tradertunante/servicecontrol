@@ -1,4 +1,5 @@
 import { requireAuditRunScope } from "@/lib/auth/server";
+import { buildAuditReportData } from "@/lib/reports/auditReport";
 
 import AuditReportPageClient from "./AuditReportPageClient";
 
@@ -13,5 +14,7 @@ export default async function AuditReportPage({
     redirectTo: "/areas",
   });
 
-  return <AuditReportPageClient runId={params.runId} hotelId={auth.hotelId} />;
+  const report = await buildAuditReportData(params.runId, auth.hotelId);
+
+  return <AuditReportPageClient report={report} />;
 }

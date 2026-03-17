@@ -1,3 +1,5 @@
+import "server-only";
+
 import { buildAreaPeriodReport } from "./buildAreaPeriodReport";
 import type { MonthlyAreaReportData } from "./monthlyReportTypes";
 
