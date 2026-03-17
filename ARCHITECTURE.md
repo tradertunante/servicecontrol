@@ -17,7 +17,7 @@ El sistema permite:
 
 La arquitectura actual es una aplicación `Next.js App Router` muy apoyada en Supabase como backend operativo. La mayor parte del producto vive en componentes cliente y hooks que consultan tablas de Supabase directamente. Las operaciones privilegiadas o administrativas usan route handlers server-side y, en algunos casos, una Edge Function de Supabase.
 
-La prioridad arquitectónica vigente es endurecer el flujo de `submitAudit`, que hoy depende demasiado del cliente, y migrarlo a un flujo server-side transaccional.
+La prioridad arquitectónica vigente es terminar de endurecer y simplificar el flujo de auditoría: el submit principal ya corre por route handler + RPC transaccional, y el trabajo restante está más en cleanup, tipado y consistencia de superficies cliente.
 
 ---
 

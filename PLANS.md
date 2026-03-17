@@ -6,7 +6,7 @@
 
 ## Contexto del problema
 
-Hoy el submit de auditoría está implementado principalmente en cliente, dentro de:
+El problema original de este plan era que el submit de auditoría vivía principalmente en cliente, dentro de:
 
 - `app/(app)/audits/[id]/page.tsx`
 
@@ -32,7 +32,7 @@ Esto tiene varios problemas:
 
 ## Objetivo
 
-Migrar `submitAudit` a una operación server-side transaccional y confiable.
+Cerrar la migración de `submitAudit` hacia una operación server-side transaccional y confiable, y reducir la deuda residual alrededor de ese flujo.
 
 Resultado esperado:
 
@@ -68,7 +68,7 @@ Incluye:
 - prevención de corrective actions duplicadas
 
 Estado:
-en diseño detallado
+base implementada; quedan endurecimientos residuales de constraints, observabilidad y cleanup
 
 ### Fase 2 - Consolidación arquitectónica
 
@@ -83,7 +83,7 @@ Incluye:
 - preparar tipado consistente desde Supabase
 
 Estado:
-pendiente
+en curso
 
 ### Fase 3 - Escala, histórico y reporting robusto
 
@@ -130,6 +130,9 @@ pendiente
 - hooks y módulos cliente de `team`, `members`, `my`, historial de áreas y `admin` dejaron de resolver hotel con mezcla ad hoc de `profile.hotel_id` y `fetchActiveHotel()`
 - `analytics` dejó de hacer fan-out en hooks cliente; `lib/analytics/server.ts` ahora resuelve áreas, runs, answers, questions, templates, members y KPIs en servidor
 - reportes weekly/monthly/audit dejaron de ejecutar builders con `supabaseClient` en browser; `page.tsx` de cada reporte ahora arma el payload en servidor y el cliente queda limitado a render/print UX
+- `REPAIR 6` avanzó con cleanup arquitectónico: capa compartida `loadAreaOverviewData(...)` para `areas/history`, vista canónica compartida para reportes weekly/monthly y partición de `useAuditSession` en tipos + loader + helpers
+- reducción de hotspots en cliente sin reabrir repairs 1-5: `AreaHistoryPageClient.tsx`, `MonthlyAreaReportPageClient.tsx`, `WeeklyAreaReportPageClient.tsx` y `useAuditSession.ts`
+- documentación principal alineada con el estado real: submit ya corre por route handler + RPC y los reportes de período ya usan una sola superficie compartida
 
 ### Hecho
 
@@ -149,12 +152,11 @@ pendiente
 - documentación permanente para agentes de IA
 - cierre de reparaciones prioritarias restantes y verificación binaria final
 
-### No iniciado
+### Pendiente relevante
 
-- implementación de la RPC
-- implementación del route handler
-- integración de UI con backend transaccional
-- constraints/índices de idempotencia y no duplicación
+- constraints/índices explícitos adicionales de no duplicación donde todavía falten
+- observabilidad más fina del submit transaccional
+- consolidación tipada más amplia desde Supabase para reducir tipos manuales repetidos
 
 ---
 

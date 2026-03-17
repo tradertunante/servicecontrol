@@ -606,12 +606,12 @@ Se corrigió el problema en dos capas:
 
 - en `app/(app)/audits/[id]/view/page.tsx`, todas las lecturas del detalle ahora normalizan con `answer ?? result`
 - en `app/(app)/audits/[id]/_hooks/useAuditAutosave.ts`, `flushAll()` ahora espera también saves en vuelo, no solo saves pendientes
-- en `app/(app)/audits/[id]/_hooks/useAuditSession.ts`, justo antes del submit se fuerza un `upsert` final de `answersByQ` hacia `audit_answers` para asegurar que el RPC calcule score con el estado local más reciente
+- en `app/(app)/audits/[id]/_hooks/useAuditSession.ts`, las respuestas y metadatos editables ya no escriben directo a Supabase desde el browser; el flujo usa drafts server-side y el submit espera a que termine el autosave antes de llamar al RPC
 
 ### Cómo evitarlo en el futuro
 - cualquier read path de `audit_answers` debe normalizar desde `answer` primero y luego `result`
 - no asumir que una cola de autosave vacía implica que no hay escrituras en vuelo
-- antes de ejecutar operaciones críticas server-side, sincronizar explícitamente el estado local relevante si el flujo depende de autosave asíncrono
+- si el submit depende de autosave asíncrono, esperar saves en vuelo o mover el paso crítico a una única operación server-side
 - no introducir nuevas lecturas o reportes sobre `audit_answers` que dependan solo de una de las dos columnas sin documentarlo
 
 ### Archivos relacionados

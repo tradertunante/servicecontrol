@@ -7,72 +7,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import BackButton from "@/app/components/BackButton";
 import type { Profile } from "@/lib/types";
-
-// ----------------------
-// Types
-// ----------------------
-type Area = {
-  id: string;
-  name: string;
-  type: string | null;
-  hotel_id?: string | null;
-};
-
-type AuditTemplate = {
-  id: string;
-  name: string;
-  active?: boolean | null;
-};
-
-type AuditRunRow = {
-  id: string;
-  status: string | null;
-  score: number | null;
-  notes: string | null;
-  executed_at: string | null;
-  executed_by: string | null;
-  audit_template_id: string;
-  area_id: string;
-};
-
-type SectionTotal = {
-  section_id: string;
-  section_name: string;
-  total_questions: number;
-};
-
-type SectionAgg = {
-  section_id: string;
-  section_name: string;
-  total_questions: number;
-  fail_count: number;
-  na_count: number;
-  denom: number; // total - NA
-  pass: number; // denom - FAIL
-  score: number | null;
-};
-
-type RunAgg = {
-  run: AuditRunRow;
-  templateName: string;
-  executedByName: string | null;
-  sections: SectionAgg[];
-};
-
-type AnswerRow = {
-  audit_run_id: string;
-  question_id: string;
-  result: string | null; // PASS/FAIL/NA...
-};
-
-type QuestionMeta = {
-  id: string;
-  text: string;
-  audit_section_id: string;
-  section_name: string;
-};
-
-type PeriodKey = "THIS_MONTH" | "LAST_3_MONTHS" | "THIS_YEAR";
+import { getAreaDataErrorMessage, loadAreaOverviewData } from "../_lib/areaDataLoader";
+import type { Area, AuditRunRow, AuditTemplate, PeriodKey, SectionTotal } from "../_lib/areaTypes";
 
 function fmtDate(iso: string | null) {
   if (!iso) return "—";
@@ -193,12 +129,8 @@ export default function AreaHistoryPageClient({
   const [templates, setTemplates] = useState<AuditTemplate[]>([]);
   const [runs, setRuns] = useState<AuditRunRow[]>([]);
   const [templateNameById, setTemplateNameById] = useState<Record<string, string>>({});
-  const [executorNameById, setExecutorNameById] = useState<Record<string, string>>({});
   const [totalsByTemplate, setTotalsByTemplate] = useState<Record<string, Record<string, SectionTotal>>>({});
   const [exceptionsByRun, setExceptionsByRun] = useState<Record<string, Record<string, { fail: number; na: number }>>>({});
-
-  const [answersByRun, setAnswersByRun] = useState<Record<string, AnswerRow[]>>({});
-  const [questionMetaById, setQuestionMetaById] = useState<Record<string, QuestionMeta>>({});
 
   // ✅ states que se sincronizan con URL
   const [templateFilter, setTemplateFilter] = useState<string>(qsTemplate ?? "ALL");
@@ -261,191 +193,19 @@ export default function AreaHistoryPageClient({
       setError(null);
 
       try {
-        // 1) Área
-        const { data: areaData, error: areaErr } = await supabase
-          .from("areas")
-          .select("id,name,type,hotel_id")
-          .eq("id", areaId)
-          .single();
-
-        if (areaErr || !areaData) throw areaErr ?? new Error("Área no encontrada");
-        setArea(areaData as Area);
-
-        // 2) Templates del área
-        const { data: tData, error: tErr } = await supabase
-          .from("audit_templates")
-          .select("id,name,active,area_id")
-          .eq("area_id", areaId)
-          .order("name", { ascending: true });
-
-        if (tErr) throw tErr;
-
-        const onlyActive = (tData ?? []).filter((t: any) => t.active !== false) as AuditTemplate[];
-        setTemplates(onlyActive);
-
-        if (!histTemplateId && onlyActive.length > 0) setHistTemplateId(onlyActive[0].id);
-
-        // 3) Runs
-        const { data: runData, error: runErr } = await supabase
-          .from("audit_runs")
-          .select("id,status,score,notes,executed_at,executed_by,audit_template_id,area_id")
-          .eq("area_id", areaId)
-          .order("executed_at", { ascending: false })
-          .limit(80);
-
-        if (runErr) throw runErr;
-
-        const allRuns = (runData ?? []) as AuditRunRow[];
-        const submitted = allRuns.filter((r) => (r.status ?? "").toLowerCase() === "submitted");
-        const finalRuns = submitted.length ? submitted : allRuns;
-        setRuns(finalRuns);
-
-        const runIds = Array.from(new Set(finalRuns.map((r) => r.id)));
-        const templateIds = Array.from(new Set(finalRuns.map((r) => r.audit_template_id)));
-        const executorIds = Array.from(new Set(finalRuns.map((r) => r.executed_by).filter(Boolean) as string[]));
-
-        // 4) Nombres templates
-        if (templateIds.length) {
-          const { data: tplData, error: tplErr } = await supabase.from("audit_templates").select("id,name").in("id", templateIds);
-          if (tplErr) throw tplErr;
-
-          const map: Record<string, string> = {};
-          for (const row of (tplData ?? []) as any[]) map[row.id] = row.name;
-          setTemplateNameById(map);
-        }
-
-        // 5) Nombres ejecutores
-        if (executorIds.length) {
-          const { data: sessionData } = await supabase.auth.getSession();
-          const accessToken = sessionData?.session?.access_token;
-          if (accessToken) {
-            const response = await fetch("/api/profiles/names", {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${accessToken}`,
-              },
-              body: JSON.stringify({ ids: executorIds, area_id: areaId }),
-            });
-            const payload = await response.json().catch(() => ({}));
-            const pData = Array.isArray(payload?.items) ? payload.items : [];
-            const map: Record<string, string> = {};
-            for (const row of pData as any[]) map[row.id] = row.full_name ?? row.id;
-            setExecutorNameById(map);
-          }
-        }
-
-        // 6) Totales por sección
-        if (templateIds.length) {
-          const { data: qData, error: qErr } = await supabase
-            .from("audit_questions")
-            .select(
-              `
-              id,
-              active,
-              audit_section_id,
-              audit_sections!inner (
-                id,
-                name,
-                audit_template_id
-              )
-            `
-            )
-            .in("audit_sections.audit_template_id", templateIds)
-            .eq("active", true);
-
-          if (qErr) throw qErr;
-
-          const totals: Record<string, Record<string, SectionTotal>> = {};
-
-          for (const row of (qData ?? []) as any[]) {
-            const tplId = row.audit_sections?.audit_template_id as string | undefined;
-            const secId = (row.audit_sections?.id ?? row.audit_section_id) as string | undefined;
-            const secName = (row.audit_sections?.name ?? "Sin sección") as string;
-
-            if (!tplId || !secId) continue;
-
-            if (!totals[tplId]) totals[tplId] = {};
-            if (!totals[tplId][secId]) totals[tplId][secId] = { section_id: secId, section_name: secName, total_questions: 0 };
-            totals[tplId][secId].total_questions += 1;
-          }
-
-          setTotalsByTemplate(totals);
-        }
-
-        // 7) Answers
-        if (runIds.length) {
-          const { data: aData, error: aErr } = await supabase
-            .from("audit_answers")
-            .select("audit_run_id,question_id,result")
-            .in("audit_run_id", runIds);
-
-          if (aErr) throw aErr;
-
-          const answers = (aData ?? []) as AnswerRow[];
-
-          const byRun: Record<string, AnswerRow[]> = {};
-          for (const a of answers) {
-            if (!byRun[a.audit_run_id]) byRun[a.audit_run_id] = [];
-            byRun[a.audit_run_id].push(a);
-          }
-          setAnswersByRun(byRun);
-
-          const questionIds = Array.from(new Set(answers.map((a) => a.question_id)));
-
-          const qMetaMap: Record<string, QuestionMeta> = {};
-          if (questionIds.length) {
-            const { data: q2Data, error: q2Err } = await supabase
-              .from("audit_questions")
-              .select(
-                `
-                id,
-                text,
-                audit_section_id,
-                audit_sections (
-                  id,
-                  name
-                )
-              `
-              )
-              .in("id", questionIds);
-
-            if (q2Err) throw q2Err;
-
-            for (const q of (q2Data ?? []) as any[]) {
-              const secId = (q.audit_sections?.id ?? q.audit_section_id ?? "unknown") as string;
-              const secName = (q.audit_sections?.name ?? "Sin sección") as string;
-              qMetaMap[q.id] = {
-                id: q.id,
-                text: q.text ?? "(Sin texto)",
-                audit_section_id: secId,
-                section_name: secName,
-              };
-            }
-          }
-          setQuestionMetaById(qMetaMap);
-
-          const ex: Record<string, Record<string, { fail: number; na: number }>> = {};
-
-          for (const row of answers) {
-            const rid = row.audit_run_id;
-            const res = String(row.result ?? "").toUpperCase();
-            const secId = qMetaMap[row.question_id]?.audit_section_id ?? "unknown";
-
-            if (!ex[rid]) ex[rid] = {};
-            if (!ex[rid][secId]) ex[rid][secId] = { fail: 0, na: 0 };
-
-            if (res === "FAIL") ex[rid][secId].fail += 1;
-            if (res === "NA") ex[rid][secId].na += 1;
-          }
-
-          setExceptionsByRun(ex);
-        }
+        const overview = await loadAreaOverviewData(areaId);
+        setArea(overview.area);
+        setTemplates(overview.templates);
+        if (!histTemplateId && overview.templates.length > 0) setHistTemplateId(overview.templates[0].id);
+        setRuns(overview.runs);
+        setTemplateNameById(overview.templateNameById);
+        setTotalsByTemplate(overview.totalsByTemplate);
+        setExceptionsByRun(overview.exceptionsByRun);
 
         setLoading(false);
-      } catch (e: any) {
+      } catch (e: unknown) {
         setLoading(false);
-        setError(e?.message ?? "Error cargando área.");
+        setError(getAreaDataErrorMessage(e, "Error cargando área."));
       }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -481,8 +241,8 @@ export default function AreaHistoryPageClient({
       }
 
       router.push(`/audits/${payload.run_id}`);
-    } catch (e: any) {
-      setError(e?.message ?? "No se pudo iniciar la auditoría.");
+    } catch (e: unknown) {
+      setError(getAreaDataErrorMessage(e, "No se pudo iniciar la auditoría."));
     } finally {
       setStarting(null);
     }
@@ -510,49 +270,13 @@ export default function AreaHistoryPageClient({
       if (rErr) throw rErr;
 
       setHistRuns((data ?? []) as AuditRunRow[]);
-    } catch (e: any) {
-      setHistError(e?.message ?? "No se pudo buscar el historial.");
+    } catch (e: unknown) {
+      setHistError(getAreaDataErrorMessage(e, "No se pudo buscar el historial."));
       setHistRuns([]);
     } finally {
       setHistLoading(false);
     }
   }
-
-  const aggregatedHistory: RunAgg[] = useMemo(() => {
-    return runs.map((r) => {
-      const templateName = templateNameById[r.audit_template_id] ?? r.audit_template_id;
-      const executedByName = r.executed_by ? executorNameById[r.executed_by] ?? r.executed_by : null;
-
-      const totals = totalsByTemplate[r.audit_template_id] ?? {};
-      const exceptions = exceptionsByRun[r.id] ?? {};
-      const sectionIds = Object.keys(totals);
-
-      const sections: SectionAgg[] = sectionIds.map((secId) => {
-        const t = totals[secId];
-        const fail = exceptions[secId]?.fail ?? 0;
-        const na = exceptions[secId]?.na ?? 0;
-
-        const totalQ = t?.total_questions ?? 0;
-        const denom = Math.max(0, totalQ - na);
-        const pass = Math.max(0, denom - fail);
-        const score = denom === 0 ? null : (pass / denom) * 100;
-
-        return {
-          section_id: secId,
-          section_name: t?.section_name ?? "Sin sección",
-          total_questions: totalQ,
-          fail_count: fail,
-          na_count: na,
-          denom,
-          pass,
-          score,
-        };
-      });
-
-      sections.sort((a, b) => a.section_name.localeCompare(b.section_name));
-      return { run: r, templateName, executedByName, sections };
-    });
-  }, [runs, templateNameById, executorNameById, totalsByTemplate, exceptionsByRun]);
 
   const dashboard = useMemo(() => {
     const WINDOW = 4;
