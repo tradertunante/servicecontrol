@@ -1,17 +1,35 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { authorizeRouteRequest, resolveRouteHotelScope } from "@/lib/auth/server";
+import { canStartAudits } from "@/lib/auth/permissions";
+import {
+  authorizeRouteRequest,
+  hasAreaScopeForProfile,
+  resolveRouteHotelScope,
+} from "@/lib/auth/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
 function jsonError(message: string, status = 400) {
   return NextResponse.json({ ok: false, error: message }, { status });
 }
 
+type StartAuditRpcResponse = {
+  ok?: boolean;
+  code?: string;
+  message?: string;
+  data?: {
+    run_id?: string;
+    seeded_answers?: number;
+  } | null;
+};
+
 export async function POST(request: NextRequest) {
   const caller = await authorizeRouteRequest(request, {
     roles: ["superadmin", "admin", "general_manager", "manager", "auditor", "quality"],
   });
   if (!caller) return jsonError("No autorizado.", 401);
+  if (!canStartAudits(caller.profile.role)) {
+    return jsonError("No tienes permisos para iniciar auditorías.", 403);
+  }
 
   const hotelResult = resolveRouteHotelScope(caller.profile, null);
   if (!hotelResult.ok) return jsonError(hotelResult.error, hotelResult.status);
@@ -24,9 +42,14 @@ export async function POST(request: NextRequest) {
   if (!areaId) return jsonError("area_id es obligatorio.");
   if (!templateId) return jsonError("audit_template_id es obligatorio.");
 
+  const hasAreaScope = await hasAreaScopeForProfile(caller.profile, hotelResult.hotelId, areaId);
+  if (!hasAreaScope) {
+    return jsonError("No tienes acceso a esta área.", 403);
+  }
+
   const admin = supabaseAdmin();
   const [{ data: area, error: areaErr }, { data: template, error: templateErr }] = await Promise.all([
-    admin.from("areas").select("id, hotel_id").eq("id", areaId).maybeSingle(),
+    admin.from("areas").select("id, hotel_id, active").eq("id", areaId).maybeSingle(),
     admin
       .from("audit_templates")
       .select("id, hotel_id, area_id, active")
@@ -35,7 +58,7 @@ export async function POST(request: NextRequest) {
   ]);
 
   if (areaErr) return jsonError(areaErr.message, 500);
-  if (!area?.id || String(area.hotel_id ?? "") !== hotelResult.hotelId) {
+  if (!area?.id || String(area.hotel_id ?? "") !== hotelResult.hotelId || area.active === false) {
     return jsonError("El área no pertenece al hotel activo.", 403);
   }
 
@@ -52,68 +75,36 @@ export async function POST(request: NextRequest) {
   const channel: "quality" | "internal" =
     caller.profile.role === "quality" ? "quality" : "internal";
 
-  const { data, error } = await admin
-    .from("audit_runs")
-    .insert({
-      hotel_id: hotelResult.hotelId,
-      area_id: areaId,
-      audit_template_id: templateId,
-      status: "draft",
-      score: null,
-      notes: null,
-      room_number: roomNumber,
-      executed_at: new Date().toISOString(),
-      executed_by: caller.profile.id,
-      audit_channel: channel,
-    })
-    .select("id")
-    .single();
+  const { data, error } = await admin.rpc("start_audit_run", {
+    p_hotel_id: hotelResult.hotelId,
+    p_area_id: areaId,
+    p_template_id: templateId,
+    p_actor_user_id: caller.profile.id,
+    p_room_number: roomNumber,
+    p_audit_channel: channel,
+  });
 
-  if (error || !data?.id) {
-    return jsonError(error?.message ?? "No se pudo crear la auditoría.", 500);
+  if (error) {
+    return jsonError(error.message ?? "No se pudo crear la auditoría.", 500);
   }
 
-  const { data: sectionData, error: sectionError } = await admin
-    .from("audit_sections")
-    .select("id")
-    .eq("audit_template_id", templateId)
-    .eq("active", true);
+  const payload = (data ?? null) as StartAuditRpcResponse | null;
+  if (!payload?.ok || !payload.data?.run_id) {
+    const code = String(payload?.code ?? "");
+    const status =
+      code === "ACTOR_NOT_FOUND" ? 404
+      : code === "AREA_NOT_FOUND" || code === "TEMPLATE_NOT_FOUND" ? 404
+      : code === "FORBIDDEN_ROLE" || code === "AREA_OUT_OF_SCOPE" || code === "TEMPLATE_OUT_OF_SCOPE" ? 403
+      : code === "ACTOR_INACTIVE" || code === "AREA_INACTIVE" || code === "TEMPLATE_INACTIVE" ? 409
+      : code === "INVALID_AUDIT_CHANNEL" ? 400
+      : 500;
 
-  if (sectionError) {
-    await admin.from("audit_runs").delete().eq("id", data.id);
-    return jsonError(sectionError.message, 500);
+    return jsonError(payload?.message ?? "No se pudo crear la auditoría.", status);
   }
 
-  const sectionIds = (sectionData ?? []).map((section) => String(section.id));
-  if (sectionIds.length > 0) {
-    const { data: questionData, error: questionError } = await admin
-      .from("audit_questions")
-      .select("id")
-      .in("audit_section_id", sectionIds)
-      .eq("active", true);
-
-    if (questionError) {
-      await admin.from("audit_runs").delete().eq("id", data.id);
-      return jsonError(questionError.message, 500);
-    }
-
-    const seedRows = (questionData ?? []).map((question) => ({
-      audit_run_id: String(data.id),
-      question_id: String(question.id),
-      answer: "PASS",
-      result: "PASS",
-      comment: null,
-      photo_path: null,
-    }));
-
-    if (seedRows.length > 0) {
-      const { error: seedError } = await admin.from("audit_answers").insert(seedRows);
-      if (seedError) {
-        await admin.from("audit_runs").delete().eq("id", data.id);
-        return jsonError(seedError.message, 500);
-      }
-    }
-  }
-
-  return NextResponse.json({ ok: true, run_id: String(data.id) });
+  return NextResponse.json({
+    ok: true,
+    run_id: String(payload.data.run_id),
+    seeded_answers: Number(payload.data.seeded_answers ?? 0),
+  });
 }
