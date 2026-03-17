@@ -5,6 +5,7 @@ import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import {
   assertRoleAssignable,
   canManageExistingUser,
+  deleteManagedUser,
   loadManagedUser,
   resolveManagedHotelId,
 } from "@/lib/auth/userManagement";
@@ -86,6 +87,23 @@ export async function PATCH(
       .eq("hotel_id", hotelResult.hotelId);
 
     if (error) return jsonError(error.message, 500);
+
+    return NextResponse.json({ ok: true });
+  } catch (error) {
+    return jsonError(error instanceof Error ? error.message : "Error inesperado.", 500);
+  }
+}
+
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const caller = await authorizeRouteRequest(request, { roles: ["admin", "superadmin"] });
+    if (!caller) return jsonError("No autorizado.", 401);
+
+    const result = await deleteManagedUser(caller.profile, String(params.id ?? "").trim());
+    if (!result.ok) return jsonError(result.error, result.status);
 
     return NextResponse.json({ ok: true });
   } catch (error) {

@@ -1,20 +1,21 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
-import { fetchActiveHotel } from "@/lib/auth/activeHotelClient";
 import { supabase } from "@/lib/supabaseClient";
 import type { AreaRow, HotelRow, Profile } from "../_lib/analyticsTypes";
-import { areaLabel, canSeeAnalytics, isAdminLike } from "../_lib/analyticsUtils";
+import { areaLabel, isAdminLike } from "../_lib/analyticsUtils";
 
-export function useAnalyticsBoot() {
-  const router = useRouter();
-
+export function useAnalyticsBoot({
+  initialProfile,
+  initialHotelId,
+}: {
+  initialProfile: Profile;
+  initialHotelId: string | null;
+}) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
-  const [profile, setProfile] = useState<Profile | null>(null);
-  const [hotelId, setHotelId] = useState<string | null>(null);
+  const [profile] = useState<Profile>(initialProfile);
+  const [hotelId] = useState<string | null>(initialHotelId);
   const [hotel, setHotel] = useState<HotelRow | null>(null);
 
   const [areas, setAreas] = useState<AreaRow[]>([]);
@@ -38,41 +39,7 @@ export function useAnalyticsBoot() {
       setError(null);
 
       try {
-        const { data: userData } = await supabase.auth.getUser();
-        const user = userData.user;
-        if (!user) {
-          router.push("/login");
-          return;
-        }
-
-        const { data: pData, error: pErr } = await supabase
-          .from("profiles")
-          .select("id,hotel_id,role,active,full_name")
-          .eq("id", user.id)
-          .single();
-
-        if (pErr || !pData || pData.active === false) {
-          router.push("/login");
-          return;
-        }
-
-        const p = pData as Profile;
-
-        if (!canSeeAnalytics(p.role)) {
-          router.push("/dashboard");
-          return;
-        }
-
-        const hid =
-          p.role === "superadmin"
-            ? (await fetchActiveHotel()).hotel_id || null
-            : p.hotel_id ?? null;
-
-        if (!alive) return;
-        setProfile(p);
-        setHotelId(hid);
-
-        if (!hid) {
+        if (!hotelId) {
           setLoading(false);
           setError("No hay hotel activo. Como superadmin, primero selecciona un hotel.");
           return;
@@ -81,17 +48,17 @@ export function useAnalyticsBoot() {
         const { data: hData, error: hErr } = await supabase
           .from("hotels")
           .select("id,name")
-          .eq("id", hid)
+          .eq("id", hotelId)
           .single();
         if (hErr) throw hErr;
 
         let areaRows: AreaRow[] = [];
 
-        if (isAdminLike(p.role)) {
+        if (isAdminLike(profile.role)) {
           const { data: aData, error: aErr } = await supabase
             .from("areas")
             .select("id,name,type,hotel_id")
-            .eq("hotel_id", hid)
+            .eq("hotel_id", hotelId)
             .order("name", { ascending: true });
 
           if (aErr) throw aErr;
@@ -100,8 +67,8 @@ export function useAnalyticsBoot() {
           const { data: accessData, error: accessErr } = await supabase
             .from("user_area_access")
             .select("area_id")
-            .eq("user_id", p.id)
-            .eq("hotel_id", hid);
+            .eq("user_id", profile.id)
+            .eq("hotel_id", hotelId);
 
           if (accessErr) throw accessErr;
 
@@ -113,7 +80,7 @@ export function useAnalyticsBoot() {
             const { data: aData, error: aErr } = await supabase
               .from("areas")
               .select("id,name,type,hotel_id")
-              .eq("hotel_id", hid)
+              .eq("hotel_id", hotelId)
               .in("id", allowedIds)
               .order("name", { ascending: true });
 
@@ -146,7 +113,7 @@ export function useAnalyticsBoot() {
     return () => {
       alive = false;
     };
-  }, [router]);
+  }, [hotelId, profile.id, profile.role]);
 
   return {
     loading,
