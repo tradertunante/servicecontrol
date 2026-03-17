@@ -1,34 +1,12 @@
 // app/api/admin/delete-user/route.ts
 import { NextRequest, NextResponse } from "next/server";
-import { supabaseWithToken } from "@/lib/supabaseServer";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { authorizeRouteRequest } from "@/lib/auth/server";
 
 export async function POST(req: NextRequest) {
   try {
-    const authHeader = req.headers.get("authorization") || "";
-    const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : "";
-    if (!token) return NextResponse.json({ error: "No autorizado (sin token)." }, { status: 401 });
-
-    const client = supabaseWithToken(token);
-
-    const { data: callerAuth } = await client.auth.getUser(token);
-    if (!callerAuth?.user) return NextResponse.json({ error: "No autorizado." }, { status: 401 });
-
-    const callerId = callerAuth.user.id;
-
-    const { data: callerProfile, error: callerErr } = await client
-      .from("profiles")
-      .select("id, hotel_id, role, active")
-      .eq("id", callerId)
-      .single();
-
-    if (callerErr || !callerProfile) {
-      return NextResponse.json({ error: "No se pudo validar tu perfil." }, { status: 403 });
-    }
-
-    if (!callerProfile.active || callerProfile.role !== "admin") {
-      return NextResponse.json({ error: "Forbidden: solo admin." }, { status: 403 });
-    }
+    const caller = await authorizeRouteRequest(req, { roles: ["admin", "superadmin"] });
+    if (!caller) return NextResponse.json({ error: "No autorizado." }, { status: 401 });
 
     const body = await req.json().catch(() => null);
     if (!body) return NextResponse.json({ error: "Body inválido." }, { status: 400 });
@@ -36,12 +14,12 @@ export async function POST(req: NextRequest) {
     const targetUserId = String(body.user_id || "");
     if (!targetUserId) return NextResponse.json({ error: "Falta user_id." }, { status: 400 });
 
-    if (targetUserId === callerId) {
+    if (targetUserId === caller.profile.id) {
       return NextResponse.json({ error: "No puedes borrarte a ti mismo." }, { status: 400 });
     }
 
     // Verificar que el usuario objetivo es del mismo hotel
-    const { data: targetProfile, error: targetErr } = await client
+    const { data: targetProfile, error: targetErr } = await supabaseAdmin()
       .from("profiles")
       .select("id, hotel_id")
       .eq("id", targetUserId)
@@ -51,13 +29,21 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "No se encontró el usuario." }, { status: 404 });
     }
 
-    if (targetProfile.hotel_id !== callerProfile.hotel_id) {
+    if (caller.profile.role !== "superadmin" && targetProfile.hotel_id !== caller.profile.hotel_id) {
       return NextResponse.json({ error: "Forbidden: usuario de otro hotel." }, { status: 403 });
     }
 
     const admin = supabaseAdmin();
 
-    await admin.from("user_area_access").delete().eq("user_id", targetUserId).eq("hotel_id", callerProfile.hotel_id);
+    if (caller.profile.role === "superadmin") {
+      await admin.from("user_area_access").delete().eq("user_id", targetUserId);
+    } else {
+      await admin
+        .from("user_area_access")
+        .delete()
+        .eq("user_id", targetUserId)
+        .eq("hotel_id", caller.profile.hotel_id);
+    }
     await admin.from("profiles").delete().eq("id", targetUserId);
 
     const { error: delAuthErr } = await admin.auth.admin.deleteUser(targetUserId);

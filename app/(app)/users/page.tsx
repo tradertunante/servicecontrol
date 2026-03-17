@@ -9,6 +9,7 @@ import { canManageUsers } from "@/lib/auth/permissions";
 import type { Role, Profile } from "@/lib/types";
 
 type UserRow = { id: string; full_name: string | null; email: string | null; role: Role; active: boolean };
+const HOTEL_KEY = "sc_hotel_id";
 
 export default function UsersPage() {
   const router = useRouter();
@@ -21,12 +22,29 @@ export default function UsersPage() {
   async function load() {
     setLoading(true); setError(null);
     try {
-      const p = await requireRoleOrRedirect(router, ["admin", "manager"], "/login");
+      const p = await requireRoleOrRedirect(router, ["admin", "superadmin"], "/login");
       if (!p) return;
       if (!canManageUsers(p.role)) { router.push("/"); return; }
       setProfile(p as Profile);
-      if (!p.hotel_id) { setUsers([]); setLoading(false); return; }
-      const { data, error: uErr } = await supabase.from("profiles").select("id, full_name, email, role, active").eq("hotel_id", p.hotel_id).order("full_name", { ascending: true });
+      const hotelId =
+        p.role === "superadmin"
+          ? typeof window !== "undefined"
+            ? window.localStorage.getItem(HOTEL_KEY)
+            : null
+          : p.hotel_id;
+
+      if (!hotelId) {
+        setUsers([]);
+        setError("Selecciona un hotel antes de administrar usuarios.");
+        setLoading(false);
+        return;
+      }
+
+      const { data, error: uErr } = await supabase
+        .from("profiles")
+        .select("id, full_name, email, role, active")
+        .eq("hotel_id", hotelId)
+        .order("full_name", { ascending: true });
       if (uErr) throw uErr;
       setUsers((data ?? []) as UserRow[]);
     } catch (e: any) { setError(e?.message ?? "No se pudieron cargar los usuarios."); }
@@ -75,7 +93,7 @@ export default function UsersPage() {
       <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
         <div>
           <h1 style={{ fontSize: 56, marginBottom: 6 }}>Usuarios</h1>
-          <div style={{ opacity: 0.8 }}>Solo admin · Hotel: <span style={{ fontFamily: "monospace" }}>{profile?.hotel_id ?? "—"}</span></div>
+          <div style={{ opacity: 0.8 }}>Admin / Superadmin · Hotel: <span style={{ fontFamily: "monospace" }}>{profile?.role === "superadmin" ? (typeof window !== "undefined" ? window.localStorage.getItem(HOTEL_KEY) ?? "—" : "—") : profile?.hotel_id ?? "—"}</span></div>
         </div>
         <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
           <button style={topBtn} onClick={() => router.push("/users/new")}>+ Crear usuario</button>

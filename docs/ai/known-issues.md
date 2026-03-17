@@ -130,9 +130,13 @@ El contexto multi-hotel está repartido entre `profiles.hotel_id` y `localStorag
 El sistema soporta escenarios distintos para usuarios normales y `superadmin`, pero el contexto de hotel no está completamente centralizado.
 
 ### Solución aplicada
-Pendiente.
+Se introdujo una mitigación estructural:
 
-Actualmente es comportamiento conocido del sistema.
+- sincronización de `sc_hotel_id` a cookie para hacerlo visible al servidor
+- helpers server-side que resuelven hotel scope explícitamente
+- layouts App Router que redirigen a `superadmin` a selección de hotel cuando el contexto no existe
+
+La ambigüedad no desaparece por completo porque la selección de hotel sigue originándose en cliente para `superadmin`, pero ya no queda invisible para la capa server-side.
 
 ### Cómo evitarlo en el futuro
 - no ampliar esta mezcla sin una decisión explícita
