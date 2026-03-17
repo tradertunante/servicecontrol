@@ -97,6 +97,18 @@ type SubmitAuditResponse = {
   } | null;
 };
 
+type DraftSaveResponse = {
+  ok: boolean;
+  answers?: AnswerRow[];
+  error?: string;
+};
+
+type MetadataResponse = {
+  ok: boolean;
+  run?: Pick<AuditRunRow, "id" | "status" | "room_number" | "team_member_id">;
+  error?: string;
+};
+
 function toRequirement(value: unknown): RequirementType {
   if (value === "if_fail" || value === "always") return value;
   return "never";
@@ -118,6 +130,15 @@ function shouldShowField(requirement: RequirementType, isFail: boolean): boolean
   if (requirement === "always") return true;
   if (requirement === "if_fail") return isFail;
   return false;
+}
+
+async function getAccessToken() {
+  const { data: sessionData } = await supabase.auth.getSession();
+  const accessToken = sessionData?.session?.access_token;
+  if (!accessToken) {
+    throw new Error("Sesion invalida.");
+  }
+  return accessToken;
 }
 
 export function useAuditSession(runId: string | undefined) {
@@ -305,7 +326,12 @@ export function useAuditSession(runId: string | undefined) {
         }
 
         const seedPayload = nextQuestions
-          .filter((question) => !answerMap[question.id] || !answerMap[question.id]?.answer || !answerMap[question.id]?.result)
+          .filter(
+            (question) =>
+              !answerMap[question.id] ||
+              !answerMap[question.id]?.answer ||
+              !answerMap[question.id]?.result,
+          )
           .map((question) => ({
             audit_run_id: runId,
             question_id: question.id,
@@ -316,15 +342,31 @@ export function useAuditSession(runId: string | undefined) {
           }));
 
         if (seedPayload.length > 0) {
-          const { data: seededAnswers, error: seedError } = await supabase
-            .from("audit_answers")
-            .upsert(seedPayload, { onConflict: "audit_run_id,question_id" })
-            .select("id,audit_run_id,question_id,answer,result,comment,photo_path");
+          const accessToken = await getAccessToken();
+          const response = await fetch(`/api/audits/${runId}/draft`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${accessToken}`,
+            },
+            body: JSON.stringify({
+              answers: seedPayload.map((draft) => ({
+                question_id: draft.question_id,
+                answer: draft.answer,
+                result: draft.result,
+                comment: draft.comment,
+                photo_path: draft.photo_path,
+              })),
+            }),
+          });
 
-          if (seedError) throw seedError;
+          const payload = (await response.json().catch(() => null)) as DraftSaveResponse | null;
+          if (!response.ok || !payload?.ok) {
+            throw new Error(payload?.error ?? "No se pudo sembrar el draft de auditoría.");
+          }
 
-          for (const answer of seededAnswers ?? []) {
-            answerMap[(answer as AnswerRow).question_id] = answer as AnswerRow;
+          for (const answer of payload.answers ?? []) {
+            answerMap[answer.question_id] = answer;
           }
         }
 
@@ -341,7 +383,7 @@ export function useAuditSession(runId: string | undefined) {
     return () => {
       alive = false;
     };
-  }, [router, runId]);
+  }, [runId]);
 
   const totals = useMemo(() => {
     const total = questions.length;
@@ -379,28 +421,35 @@ export function useAuditSession(runId: string | undefined) {
   async function persistAnswerDraft(questionId: string, draft: AnswerRow) {
     if (!runId) return;
 
-    const payload = {
-      audit_run_id: runId,
-      question_id: questionId,
-      answer: draft.answer,
-      result: draft.result,
-      comment: draft.comment,
-      photo_path: draft.photo_path,
-    };
+    const accessToken = await getAccessToken();
+    const response = await fetch(`/api/audits/${runId}/draft`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify({
+        answers: [
+          {
+            question_id: questionId,
+            answer: draft.answer,
+            result: draft.result,
+            comment: draft.comment,
+            photo_path: draft.photo_path,
+          },
+        ],
+      }),
+    });
 
-    const { data, error } = await supabase
-      .from("audit_answers")
-      .upsert(payload, { onConflict: "audit_run_id,question_id" })
-      .select("id,audit_run_id,question_id,answer,result,comment,photo_path")
-      .single();
-
-    if (error || !data) {
-      throw error ?? new Error("No se pudo guardar.");
+    const payload = (await response.json().catch(() => null)) as DraftSaveResponse | null;
+    if (!response.ok || !payload?.ok || !payload.answers?.[0]) {
+      throw new Error(payload?.error ?? "No se pudo guardar.");
     }
+    const savedAnswer = payload.answers[0] as AnswerRow;
 
     setAnswersByQ((prev) => ({
       ...prev,
-      [questionId]: data as AnswerRow,
+      [questionId]: savedAnswer,
     }));
   }
 
@@ -468,15 +517,27 @@ export function useAuditSession(runId: string | undefined) {
 
     try {
       const value = nextId || null;
-      const { error: updateError } = await supabase
-        .from("audit_runs")
-        .update({ team_member_id: value })
-        .eq("id", run.id);
+      const accessToken = await getAccessToken();
+      const response = await fetch(`/api/audits/${run.id}/metadata`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({ team_member_id: value }),
+      });
 
-      if (updateError) throw updateError;
+      const payload = (await response.json().catch(() => null)) as MetadataResponse | null;
+      if (!response.ok || !payload?.ok) {
+        throw new Error(payload?.error ?? "No se pudo asignar el colaborador.");
+      }
 
-      setSelectedMember(nextId);
-      setRun((prev) => (prev ? { ...prev, team_member_id: value } : prev));
+      setSelectedMember(payload.run?.team_member_id ?? "");
+      setRun((prev) =>
+        prev
+          ? { ...prev, team_member_id: payload.run?.team_member_id ?? value }
+          : prev,
+      );
     } catch (memberError: any) {
       setError(memberError?.message ?? "No se pudo asignar el colaborador.");
     } finally {
@@ -492,15 +553,28 @@ export function useAuditSession(runId: string | undefined) {
     setError(null);
 
     try {
-      const { error: updateError } = await supabase
-        .from("audit_runs")
-        .update({ room_number: trimmedValue || null })
-        .eq("id", run.id);
+      const accessToken = await getAccessToken();
+      const response = await fetch(`/api/audits/${run.id}/metadata`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({ room_number: trimmedValue || null }),
+      });
 
-      if (updateError) throw updateError;
+      const payload = (await response.json().catch(() => null)) as MetadataResponse | null;
+      if (!response.ok || !payload?.ok) {
+        throw new Error(payload?.error ?? "No se pudo guardar el numero de habitacion.");
+      }
 
-      setRoomNumber(trimmedValue);
-      setRun((prev) => (prev ? { ...prev, room_number: trimmedValue || null } : prev));
+      const nextRoomNumber = payload.run?.room_number ?? (trimmedValue || null);
+      setRoomNumber(nextRoomNumber ?? "");
+      setRun((prev) =>
+        prev
+          ? { ...prev, room_number: nextRoomNumber }
+          : prev,
+      );
     } catch (roomError: any) {
       setError(roomError?.message ?? "No se pudo guardar el numero de habitacion.");
     } finally {
@@ -623,32 +697,7 @@ export function useAuditSession(runId: string | undefined) {
 
     try {
       await flushAll();
-
-      const latestAnswers = questions.map((question) => {
-        const draft = makeDraftAnswer(run.id, question.id, answersByQ[question.id]);
-        return {
-          audit_run_id: run.id,
-          question_id: question.id,
-          answer: draft.answer,
-          result: draft.result,
-          comment: draft.comment,
-          photo_path: draft.photo_path,
-        };
-      });
-
-      if (latestAnswers.length > 0) {
-        const { error: syncError } = await supabase
-          .from("audit_answers")
-          .upsert(latestAnswers, { onConflict: "audit_run_id,question_id" });
-
-        if (syncError) throw syncError;
-      }
-
-      const { data: sessionData } = await supabase.auth.getSession();
-      const accessToken = sessionData?.session?.access_token;
-      if (!accessToken) {
-        throw new Error("Sesion invalida.");
-      }
+      const accessToken = await getAccessToken();
 
       const response = await fetch("/api/audits/submit", {
         method: "POST",

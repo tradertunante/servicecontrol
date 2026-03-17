@@ -118,6 +118,13 @@ pendiente
 - migración de mutaciones globales sensibles de `superadmin` a `app/api/superadmin/**`, cubriendo creación/edición de plantillas globales, import de templates, creación/edición de packs globales, asociación pack-template y alta/estado de hoteles
 - cierre de residuos finales de auth client-side a nivel página en `audits/[id]/view`, `members`, `task`, `my` y `formaciones`, dejando la autoridad real en layouts y helpers server-side ya existentes
 
+### Hecho el 2026-03-17
+
+- `POST /api/audits/start` ahora crea el `audit_run` y siembra las filas iniciales de `audit_answers` desde servidor
+- nuevas rutas `POST /api/audits/[id]/draft` y `PATCH /api/audits/[id]/metadata` para sacar del cliente los writes directos sobre `audit_answers` y `audit_runs`
+- validación server-side compartida para hotel scope, área, ownership del auditor y bloqueo de edición cuando el run ya está `submitted`
+- eliminación del sync final browser-side antes de `POST /api/audits/submit`; el submit ahora depende solo de drafts ya persistidos server-side
+
 ### Hecho
 
 - análisis de arquitectura del repo
@@ -134,7 +141,7 @@ pendiente
 ### En curso
 
 - documentación permanente para agentes de IA
-- preparación del plan técnico de Fase 1
+- cierre del flujo híbrido residual en `useAuditSession` y verificación binaria de REPAIR 3
 
 ### No iniciado
 

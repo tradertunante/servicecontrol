@@ -40,13 +40,13 @@ La implementación actual en `app/(app)/audits/[id]/page.tsx` resuelve en fronte
 Esto deja la operación sin atomicidad real y con riesgo de inconsistencias.
 
 ### Solución aplicada
-Pendiente.
+Resuelto parcialmente en dos capas complementarias:
 
-Solución planificada:
-migrar el submit a un flujo server-side transaccional usando:
+- `POST /api/audits/submit` delega el submit final a la RPC transaccional `submit_audit_run(...)`
+- `POST /api/audits/[id]/draft` y `PATCH /api/audits/[id]/metadata` eliminan los writes directos desde `useAuditSession`
+- `POST /api/audits/start` siembra respuestas draft desde servidor para que la auditoría no dependa de seed cliente
 
-- route handler de Next.js
-- RPC SQL `submit_audit_run(...)`
+Queda pendiente únicamente seguir endureciendo atomicidad del create inicial si se quiere llevar también esa fase a RPC.
 
 ### Cómo evitarlo en el futuro
 - no implementar operaciones críticas multi-tabla en cliente
@@ -54,7 +54,11 @@ migrar el submit a un flujo server-side transaccional usando:
 - tratar el frontend solo como capa de UX y no de autoridad final
 
 ### Archivos relacionados
-- `app/(app)/audits/[id]/page.tsx`
+- `app/(app)/audits/[id]/_hooks/useAuditSession.ts`
+- `app/api/audits/[id]/draft/route.ts`
+- `app/api/audits/[id]/metadata/route.ts`
+- `app/api/audits/start/route.ts`
+- `app/api/audits/submit/route.ts`
 - `app/(app)/team/_components/CorrectiveActionsPanel.tsx`
 - `app/(app)/team/_hooks/useReauditActions.ts`
 

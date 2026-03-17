@@ -73,5 +73,47 @@ export async function POST(request: NextRequest) {
     return jsonError(error?.message ?? "No se pudo crear la auditoría.", 500);
   }
 
+  const { data: sectionData, error: sectionError } = await admin
+    .from("audit_sections")
+    .select("id")
+    .eq("audit_template_id", templateId)
+    .eq("active", true);
+
+  if (sectionError) {
+    await admin.from("audit_runs").delete().eq("id", data.id);
+    return jsonError(sectionError.message, 500);
+  }
+
+  const sectionIds = (sectionData ?? []).map((section) => String(section.id));
+  if (sectionIds.length > 0) {
+    const { data: questionData, error: questionError } = await admin
+      .from("audit_questions")
+      .select("id")
+      .in("audit_section_id", sectionIds)
+      .eq("active", true);
+
+    if (questionError) {
+      await admin.from("audit_runs").delete().eq("id", data.id);
+      return jsonError(questionError.message, 500);
+    }
+
+    const seedRows = (questionData ?? []).map((question) => ({
+      audit_run_id: String(data.id),
+      question_id: String(question.id),
+      answer: "PASS",
+      result: "PASS",
+      comment: null,
+      photo_path: null,
+    }));
+
+    if (seedRows.length > 0) {
+      const { error: seedError } = await admin.from("audit_answers").insert(seedRows);
+      if (seedError) {
+        await admin.from("audit_runs").delete().eq("id", data.id);
+        return jsonError(seedError.message, 500);
+      }
+    }
+  }
+
   return NextResponse.json({ ok: true, run_id: String(data.id) });
 }
