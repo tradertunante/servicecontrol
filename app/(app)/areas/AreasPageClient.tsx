@@ -3,9 +3,6 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { fetchActiveHotel } from "@/lib/auth/activeHotelClient";
-import { getClientProfile } from "@/lib/auth/clientProfile";
-import { isRoleAllowed } from "@/lib/auth/permissions";
 import { supabase } from "@/lib/supabaseClient";
 import HotelHeader from "@/app/components/HotelHeader";
 import type { Profile } from "@/lib/types";
@@ -13,12 +10,17 @@ import type { Profile } from "@/lib/types";
 type AreaRow = { id: string; name: string; type: string | null; hotel_id: string | null; created_at?: string | null };
 type HotelRow = { id: string; name: string };
 
-export default function AreasPage() {
+export default function AreasPageClient({
+  initialProfile,
+  hotelId,
+}: {
+  initialProfile: Profile;
+  hotelId: string;
+}) {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [profile, setProfile] = useState<Profile | null>(null);
-  const [hotelId, setHotelId] = useState<string | null>(null);
+  const [profile] = useState<Profile>(initialProfile);
   const [hotelName, setHotelName] = useState<string | null>(null);
   const [areas, setAreas] = useState<AreaRow[]>([]);
   const [query, setQuery] = useState("");
@@ -32,26 +34,8 @@ export default function AreasPage() {
     (async () => {
       setLoading(true); setError(null);
       try {
-        const p = await getClientProfile();
-        if (!alive || !p) return;
-        if (!isRoleAllowed(p.role, ["admin", "general_manager", "manager", "auditor", "superadmin", "quality"])) {
-          setError("No tienes permisos para ver áreas.");
-          setLoading(false);
-          return;
-        }
-        setProfile(p);
-
-        let hotelIdToUse: string | null = null;
-        if (p.role === "superadmin") {
-          hotelIdToUse = (await fetchActiveHotel()).hotel_id;
-          if (!hotelIdToUse) { setError("No hay hotel seleccionado. Vuelve al dashboard y selecciona uno."); setLoading(false); return; }
-        } else {
-          if (!p.hotel_id) { setError("Tu usuario no tiene hotel asignado."); setLoading(false); return; }
-          hotelIdToUse = p.hotel_id;
-        }
-        setHotelId(hotelIdToUse);
-
-        const { data: h, error: hErr } = await supabase.from("hotels").select("id,name").eq("id", hotelIdToUse).single();
+        if (!hotelId) throw new Error("No hay hotel activo seleccionado.");
+        const { data: h, error: hErr } = await supabase.from("hotels").select("id,name").eq("id", hotelId).single();
         if (hErr) throw hErr;
         if (!alive) return;
         setHotelName((h as HotelRow)?.name ?? null);
@@ -63,7 +47,7 @@ export default function AreasPage() {
       }
     })();
     return () => { alive = false; };
-  }, []);
+  }, [hotelId]);
 
   useEffect(() => {
     let alive = true;

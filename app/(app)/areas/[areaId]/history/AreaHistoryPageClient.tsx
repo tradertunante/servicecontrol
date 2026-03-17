@@ -3,11 +3,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import type { CSSProperties } from "react";
-import { useParams, useRouter, useSearchParams } from "next/navigation";
-import { getClientProfile } from "@/lib/auth/clientProfile";
+import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
-import { fetchActiveHotel } from "@/lib/auth/activeHotelClient";
-import { canRunAudits } from "@/lib/auth/permissions";
 import BackButton from "@/app/components/BackButton";
 import type { Profile } from "@/lib/types";
 
@@ -170,12 +167,15 @@ function getPeriodRange(now: Date, p: PeriodKey) {
   return { startMs: start.getTime(), endMs: end.getTime() };
 }
 
-export default function AreaPage() {
+export default function AreaHistoryPageClient({
+  areaId,
+  initialProfile,
+}: {
+  areaId: string;
+  initialProfile: Profile;
+}) {
   const router = useRouter();
-  const params = useParams<{ areaId: string }>();
   const searchParams = useSearchParams();
-
-  const areaId = params?.areaId;
 
   const tab = (searchParams.get("tab") ?? "dashboard") as "history" | "templates" | "dashboard";
 
@@ -187,7 +187,7 @@ export default function AreaPage() {
   const [starting, setStarting] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const [profile, setProfile] = useState<Profile | null>(null);
+  const [profile] = useState<Profile>(initialProfile);
   const [area, setArea] = useState<Area | null>(null);
 
   const [templates, setTemplates] = useState<AuditTemplate[]>([]);
@@ -261,18 +261,6 @@ export default function AreaPage() {
       setError(null);
 
       try {
-        const p = await getClientProfile();
-        if (!p) return;
-        setProfile(p);
-
-        const allowed =
-          p.role === "superadmin" || p.role === "general_manager" ? true : canRunAudits(p.role);
-        if (!allowed) {
-          setError("No tienes permisos para acceder a esta sección.");
-          setLoading(false);
-          return;
-        }
-
         // 1) Área
         const { data: areaData, error: areaErr } = await supabase
           .from("areas")
@@ -467,23 +455,12 @@ export default function AreaPage() {
   // Start run
   // ----------------------
   async function handleStart(templateId: string) {
-    if (!profile || !areaId) return;
+    if (!areaId) return;
 
     setStarting(templateId);
     setError(null);
 
     try {
-      const {
-        data: { user },
-        error: userErr,
-      } = await supabase.auth.getUser();
-
-      if (userErr || !user) throw userErr ?? new Error("No hay sesión activa.");
-
-      const hotelIdToUse = area?.hotel_id ?? profile?.hotel_id ?? (await fetchActiveHotel()).hotel_id;
-
-      if (!hotelIdToUse) throw new Error("No se pudo determinar el hotel_id para crear la auditoría.");
-
       const { data: sessionData } = await supabase.auth.getSession();
       const accessToken = sessionData?.session?.access_token;
       if (!accessToken) throw new Error("Sesión inválida.");

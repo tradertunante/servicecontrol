@@ -2,10 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import type { CSSProperties } from "react";
-import { useParams, useRouter } from "next/navigation";
-import { getClientProfile } from "@/lib/auth/clientProfile";
+import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
-import { canRunAudits } from "@/lib/auth/permissions";
 
 type AuditRun = {
   id: string;
@@ -138,16 +136,17 @@ function badgeStyle(status: "FAIL" | "NA" | "OK"): CSSProperties {
   };
 }
 
-export default function AuditRunSectionDetailPage() {
+export default function AuditRunSectionDetailPageClient({
+  areaId,
+  runId,
+}: {
+  areaId: string;
+  runId: string;
+}) {
   const router = useRouter();
-  const params = useParams<{ areaId: string; runId: string }>();
-  const areaId = params?.areaId;
-  const runId = params?.runId;
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
-  const [profile, setProfile] = useState<any>(null);
 
   const [run, setRun] = useState<AuditRun | null>(null);
   const [area, setArea] = useState<Area | null>(null);
@@ -166,16 +165,6 @@ export default function AuditRunSectionDetailPage() {
       setError(null);
 
       try {
-        const p = await getClientProfile();
-        if (!p) return;
-        setProfile(p);
-
-        if (!(p.role === "general_manager" || canRunAudits(p.role))) {
-          setError("No tienes permisos para ver este detalle.");
-          setLoading(false);
-          return;
-        }
-
         const { data: runData, error: runErr } = await supabase
           .from("audit_runs")
           .select("id,area_id,audit_template_id,status,score,room_number,executed_at,created_at")

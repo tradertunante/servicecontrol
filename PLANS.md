@@ -124,6 +124,7 @@ pendiente
 - nuevas rutas `POST /api/audits/[id]/draft` y `PATCH /api/audits/[id]/metadata` para sacar del cliente los writes directos sobre `audit_answers` y `audit_runs`
 - validación server-side compartida para hotel scope, área, ownership del auditor y bloqueo de edición cuando el run ya está `submitted`
 - eliminación del sync final browser-side antes de `POST /api/audits/submit`; el submit ahora depende solo de drafts ya persistidos server-side
+- cierre de `REPAIR 1` en `areas`, `reports`, `standards` e `history`, reemplazando pages cliente con wrappers server-side y quitando gating de sesión/perfil en navegador
 
 ### Hecho
 
@@ -141,7 +142,7 @@ pendiente
 ### En curso
 
 - documentación permanente para agentes de IA
-- cierre del flujo híbrido residual en `useAuditSession` y verificación binaria de REPAIR 3
+- cierre de reparaciones prioritarias y verificación binaria final
 
 ### No iniciado
 

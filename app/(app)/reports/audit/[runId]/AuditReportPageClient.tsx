@@ -2,10 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import type { CSSProperties } from "react";
-import { useParams, useRouter } from "next/navigation";
-import { fetchActiveHotel } from "@/lib/auth/activeHotelClient";
-import { getClientProfile } from "@/lib/auth/clientProfile";
-import { canRunAudits } from "@/lib/auth/permissions";
+import { useRouter } from "next/navigation";
 import { buildAuditReportData } from "@/lib/reports/auditReport";
 import type { AuditReportData } from "@/lib/reports/auditReportTypes";
 
@@ -155,10 +152,14 @@ function pct(value: number): string {
   return `${value.toFixed(1)}%`;
 }
 
-export default function AuditReportPage() {
+export default function AuditReportPageClient({
+  runId,
+  hotelId,
+}: {
+  runId: string;
+  hotelId: string;
+}) {
   const router = useRouter();
-  const params = useParams<{ runId: string }>();
-  const runId = params?.runId;
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -177,21 +178,7 @@ export default function AuditReportPage() {
       setError(null);
 
       try {
-        const profile = await getClientProfile();
-        if (!profile) return;
-
-        if (!canRunAudits(profile.role)) {
-          setError("No tienes permisos para ver este reporte.");
-          setLoading(false);
-          return;
-        }
-
-        const activeHotelId = profile.role === "superadmin"
-          ? (await fetchActiveHotel()).hotel_id
-          : profile.hotel_id;
-        if (!activeHotelId) throw new Error("No hay hotel activo seleccionado.");
-
-        const data = await buildAuditReportData(runId, activeHotelId);
+        const data = await buildAuditReportData(runId, hotelId);
         setReport(data);
         setLoading(false);
       } catch (e: any) {
@@ -199,7 +186,7 @@ export default function AuditReportPage() {
         setLoading(false);
       }
     })();
-  }, [runId]);
+  }, [hotelId, runId]);
 
   const failedItems = useMemo(() => {
     return (report?.sections ?? []).flatMap((section) =>

@@ -2,10 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import type { CSSProperties } from "react";
-import { useParams, useRouter, useSearchParams } from "next/navigation";
-import { fetchActiveHotel } from "@/lib/auth/activeHotelClient";
-import { getClientProfile } from "@/lib/auth/clientProfile";
-import { canRunAudits } from "@/lib/auth/permissions";
+import { useRouter, useSearchParams } from "next/navigation";
 import { buildWeeklyAreaReport } from "@/lib/reports/buildWeeklyAreaReport";
 import type { WeeklyAreaReportData } from "@/lib/reports/weeklyReportTypes";
 
@@ -171,12 +168,15 @@ function summaryToneStyle(tone: "good" | "warning" | "critical"): CSSProperties 
   };
 }
 
-export default function WeeklyAreaReportPage() {
+export default function WeeklyAreaReportPageClient({
+  areaId,
+  hotelId,
+}: {
+  areaId: string;
+  hotelId: string;
+}) {
   const router = useRouter();
-  const params = useParams<{ areaId: string }>();
   const searchParams = useSearchParams();
-
-  const areaId = params?.areaId;
   const weekStartParam = searchParams.get("weekStart");
 
   const [loading, setLoading] = useState(true);
@@ -195,23 +195,9 @@ export default function WeeklyAreaReportPage() {
       setError(null);
 
       try {
-        const profile = await getClientProfile();
-        if (!profile) return;
-
-        if (!canRunAudits(profile.role) && profile.role !== "quality") {
-          setError("No tienes permisos para ver este reporte.");
-          setLoading(false);
-          return;
-        }
-
-        const activeHotelId = (await fetchActiveHotel()).hotel_id;
-        if (!activeHotelId) {
-          throw new Error("No hay hotel activo seleccionado.");
-        }
-
         const data = await buildWeeklyAreaReport({
           areaId,
-          hotelId: activeHotelId,
+          hotelId,
           weekStart: effectiveRange.weekStart,
           weekEnd: effectiveRange.weekEnd,
         });
@@ -223,7 +209,7 @@ export default function WeeklyAreaReportPage() {
         setLoading(false);
       }
     })();
-  }, [areaId, effectiveRange.weekStart, effectiveRange.weekEnd]);
+  }, [areaId, effectiveRange.weekStart, effectiveRange.weekEnd, hotelId]);
 
   const weeklySummary = useMemo(() => {
     if (!report) {
