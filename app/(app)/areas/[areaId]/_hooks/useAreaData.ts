@@ -2,9 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { supabase } from "@/lib/supabaseClient";
 import type { Profile } from "@/lib/types";
 
+import { getAreaDataErrorMessage, loadAreaOverviewData } from "../_lib/areaDataLoader";
 import type {
   Area,
   AuditRunRow,
@@ -13,6 +13,7 @@ import type {
   QuestionMeta,
   SectionTotal,
 } from "../_lib/areaTypes";
+import { supabase } from "@/lib/supabaseClient";
 
 export function useAreaData({
   areaId,
@@ -54,209 +55,27 @@ export function useAreaData({
       setError(null);
 
       try {
-        // 1) Área
-        const { data: areaData, error: areaErr } = await supabase
-          .from("areas")
-          .select("id,name,type,hotel_id")
-          .eq("id", areaId)
-          .single();
-
-        if (areaErr || !areaData) throw areaErr ?? new Error("Área no encontrada");
-        setArea(areaData as Area);
-
-        // 2) Templates del área
-        const { data: tData, error: tErr } = await supabase
-          .from("audit_templates")
-          .select("id,name,active,area_id")
-          .eq("area_id", areaId)
-          .order("name", { ascending: true });
-
-        if (tErr) throw tErr;
-
-        const onlyActive = (tData ?? []).filter((t: any) => t.active !== false) as AuditTemplate[];
-        setTemplates(onlyActive);
+        const overview = await loadAreaOverviewData(areaId, { includeAnswerDetails: true });
+        setArea(overview.area);
+        setTemplates(overview.templates);
 
         if (templateFilter !== "ALL") {
-          const exists = onlyActive.some((x) => x.id === templateFilter);
+          const exists = overview.templates.some((template) => template.id === templateFilter);
           if (!exists) setTemplateFilter("ALL");
         }
 
-        // 3) Runs
-        const { data: runData, error: runErr } = await supabase
-          .from("audit_runs")
-          .select("id,status,score,notes,executed_at,executed_by,audit_template_id,area_id")
-          .eq("area_id", areaId)
-          .order("executed_at", { ascending: false })
-          .limit(80);
-
-        if (runErr) throw runErr;
-
-        const allRuns = (runData ?? []) as AuditRunRow[];
-        const submitted = allRuns.filter((r) => (r.status ?? "").toLowerCase() === "submitted");
-        const finalRuns = submitted.length ? submitted : allRuns;
-        setRuns(finalRuns);
-
-        const runIds = Array.from(new Set(finalRuns.map((r) => r.id)));
-        const templateIds = Array.from(new Set(finalRuns.map((r) => r.audit_template_id)));
-        const executorIds = Array.from(new Set(finalRuns.map((r) => r.executed_by).filter(Boolean) as string[]));
-
-        // 4) Nombres templates
-        if (templateIds.length) {
-          const { data: tplData, error: tplErr } = await supabase
-            .from("audit_templates")
-            .select("id,name")
-            .in("id", templateIds);
-
-          if (tplErr) throw tplErr;
-
-          const map: Record<string, string> = {};
-          for (const row of (tplData ?? []) as any[]) map[row.id] = row.name;
-          setTemplateNameById(map);
-        }
-
-        // 5) Nombres ejecutores
-        if (executorIds.length) {
-          const { data: sessionData } = await supabase.auth.getSession();
-          const accessToken = sessionData?.session?.access_token;
-
-          if (accessToken) {
-            const response = await fetch("/api/profiles/names", {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${accessToken}`,
-              },
-              body: JSON.stringify({ ids: executorIds, area_id: areaId }),
-            });
-            const payload = await response.json().catch(() => ({}));
-            const pData = Array.isArray(payload?.items) ? payload.items : [];
-            const map: Record<string, string> = {};
-            for (const row of pData as any[]) map[row.id] = row.full_name ?? row.id;
-            setExecutorNameById(map);
-          }
-        }
-
-        // 6) Totales por sección
-        if (templateIds.length) {
-          const { data: qData, error: qErr } = await supabase
-            .from("audit_questions")
-            .select(`
-              id,
-              active,
-              audit_section_id,
-              audit_sections!inner (
-                id,
-                name,
-                audit_template_id
-              )
-            `)
-            .in("audit_sections.audit_template_id", templateIds)
-            .eq("active", true);
-
-          if (qErr) throw qErr;
-
-          const totals: Record<string, Record<string, SectionTotal>> = {};
-
-          for (const row of (qData ?? []) as any[]) {
-            const tplId = row.audit_sections?.audit_template_id as string | undefined;
-            const secId = (row.audit_sections?.id ?? row.audit_section_id) as string | undefined;
-            const secName = (row.audit_sections?.name ?? "Sin sección") as string;
-
-            if (!tplId || !secId) continue;
-
-            if (!totals[tplId]) totals[tplId] = {};
-            if (!totals[tplId][secId]) {
-              totals[tplId][secId] = {
-                section_id: secId,
-                section_name: secName,
-                total_questions: 0,
-              };
-            }
-            totals[tplId][secId].total_questions += 1;
-          }
-
-          setTotalsByTemplate(totals);
-        }
-
-        // 7) Answers + meta preguntas
-        if (runIds.length) {
-          const { data: aData, error: aErr } = await supabase
-            .from("audit_answers")
-            .select("audit_run_id,question_id,result")
-            .in("audit_run_id", runIds);
-
-          if (aErr) throw aErr;
-
-          const answers = (aData ?? []) as AnswerRow[];
-
-          const byRun: Record<string, AnswerRow[]> = {};
-          for (const a of answers) {
-            if (!byRun[a.audit_run_id]) byRun[a.audit_run_id] = [];
-            byRun[a.audit_run_id].push(a);
-          }
-          setAnswersByRun(byRun);
-
-          const questionIds = Array.from(new Set(answers.map((a) => a.question_id)));
-
-          const qMetaMap: Record<string, QuestionMeta> = {};
-          if (questionIds.length) {
-            const { data: q2Data, error: q2Err } = await supabase
-              .from("audit_questions")
-              .select(`
-                id,
-                text,
-                tag,
-                classification,
-                audit_section_id,
-                audit_sections (
-                  id,
-                  name
-                )
-              `)
-              .in("id", questionIds);
-
-            if (q2Err) throw q2Err;
-
-            for (const q of (q2Data ?? []) as any[]) {
-              const secId = (q.audit_sections?.id ?? q.audit_section_id ?? "unknown") as string;
-              const secName = (q.audit_sections?.name ?? "Sin sección") as string;
-              const classification =
-                String(q.classification ?? "")
-                  .trim() || secName;
-
-              qMetaMap[q.id] = {
-                id: q.id,
-                text: q.text ?? "(Sin texto)",
-                audit_section_id: secId,
-                section_name: secName,
-                tag: q.tag ?? null,
-                classification,
-              };
-            }
-          }
-          setQuestionMetaById(qMetaMap);
-
-          const ex: Record<string, Record<string, { fail: number; na: number }>> = {};
-
-          for (const row of answers) {
-            const rid = row.audit_run_id;
-            const res = String(row.result ?? "").toUpperCase();
-            const secId = qMetaMap[row.question_id]?.audit_section_id ?? "unknown";
-
-            if (!ex[rid]) ex[rid] = {};
-            if (!ex[rid][secId]) ex[rid][secId] = { fail: 0, na: 0 };
-
-            if (res === "FAIL") ex[rid][secId].fail += 1;
-            if (res === "NA") ex[rid][secId].na += 1;
-          }
-
-          setExceptionsByRun(ex);
-        }
+        setRuns(overview.runs);
+        setTemplateNameById(overview.templateNameById);
+        setExecutorNameById(overview.executorNameById);
+        setTotalsByTemplate(overview.totalsByTemplate);
+        setExceptionsByRun(overview.exceptionsByRun);
+        setAnswersByRun(overview.answersByRun);
+        setQuestionMetaById(overview.questionMetaById);
 
         setLoading(false);
-      } catch (e: any) {
+      } catch (e: unknown) {
         setLoading(false);
-        setError(e?.message ?? "Error cargando área.");
+        setError(getAreaDataErrorMessage(e, "Error cargando área."));
       }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -290,8 +109,8 @@ export function useAreaData({
       }
 
       router.push(`/audits/${payload.run_id}`);
-    } catch (e: any) {
-      setError(e?.message ?? "No se pudo iniciar la auditoría.");
+    } catch (e: unknown) {
+      setError(getAreaDataErrorMessage(e, "No se pudo iniciar la auditoría."));
     } finally {
       setStarting(null);
     }

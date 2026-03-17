@@ -797,3 +797,32 @@ Eso mantenía un modelo híbrido y hacía ambiguo dónde vivía la autoridad rea
 - autoridad de acceso concentrada en `layout.tsx`, `page.tsx` server-side y helpers `require*`
 - menos ambigüedad entre UX cliente y seguridad real
 - cierre binario real de `REPAIR 1`
+
+---
+
+## Decisión 15
+
+### Fecha
+2026-03-17
+
+### Decisión
+Reducir hotspots cliente de mantenimiento usando superficies compartidas por dominio en lugar de seguir clonando lógica y render.
+
+### Contexto
+Tras cerrar los repairs funcionales, quedaban deudas estructurales claras:
+
+- `WeeklyAreaReportPageClient.tsx` y `MonthlyAreaReportPageClient.tsx` repetían casi la misma vista imprimible
+- `AreaHistoryPageClient.tsx` y `useAreaData.ts` mantenían fan-out y transforms muy parecidos para área, templates, runs y agregados por sección
+- `useAuditSession.ts` acumulaba tipos, carga, normalización, autosave y mutaciones en un solo archivo
+
+Eso elevaba el coste de cambio y hacía más fácil reintroducir divergencias.
+
+### Decisión final
+- extraer una vista compartida `AreaPeriodReportPage` como superficie canónica para reportes weekly/monthly
+- centralizar la carga base de área/historial en `loadAreaOverviewData(...)`
+- partir `useAuditSession` en tipos, loader y helpers, dejando el hook principal enfocado en estado y eventos de UI
+
+### Impacto esperado
+- menos paralelismos vivos entre módulos equivalentes
+- menor tamaño de hotspots reales y menos `any` en tramos críticos
+- mantenimiento más predecible sin cambiar el contrato funcional ya cerrado en repairs 1-5
