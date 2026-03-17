@@ -168,10 +168,6 @@ export default function MembersImportPanel({
       const formData = new FormData();
       formData.append("file", selectedFile);
 
-      if (role === "superadmin" && hotelId) {
-        formData.append("hotel_id", hotelId);
-      }
-
       const res = await fetch("/api/members/import", {
         method: "POST",
         headers: {

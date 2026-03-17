@@ -4,12 +4,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
+import { fetchActiveHotel, setActiveHotel } from "@/lib/auth/activeHotelClient";
 import { requireRoleOrRedirect } from "@/lib/auth/RequireRole";
 import HotelHeader from "@/app/components/HotelHeader";
 import BackButton from "@/app/components/BackButton";
 import type { Profile } from "@/lib/types";
-
-const HOTEL_KEY = "sc_hotel_id";
 
 type GlobalPack = { id: string; business_type: string; name: string; description: string | null; active: boolean; created_at?: string | null };
 type Area = { id: string; name: string; type: string | null };
@@ -59,7 +58,7 @@ export default function StandardsPage() {
 
         let hotelIdToUse: string | null = null;
         if (p.role === "superadmin") {
-          hotelIdToUse = typeof window !== "undefined" ? localStorage.getItem(HOTEL_KEY) : null;
+          hotelIdToUse = (await fetchActiveHotel()).hotel_id;
           if (!hotelIdToUse) { router.replace("/superadmin/hotels"); return; }
         } else {
           hotelIdToUse = p.hotel_id;
@@ -82,10 +81,10 @@ export default function StandardsPage() {
     return (
       <div style={{ marginBottom: 16, display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
         <span style={{ padding: "6px 10px", borderRadius: 999, border: "1px solid rgba(0,0,0,0.12)", background: "rgba(0,0,0,0.04)", fontWeight: 900, fontSize: 12 }}>
-          Hotel en uso: <strong>{localStorage.getItem(HOTEL_KEY) ? "Seleccionado" : "—"}</strong>
+          Hotel en uso: <strong>{hotelIdInUse ? "Seleccionado" : "—"}</strong>
         </span>
         <span style={{ fontSize: 12, opacity: 0.7 }}>ID: {hotelIdInUse}</span>
-        <button style={{ padding: "8px 10px", borderRadius: 10, border: "1px solid rgba(0,0,0,0.15)", background: "#fff", fontWeight: 900, cursor: "pointer", fontSize: 12 }} onClick={() => { localStorage.removeItem(HOTEL_KEY); router.replace("/superadmin/hotels"); }}>
+        <button style={{ padding: "8px 10px", borderRadius: 10, border: "1px solid rgba(0,0,0,0.15)", background: "#fff", fontWeight: 900, cursor: "pointer", fontSize: 12 }} onClick={() => { void setActiveHotel(null).then(() => router.replace("/superadmin/hotels")); }}>
           Cambiar hotel
         </button>
       </div>
@@ -109,7 +108,6 @@ export default function StandardsPage() {
         body: JSON.stringify({
           action: "clone_pack",
           pack_id: packId,
-          hotel_id: hotelIdInUse,
         }),
       });
       const payload = await res.json().catch(() => null);
@@ -138,7 +136,6 @@ export default function StandardsPage() {
           action: "set_template_area",
           template_id: templateId,
           area_id: areaId,
-          hotel_id: hotelIdInUse,
         }),
       });
       const payload = await res.json().catch(() => null);
@@ -168,7 +165,6 @@ export default function StandardsPage() {
           action: "clone_template",
           template_id: template.id,
           new_name: name,
-          hotel_id: hotelIdInUse,
         }),
       });
       const payload = await res.json().catch(() => null);

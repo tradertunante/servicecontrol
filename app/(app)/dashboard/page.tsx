@@ -4,6 +4,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { CSSProperties } from "react";
 import { useRouter } from "next/navigation";
+import { fetchActiveHotel, setActiveHotel } from "@/lib/auth/activeHotelClient";
 import { requireRoleOrRedirect } from "@/lib/auth/RequireRole";
 import type { Profile } from "@/lib/types";
 
@@ -16,7 +17,7 @@ import AreaRankings from "./_components/AreaRankings";
 import WorstAuditsCard from "./_components/WorstAuditsCard";
 import QuickLinks from "./_components/QuickLinks";
 
-import { HOTEL_KEY, useDashboardData } from "./_hooks/useDashboardData";
+import { useDashboardData } from "./_hooks/useDashboardData";
 import type { HeatMode } from "./_lib/dashboardUtils";
 
 export default function DashboardPage() {
@@ -25,7 +26,7 @@ export default function DashboardPage() {
   const [authLoading, setAuthLoading] = useState(true);
   const [authError, setAuthError] = useState<string | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
-  const [selectedHotelId, setSelectedHotelId] = useState<string | null>(null);
+  const [activeHotelId, setActiveHotelId] = useState<string | null>(null);
   const [heatMode, setHeatMode] = useState<HeatMode>("YEAR");
   const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
 
@@ -59,14 +60,13 @@ export default function DashboardPage() {
         setProfile(p);
 
         if (p.role === "superadmin") {
-          const stored = typeof window !== "undefined" ? localStorage.getItem(HOTEL_KEY) : null;
-          setSelectedHotelId(stored || null);
+          const activeHotel = await fetchActiveHotel();
+          setActiveHotelId(activeHotel.hotel_id ?? null);
         } else {
           if (!p.hotel_id) {
             setAuthError("Tu usuario no tiene hotel asignado.");
           } else {
-            setSelectedHotelId(p.hotel_id);
-            if (typeof window !== "undefined") localStorage.setItem(HOTEL_KEY, p.hotel_id);
+            setActiveHotelId(p.hotel_id);
           }
         }
       } catch (e: any) {
@@ -99,7 +99,7 @@ export default function DashboardPage() {
     selectedHotelName,
     canChooseHotel,
     resetForHotelChange,
-  } = useDashboardData({ profile, selectedHotelId, setSelectedHotelId, heatMode, selectedYear });
+  } = useDashboardData({ profile, activeHotelId, setActiveHotelId, heatMode, selectedYear });
 
   useEffect(() => {
     if (!availableYears?.length) return;
@@ -116,9 +116,11 @@ export default function DashboardPage() {
   };
 
   const handleChangeHotel = () => {
-    localStorage.removeItem(HOTEL_KEY);
-    setSelectedHotelId(null);
-    resetForHotelChange();
+    void (async () => {
+      await setActiveHotel(null);
+      setActiveHotelId(null);
+      resetForHotelChange();
+    })();
   };
 
   if (authLoading) {
@@ -137,7 +139,7 @@ export default function DashboardPage() {
     );
   }
 
-  if (profile?.role === "superadmin" && !selectedHotelId) {
+  if (profile?.role === "superadmin" && !activeHotelId) {
     return (
       <>
         <HotelPicker
@@ -146,8 +148,8 @@ export default function DashboardPage() {
           ghostBtn={ghostBtn}
           fg={fg}
           bg={bg}
-          selectedHotelId={selectedHotelId}
-          setSelectedHotelId={setSelectedHotelId}
+          activeHotelId={activeHotelId}
+          setActiveHotelId={setActiveHotelId}
         />
         <style jsx>{dashCss}</style>
       </>

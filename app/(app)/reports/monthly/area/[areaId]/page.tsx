@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { CSSProperties } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { fetchActiveHotel } from "@/lib/auth/activeHotelClient";
 import { requireRoleOrRedirect } from "@/lib/auth/RequireRole";
 import { canRunAudits } from "@/lib/auth/permissions";
 import { buildMonthlyAreaReport } from "@/lib/reports/buildMonthlyAreaReport";
@@ -218,8 +219,14 @@ export default function MonthlyAreaReportPage() {
           return;
         }
 
+        const activeHotelId = (await fetchActiveHotel()).hotel_id;
+        if (!activeHotelId) {
+          throw new Error("No hay hotel activo seleccionado.");
+        }
+
         const data = await buildMonthlyAreaReport({
           areaId,
+          hotelId: activeHotelId,
           month: effectiveMonth.month,
         });
 

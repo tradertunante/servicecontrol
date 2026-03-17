@@ -220,50 +220,6 @@ export default function CorrectiveActionsPanel({
     return { open, inProgress, resolved, blocking };
   }, [rows]);
 
-  async function recalcReauditState(reauditRunId: string) {
-    const { data: linked, error: linkedErr } = await supabase
-      .from("audit_corrective_actions")
-      .select("id,status,blocks_reaudit")
-      .eq("reaudit_run_id", reauditRunId);
-
-    if (linkedErr) throw linkedErr;
-
-    const blockingOpenCount = (linked ?? []).filter(
-      (x: any) => x.blocks_reaudit === true && x.status !== "resolved"
-    ).length;
-
-    const { data: runData, error: runErr } = await supabase
-      .from("audit_runs")
-      .select("id,requires_training,training_confirmed")
-      .eq("id", reauditRunId)
-      .single();
-
-    if (runErr) throw runErr;
-
-    const requiresTraining = !!(runData as any).requires_training;
-    const trainingConfirmed = !!(runData as any).training_confirmed;
-
-    const readyForReaudit = blockingOpenCount === 0 && (!requiresTraining || trainingConfirmed);
-
-    const nextStatus =
-      blockingOpenCount > 0
-        ? "blocked_by_non_operational"
-        : requiresTraining && !trainingConfirmed
-          ? "pending_training"
-          : "draft";
-
-    const { error: updateErr } = await supabase
-      .from("audit_runs")
-      .update({
-        blocking_issue_count: blockingOpenCount,
-        ready_for_reaudit: readyForReaudit,
-        status: nextStatus,
-      })
-      .eq("id", reauditRunId);
-
-    if (updateErr) throw updateErr;
-  }
-
   async function setActionStatus(row: EnrichedRow, nextStatus: "open" | "in_progress" | "resolved") {
     if (!profile?.id) return;
     setSavingId(row.id);
@@ -271,29 +227,23 @@ export default function CorrectiveActionsPanel({
     setMessage("");
 
     try {
-      const payload =
-        nextStatus === "resolved"
-          ? {
-              status: nextStatus,
-              resolved_at: new Date().toISOString(),
-              resolved_by: profile.id,
-            }
-          : {
-              status: nextStatus,
-              resolved_at: null,
-              resolved_by: null,
-            };
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData?.session?.access_token;
+      if (!accessToken) throw new Error("Sesión inválida.");
 
-      const { error: upErr } = await supabase
-        .from("audit_corrective_actions")
-        .update(payload)
-        .eq("id", row.id);
-
-      if (upErr) throw upErr;
-
-      if (row.reaudit_run_id) {
-        await recalcReauditState(row.reaudit_run_id);
-      }
+      const response = await fetch("/api/corrective-actions/status", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({
+          action_id: row.id,
+          status: nextStatus,
+        }),
+      });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) throw new Error(payload?.error ?? "No se pudo actualizar la acción.");
 
       setMessage(
         nextStatus === "resolved"

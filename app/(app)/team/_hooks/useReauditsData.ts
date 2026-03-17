@@ -116,23 +116,43 @@ export function useReauditsData({
         assignmentLogsRes,
       ] = await Promise.all([
         areaIds.length
-          ? supabase.from("areas").select("id,name,type").in("id", areaIds)
+          ? supabase
+              .from("areas")
+              .select("id,name,type")
+              .eq("hotel_id", activeHotelId)
+              .in("id", areaIds)
           : Promise.resolve({ data: [] as AreaRow[], error: null }),
 
         templateIds.length
-          ? supabase.from("audit_templates").select("id,name").in("id", templateIds)
+          ? supabase
+              .from("audit_templates")
+              .select("id,name")
+              .eq("hotel_id", activeHotelId)
+              .in("id", templateIds)
           : Promise.resolve({ data: [] as TemplateRow[], error: null }),
 
         teamMemberIds.length
-          ? supabase.from("team_members").select("id,full_name").in("id", teamMemberIds)
+          ? supabase
+              .from("team_members")
+              .select("id,full_name")
+              .eq("hotel_id", activeHotelId)
+              .in("id", teamMemberIds)
           : Promise.resolve({ data: [] as TeamMemberRow[], error: null }),
 
         parentRunIds.length
-          ? supabase.from("audit_runs").select("id,score").in("id", parentRunIds)
+          ? supabase
+              .from("audit_runs")
+              .select("id,score")
+              .eq("hotel_id", activeHotelId)
+              .in("id", parentRunIds)
           : Promise.resolve({ data: [] as { id: string; score: number | null }[], error: null }),
 
         assignedAuditorIds.length
-          ? supabase.from("profiles").select("id,full_name").in("id", assignedAuditorIds)
+          ? supabase
+              .from("profiles")
+              .select("id,full_name")
+              .eq("hotel_id", activeHotelId)
+              .in("id", assignedAuditorIds)
           : Promise.resolve({ data: [] as ProfileLite[], error: null }),
 
         supabase
@@ -156,6 +176,7 @@ export function useReauditsData({
               .select(
                 "id,hotel_id,reaudit_run_id,team_member_id,confirmed_by,confirmed_at,explanation,created_at"
               )
+              .eq("hotel_id", activeHotelId)
               .in("reaudit_run_id", runIds)
               .order("confirmed_at", { ascending: false })
           : Promise.resolve({ data: [] as ReauditTrainingLogRow[], error: null }),
@@ -166,6 +187,7 @@ export function useReauditsData({
               .select(
                 "id,hotel_id,reaudit_run_id,previous_auditor_id,new_auditor_id,changed_by,changed_at,reason,note,created_at"
               )
+              .eq("hotel_id", activeHotelId)
               .in("reaudit_run_id", runIds)
               .order("changed_at", { ascending: false })
           : Promise.resolve({ data: [] as ReauditAssignmentLogRow[], error: null }),

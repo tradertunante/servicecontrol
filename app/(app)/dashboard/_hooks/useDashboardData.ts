@@ -18,8 +18,6 @@ import {
   getYearScore,
 } from "../_lib/dashboardUtils";
 
-export const HOTEL_KEY = "sc_hotel_id";
-
 type HotelRow = { id: string; name: string; active: boolean | null; status: string | null };
 type AreaRow = { id: string; name: string; type: string | null; hotel_id: string | null; active?: boolean | null };
 type TemplateRow = { id: string; name: string; hotel_id: string | null };
@@ -157,14 +155,14 @@ function buildHeatRows(
 
 export function useDashboardData({
   profile,
-  selectedHotelId,
-  setSelectedHotelId,
+  activeHotelId,
+  setActiveHotelId,
   heatMode,
   selectedYear,
 }: {
   profile: Profile | null;
-  selectedHotelId: string | null;
-  setSelectedHotelId: (s: string | null) => void;
+  activeHotelId: string | null;
+  setActiveHotelId: (s: string | null) => void;
   heatMode: HeatMode;
   selectedYear: number;
 }) {
@@ -180,6 +178,7 @@ export function useDashboardData({
   const canChooseHotel = profile?.role === "superadmin";
 
   const resetForHotelChange = () => {
+    setActiveHotelId(null);
     setAreas([]);
     setTemplates([]);
     setRuns([]);
@@ -190,7 +189,7 @@ export function useDashboardData({
 
     (async () => {
       if (!profile) return;
-      if (!selectedHotelId) { setLoading(false); return; }
+      if (!activeHotelId) { setLoading(false); return; }
 
       setLoading(true);
       setError(null);
@@ -202,25 +201,25 @@ export function useDashboardData({
 
         const selectedHotelPromise = canChooseHotel
           ? Promise.resolve({ data: null, error: null })
-          : supabase.from("hotels").select("id,name").eq("id", selectedHotelId).single();
+          : supabase.from("hotels").select("id,name").eq("id", activeHotelId).single();
 
         const areasPromise = supabase
           .from("areas")
           .select("id,name,type,hotel_id,active")
-          .eq("hotel_id", selectedHotelId)
+          .eq("hotel_id", activeHotelId)
           .eq("active", true)
           .order("name");
 
         const templatesPromise = supabase
           .from("audit_templates")
           .select("id,name,hotel_id")
-          .or(`hotel_id.eq.${selectedHotelId},hotel_id.is.null`)
+          .or(`hotel_id.eq.${activeHotelId},hotel_id.is.null`)
           .order("name");
 
         const runsPromise = supabase
           .from("audit_runs")
           .select("id,area_id,audit_template_id,executed_at,score,audit_channel")
-          .eq("hotel_id", selectedHotelId)
+          .eq("hotel_id", activeHotelId)
           .eq("status", "submitted")
           .not("executed_at", "is", null)
           .not("score", "is", null);
@@ -246,7 +245,7 @@ export function useDashboardData({
         setHotels(hotelsData);
         setSelectedHotelName(
           canChooseHotel
-            ? hotelsData.find((hotel) => hotel.id === selectedHotelId)?.name ?? ""
+            ? hotelsData.find((hotel) => hotel.id === activeHotelId)?.name ?? ""
             : selectedHotelData?.name ?? ""
         );
         setAreas((areasRes.data ?? []) as AreaRow[]);
@@ -261,7 +260,7 @@ export function useDashboardData({
     })();
 
     return () => { alive = false; };
-  }, [profile, selectedHotelId, canChooseHotel]);
+  }, [profile, activeHotelId, canChooseHotel]);
 
   const availableYears = useMemo(() => {
     const ys = new Set<number>();

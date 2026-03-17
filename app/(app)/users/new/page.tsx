@@ -3,11 +3,10 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
+import { fetchActiveHotel } from "@/lib/auth/activeHotelClient";
 import BackButton from "@/app/components/BackButton";
 import { getAssignableRoles } from "@/lib/auth/permissions";
 import type { Role, Profile } from "@/lib/types";
-
-const HOTEL_KEY = "sc_hotel_id";
 
 export default function NewUserPage() {
   const router = useRouter();
@@ -64,9 +63,7 @@ export default function NewUserPage() {
       setBusy(true);
       const hotelId =
         profile?.role === "superadmin"
-          ? typeof window !== "undefined"
-            ? window.localStorage.getItem(HOTEL_KEY)
-            : null
+          ? (await fetchActiveHotel()).hotel_id
           : profile?.hotel_id ?? null;
 
       if (!hotelId) {
@@ -76,7 +73,7 @@ export default function NewUserPage() {
       const { data: sessionData } = await supabase.auth.getSession();
       const accessToken = sessionData?.session?.access_token;
       if (!accessToken) { setError("Sesión inválida."); return; }
-      const res = await fetch("/api/admin/create-user", { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` }, body: JSON.stringify({ full_name: fullName.trim() || null, email: email.trim().toLowerCase(), password, role, hotel_id: hotelId }) });
+      const res = await fetch("/api/admin/create-user", { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` }, body: JSON.stringify({ full_name: fullName.trim() || null, email: email.trim().toLowerCase(), password, role }) });
       const text = await res.text();
       let payload: any = null;
       try { payload = JSON.parse(text); } catch { payload = { error: text?.slice(0, 200) || "Respuesta no-JSON." }; }

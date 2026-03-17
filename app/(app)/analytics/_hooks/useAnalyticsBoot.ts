@@ -2,9 +2,10 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { fetchActiveHotel } from "@/lib/auth/activeHotelClient";
 import { supabase } from "@/lib/supabaseClient";
 import type { AreaRow, HotelRow, Profile } from "../_lib/analyticsTypes";
-import { HOTEL_KEY, areaLabel, canSeeAnalytics, isAdminLike } from "../_lib/analyticsUtils";
+import { areaLabel, canSeeAnalytics, isAdminLike } from "../_lib/analyticsUtils";
 
 export function useAnalyticsBoot() {
   const router = useRouter();
@@ -64,9 +65,7 @@ export function useAnalyticsBoot() {
 
         const hid =
           p.role === "superadmin"
-            ? (typeof window !== "undefined"
-                ? localStorage.getItem(HOTEL_KEY)
-                : null) || null
+            ? (await fetchActiveHotel()).hotel_id || null
             : p.hotel_id ?? null;
 
         if (!alive) return;

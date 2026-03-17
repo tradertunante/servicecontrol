@@ -32,6 +32,10 @@ export type ScopedHotelResult =
   | { ok: true; hotelId: string }
   | { ok: false; error: string; status: number };
 
+export type ActiveHotelResult =
+  | { ok: true; hotelId: string }
+  | { ok: false; error: string; status: number };
+
 type BasicProfileRow = {
   id: string;
   full_name: string | null;
@@ -88,6 +92,53 @@ export function getServerAccessToken() {
 
 export function getServerSelectedHotelId() {
   return readCookie(HOTEL_SCOPE_COOKIE);
+}
+
+export async function getActiveHotel(
+  _request: NextRequest | null,
+  profile: Profile
+): Promise<ActiveHotelResult> {
+  if (profile.role !== "superadmin") {
+    if (!profile.hotel_id) {
+      return { ok: false, error: "hotel_id faltante en perfil.", status: 400 };
+    }
+
+    return { ok: true, hotelId: profile.hotel_id };
+  }
+
+  const cookieHotelId = getServerSelectedHotelId();
+  if (!cookieHotelId) {
+    return { ok: false, error: "No hay hotel activo seleccionado para superadmin.", status: 400 };
+  }
+
+  const admin = supabaseAdmin();
+  const { data, error } = await admin
+    .from("hotels")
+    .select("id")
+    .eq("id", cookieHotelId)
+    .maybeSingle();
+
+  if (error) {
+    return { ok: false, error: error.message, status: 500 };
+  }
+
+  if (!data?.id) {
+    return { ok: false, error: "El hotel activo seleccionado no existe.", status: 400 };
+  }
+
+  return { ok: true, hotelId: String(data.id) };
+}
+
+export async function requireActiveHotel(
+  request: NextRequest | null,
+  profile: Profile
+): Promise<string> {
+  const result = await getActiveHotel(request, profile);
+  if (!result.ok) {
+    throw new Error(result.error);
+  }
+
+  return result.hotelId;
 }
 
 export function getBearerTokenFromRequest(request: NextRequest) {
@@ -155,21 +206,19 @@ export async function requireModuleAccess(
 }
 
 export function resolveScopedHotelId(profile: Profile, requestedHotelId?: string | null) {
-  if (profile.role === "superadmin") {
-    const hotelId = requestedHotelId ?? getServerSelectedHotelId();
-    if (!hotelId) redirect("/superadmin/hotels");
-    return hotelId;
-  }
+  const activeHotelId =
+    profile.role === "superadmin" ? getServerSelectedHotelId() : profile.hotel_id ?? null;
 
-  if (!profile.hotel_id) {
+  if (!activeHotelId) {
+    if (profile.role === "superadmin") redirect("/superadmin/hotels");
     redirect("/login");
   }
 
-  if (requestedHotelId && requestedHotelId !== profile.hotel_id) {
+  if (requestedHotelId && requestedHotelId !== activeHotelId) {
     redirect(getDefaultHotelRouteByRole(profile.role));
   }
 
-  return profile.hotel_id;
+  return activeHotelId;
 }
 
 async function loadAreaHotelId(areaId: string) {
@@ -202,24 +251,20 @@ export function resolveRouteHotelScope(
   profile: Profile,
   requestedHotelId?: string | null
 ): ScopedHotelResult {
-  if (profile.role === "superadmin") {
-    const hotelId = requestedHotelId ?? null;
-    if (!hotelId) {
-      return { ok: false, error: "Falta hotel_id para superadmin.", status: 400 };
-    }
+  const activeHotelId =
+    profile.role === "superadmin" ? getServerSelectedHotelId() : profile.hotel_id ?? null;
 
-    return { ok: true, hotelId };
+  if (!activeHotelId) {
+    return profile.role === "superadmin"
+      ? { ok: false, error: "No hay hotel activo seleccionado para superadmin.", status: 400 }
+      : { ok: false, error: "hotel_id faltante en perfil.", status: 400 };
   }
 
-  if (!profile.hotel_id) {
-    return { ok: false, error: "hotel_id faltante en perfil.", status: 400 };
-  }
-
-  if (requestedHotelId && requestedHotelId !== profile.hotel_id) {
+  if (requestedHotelId && requestedHotelId !== activeHotelId) {
     return { ok: false, error: "Forbidden: hotel fuera de alcance.", status: 403 };
   }
 
-  return { ok: true, hotelId: profile.hotel_id };
+  return { ok: true, hotelId: activeHotelId };
 }
 
 export async function getAllowedAreaIdsForProfile(profile: Profile, hotelId: string) {

@@ -4,13 +4,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
+import { fetchActiveHotel } from "@/lib/auth/activeHotelClient";
 import { requireRoleOrRedirect } from "@/lib/auth/RequireRole";
 import HotelHeader from "@/app/components/HotelHeader";
 import BackButton from "@/app/components/BackButton";
 import type { Profile } from "@/lib/types";
 
 type Area = { id: string; name: string };
-const HOTEL_KEY = "sc_hotel_id";
 
 export default function NewTemplatePage() {
   const router = useRouter();
@@ -35,9 +35,7 @@ export default function NewTemplatePage() {
         setProfile(p);
         const hotelId =
           p.role === "superadmin"
-            ? typeof window !== "undefined"
-              ? window.localStorage.getItem(HOTEL_KEY)
-              : null
+            ? (await fetchActiveHotel()).hotel_id
             : p.hotel_id;
         if (!hotelId) { setAreas([]); setError("Selecciona un hotel antes de crear plantillas."); setLoading(false); return; }
 
@@ -67,9 +65,7 @@ export default function NewTemplatePage() {
     setError(null); setSuccess(null);
     const hotelId =
       profile?.role === "superadmin"
-        ? typeof window !== "undefined"
-          ? window.localStorage.getItem(HOTEL_KEY)
-          : null
+        ? (await fetchActiveHotel()).hotel_id
         : profile?.hotel_id ?? null;
     if (!hotelId) { setError("Selecciona un hotel antes de crear plantillas."); return; }
     if (!selectedAreaId) { setError("Selecciona un área."); return; }
@@ -77,13 +73,24 @@ export default function NewTemplatePage() {
     if (!templateName.trim()) { setError("El nombre de la auditoría no puede estar vacío."); return; }
     setSaving(true);
     try {
-      const { data: newTemplate, error: createErr } = await supabase
-        .from("audit_templates")
-        .insert({ name: templateName.trim(), area_id: selectedAreaId, hotel_id: hotelId, active: true })
-        .select("id").single();
-      if (createErr) throw createErr;
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData?.session?.access_token;
+      if (!accessToken) throw new Error("Sesión inválida.");
+      const response = await fetch("/api/templates", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({
+          name: templateName.trim(),
+          area_id: selectedAreaId,
+        }),
+      });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) throw new Error(payload?.error ?? "No se pudo crear la auditoría.");
       setSuccess("¡Auditoría creada! Redirigiendo al editor...");
-      setTimeout(() => router.push(`/builder/${newTemplate.id}`), 700);
+      setTimeout(() => router.push(`/builder/${payload.template_id}`), 700);
     } catch (e: any) {
       setError(e?.message ?? "No se pudo crear la auditoría.");
       setSaving(false);

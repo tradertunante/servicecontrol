@@ -21,10 +21,7 @@ export async function GET(
     const caller = await authorizeRouteRequest(request, { roles: ["admin", "superadmin"] });
     if (!caller) return jsonError("No autorizado.", 401);
 
-    const hotelResult = resolveManagedHotelId(
-      caller.profile,
-      request.nextUrl.searchParams.get("hotel_id")?.trim() || null
-    );
+    const hotelResult = resolveManagedHotelId(caller.profile);
     if (!hotelResult.ok) return jsonError(hotelResult.error, hotelResult.status);
 
     const user = await loadManagedUser(String(params.id ?? "").trim(), hotelResult.hotelId);
@@ -49,10 +46,7 @@ export async function PATCH(
     if (!caller) return jsonError("No autorizado.", 401);
 
     const body = await request.json().catch(() => null);
-    const hotelResult = resolveManagedHotelId(
-      caller.profile,
-      String(body?.hotel_id ?? "").trim() || null
-    );
+    const hotelResult = resolveManagedHotelId(caller.profile);
     if (!hotelResult.ok) return jsonError(hotelResult.error, hotelResult.status);
 
     const userId = String(params.id ?? "").trim();

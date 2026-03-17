@@ -3,6 +3,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { fetchActiveHotel } from "@/lib/auth/activeHotelClient";
 import { supabase } from "@/lib/supabaseClient";
 import { requireRoleOrRedirect } from "@/lib/auth/RequireRole";
 import HotelHeader from "@/app/components/HotelHeader";
@@ -10,8 +11,6 @@ import type { Role, Profile } from "@/lib/types";
 
 type AreaRow = { id: string; name: string; type: string | null; hotel_id: string | null; created_at?: string | null };
 type HotelRow = { id: string; name: string };
-
-const HOTEL_KEY = "sc_hotel_id";
 
 export default function AreasPage() {
   const router = useRouter();
@@ -43,12 +42,11 @@ export default function AreasPage() {
 
         let hotelIdToUse: string | null = null;
         if (p.role === "superadmin") {
-          hotelIdToUse = typeof window !== "undefined" ? localStorage.getItem(HOTEL_KEY) : null;
+          hotelIdToUse = (await fetchActiveHotel()).hotel_id;
           if (!hotelIdToUse) { setError("No hay hotel seleccionado. Vuelve al dashboard y selecciona uno."); setLoading(false); return; }
         } else {
           if (!p.hotel_id) { setError("Tu usuario no tiene hotel asignado."); setLoading(false); return; }
           hotelIdToUse = p.hotel_id;
-          if (typeof window !== "undefined") localStorage.setItem(HOTEL_KEY, hotelIdToUse);
         }
         setHotelId(hotelIdToUse);
 

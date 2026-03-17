@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
+import { fetchActiveHotel } from "@/lib/auth/activeHotelClient";
 import MemberForm from "./MemberForm";
 import MembersImportPanel from "./MembersImportPanel";
 import MembersTable from "./MembersTable";
@@ -13,8 +14,6 @@ type FormValues = {
   active: boolean;
   area_ids: string[];
 };
-
-const HOTEL_KEY = "sc_hotel_id";
 
 function emptyForm(): FormValues {
   return {
@@ -90,9 +89,9 @@ async function resolveMembersHotelContext() {
   }
 
   const role = normalizeRole(profile.role);
-  const selectedHotelId = typeof window !== "undefined" ? localStorage.getItem(HOTEL_KEY) : null;
+  const activeHotelId = role === "superadmin" ? (await fetchActiveHotel()).hotel_id : null;
   const profileHotelId = String(profile.hotel_id ?? "").trim() || null;
-  const hotelId = role === "superadmin" ? selectedHotelId : profileHotelId;
+  const hotelId = role === "superadmin" ? activeHotelId : profileHotelId;
 
   if (role === "superadmin" && !hotelId) {
     throw new Error("Selecciona un hotel activo para gestionar miembros.");
@@ -158,16 +157,11 @@ export default function MembersModule() {
       setLoading(true);
       setError(null);
       const token = await getAccessToken();
-      const requestedHotelId = role === "superadmin" ? hotelId : null;
-
       if (!token) {
         throw new Error("Sesion invalida.");
       }
 
       const params = new URLSearchParams();
-      if (requestedHotelId) {
-        params.set("hotel_id", requestedHotelId);
-      }
       params.set("status", statusFilter);
       const query = params.toString() ? `?${params.toString()}` : "";
       const res = await fetch(`/api/members${query}`, {
@@ -229,10 +223,7 @@ export default function MembersModule() {
         throw new Error("Sesion invalida.");
       }
 
-      const requestedHotelId = role === "superadmin" ? hotelId : null;
-
       const body = JSON.stringify({
-        hotel_id: requestedHotelId,
         full_name: formValues.full_name,
         employee_number: formValues.employee_number,
         active: formValues.active,
@@ -291,17 +282,13 @@ export default function MembersModule() {
         throw new Error("Sesion invalida.");
       }
 
-      const requestedHotelId = role === "superadmin" ? hotelId : null;
-
       const res = await fetch(`/api/members/${member.id}`, {
         method: "DELETE",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({
-          hotel_id: requestedHotelId,
-        }),
+        body: JSON.stringify({}),
       });
 
       const payload = (await res.json().catch(() => null)) as { error?: string } | null;

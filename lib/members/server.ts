@@ -57,8 +57,8 @@ export async function getMembersCaller(request: NextRequest) {
   };
 }
 
-export function resolveMembersHotelId(caller: MemberCaller, requestedHotelId: string | null) {
-  return resolveRouteHotelScope(caller, requestedHotelId);
+export function resolveMembersHotelId(caller: MemberCaller) {
+  return resolveRouteHotelScope(caller, null);
 }
 
 export async function getHotelAreas(admin: ReturnType<typeof supabaseAdmin>, hotelId: string) {

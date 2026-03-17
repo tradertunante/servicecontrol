@@ -1,7 +1,7 @@
 // app/api/admin/delete-user/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
-import { authorizeRouteRequest } from "@/lib/auth/server";
+import { authorizeRouteRequest, resolveRouteHotelScope } from "@/lib/auth/server";
 
 export async function POST(req: NextRequest) {
   try {
@@ -18,6 +18,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "No puedes borrarte a ti mismo." }, { status: 400 });
     }
 
+    const hotelResult = resolveRouteHotelScope(caller.profile, null);
+    if (!hotelResult.ok) {
+      return NextResponse.json({ error: hotelResult.error }, { status: hotelResult.status });
+    }
+
     // Verificar que el usuario objetivo es del mismo hotel
     const { data: targetProfile, error: targetErr } = await supabaseAdmin()
       .from("profiles")
@@ -29,22 +34,23 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "No se encontró el usuario." }, { status: 404 });
     }
 
-    if (caller.profile.role !== "superadmin" && targetProfile.hotel_id !== caller.profile.hotel_id) {
+    if (String(targetProfile.hotel_id ?? "") !== hotelResult.hotelId) {
       return NextResponse.json({ error: "Forbidden: usuario de otro hotel." }, { status: 403 });
     }
 
     const admin = supabaseAdmin();
 
-    if (caller.profile.role === "superadmin") {
-      await admin.from("user_area_access").delete().eq("user_id", targetUserId);
-    } else {
-      await admin
-        .from("user_area_access")
-        .delete()
-        .eq("user_id", targetUserId)
-        .eq("hotel_id", caller.profile.hotel_id);
-    }
-    await admin.from("profiles").delete().eq("id", targetUserId);
+    await admin
+      .from("user_area_access")
+      .delete()
+      .eq("user_id", targetUserId)
+      .eq("hotel_id", hotelResult.hotelId);
+
+    await admin
+      .from("profiles")
+      .delete()
+      .eq("id", targetUserId)
+      .eq("hotel_id", hotelResult.hotelId);
 
     const { error: delAuthErr } = await admin.auth.admin.deleteUser(targetUserId);
     if (delAuthErr) {

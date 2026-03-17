@@ -273,10 +273,26 @@ export default function AuditTargetsModule({
     const auth = await supabase.auth.getUser();
     const actorUserId = auth.data.user?.id ?? null;
 
-    const d = await supabase.from("area_template_targets").delete().eq("id", rowId);
+    const { data: sessionData } = await supabase.auth.getSession();
+    const accessToken = sessionData?.session?.access_token;
+    if (!accessToken) {
+      setError("Sesión inválida.");
+      setSaving(false);
+      return;
+    }
 
-    if (d.error) {
-      setError(d.error.message);
+    const response = await fetch("/api/admin/audit-targets", {
+      method: "DELETE",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify({ id: rowId }),
+    });
+    const payload = await response.json().catch(() => null);
+
+    if (!response.ok) {
+      setError(payload?.error ?? "No se pudo eliminar el objetivo.");
       setSaving(false);
       return;
     }
@@ -358,6 +374,20 @@ export default function AuditTargetsModule({
       ) ??
       null;
 
+    const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+    if (sessionError) {
+      setError(sessionError.message);
+      setSaving(false);
+      return;
+    }
+
+    const accessToken = sessionData?.session?.access_token;
+    if (!accessToken) {
+      setError("Sesión inválida.");
+      setSaving(false);
+      return;
+    }
+
     const payload: {
       id?: string;
       hotel_id: string;
@@ -378,54 +408,29 @@ export default function AuditTargetsModule({
       created_by: createdBy,
     };
 
-    const up = await supabase
-      .from("area_template_targets")
-      .upsert(payload, {
-        onConflict: "hotel_id,area_id,audit_template_id,period",
-        ignoreDuplicates: false,
-      })
-      .select("id")
-      .maybeSingle();
-
-    if (up.error && String(up.error.message || "").includes("there is no unique or exclusion constraint")) {
-      const ex = await supabase
-        .from("area_template_targets")
-        .select("id")
-        .eq("hotel_id", hotelId)
-        .eq("area_id", areaId)
-        .eq("audit_template_id", templateId)
-        .eq("period", period)
-        .limit(1)
-        .maybeSingle();
-
-      if (ex.error) {
-        setError(ex.error.message);
-        setSaving(false);
-        return;
-      }
-
-      if (ex.data?.id) {
-        const u = await supabase.from("area_template_targets").update(payload).eq("id", ex.data.id);
-        if (u.error) {
-          setError(u.error.message);
-          setSaving(false);
-          return;
-        }
-        payload.id = ex.data.id;
-      } else {
-        const i = await supabase.from("area_template_targets").insert(payload);
-        if (i.error) {
-          setError(i.error.message);
-          setSaving(false);
-          return;
-        }
-      }
-    } else if (up.error) {
-      setError(up.error.message);
+    const response = await fetch("/api/admin/audit-targets", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify({
+        id: editId ?? undefined,
+        area_id: areaId,
+        audit_template_id: templateId,
+        period,
+        target_count: Number(targetCount),
+        active,
+      }),
+    });
+    const result = await response.json().catch(() => null);
+    if (!response.ok) {
+      setError(result?.error ?? "No se pudo guardar el objetivo.");
       setSaving(false);
       return;
-    } else if (up.data?.id) {
-      payload.id = up.data.id;
+    }
+    if (result?.id) {
+      payload.id = result.id;
     }
 
     const nextTargetCount = Number(targetCount);

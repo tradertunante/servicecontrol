@@ -60,11 +60,12 @@ function normalizeStatus(a: AnswerRow | undefined): "FAIL" | "NA" | "OK" {
   return "OK";
 }
 
-export async function buildAuditReportData(runId: string): Promise<AuditReportData> {
+export async function buildAuditReportData(runId: string, hotelId: string): Promise<AuditReportData> {
   const { data: runData, error: runErr } = await supabase
     .from("audit_runs")
-    .select("id,area_id,audit_template_id,status,score,room_number,executed_at")
+    .select("id,hotel_id,area_id,audit_template_id,status,score,room_number,executed_at")
     .eq("id", runId)
+    .eq("hotel_id", hotelId)
     .eq("status", "submitted")
     .single();
 

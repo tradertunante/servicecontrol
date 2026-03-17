@@ -2,8 +2,8 @@
 "use client";
 
 import type { CSSProperties } from "react";
+import { setActiveHotel } from "@/lib/auth/activeHotelClient";
 import type { HotelRow } from "../_lib/dashboardTypes";
-import { HOTEL_KEY } from "../_hooks/useDashboardData";
 
 export default function HotelPicker({
   hotels,
@@ -11,18 +11,18 @@ export default function HotelPicker({
   ghostBtn,
   fg,
   bg,
-  selectedHotelId,
-  setSelectedHotelId,
+  activeHotelId,
+  setActiveHotelId,
 }: {
   hotels: HotelRow[];
   card: CSSProperties;
   ghostBtn: CSSProperties;
   fg: string;
   bg: string;
-  selectedHotelId: string | null;
-  setSelectedHotelId: (v: string | null) => void;
+  activeHotelId: string | null;
+  setActiveHotelId: (v: string | null) => void;
 }) {
-  if (selectedHotelId) return null;
+  if (activeHotelId) return null;
 
   return (
     <main className="dash" style={{ background: bg, color: fg }}>
@@ -40,8 +40,10 @@ export default function HotelPicker({
               <button
                 key={h.id}
                 onClick={() => {
-                  localStorage.setItem(HOTEL_KEY, h.id);
-                  setSelectedHotelId(h.id);
+                  void (async () => {
+                    await setActiveHotel(h.id);
+                    setActiveHotelId(h.id);
+                  })();
                 }}
                 style={{
                   ...ghostBtn,

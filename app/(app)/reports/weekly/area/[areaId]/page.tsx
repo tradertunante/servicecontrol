@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { CSSProperties } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { fetchActiveHotel } from "@/lib/auth/activeHotelClient";
 import { requireRoleOrRedirect } from "@/lib/auth/RequireRole";
 import { canRunAudits } from "@/lib/auth/permissions";
 import { buildWeeklyAreaReport } from "@/lib/reports/buildWeeklyAreaReport";
@@ -207,8 +208,14 @@ export default function WeeklyAreaReportPage() {
           return;
         }
 
+        const activeHotelId = (await fetchActiveHotel()).hotel_id;
+        if (!activeHotelId) {
+          throw new Error("No hay hotel activo seleccionado.");
+        }
+
         const data = await buildWeeklyAreaReport({
           areaId,
+          hotelId: activeHotelId,
           weekStart: effectiveRange.weekStart,
           weekEnd: effectiveRange.weekEnd,
         });

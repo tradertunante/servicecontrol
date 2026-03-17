@@ -19,11 +19,10 @@ export async function GET(request: NextRequest) {
     const callerResult = await getMembersCaller(request);
     if (!callerResult.ok) return jsonError(callerResult.error, callerResult.status);
 
-    const requestedHotelId = request.nextUrl.searchParams.get("hotel_id")?.trim() ?? null;
     const rawStatus = request.nextUrl.searchParams.get("status")?.trim().toLowerCase() ?? "active";
     const status: "all" | "active" | "inactive" =
       rawStatus === "inactive" ? "inactive" : rawStatus === "all" ? "all" : "active";
-    const hotelResult = resolveMembersHotelId(callerResult.caller, requestedHotelId);
+    const hotelResult = resolveMembersHotelId(callerResult.caller);
     if (!hotelResult.ok) return jsonError(hotelResult.error, hotelResult.status);
 
     const admin = supabaseAdmin();
@@ -61,8 +60,7 @@ export async function POST(request: NextRequest) {
     if (!callerResult.ok) return jsonError(callerResult.error, callerResult.status);
 
     const body = await request.json().catch(() => null);
-    const requestedHotelId = String(body?.hotel_id ?? "").trim() || null;
-    const hotelResult = resolveMembersHotelId(callerResult.caller, requestedHotelId);
+    const hotelResult = resolveMembersHotelId(callerResult.caller);
     if (!hotelResult.ok) return jsonError(hotelResult.error, hotelResult.status);
 
     const fullName = String(body?.full_name ?? "").trim();

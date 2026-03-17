@@ -1,14 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { fetchActiveHotel } from "@/lib/auth/activeHotelClient";
 import { supabase } from "@/lib/supabaseClient";
 import type { Profile } from "@/lib/types";
 import type { ManagerAreaOption } from "../_components/ManagerAreaWorkspace";
 
-const HOTEL_KEY = "sc_hotel_id";
-
 export function useTeamWorkspace() {
   const [profile, setProfile] = useState<Profile | null>(null);
+  const [hotelId, setHotelId] = useState("");
   const [profileError, setProfileError] = useState<string | null>(null);
   const [managerAreasLoading, setManagerAreasLoading] = useState(false);
   const [managerAreasError, setManagerAreasError] = useState<string | null>(null);
@@ -64,8 +64,9 @@ export function useTeamWorkspace() {
 
         const hotelIdToUse =
           profile.hotel_id ??
-          (typeof window !== "undefined" ? localStorage.getItem(HOTEL_KEY) : null) ??
+          (await fetchActiveHotel()).hotel_id ??
           "";
+        if (!cancelled) setHotelId(hotelIdToUse);
 
         const { data: accessData, error: accessError } = await supabase
           .from("user_area_access")
@@ -107,9 +108,6 @@ export function useTeamWorkspace() {
       cancelled = true;
     };
   }, [profile]);
-
-  const hotelId =
-    typeof window !== "undefined" ? localStorage.getItem(HOTEL_KEY) ?? "" : "";
 
   return {
     profile,

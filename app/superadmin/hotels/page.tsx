@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { requireRoleOrRedirect, type Profile as LoadedProfile } from "@/lib/auth/RequireRole";
+import { fetchActiveHotel, setActiveHotel } from "@/lib/auth/activeHotelClient";
 import { getDefaultHotelRouteByRole, type Role } from "@/lib/auth/permissions";
 
 type Hotel = {
@@ -13,9 +14,6 @@ type Hotel = {
   active?: boolean | null;
   created_at?: string | null;
 };
-
-const HOTEL_KEY = "sc_hotel_id";
-
 export default function SuperadminHotelsPage() {
   const router = useRouter();
 
@@ -74,8 +72,8 @@ export default function SuperadminHotelsPage() {
         const list = (data ?? []) as Hotel[];
         setHotels(list);
 
-        const saved = localStorage.getItem(HOTEL_KEY);
-        setActiveHotelId(saved);
+        const activeHotel = await fetchActiveHotel();
+        setActiveHotelId(activeHotel.hotel_id ?? null);
       } catch (e: any) {
         if (!alive) return;
         setError(e?.message ?? "Error cargando hoteles.");
@@ -90,14 +88,16 @@ export default function SuperadminHotelsPage() {
   }, [router]);
 
   const pickHotel = (hotelId: string) => {
-    localStorage.setItem(HOTEL_KEY, hotelId);
-    setActiveHotelId(hotelId);
-    router.replace(getDefaultHotelRouteByRole(profile?.role));
+    void (async () => {
+      await setActiveHotel(hotelId);
+      setActiveHotelId(hotelId);
+      router.replace(getDefaultHotelRouteByRole(profile?.role));
+    })();
   };
 
   const logout = async () => {
     await supabase.auth.signOut();
-    localStorage.removeItem(HOTEL_KEY);
+    await setActiveHotel(null);
     router.replace("/login");
   };
 
@@ -144,7 +144,7 @@ export default function SuperadminHotelsPage() {
       );
 
       if (!nextActive && activeHotelId === hotelId) {
-        localStorage.removeItem(HOTEL_KEY);
+        await setActiveHotel(null);
         setActiveHotelId(null);
       }
     } catch (e: any) {

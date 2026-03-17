@@ -22,10 +22,7 @@ export async function POST(req: NextRequest) {
     const email = String(body.email ?? "").trim().toLowerCase();
     const password = String(body.password ?? "");
     const full_name = body.full_name ?? null;
-    const hotelResult = resolveManagedHotelId(
-      caller.profile,
-      String(body.hotel_id ?? "").trim() || null
-    );
+    const hotelResult = resolveManagedHotelId(caller.profile);
 
     if (!email || !password) {
       return jsonError("Email y password son obligatorios.");
