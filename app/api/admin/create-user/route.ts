@@ -1,8 +1,8 @@
 // app/api/admin/create-user/route.ts
 
 import { NextRequest, NextResponse } from "next/server";
-import { supabaseWithToken } from "@/lib/supabaseServer";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { authorizeRouteRequest } from "@/lib/auth/server";
 
 type Role =
   | "admin"
@@ -37,49 +37,10 @@ function normalizeRole(input: unknown): Role {
   return "auditor";
 }
 
-async function getCaller(req: NextRequest) {
-  const authHeader = req.headers.get("authorization") || "";
-  const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : "";
-
-  if (!token) {
-    return { ok: false as const, error: "No autorizado.", status: 401 };
-  }
-
-  const client = supabaseWithToken(token);
-
-  const { data: callerAuth } = await client.auth.getUser(token);
-  if (!callerAuth?.user) {
-    return { ok: false as const, error: "No autorizado.", status: 401 };
-  }
-
-  const callerId = callerAuth.user.id;
-
-  const { data: callerProfile, error } = await client
-    .from("profiles")
-    .select("id, hotel_id, role, active")
-    .eq("id", callerId)
-    .single();
-
-  if (error || !callerProfile) {
-    return { ok: false as const, error: "Perfil inválido.", status: 403 };
-  }
-
-  const role = normalizeRole(callerProfile.role);
-
-  if (!(callerProfile.active ?? true) || (role !== "admin" && role !== "superadmin")) {
-    return { ok: false as const, error: "Forbidden.", status: 403 };
-  }
-
-  return {
-    ok: true as const,
-    callerProfile,
-  };
-}
-
 export async function POST(req: NextRequest) {
   try {
-    const caller = await getCaller(req);
-    if (!caller.ok) return jsonError(caller.error, caller.status);
+    const caller = await authorizeRouteRequest(req, { roles: ["admin", "superadmin"] });
+    if (!caller) return jsonError("No autorizado.", 401);
 
     const body = await req.json();
 
@@ -87,7 +48,7 @@ export async function POST(req: NextRequest) {
     const password = String(body.password ?? "");
     const full_name = body.full_name ?? null;
     const role = normalizeRole(body.role);
-    const hotel_id = body.hotel_id;
+    const hotel_id = String(body.hotel_id ?? "").trim();
 
     if (!email || !password) {
       return jsonError("Email y password son obligatorios.");
@@ -95,6 +56,10 @@ export async function POST(req: NextRequest) {
 
     if (!hotel_id) {
       return jsonError("hotel_id es obligatorio.");
+    }
+
+    if (caller.profile.role !== "superadmin" && caller.profile.hotel_id !== hotel_id) {
+      return jsonError("Forbidden.", 403);
     }
 
     const admin = supabaseAdmin();

@@ -9,6 +9,50 @@ export type Role =
   | "it"
   | "systems";
 
+export type AuthorizationModule =
+  | "areas"
+  | "reports"
+  | "admin"
+  | "builder"
+  | "users"
+  | "team"
+  | "team_manager"
+  | "members";
+
+export type Permission =
+  | "areas.view"
+  | "areas.manage"
+  | "reports.view"
+  | "admin.access"
+  | "builder.manage"
+  | "users.manage"
+  | "team.access"
+  | "team.manage_assigned_areas"
+  | "members.manage";
+
+const MODULE_ROLE_MAP: Record<AuthorizationModule, Role[]> = {
+  areas: ["admin", "general_manager", "manager", "auditor", "superadmin", "quality"],
+  reports: ["admin", "manager", "auditor", "quality", "superadmin"],
+  admin: ["admin", "superadmin"],
+  builder: ["admin", "superadmin"],
+  users: ["admin", "superadmin"],
+  team: ["superadmin", "admin", "manager", "quality", "engineering", "systems", "it"],
+  team_manager: ["manager"],
+  members: ["manager", "quality", "general_manager", "admin", "superadmin"],
+};
+
+const PERMISSION_ROLE_MAP: Record<Permission, Role[]> = {
+  "areas.view": MODULE_ROLE_MAP.areas,
+  "areas.manage": ["admin", "superadmin"],
+  "reports.view": MODULE_ROLE_MAP.reports,
+  "admin.access": MODULE_ROLE_MAP.admin,
+  "builder.manage": MODULE_ROLE_MAP.builder,
+  "users.manage": MODULE_ROLE_MAP.users,
+  "team.access": MODULE_ROLE_MAP.team,
+  "team.manage_assigned_areas": MODULE_ROLE_MAP.team_manager,
+  "members.manage": MODULE_ROLE_MAP.members,
+};
+
 export function normalizeRole(role: any): Role {
   const r = (role ?? "").toString().toLowerCase().trim();
 
@@ -27,6 +71,36 @@ export function normalizeRole(role: any): Role {
 
 function norm(role: Role | string | null | undefined): string {
   return (role ?? "").toString().toLowerCase().trim();
+}
+
+export function isRoleAllowed(
+  role: Role | string | null | undefined,
+  allowedRoles: readonly Role[]
+): boolean {
+  const normalized = normalizeRole(role);
+  return allowedRoles.includes(normalized);
+}
+
+export function getModuleRoles(module: AuthorizationModule): readonly Role[] {
+  return MODULE_ROLE_MAP[module];
+}
+
+export function canAccessModule(
+  role: Role | string | null | undefined,
+  module: AuthorizationModule
+): boolean {
+  return isRoleAllowed(role, MODULE_ROLE_MAP[module]);
+}
+
+export function getPermissionRoles(permission: Permission): readonly Role[] {
+  return PERMISSION_ROLE_MAP[permission];
+}
+
+export function hasPermission(
+  role: Role | string | null | undefined,
+  permission: Permission
+): boolean {
+  return isRoleAllowed(role, PERMISSION_ROLE_MAP[permission]);
 }
 
 export function getDefaultHotelRouteByRole(
