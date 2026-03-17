@@ -155,16 +155,6 @@ export function useAuditSession(runId: string | undefined) {
       setError(null);
 
       try {
-        const {
-          data: { user },
-          error: authError,
-        } = await supabase.auth.getUser();
-
-        if (authError || !user) {
-          router.push("/login");
-          return;
-        }
-
         const { data: runData, error: runError } = await supabase
           .from("audit_runs")
           .select(

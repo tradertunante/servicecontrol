@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Card from "@/components/ui/Card";
-import { supabase } from "@/lib/supabaseClient";
 import type { DepartmentCode } from "@/hooks/useDepartmentCorrectiveActions";
 import { useDepartmentCorrectiveActions } from "@/hooks/useDepartmentCorrectiveActions";
 
@@ -31,39 +30,15 @@ export default function DepartmentCorrectiveActionsPage({
   department,
   title,
   description,
+  userId,
 }: {
   department: DepartmentCode;
   title: string;
   description: string;
+  userId: string;
 }) {
   const router = useRouter();
-  const [userId, setUserId] = useState<string | null>(null);
-  const [authLoading, setAuthLoading] = useState(true);
-
   const { data, error, isLoading } = useDepartmentCorrectiveActions(userId, department);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    async function loadAuth() {
-      const { data: authData, error: authErr } = await supabase.auth.getUser();
-      if (cancelled) return;
-
-      if (authErr || !authData.user) {
-        router.replace("/login");
-        return;
-      }
-
-      setUserId(authData.user.id);
-      setAuthLoading(false);
-    }
-
-    void loadAuth();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [department, router]);
 
   useEffect(() => {
     if (!data?.redirectTo) return;
@@ -85,7 +60,7 @@ export default function DepartmentCorrectiveActionsPage({
   const rows = data?.rows ?? [];
   const scopeLabel = data?.scopeLabel ?? "";
   const userName = data?.userName ?? null;
-  const loading = authLoading || isLoading;
+  const loading = isLoading;
   const errorMessage = error instanceof Error ? error.message : "";
 
   return (
