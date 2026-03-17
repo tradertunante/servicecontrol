@@ -2,7 +2,6 @@
 
 import { useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { requireRoleOrRedirect } from "@/lib/auth/RequireRole";
 import type { PeriodKey } from "@/app/(app)/areas/[areaId]/_lib/areaTypes";
 import TeamPageShell from "../_components/TeamPageShell";
 import ManagerAreaWorkspace from "../_components/ManagerAreaWorkspace";
@@ -11,8 +10,6 @@ import { useTeamWorkspace } from "../_hooks/useTeamWorkspace";
 export default function TeamHistorialPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-
-  requireRoleOrRedirect(["manager"], router);
 
   const {
     profile,

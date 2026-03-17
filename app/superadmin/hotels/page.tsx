@@ -3,10 +3,11 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { getClientProfile } from "@/lib/auth/clientProfile";
 import { supabase } from "@/lib/supabaseClient";
-import { requireRoleOrRedirect, type Profile as LoadedProfile } from "@/lib/auth/RequireRole";
 import { fetchActiveHotel, setActiveHotel } from "@/lib/auth/activeHotelClient";
-import { getDefaultHotelRouteByRole, type Role } from "@/lib/auth/permissions";
+import { getDefaultHotelRouteByRole } from "@/lib/auth/permissions";
+import type { Profile as LoadedProfile } from "@/lib/types";
 
 type Hotel = {
   id: string;
@@ -55,8 +56,7 @@ export default function SuperadminHotelsPage() {
         setLoading(true);
         setError("");
 
-        const allowed: Role[] = ["superadmin"];
-        const p = await requireRoleOrRedirect(router, allowed, "/login");
+        const p = await getClientProfile();
         if (!alive || !p) return;
 
         setProfile(p);
@@ -85,7 +85,7 @@ export default function SuperadminHotelsPage() {
     return () => {
       alive = false;
     };
-  }, [router]);
+  }, []);
 
   const pickHotel = (hotelId: string) => {
     void (async () => {

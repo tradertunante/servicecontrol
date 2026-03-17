@@ -2,7 +2,6 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { requireRoleOrRedirect } from "@/lib/auth/RequireRole";
 import TeamPageShell from "../_components/TeamPageShell";
 import TeamSummaryTab from "../_components/TeamSummaryTab";
 import { useTeamWorkspace } from "../_hooks/useTeamWorkspace";
@@ -38,11 +37,6 @@ const reportBtnDisabledStyle = {
 
 export default function TeamProgressPage() {
   const router = useRouter();
-
-  requireRoleOrRedirect(
-    ["superadmin", "admin", "manager", "quality"],
-    router
-  );
 
   const { profile, profileError, hotelId, managerAreaOptions } = useTeamWorkspace();
   const [selectedPeriod, setSelectedPeriod] = useState<TeamPeriodKey>("monthly");

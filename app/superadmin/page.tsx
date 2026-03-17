@@ -1,9 +1,8 @@
 // app/superadmin/page.tsx
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { requireRoleOrRedirect } from "@/lib/auth/RequireRole";
 
 type Card = {
   title: string;
@@ -14,7 +13,6 @@ type Card = {
 
 export default function SuperadminHomePage() {
   const router = useRouter();
-  const [loading, setLoading] = useState(true);
 
   const styles = useMemo(() => {
     const page: React.CSSProperties = { padding: 24, paddingTop: 24 };
@@ -62,19 +60,6 @@ export default function SuperadminHomePage() {
     return { page, headerWrap, title, subtitle, grid, card, cardTop, icon, cardTitle, cardSub, hint };
   }, []);
 
-  useEffect(() => {
-    let alive = true;
-    (async () => {
-      const p = await requireRoleOrRedirect(router, ["superadmin"], "/dashboard");
-      if (!p) return;
-      if (!alive) return;
-      setLoading(false);
-    })();
-    return () => {
-      alive = false;
-    };
-  }, [router]);
-
   const cards: Card[] = [
     {
       title: "Biblioteca Global",
@@ -89,14 +74,6 @@ export default function SuperadminHomePage() {
       icon: "🏨",
     },
   ];
-
-  if (loading) {
-    return (
-      <main style={styles.page}>
-        <div style={{ opacity: 0.8 }}>Cargando…</div>
-      </main>
-    );
-  }
 
   return (
     <main style={styles.page}>

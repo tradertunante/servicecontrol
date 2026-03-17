@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
+import { getClientProfile } from "@/lib/auth/clientProfile";
 import { supabase } from "@/lib/supabaseClient";
 import { fetchActiveHotel } from "@/lib/auth/activeHotelClient";
 import { canManageUsers, getAssignableRoles } from "@/lib/auth/permissions";
@@ -61,13 +62,10 @@ export default function UserDetailPage() {
     const init = async () => {
       setLoading(true); setMsg(null);
       if (invalidId) { router.push("/users"); return; }
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) { router.push("/login"); return; }
-      const { data: myProfile, error: meErr } = await supabase.from("profiles").select("id, hotel_id, role, active, full_name").eq("id", user.id).single();
-      if (meErr || !myProfile || myProfile.active === false) { router.push("/login"); return; }
-      const myP = myProfile as Profile;
+      const myP = await getClientProfile();
+      if (!myP) { setMsg("No se pudo cargar tu perfil."); setLoading(false); return; }
       setMe(myP);
-      if (!canManageUsers(myP.role)) { router.push("/"); return; }
+      if (!canManageUsers(myP.role)) { setMsg("No tienes permisos para administrar usuarios."); setLoading(false); return; }
       const scopedHotelId =
         myP.role === "superadmin"
           ? (await fetchActiveHotel()).hotel_id
@@ -79,10 +77,7 @@ export default function UserDetailPage() {
       }
       const { data: sessionData } = await supabase.auth.getSession();
       const accessToken = sessionData?.session?.access_token;
-      if (!accessToken) {
-        router.push("/login");
-        return;
-      }
+      if (!accessToken) { setMsg("Sesión inválida."); setLoading(false); return; }
       const response = await fetch(`/api/admin/users/${userId}`, {
         headers: { Authorization: `Bearer ${accessToken}` },
       });

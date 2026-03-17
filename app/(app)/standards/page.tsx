@@ -3,9 +3,9 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { getClientProfile } from "@/lib/auth/clientProfile";
 import { supabase } from "@/lib/supabaseClient";
 import { fetchActiveHotel, setActiveHotel } from "@/lib/auth/activeHotelClient";
-import { requireRoleOrRedirect } from "@/lib/auth/RequireRole";
 import HotelHeader from "@/app/components/HotelHeader";
 import BackButton from "@/app/components/BackButton";
 import type { Profile } from "@/lib/types";
@@ -52,7 +52,7 @@ export default function StandardsPage() {
     (async () => {
       setLoading(true); setError(null);
       try {
-        const p = (await requireRoleOrRedirect(router, ["admin", "superadmin"], "/dashboard")) as Profile | null;
+        const p = await getClientProfile();
         if (!alive || !p) return;
         setProfile(p);
 
@@ -74,7 +74,7 @@ export default function StandardsPage() {
       }
     })();
     return () => { alive = false; };
-  }, [router]);
+  }, []);
 
   const hotelBadge = useMemo(() => {
     if (!profile || profile.role !== "superadmin" || !hotelIdInUse) return null;

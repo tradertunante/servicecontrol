@@ -2,9 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { getClientProfile } from "@/lib/auth/clientProfile";
 import { supabase } from "@/lib/supabaseClient";
 import { fetchActiveHotel } from "@/lib/auth/activeHotelClient";
-import { requireRoleOrRedirect } from "@/lib/auth/RequireRole";
 import { canRunAudits } from "@/lib/auth/permissions";
 
 import type {
@@ -54,12 +54,7 @@ export function useAreaData({
       setError(null);
 
       try {
-        // ✅ incluye quality
-        const p = await requireRoleOrRedirect(
-          router,
-          ["admin", "general_manager", "manager", "auditor", "superadmin", "quality"],
-          "/areas"
-        );
+        const p = await getClientProfile();
         if (!p) return;
         setProfile(p);
 

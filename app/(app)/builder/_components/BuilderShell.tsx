@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { fetchActiveHotel } from "@/lib/auth/activeHotelClient";
-import { requireRoleOrRedirect } from "@/lib/auth/RequireRole";
+import { getClientProfile } from "@/lib/auth/clientProfile";
 import BuilderEmbedded from "@/app/components/BuilderEmbedded";
 import type { Profile } from "@/lib/types";
 
@@ -27,7 +27,7 @@ export default function BuilderShell({
     (async () => {
       setLoading(true); setError(null);
       try {
-        const p = (await requireRoleOrRedirect(router, ["admin", "superadmin"], "/dashboard")) as Profile | null;
+        const p = await getClientProfile();
         if (!alive || !p) return;
         setProfile(p);
 
@@ -50,7 +50,7 @@ export default function BuilderShell({
       }
     })();
     return () => { alive = false; };
-  }, [router, hotelId]);
+  }, [hotelId]);
 
   const containerStyle: React.CSSProperties = embedded ? { width: "100%" } : { padding: 24, paddingTop: 96 };
 

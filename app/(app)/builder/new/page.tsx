@@ -3,9 +3,9 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { getClientProfile } from "@/lib/auth/clientProfile";
 import { supabase } from "@/lib/supabaseClient";
 import { fetchActiveHotel } from "@/lib/auth/activeHotelClient";
-import { requireRoleOrRedirect } from "@/lib/auth/RequireRole";
 import HotelHeader from "@/app/components/HotelHeader";
 import BackButton from "@/app/components/BackButton";
 import type { Profile } from "@/lib/types";
@@ -30,7 +30,7 @@ export default function NewTemplatePage() {
     (async () => {
       setLoading(true); setError(null);
       try {
-        const p = await requireRoleOrRedirect(router, ["admin", "superadmin"], "/dashboard");
+        const p = await getClientProfile();
         if (!p) return;
         setProfile(p);
         const hotelId =
@@ -59,7 +59,7 @@ export default function NewTemplatePage() {
         setLoading(false);
       }
     })();
-  }, [router, searchParams]);
+  }, [searchParams]);
 
   async function handleCreate() {
     setError(null); setSuccess(null);

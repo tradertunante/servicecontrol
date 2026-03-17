@@ -218,6 +218,116 @@ Se corrigió el módulo para que:
 - `POST /api/members` y `PATCH /api/members/[id]` validen duplicados por `(hotel_id, employee_number)` antes de insertar o actualizar
 - la base de datos elimine cualquier unicidad global residual sobre `team_members.employee_number` y conserve un único índice parcial compuesto por `(hotel_id, employee_number)`
 
+---
+
+## Issue 8
+
+### Fecha
+2026-03-16
+
+### Síntoma
+Varias rutas App Router protegidas seguían confiando en `requireRoleOrRedirect(...)` dentro de páginas cliente, por lo que un acceso directo por URL podía iniciar render y bootstrapping antes del control real server-side.
+
+### Causa raíz
+El repo ya tenía helpers server-side y algunos layouts protegidos, pero faltaba cerrar de forma consistente:
+
+- `dashboard`, que no tenía layout server-side propio
+- segmentos hotel-dependientes que validaban rol en servidor pero no exigían hotel activo antes de renderizar
+- `team/page`, que resolvía la redirección principal solo con lógica cliente
+
+### Solución aplicada
+Se endureció el acceso App Router con una capa reutilizable:
+
+- `requirePageAccess(...)` en `lib/auth/server.ts` para combinar rol/módulo + hotel scope
+- layouts server-side con hotel scope en `dashboard`, `admin`, `builder`, `standards`, `users`, `areas`, `reports` y subzonas operativas de `team`
+- `app/(app)/team/page.tsx` convertido a redirección server-side según rol
+
+### Cómo evitarlo en el futuro
+- cualquier zona protegida nueva debe cerrar acceso desde layout o página server antes del primer render
+- si la pantalla depende de hotel activo o área concreta, validar ese scope en servidor y no solo en hooks cliente
+- mantener checks cliente solo como UX secundaria, nunca como autoridad de acceso
+
+### Archivos relacionados
+- `lib/auth/server.ts`
+- `app/(app)/dashboard/layout.tsx`
+- `app/(app)/admin/layout.tsx`
+- `app/(app)/builder/layout.tsx`
+- `app/(app)/areas/layout.tsx`
+- `app/(app)/reports/layout.tsx`
+- `app/(app)/team/page.tsx`
+
+---
+
+## Issue 9
+
+### Fecha
+2026-03-16
+
+### Síntoma
+Tras cerrar el acceso real server-side en App Router, seguían existiendo páginas de `superadmin`, `standards`, `users` y `builder` que todavía ejecutaban `requireRoleOrRedirect(...)` o checks equivalentes en cliente como si fueran el control principal.
+
+### Causa raíz
+El repo quedó en un estado híbrido:
+
+- el acceso real ya se resolvía por `layout.tsx` server-side
+- varias páginas cliente seguían cargando perfil y rol con una semántica de pseudo-seguridad
+- eso mezclaba responsabilidad de seguridad con bootstrap de UI y dejaba señales engañosas en el código
+
+### Solución aplicada
+Se completó la limpieza residual:
+
+- eliminación de `requireRoleOrRedirect(...)` en `app/superadmin/*`, `app/(app)/standards/*`, `app/(app)/users/*` y `app/(app)/builder/*`
+- incorporación de `getClientProfile()` como helper neutral para los casos donde el perfil sigue siendo necesario para render o decidir hotel activo
+- sin cambios de permisos: la seguridad real sigue viviendo en layouts y helpers server-side
+
+### Cómo evitarlo en el futuro
+- si un segmento ya está blindado por layout o por page server-side, no reintroducir auth cliente como autoridad
+- usar helpers cliente de perfil solo para render, no para control de acceso
+- al migrar un segmento, completar también la limpieza de checks residuales para evitar ambigüedad arquitectónica
+
+### Archivos relacionados
+- `lib/auth/clientProfile.ts`
+- `app/superadmin/*`
+- `app/(app)/standards/*`
+- `app/(app)/users/*`
+- `app/(app)/builder/*`
+
+---
+
+## Issue 10
+
+### Fecha
+2026-03-16
+
+### Síntoma
+Algunas APIs privilegiadas seguían validando autenticación y hotel activo, pero no siempre cerraban toda la autorización contextual del recurso objetivo.
+
+### Causa raíz
+Quedaban tres patrones de riesgo:
+
+- endpoints administrativos que comprobaban hotel del target pero no si el actor podía administrar el rol del usuario objetivo
+- endpoints de acceso por área que aceptaban `user_id` del cliente sin validar capacidad real de administrar a ese usuario
+- `POST /api/audits/submit` confiaba en autenticación y en la RPC downstream, sin validar en la propia API el scope real del run y del área
+
+### Solución aplicada
+Se endurecieron los bordes HTTP para que la API valide explícitamente:
+
+- acceso de administración real sobre el usuario objetivo en `admin/delete-user` y `admin/user-area-access/*`
+- hotel y área reales del `audit_run` en `audits/submit`
+- restricción adicional para que un `auditor` solo pueda enviar auditorías ejecutadas por sí mismo
+
+### Cómo evitarlo en el futuro
+- no asumir que la RPC o la UI reemplazan la autorización del endpoint
+- cuando un endpoint opere sobre un recurso ajeno, validar actor + target + scope en la misma API
+- si el target es un usuario, reutilizar un helper compartido para hotel scope y capacidad de administración del rol objetivo
+
+### Archivos relacionados
+- `app/api/admin/delete-user/route.ts`
+- `app/api/admin/user-area-access/get/route.ts`
+- `app/api/admin/user-area-access/set/route.ts`
+- `app/api/audits/submit/route.ts`
+- `lib/auth/userManagement.ts`
+
 ### Cómo evitarlo en el futuro
 - no usar `localStorage` como fuente primaria de `hotel_id` en módulos que ya pueden resolver el perfil autenticado
 - cuando una regla de unicidad sea multi-tenant, validar siempre con su scope completo en server-side

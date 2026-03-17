@@ -5,7 +5,8 @@ import { useEffect, useMemo, useState } from "react";
 import type { CSSProperties } from "react";
 import { useRouter } from "next/navigation";
 import { fetchActiveHotel, setActiveHotel } from "@/lib/auth/activeHotelClient";
-import { requireRoleOrRedirect } from "@/lib/auth/RequireRole";
+import { getClientProfile } from "@/lib/auth/clientProfile";
+import { isRoleAllowed } from "@/lib/auth/permissions";
 import type { Profile } from "@/lib/types";
 
 import DashboardShell, { buildCardStyle, buildGhostBtnStyle, buildMiniBtnStyle } from "./_components/DashboardShell";
@@ -50,13 +51,13 @@ export default function DashboardPage() {
       setAuthLoading(true);
       setAuthError(null);
       try {
-        const p = (await requireRoleOrRedirect(
-          router,
-          ["admin", "manager", "auditor", "superadmin", "quality"],
-          "/login"
-        )) as Profile | null;
+        const p = await getClientProfile();
 
         if (!alive || !p) return;
+        if (!isRoleAllowed(p.role, ["admin", "general_manager", "quality", "superadmin"])) {
+          setAuthError("No tienes permisos para ver el dashboard.");
+          return;
+        }
         setProfile(p);
 
         if (p.role === "superadmin") {
@@ -76,7 +77,7 @@ export default function DashboardPage() {
       }
     })();
     return () => { alive = false; };
-  }, [router]);
+  }, []);
 
   // ✅ heatMapDataInternal y heatMapDataQuality añadidos
   const {

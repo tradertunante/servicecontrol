@@ -4,7 +4,6 @@
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
-import { requireRoleOrRedirect } from "@/lib/auth/RequireRole";
 import HotelHeader from "@/app/components/HotelHeader";
 
 type TemplateRow = {
@@ -41,12 +40,6 @@ export default function SuperadminTemplatesPage() {
       setLoading(true);
       setError(null);
 
-      const p = await requireRoleOrRedirect(router, ["superadmin"], "/dashboard");
-      if (!p) {
-        if (mounted) setLoading(false);
-        return;
-      }
-
       try {
         const { data: tData, error: tErr } = await supabase
           .from("audit_templates")
@@ -81,7 +74,7 @@ export default function SuperadminTemplatesPage() {
     return () => {
       mounted = false;
     };
-  }, [router]);
+  }, []);
 
   const filtered = useMemo(() => {
     const needle = q.trim().toLowerCase();

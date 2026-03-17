@@ -4,7 +4,6 @@
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
-import { requireRoleOrRedirect } from "@/lib/auth/RequireRole";
 import HotelHeader from "@/app/components/HotelHeader";
 
 export default function SuperadminCreateGlobalTemplatePage() {
@@ -23,12 +22,6 @@ export default function SuperadminCreateGlobalTemplatePage() {
     (async () => {
       setLoading(true);
       setError(null);
-
-      const p = await requireRoleOrRedirect(router, ["superadmin"], "/dashboard");
-      if (!p) {
-        if (mounted) setLoading(false);
-        return;
-      }
 
       try {
         // ✅ Crear GLOBAL (NO hotel_id)
@@ -57,7 +50,7 @@ export default function SuperadminCreateGlobalTemplatePage() {
     return () => {
       mounted = false;
     };
-  }, [router]);
+  }, [back, router]);
 
   return (
     <main style={{ padding: 24, paddingTop: 80 }}>

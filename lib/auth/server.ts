@@ -205,6 +205,35 @@ export async function requireModuleAccess(
   return auth;
 }
 
+export async function requirePageAccess(options: {
+  nextPath?: string;
+  redirectTo?: string;
+  roles?: readonly Role[];
+  permission?: Permission;
+  module?: AuthorizationModule;
+  requireHotel?: boolean;
+  requestedHotelId?: string | null;
+}) {
+  let auth: AuthContext;
+
+  if (options.module) {
+    auth = await requireModuleAccess(options.module, options);
+  } else if (options.permission) {
+    auth = await requirePermission(options.permission, options);
+  } else if (options.roles) {
+    auth = await requireRole(options.roles, options);
+  } else {
+    auth = await requireAuthenticatedUser(options.nextPath);
+  }
+
+  if (!options.requireHotel) {
+    return auth;
+  }
+
+  const hotelId = resolveScopedHotelId(auth.profile, options.requestedHotelId);
+  return { ...auth, hotelId };
+}
+
 export function resolveScopedHotelId(profile: Profile, requestedHotelId?: string | null) {
   const activeHotelId =
     profile.role === "superadmin" ? getServerSelectedHotelId() : profile.hotel_id ?? null;

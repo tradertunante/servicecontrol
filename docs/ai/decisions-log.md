@@ -227,6 +227,118 @@ La fuente de verdad del score final será backend/server-side.
 2026-03-16
 
 ### Decisión
+Resolver autorización de páginas protegidas en App Router desde layouts/páginas server con un helper compuesto, en vez de depender de checks cliente por pantalla.
+
+### Contexto
+El repo ya contaba con `requireRole`, `requireModuleAccess`, `requireHotelScope` y `requireAreaScope`, pero todavía quedaban zonas donde:
+
+- la ruta se protegía solo en cliente
+- el rol se validaba en servidor sin exigir hotel activo
+- la redirección principal del segmento se hacía en `useEffect`
+
+Eso dejaba huecos de acceso directo por URL y hacía inconsistente el blindaje entre segmentos.
+
+### Alternativas consideradas
+- reescribir cada página cliente como server component con bootstrap completo
+- mantener los checks cliente y confiar en RLS
+- cerrar acceso en el borde App Router con un helper pequeño reutilizable
+
+### Decisión final
+Usar `requirePageAccess(...)` para combinar:
+
+- rol o módulo autorizado
+- `hotel scope` server-side cuando la zona depende de hotel activo
+- `redirect()` antes de renderizar
+
+Mantener los checks cliente existentes solo como capa de UX o compatibilidad incremental.
+
+### Impacto esperado
+- acceso directo por URL bloqueado antes del primer render en zonas protegidas
+- menor dependencia de `requireRoleOrRedirect(...)` como pseudo-seguridad
+- cambios mínimos y dirigidos, sin refactor masivo de pantallas cliente
+
+---
+
+## Decisión 9
+
+### Fecha
+2026-03-16
+
+### Decisión
+Separar explícitamente `auth cliente para UI` de `auth real server-side` en segmentos ya protegidos por App Router.
+
+### Contexto
+Después del blindaje server-side, seguían quedando páginas cliente con dos patrones mezclados:
+
+- `requireRoleOrRedirect(...)` usado como reliquia del control viejo
+- cargas de perfil necesarias para render, hotel activo o decisiones menores de interfaz
+
+Mantener ambos como si fueran equivalentes dificulta entender dónde vive la seguridad real.
+
+### Alternativas consideradas
+- dejar los checks cliente por “defensa en profundidad”
+- reescribir todas las páginas afectadas como server components
+- mantener solo bootstrap cliente neutral donde haga falta y retirar el gating redundante
+
+### Decisión final
+En segmentos ya cerrados por layout server-side:
+
+- quitar `requireRoleOrRedirect(...)`
+- conservar únicamente `getClientProfile()` o estados cliente equivalentes cuando se necesitan para UI, hotel activo o carga de datos
+- no volver a tratar el cliente como autoridad de acceso
+
+### Impacto esperado
+- código más coherente con la arquitectura de seguridad real
+- menor confusión futura para agentes y desarrolladores
+- reducción clara de deuda híbrida sin refactor masivo
+
+---
+
+## Decisión 10
+
+### Fecha
+2026-03-16
+
+### Decisión
+Endurecer primero los endpoints privilegiados donde el recurso objetivo no coincide necesariamente con el actor autenticado.
+
+### Contexto
+En la capa API, los mayores riesgos no estaban en los endpoints que ya resolvían `hotel scope`, sino en los que además operaban sobre:
+
+- otro usuario
+- accesos por área de otro usuario
+- un `audit_run` referenciado por UUID desde cliente
+
+Ahí el hotel activo por sí solo no basta; también hace falta validar el target y su contexto operativo real.
+
+### Alternativas consideradas
+- confiar en la RPC o en checks previos del frontend
+- revisar todos los endpoints y reescribir toda la capa API
+- cerrar primero los endpoints con mayor riesgo de escalación lateral o mutación sensible
+
+### Decisión final
+Aplicar endurecimiento incremental sobre:
+
+- `admin/delete-user`
+- `admin/user-area-access/get`
+- `admin/user-area-access/set`
+- `audits/submit`
+
+usando helpers reutilizables para target user access y validación de `run` + `area scope`.
+
+### Impacto esperado
+- menor riesgo de escalación lateral entre usuarios del mismo hotel
+- menor riesgo de submit sobre runs fuera del alcance real del actor
+- mejora material de seguridad sin refactor masivo de toda la capa API
+
+---
+
+## Decisión 8
+
+### Fecha
+2026-03-16
+
+### Decisión
 Cerrar primero seguridad de rutas y lecturas cliente con una combinación de auth server-side en App Router + RLS versionada.
 
 ### Contexto

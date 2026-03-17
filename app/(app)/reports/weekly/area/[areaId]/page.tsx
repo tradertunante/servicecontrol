@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { CSSProperties } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { fetchActiveHotel } from "@/lib/auth/activeHotelClient";
-import { requireRoleOrRedirect } from "@/lib/auth/RequireRole";
+import { getClientProfile } from "@/lib/auth/clientProfile";
 import { canRunAudits } from "@/lib/auth/permissions";
 import { buildWeeklyAreaReport } from "@/lib/reports/buildWeeklyAreaReport";
 import type { WeeklyAreaReportData } from "@/lib/reports/weeklyReportTypes";
@@ -195,11 +195,7 @@ export default function WeeklyAreaReportPage() {
       setError(null);
 
       try {
-        const profile = await requireRoleOrRedirect(
-          router,
-          ["admin", "manager", "auditor", "quality"],
-          "/areas"
-        );
+        const profile = await getClientProfile();
         if (!profile) return;
 
         if (!canRunAudits(profile.role) && profile.role !== "quality") {
@@ -227,7 +223,7 @@ export default function WeeklyAreaReportPage() {
         setLoading(false);
       }
     })();
-  }, [areaId, effectiveRange.weekStart, effectiveRange.weekEnd, router]);
+  }, [areaId, effectiveRange.weekStart, effectiveRange.weekEnd]);
 
   const weeklySummary = useMemo(() => {
     if (!report) {

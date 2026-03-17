@@ -4,10 +4,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { fetchActiveHotel } from "@/lib/auth/activeHotelClient";
+import { getClientProfile } from "@/lib/auth/clientProfile";
+import { isRoleAllowed } from "@/lib/auth/permissions";
 import { supabase } from "@/lib/supabaseClient";
-import { requireRoleOrRedirect } from "@/lib/auth/RequireRole";
 import HotelHeader from "@/app/components/HotelHeader";
-import type { Role, Profile } from "@/lib/types";
+import type { Profile } from "@/lib/types";
 
 type AreaRow = { id: string; name: string; type: string | null; hotel_id: string | null; created_at?: string | null };
 type HotelRow = { id: string; name: string };
@@ -31,13 +32,13 @@ export default function AreasPage() {
     (async () => {
       setLoading(true); setError(null);
       try {
-        // ✅ quality incluido
-        const p = (await requireRoleOrRedirect(
-          router,
-          ["admin", "general_manager", "manager", "auditor", "superadmin", "quality"],
-          "/login"
-        )) as Profile | null;
+        const p = await getClientProfile();
         if (!alive || !p) return;
+        if (!isRoleAllowed(p.role, ["admin", "general_manager", "manager", "auditor", "superadmin", "quality"])) {
+          setError("No tienes permisos para ver áreas.");
+          setLoading(false);
+          return;
+        }
         setProfile(p);
 
         let hotelIdToUse: string | null = null;
@@ -62,7 +63,7 @@ export default function AreasPage() {
       }
     })();
     return () => { alive = false; };
-  }, [router]);
+  }, []);
 
   useEffect(() => {
     let alive = true;

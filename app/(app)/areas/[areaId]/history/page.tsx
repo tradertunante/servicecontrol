@@ -4,11 +4,12 @@
 import { useEffect, useMemo, useState } from "react";
 import type { CSSProperties } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { getClientProfile } from "@/lib/auth/clientProfile";
 import { supabase } from "@/lib/supabaseClient";
 import { fetchActiveHotel } from "@/lib/auth/activeHotelClient";
-import { requireRoleOrRedirect, type Profile } from "@/lib/auth/RequireRole";
 import { canRunAudits } from "@/lib/auth/permissions";
 import BackButton from "@/app/components/BackButton";
+import type { Profile } from "@/lib/types";
 
 // ----------------------
 // Types
@@ -260,11 +261,7 @@ export default function AreaPage() {
       setError(null);
 
       try {
-        const p = await requireRoleOrRedirect(
-          router,
-          ["admin", "general_manager", "manager", "auditor", "superadmin", "quality"],
-          "/login"
-        );
+        const p = await getClientProfile();
         if (!p) return;
         setProfile(p);
 

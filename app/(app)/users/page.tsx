@@ -2,10 +2,10 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { getClientProfile } from "@/lib/auth/clientProfile";
 import { supabase } from "@/lib/supabaseClient";
 import { fetchActiveHotel } from "@/lib/auth/activeHotelClient";
 import BackButton from "@/app/components/BackButton";
-import { requireRoleOrRedirect } from "@/lib/auth/RequireRole";
 import { canManageUsers } from "@/lib/auth/permissions";
 import type { Role, Profile } from "@/lib/types";
 
@@ -22,9 +22,9 @@ export default function UsersPage() {
   async function load() {
     setLoading(true); setError(null);
     try {
-      const p = await requireRoleOrRedirect(router, ["admin", "superadmin"], "/login");
+      const p = await getClientProfile();
       if (!p) return;
-      if (!canManageUsers(p.role)) { router.push("/"); return; }
+      if (!canManageUsers(p.role)) { setError("No tienes permisos para administrar usuarios."); setLoading(false); return; }
       setProfile(p as Profile);
       const hotelId =
         p.role === "superadmin"
@@ -52,7 +52,7 @@ export default function UsersPage() {
     finally { setLoading(false); }
   }
 
-  useEffect(() => { load(); }, [router]);
+  useEffect(() => { void load(); }, []);
 
   async function deleteUser(userId: string) {
     if (!profile) return;

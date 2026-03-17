@@ -4,7 +4,6 @@
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
-import { requireRoleOrRedirect } from "@/lib/auth/RequireRole";
 
 type PackRow = {
   id: string;
@@ -118,12 +117,6 @@ export default function GlobalAuditsPage() {
   async function load() {
     setLoading(true);
     setError(null);
-
-    const p = await requireRoleOrRedirect(router, ["superadmin"], "/dashboard");
-    if (!p) {
-      setLoading(false);
-      return;
-    }
 
     const { data, error: e } = await supabase
       .from("global_audit_packs")

@@ -2,7 +2,6 @@
 
 import { useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { requireRoleOrRedirect } from "@/lib/auth/RequireRole";
 import TeamPageShell from "../_components/TeamPageShell";
 import ManagerAreaWorkspace from "../_components/ManagerAreaWorkspace";
 import { useTeamWorkspace } from "../_hooks/useTeamWorkspace";
@@ -10,8 +9,6 @@ import { useTeamWorkspace } from "../_hooks/useTeamWorkspace";
 export default function TeamTemplatesPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-
-  requireRoleOrRedirect(["manager"], router);
 
   const {
     profile,

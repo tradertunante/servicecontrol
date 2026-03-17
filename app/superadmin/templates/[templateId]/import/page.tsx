@@ -4,7 +4,6 @@
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
-import { requireRoleOrRedirect } from "@/lib/auth/RequireRole";
 import HotelHeader from "@/app/components/HotelHeader";
 import { normalizeQuestionOrderForTemplate } from "@/lib/audits/normalizeQuestionOrder";
 
@@ -76,12 +75,6 @@ export default function GlobalTemplateImportPage() {
       setLoading(true);
       setError(null);
 
-      const p = await requireRoleOrRedirect(router, ["superadmin"], "/dashboard");
-      if (!p) {
-        setLoading(false);
-        return;
-      }
-
       const { data, error: tErr } = await supabase.from("audit_templates").select("id,scope").eq("id", templateId).single();
 
       if (tErr || !data) {
@@ -98,7 +91,7 @@ export default function GlobalTemplateImportPage() {
 
       setLoading(false);
     })();
-  }, [templateId, router]);
+  }, [templateId]);
 
   const parsed = useMemo(() => {
     const text = raw.trim();

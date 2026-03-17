@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { CSSProperties } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { fetchActiveHotel } from "@/lib/auth/activeHotelClient";
-import { requireRoleOrRedirect } from "@/lib/auth/RequireRole";
+import { getClientProfile } from "@/lib/auth/clientProfile";
 import { canRunAudits } from "@/lib/auth/permissions";
 import { buildAuditReportData } from "@/lib/reports/auditReport";
 import type { AuditReportData } from "@/lib/reports/auditReportTypes";
@@ -177,11 +177,7 @@ export default function AuditReportPage() {
       setError(null);
 
       try {
-        const profile = await requireRoleOrRedirect(
-          router,
-          ["admin", "manager", "auditor", "quality", "superadmin"],
-          "/areas"
-        );
+        const profile = await getClientProfile();
         if (!profile) return;
 
         if (!canRunAudits(profile.role)) {
@@ -203,7 +199,7 @@ export default function AuditReportPage() {
         setLoading(false);
       }
     })();
-  }, [runId, router]);
+  }, [runId]);
 
   const failedItems = useMemo(() => {
     return (report?.sections ?? []).flatMap((section) =>
