@@ -145,6 +145,8 @@ export default function MyDashboardPageClient({
         selectedPeriod={selectedPeriod}
         onChangePeriod={setSelectedPeriod}
         onAudit={handleAudit}
+        onLogout={logout}
+        isLoggingOut={isLoggingOut}
       />
 
       <MySubnav viewMode={viewMode} onChange={setViewMode} />
@@ -191,12 +193,10 @@ export default function MyDashboardPageClient({
       {viewMode === "account" && (
         <MyAccountView
           loading={loading}
-          isLoggingOut={isLoggingOut}
           profile={profile}
           hotelName={hotelName}
           areaNames={areaNames}
           myRecentRuns={myRecentRuns}
-          onLogout={logout}
         />
       )}
     </div>

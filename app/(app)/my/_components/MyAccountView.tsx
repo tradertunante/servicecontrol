@@ -14,17 +14,6 @@ function miniCard(): CSSProperties {
   };
 }
 
-function buildBtnStyle(): CSSProperties {
-  return {
-    border: "1px solid var(--input-border)",
-    borderRadius: 12,
-    padding: "10px 12px",
-    background: "rgba(0, 0, 0, 0.04)",
-    cursor: "pointer",
-    color: "var(--text)",
-  };
-}
-
 function formatScore(n: number | null | undefined) {
   if (n === null || n === undefined) return "—";
   const x = Number(n);
@@ -39,25 +28,36 @@ function formatDateTime(value: string | null | undefined) {
   return d.toLocaleString();
 }
 
+function cardSlotStyle(label: string): CSSProperties {
+  if (label === "Email") {
+    return { flex: "1.8 1 340px", minWidth: 300 };
+  }
+
+  if (label === "Áreas") {
+    return { flex: "1.4 1 260px", minWidth: 240 };
+  }
+
+  if (label === "Estado") {
+    return { flex: "0.45 1 120px", minWidth: 110 };
+  }
+
+  return { flex: "1 1 190px", minWidth: 180 };
+}
+
 export default function MyAccountView({
   loading,
-  isLoggingOut,
   profile,
   hotelName,
   areaNames,
   myRecentRuns,
-  onLogout,
 }: {
   loading: boolean;
-  isLoggingOut: boolean;
   profile: MyProfile | null;
   hotelName: string | null;
   areaNames: string[];
   myRecentRuns: RecentRunRow[];
-  onLogout: () => void;
 }) {
   const card = miniCard();
-  const btn = buildBtnStyle();
 
   const accountRows = [
     { label: "Nombre", value: profile?.full_name ?? "—" },
@@ -75,25 +75,30 @@ export default function MyAccountView({
     <div style={{ display: "grid", gap: 14 }}>
       <div
         style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+          display: "flex",
+          flexWrap: "wrap",
+          alignItems: "stretch",
           gap: 14,
         }}
       >
         {accountRows.map((row) => (
-          <div key={row.label} style={card}>
-            <div style={{ opacity: 0.75, fontSize: 12 }}>{row.label}</div>
-            <div style={{ marginTop: 6, fontWeight: 800, lineHeight: 1.4 }}>
-              {row.value}
+          <div key={row.label} style={{ ...cardSlotStyle(row.label) }}>
+            <div style={card}>
+              <div style={{ opacity: 0.75, fontSize: 12 }}>{row.label}</div>
+              <div
+                style={{
+                  marginTop: 6,
+                  fontWeight: 800,
+                  lineHeight: 1.4,
+                  overflowWrap: "anywhere",
+                  wordBreak: row.label === "Email" ? "break-word" : "normal",
+                }}
+              >
+                {row.value}
+              </div>
             </div>
           </div>
         ))}
-      </div>
-
-      <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-        <button style={btn} onClick={onLogout} disabled={isLoggingOut}>
-          {isLoggingOut ? "Cerrando sesión..." : "Cerrar sesión"}
-        </button>
       </div>
 
       <MySecurityCard email={profile?.email} />

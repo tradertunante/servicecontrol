@@ -55,12 +55,16 @@ export default function MyHeader({
   selectedPeriod,
   onChangePeriod,
   onAudit,
+  onLogout,
+  isLoggingOut,
 }: {
   profile: MyProfile | null;
   hotelName: string | null;
   selectedPeriod: MyPeriodKey;
   onChangePeriod: (value: MyPeriodKey) => void;
   onAudit: () => void;
+  onLogout: () => void;
+  isLoggingOut: boolean;
 }) {
   const shellCard = buildShellCard();
   const input = buildInputStyle();
@@ -84,7 +88,14 @@ export default function MyHeader({
           </div>
         </div>
 
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            flexWrap: "wrap",
+          }}
+        >
           <div style={buildPillStyle()}>
             <b>Usuario:</b> {profile?.full_name ?? "—"}
           </div>
@@ -120,9 +131,15 @@ export default function MyHeader({
           </select>
         </div>
 
-        <button style={btn} onClick={onAudit}>
-          Auditar
-        </button>
+        <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+          <button style={btn} onClick={onAudit}>
+            Auditar
+          </button>
+
+          <button style={btn} onClick={onLogout} disabled={isLoggingOut}>
+            {isLoggingOut ? "Cerrando sesión..." : "Cerrar sesión"}
+          </button>
+        </div>
       </div>
     </div>
   );
