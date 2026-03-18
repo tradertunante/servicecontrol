@@ -28,18 +28,18 @@ export default function QuickLinks({
   };
 
   return (
-    <div className="gridQuick" style={{ marginTop: 16 }}>
-      <button onClick={() => routerPush("/areas")} className="quickBtn" style={btn}>
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 w-full mt-6">
+      <button onClick={() => routerPush("/areas")} className="quickBtn w-full" style={btn}>
         <div style={{ fontSize: 16, fontWeight: 900 }}>Ver todos los departamentos</div>
         <div style={{ marginTop: 4, opacity: 0.7, fontSize: 13 }}>Explorar auditorías por departamento</div>
       </button>
 
-      <button onClick={() => routerPush("/team")} className="quickBtn" style={btn}>
+      <button onClick={() => routerPush("/team")} className="quickBtn w-full" style={btn}>
         <div style={{ fontSize: 16, fontWeight: 900 }}>Miembros del equipo</div>
         <div style={{ marginTop: 4, opacity: 0.7, fontSize: 13 }}>Crear, asignar áreas e importar colaboradores</div>
       </button>
 
-      <button onClick={() => routerPush("/analytics")} className="quickBtn" style={btn}>
+      <button onClick={() => routerPush("/analytics")} className="quickBtn w-full" style={btn}>
         <div style={{ fontSize: 16, fontWeight: 900 }}>Analytics</div>
         <div style={{ marginTop: 4, opacity: 0.7, fontSize: 13 }}>Ranking por colaboradores y fallos compartidos</div>
       </button>
