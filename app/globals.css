@@ -91,6 +91,15 @@ body {
   /* Progress & UI */
   --dark-progress-fill: rgba(255, 255, 255, 0.7);
   --dark-progress-track: rgba(255, 255, 255, 0.10);
+
+  /* Quality channel colors */
+  --quality-bg: rgba(240, 219, 255, 0.55);
+  --quality-bg-child: rgba(240, 219, 255, 0.35);
+  --quality-border: rgba(147, 51, 234, 0.22);
+  --quality-badge-bg: rgba(147, 51, 234, 0.12);
+  --quality-badge-text: rgb(107, 26, 186);
+  --quality-badge-border: rgba(147, 51, 234, 0.28);
+  --quality-cell-accent: rgba(147, 51, 234, 0.40);
 }
 
 body {
@@ -126,11 +135,3 @@ img {
   max-width: 100%;
   height: auto;
 }
-/* Quality channel colors */
-  --quality-bg: rgba(240, 219, 255, 0.55);        /* fondo filas quality */
-  --quality-bg-child: rgba(240, 219, 255, 0.35);  /* fondo hijos quality */
-  --quality-border: rgba(147, 51, 234, 0.22);     /* borde filas quality */
-  --quality-badge-bg: rgba(147, 51, 234, 0.12);   /* fondo badge "Quality" */
-  --quality-badge-text: rgb(107, 26, 186);        /* texto badge "Quality" */
-  --quality-badge-border: rgba(147, 51, 234, 0.28);
-  --quality-cell-accent: rgba(147, 51, 234, 0.40); /* acento borde izq celda */

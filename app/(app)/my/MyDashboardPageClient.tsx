@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { setActiveHotel } from "@/lib/auth/activeHotelClient";
@@ -23,6 +24,7 @@ export default function MyDashboardPageClient({
   initialHotelId: string;
 }) {
   const router = useRouter();
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   const { selectedPeriod, setSelectedPeriod, viewMode, setViewMode } = useMyView();
 
@@ -46,12 +48,26 @@ export default function MyDashboardPageClient({
       email: null,
     },
     initialHotelId,
+    enabled: !isLoggingOut,
   });
 
   async function logout() {
-    await supabase.auth.signOut();
-    await setActiveHotel(null);
-    router.replace("/login");
+    if (isLoggingOut) return;
+
+    setIsLoggingOut(true);
+
+    try {
+      await setActiveHotel(null);
+    } catch (error) {
+      console.warn("Could not clear active hotel during logout:", error);
+    }
+
+    try {
+      await supabase.auth.signOut();
+    } finally {
+      router.replace("/login");
+      router.refresh();
+    }
   }
 
   async function handleAudit() {
@@ -102,6 +118,23 @@ export default function MyDashboardPageClient({
       console.error("Error resolving audit area access:", error);
       alert("No se pudo abrir el área de auditoría.");
     }
+  }
+
+  if (isLoggingOut) {
+    return (
+      <div style={{ width: "100%", padding: "12px 14px 18px" }}>
+        <div
+          style={{
+            border: "1px solid var(--border)",
+            borderRadius: 14,
+            padding: 14,
+            background: "var(--card-bg)",
+          }}
+        >
+          Cerrando sesión...
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -158,6 +191,7 @@ export default function MyDashboardPageClient({
       {viewMode === "account" && (
         <MyAccountView
           loading={loading}
+          isLoggingOut={isLoggingOut}
           profile={profile}
           hotelName={hotelName}
           areaNames={areaNames}

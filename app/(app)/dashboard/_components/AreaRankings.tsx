@@ -19,6 +19,77 @@ type AreaRankingRow = {
   trend3m?: TrendPoint[];
 };
 
+function RankingItemRow({
+  area,
+  badge,
+  rowBg,
+  border,
+  fg,
+  miniBtn,
+  onGoAreaDetail,
+}: {
+  area: AreaRankingRow;
+  badge: string;
+  rowBg: string;
+  border: string;
+  fg: string;
+  miniBtn: CSSProperties;
+  onGoAreaDetail: (areaId: string) => void;
+}) {
+  const formatPct = (n: number | null | undefined) => {
+    if (n === null || n === undefined || !Number.isFinite(Number(n))) return "—";
+    return `${Number(n).toFixed(1)}%`;
+  };
+
+  const trendLabel = (t?: TrendPoint[]) => {
+    if (!t || t.length === 0) return { label: "Tendencia 3 meses:", text: "—" };
+
+    const parts = t.map((p) => `${p.key} (${p.count ?? 0})`);
+    return { label: "Tendencia 3 meses:", text: parts.join(" - ") };
+  };
+
+  const trend = trendLabel(area.trend3m);
+
+  return (
+    <div
+      className="rankingRow"
+      style={{
+        background: rowBg,
+        border: `1px solid ${border}`,
+        color: fg,
+      }}
+    >
+      <div className="rankingBadgeSlot">
+        <div className="rankingBadge" aria-hidden>
+          <span>{badge}</span>
+        </div>
+      </div>
+
+      <div className="rankingContent">
+        <div className="rankingTitle">{area.areaName}</div>
+
+        <div className="rankingTrend">
+          <span className="rankingTrendLabel">{trend.label}</span>
+          <span className="rankingTrendValue">{trend.text}</span>
+        </div>
+
+        <div className="rankingMeta">{area.count ?? 0} auditorías registradas</div>
+      </div>
+
+      <div className="rankingAside">
+        <div className="rankingScoreBlock">
+          <div className="rankingScoreLabel">Score</div>
+          <div className="rankingScore">{formatPct(area.avg)}</div>
+        </div>
+
+        <button className="rankingBtn" style={miniBtn} onClick={() => onGoAreaDetail(area.areaId)}>
+          Ver detalle
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function AreaRankings({
   card,
   rowBg,
@@ -42,61 +113,6 @@ export default function AreaRankings({
   onGoAreaDetail: (areaId: string) => void;
   selectedYear: number;
 }) {
-  const formatPct = (n: number | null | undefined) => {
-    if (n === null || n === undefined || !Number.isFinite(Number(n))) return "—";
-    return `${Number(n).toFixed(1)}%`;
-  };
-
-  // ✅ Formato: "Ene (2) - Feb (4) - Mar (1)"
-  // (el guion va DESPUÉS del ")", no antes)
-  const trendLabel = (t?: TrendPoint[]) => {
-    if (!t || t.length === 0) return { label: "Tendencia 3 meses:", text: "—" };
-
-    const parts = t.map((p) => `${p.key} (${p.count ?? 0})`);
-    return { label: "Tendencia 3 meses:", text: parts.join(" - ") };
-  };
-
-  const renderRow = (a: AreaRankingRow, idx: number, badge: string) => {
-    const t = trendLabel(a.trend3m);
-
-    return (
-      <div
-        key={`${a.areaId}-${idx}`}
-        className="rowCard"
-        style={{
-          background: rowBg,
-          border: `1px solid ${border}`,
-        }}
-      >
-        <div className="rowLeft">
-          <div className="rowBadge" aria-hidden>
-            {badge}
-          </div>
-
-          <div style={{ minWidth: 0 }}>
-            <div className="rowTitle">{a.areaName}</div>
-
-            <div className="rowTrend">
-              <div className="rowTrendLabel">{t.label}</div>
-              <div className="rowTrendItems">
-                <div className="rowTrendItem">{t.text}</div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="rowRight">
-          <div className="rowMeta">({a.count ?? 0} auditorías)</div>
-          <div className="rowScore">{formatPct(a.avg)}</div>
-
-          <button className="rowBtn" style={miniBtn} onClick={() => onGoAreaDetail(a.areaId)}>
-            Ver detalle
-          </button>
-        </div>
-      </div>
-    );
-  };
-
   return (
     <div className="gridTwo">
       <div style={card} className="card">
@@ -105,7 +121,18 @@ export default function AreaRankings({
           {(top3Areas ?? []).length === 0 ? (
             <div style={{ opacity: 0.7 }}>No hay datos suficientes.</div>
           ) : (
-            top3Areas.slice(0, 3).map((a, i) => renderRow(a, i, ["🥇", "🥈", "🥉"][i] ?? "🏅"))
+            top3Areas.slice(0, 3).map((a, i) => (
+              <RankingItemRow
+                key={`${a.areaId}-${i}`}
+                area={a}
+                badge={["🥇", "🥈", "🥉"][i] ?? "🏅"}
+                rowBg={rowBg}
+                border={border}
+                fg={fg}
+                miniBtn={miniBtn}
+                onGoAreaDetail={onGoAreaDetail}
+              />
+            ))
           )}
         </div>
       </div>
@@ -116,12 +143,23 @@ export default function AreaRankings({
           {(worst3Areas ?? []).length === 0 ? (
             <div style={{ opacity: 0.7 }}>No hay datos suficientes.</div>
           ) : (
-            worst3Areas.slice(0, 3).map((a, i) => renderRow(a, i, "⚠️"))
+            worst3Areas.slice(0, 3).map((a, i) => (
+              <RankingItemRow
+                key={`${a.areaId}-${i}`}
+                area={a}
+                badge="⚠️"
+                rowBg={rowBg}
+                border={border}
+                fg={fg}
+                miniBtn={miniBtn}
+                onGoAreaDetail={onGoAreaDetail}
+              />
+            ))
           )}
         </div>
       </div>
 
-      <style jsx>{`
+      <style jsx global>{`
         .gridTwo {
           display: grid;
           grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
@@ -131,35 +169,52 @@ export default function AreaRankings({
         .list {
           display: flex;
           flex-direction: column;
-          gap: 12px;
+          gap: 14px;
         }
 
-        .rowCard {
-          display: flex;
-          justify-content: space-between;
+        .rankingRow {
+          display: grid;
+          grid-template-columns: 44px minmax(0, 1fr) minmax(124px, auto);
+          grid-template-areas: "badge content aside";
           align-items: center;
-          padding: 14px 16px;
-          border-radius: 12px;
-          gap: 12px;
+          column-gap: 16px;
+          min-height: 0;
+          padding: 18px 18px 18px 16px;
+          border-radius: 16px;
+          box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3), 0 8px 20px rgba(15, 23, 42, 0.04);
         }
 
-        .rowLeft {
-          display: flex;
-          align-items: flex-start;
-          gap: 12px;
-          min-width: 0;
-          flex: 1;
+        .rankingBadgeSlot {
+          grid-area: badge;
+          align-self: center;
         }
 
-        .rowBadge {
-          font-size: 22px;
-          line-height: 22px;
+        .rankingBadge {
+          width: 42px;
+          height: 42px;
+          display: grid;
+          place-items: center;
           flex-shrink: 0;
         }
 
-        .rowTitle {
+        .rankingBadge span {
+          font-size: 21px;
+          line-height: 1;
+        }
+
+        .rankingContent {
+          grid-area: content;
+          min-width: 0;
+          display: flex;
+          flex-direction: column;
+          justify-content: center;
+          gap: 7px;
+        }
+
+        .rankingTitle {
           font-weight: 950;
           font-size: 16px;
+          line-height: 1.2;
           white-space: normal;
           overflow: visible;
           text-overflow: unset;
@@ -168,65 +223,132 @@ export default function AreaRankings({
           color: ${fg};
         }
 
-        .rowTrend {
-          margin-top: 6px;
+        .rankingTrend {
           display: flex;
           flex-wrap: wrap;
-          gap: 10px;
-          opacity: 0.85;
+          gap: 6px;
           align-items: center;
-        }
-
-        .rowTrendLabel {
-          font-size: 12px;
-          font-weight: 900;
-          white-space: nowrap;
-        }
-
-        .rowTrendItems {
-          display: flex;
-          gap: 10px;
-          flex-wrap: wrap;
           min-width: 0;
         }
 
-        .rowTrendItem {
+        .rankingTrendLabel {
+          font-size: 12px;
+          font-weight: 900;
+          white-space: nowrap;
+          opacity: 0.62;
+        }
+
+        .rankingTrendValue {
           font-size: 12px;
           letter-spacing: 0.1px;
-          opacity: 0.9;
+          opacity: 0.82;
+          min-width: 0;
+          word-break: break-word;
+          overflow-wrap: anywhere;
         }
 
-        .rowRight {
+        .rankingMeta {
+          font-size: 12px;
+          line-height: 1.35;
+          opacity: 0.58;
+        }
+
+        .rankingAside {
+          grid-area: aside;
           display: flex;
-          align-items: center;
-          gap: 12px;
-          flex-shrink: 0;
+          flex-direction: column;
+          align-items: flex-end;
+          justify-content: center;
+          gap: 10px;
+          min-width: 124px;
+          text-align: right;
+          align-self: center;
+          justify-self: end;
         }
 
-        .rowMeta {
-          font-size: 13px;
-          opacity: 0.7;
-          white-space: nowrap;
+        .rankingScoreBlock {
+          display: grid;
+          gap: 4px;
+          justify-items: end;
         }
 
-        .rowScore {
+        .rankingScoreLabel {
+          font-size: 11px;
+          font-weight: 900;
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+          opacity: 0.5;
+        }
+
+        .rankingScore {
           font-weight: 950;
-          font-size: 20px;
+          font-size: 30px;
+          line-height: 1;
+          letter-spacing: -0.04em;
           white-space: nowrap;
+        }
+
+        .rankingBtn {
+          min-width: 112px;
+          width: fit-content;
         }
 
         @media (max-width: 720px) {
-          .rowCard {
-            flex-direction: column;
-            align-items: stretch;
-            gap: 10px;
+          .rankingRow {
+            grid-template-columns: 40px minmax(0, 1fr);
+            grid-template-areas:
+              "badge content"
+              "aside aside";
+            padding: 16px;
+            row-gap: 14px;
           }
 
-          .rowRight {
+          .rankingBadgeSlot {
+            align-self: start;
+          }
+
+          .rankingAside {
+            min-width: 0;
+            flex-direction: row;
+            align-items: center;
             justify-content: space-between;
+            gap: 12px;
+            text-align: left;
+            width: 100%;
           }
 
-          .rowBtn {
+          .rankingScoreBlock {
+            justify-items: start;
+          }
+
+          .rankingScore {
+            font-size: 24px;
+          }
+
+          .rankingBtn {
+            width: auto;
+            min-width: 120px;
+          }
+        }
+
+        @media (max-width: 520px) {
+          .rankingBadge {
+            width: 38px;
+            height: 38px;
+            border-radius: 12px;
+          }
+
+          .rankingAside {
+            align-items: stretch;
+            flex-direction: column;
+            text-align: left;
+          }
+
+          .rankingScoreBlock {
+            justify-items: start;
+          }
+
+          .rankingBtn {
             width: 100%;
           }
         }

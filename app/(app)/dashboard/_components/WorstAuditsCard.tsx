@@ -10,6 +10,62 @@ type WorstAuditItem = {
   score: number | null; // ✅ el hook usa score, NO avg
 };
 
+function WorstAuditRow({
+  item,
+  rowBg,
+  border,
+  fg,
+  miniBtn,
+  onGoWorstAuditDetail,
+}: {
+  item: WorstAuditItem;
+  rowBg: string;
+  border: string;
+  fg: string;
+  miniBtn: CSSProperties;
+  onGoWorstAuditDetail: (areaId: string, templateId: string) => void;
+}) {
+  const formatPct = (n: number | null | undefined) => {
+    if (n === null || n === undefined || !Number.isFinite(Number(n))) return "—";
+    return `${Number(n).toFixed(1)}%`;
+  };
+
+  return (
+    <div
+      className="auditRow"
+      style={{
+        background: rowBg,
+        border: `1px solid ${border}`,
+        color: fg,
+      }}
+    >
+      <div className="auditBadgeSlot">
+        <div className="auditBadge" aria-hidden>
+          <span>⚠️</span>
+        </div>
+      </div>
+
+      <div className="auditContent">
+        <div className="auditTitle">
+          {item.areaName} — {item.templateName}
+        </div>
+      </div>
+
+      <div className="auditAside">
+        <div className="auditScore">{formatPct(item.score)}</div>
+
+        <button
+          className="auditBtn"
+          style={miniBtn}
+          onClick={() => onGoWorstAuditDetail(item.areaId, item.templateId)}
+        >
+          Ver detalle
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function WorstAuditsCard({
   card,
   rowBg,
@@ -27,11 +83,6 @@ export default function WorstAuditsCard({
   worst3Audits: WorstAuditItem[];
   onGoWorstAuditDetail: (areaId: string, templateId: string) => void;
 }) {
-  const formatPct = (n: number | null | undefined) => {
-    if (n === null || n === undefined || !Number.isFinite(Number(n))) return "—";
-    return `${Number(n).toFixed(1)}%`;
-  };
-
   return (
     <div style={card} className="card">
       <div className="sectionTitle">Top 3 peores auditorías</div>
@@ -41,103 +92,147 @@ export default function WorstAuditsCard({
           <div style={{ opacity: 0.7 }}>No hay datos suficientes.</div>
         ) : (
           worst3Audits.slice(0, 3).map((a, i) => (
-            <div
+            <WorstAuditRow
               key={`${a.areaId}-${a.templateId}-${i}`}
-              className="rowCard"
-              style={{
-                background: rowBg,
-                border: `1px solid ${border}`,
-              }}
-            >
-              <div className="rowLeft">
-                <div className="rowBadge">⚠️</div>
-
-                <div style={{ minWidth: 0 }}>
-                  <div className="rowTitle">
-                    {a.areaName} — {a.templateName}
-                  </div>
-                </div>
-              </div>
-
-              <div className="rowRight">
-                <div className="rowScore">{formatPct(a.score)}</div>
-
-                <button
-                  className="rowBtn"
-                  style={miniBtn}
-                  onClick={() =>
-                    onGoWorstAuditDetail(a.areaId, a.templateId)
-                  }
-                >
-                  Ver detalle
-                </button>
-              </div>
-            </div>
+              item={a}
+              rowBg={rowBg}
+              border={border}
+              fg={fg}
+              miniBtn={miniBtn}
+              onGoWorstAuditDetail={onGoWorstAuditDetail}
+            />
           ))
         )}
       </div>
 
-      <style jsx>{`
+      <style jsx global>{`
         .list {
           display: flex;
           flex-direction: column;
           gap: 12px;
         }
 
-        .rowCard {
-          display: flex;
-          justify-content: space-between;
+        .auditRow {
+          display: grid;
+          grid-template-columns: 44px minmax(0, 1fr) minmax(124px, auto);
+          grid-template-areas: "badge content aside";
           align-items: center;
-          padding: 14px 16px;
-          border-radius: 12px;
-          gap: 12px;
+          column-gap: 14px;
+          min-height: 0;
+          padding: 16px;
+          border-radius: 15px;
+          box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3), 0 8px 20px rgba(15, 23, 42, 0.04);
         }
 
-        .rowLeft {
-          display: flex;
-          align-items: flex-start;
-          gap: 12px;
-          min-width: 0;
-          flex: 1;
+        .auditBadgeSlot {
+          grid-area: badge;
+          align-self: center;
         }
 
-        .rowBadge {
-          font-size: 20px;
+        .auditBadge {
+          width: 42px;
+          height: 42px;
+          display: grid;
+          place-items: center;
           flex-shrink: 0;
         }
 
-        .rowTitle {
+        .auditBadge span {
+          font-size: 20px;
+          line-height: 1;
+        }
+
+        .auditContent {
+          grid-area: content;
+          min-width: 0;
+          display: flex;
+          flex-direction: column;
+          justify-content: center;
+        }
+
+        .auditTitle {
           font-weight: 950;
           font-size: 15px;
+          line-height: 1.3;
           word-break: break-word;
+          overflow-wrap: anywhere;
           color: ${fg};
         }
 
-        .rowRight {
+        .auditAside {
+          grid-area: aside;
           display: flex;
-          align-items: center;
-          gap: 12px;
-          flex-shrink: 0;
+          flex-direction: column;
+          align-items: flex-end;
+          justify-content: center;
+          gap: 8px;
+          min-width: 116px;
+          text-align: right;
+          align-self: center;
+          justify-self: end;
         }
 
-        .rowScore {
+        .auditScore {
           font-weight: 950;
-          font-size: 18px;
+          font-size: 32px;
+          line-height: 1;
+          letter-spacing: -0.04em;
           white-space: nowrap;
         }
 
+        .auditBtn {
+          min-width: 104px;
+          width: fit-content;
+        }
+
         @media (max-width: 720px) {
-          .rowCard {
-            flex-direction: column;
-            align-items: stretch;
-            gap: 10px;
+          .auditRow {
+            grid-template-columns: 40px minmax(0, 1fr);
+            grid-template-areas:
+              "badge content"
+              "aside aside";
+            padding: 16px;
+            row-gap: 12px;
           }
 
-          .rowRight {
+          .auditBadgeSlot {
+            align-self: start;
+          }
+
+          .auditAside {
+            min-width: 0;
+            flex-direction: row;
+            align-items: center;
             justify-content: space-between;
+            gap: 12px;
+            text-align: left;
+            width: 100%;
           }
 
-          .rowBtn {
+          .auditScore {
+            font-size: 26px;
+          }
+
+          .auditBtn {
+            width: auto;
+            min-width: 112px;
+          }
+        }
+
+        @media (max-width: 520px) {
+          .auditBadge {
+            width: 38px;
+            height: 38px;
+            border-radius: 12px;
+          }
+
+          .auditAside {
+            align-items: stretch;
+            flex-direction: column;
+            text-align: left;
+          }
+
+          .auditBtn {
             width: 100%;
           }
         }
