@@ -107,10 +107,12 @@ export function useMyDashboardData({
   selectedPeriod,
   initialProfile,
   initialHotelId,
+  enabled = true,
 }: {
   selectedPeriod: MyPeriodKey;
   initialProfile: MyProfile;
   initialHotelId: string;
+  enabled?: boolean;
 }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -152,20 +154,43 @@ export function useMyDashboardData({
     let cancelled = false;
 
     async function run() {
+      if (!enabled) {
+        if (!cancelled) {
+          setLoading(false);
+          setError(null);
+        }
+        return;
+      }
+
       try {
         setLoading(true);
         setError(null);
 
         const hotelId = initialHotelId;
-        const uid = initialProfile.id;
-        const authResp = await supabase.auth.getUser();
-        if (authResp.error) throw authResp.error;
+        const sessionResp = await supabase.auth.getSession();
+        if (sessionResp.error) throw sessionResp.error;
+
+        const sessionUser = sessionResp.data.session?.user ?? null;
+        if (!sessionUser) {
+          if (!cancelled) {
+            setProfile(null);
+            setHotelName(null);
+            setAreaNames([]);
+            setMyTargets([]);
+            setMyRecentRuns([]);
+            setError(null);
+            setLoading(false);
+          }
+          return;
+        }
+
+        const uid = sessionUser.id;
         if (!cancelled) {
           setProfile((prev) =>
             prev
               ? {
                   ...prev,
-                  email: authResp.data.user?.email ?? prev.email ?? null,
+                  email: sessionUser.email ?? prev.email ?? null,
                 }
               : prev
           );
@@ -357,7 +382,7 @@ export function useMyDashboardData({
     return () => {
       cancelled = true;
     };
-  }, [initialHotelId, initialProfile, range.endISO, range.startISO, selectedPeriod]);
+  }, [enabled, initialHotelId, initialProfile, range.endISO, range.startISO, selectedPeriod]);
 
   return {
     loading,

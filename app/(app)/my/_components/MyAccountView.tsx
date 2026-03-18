@@ -41,6 +41,7 @@ function formatDateTime(value: string | null | undefined) {
 
 export default function MyAccountView({
   loading,
+  isLoggingOut,
   profile,
   hotelName,
   areaNames,
@@ -48,6 +49,7 @@ export default function MyAccountView({
   onLogout,
 }: {
   loading: boolean;
+  isLoggingOut: boolean;
   profile: MyProfile | null;
   hotelName: string | null;
   areaNames: string[];
@@ -89,8 +91,8 @@ export default function MyAccountView({
       </div>
 
       <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-        <button style={btn} onClick={onLogout}>
-          Cerrar sesión
+        <button style={btn} onClick={onLogout} disabled={isLoggingOut}>
+          {isLoggingOut ? "Cerrando sesión..." : "Cerrar sesión"}
         </button>
       </div>
 
