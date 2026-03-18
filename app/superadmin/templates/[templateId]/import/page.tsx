@@ -194,7 +194,10 @@ export default function GlobalTemplateImportPage() {
         ← Atrás
       </button>
 
-      <h1 style={{ fontSize: 44, marginBottom: 6 }}>Importar Excel (Global)</h1>
+      <h1 style={{ fontSize: 44, marginBottom: 6 }}>Importar catálogo global</h1>
+      <div style={{ opacity: 0.8, marginBottom: 16 }}>
+        Esta pantalla es solo para importar preguntas/estándares del catálogo global. No se usa para auditorías históricas.
+      </div>
       <div style={{ opacity: 0.8, marginBottom: 16 }}>
         Debe incluir encabezados: <b>STANDARD</b>, <b>TAG</b>, <b>CLASSIFICATION</b>.
       </div>

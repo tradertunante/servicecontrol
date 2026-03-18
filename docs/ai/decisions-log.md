@@ -826,3 +826,36 @@ Eso elevaba el coste de cambio y hacía más fácil reintroducir divergencias.
 - menos paralelismos vivos entre módulos equivalentes
 - menor tamaño de hotspots reales y menos `any` en tramos críticos
 - mantenimiento más predecible sin cambiar el contrato funcional ya cerrado en repairs 1-5
+
+---
+
+## Decisión 16
+
+### Fecha
+2026-03-17
+
+### Decisión
+La importación histórica de auditorías vive solo en una herramienta centralizada de `superadmin`, selecciona explícitamente hotel + template operativo y escribe sobre templates del hotel.
+
+### Contexto
+La herramienta primero se planteó colgada de un template global en `superadmin`, pero el flujo real de negocio requiere elegir explícitamente el hotel destino y el template operativo concreto sobre el que se crearán `audit_runs` y `audit_answers`.
+
+Además, una importación histórica toca varias tablas (`audit_runs` y `audit_answers`) y no debía depender de inserts cliente ni de ocultamiento por UI.
+
+### Alternativas consideradas
+- colgar la herramienta dentro del detalle de cada template
+- insertar `audit_runs` apuntando al template global
+- mantener una UX de copiar/pegar con textarea
+
+### Decisión final
+- exponer una única herramienta en `/superadmin/historical-import`
+- exigir selección explícita de hotel y template antes de permitir descargar o importar
+- proteger página y endpoints con guards server-side exclusivos de `superadmin`
+- generar plantilla Excel dinámica por template seleccionado
+- persistir cada fila con una RPC transaccional dedicada
+
+### Impacto esperado
+- mantiene coherencia con el flujo operativo real del producto
+- evita mezclar datos entre hoteles
+- evita `audit_runs` referenciando assets globales no operativos
+- permite importación parcial por filas sin sacrificar atomicidad por auditoría

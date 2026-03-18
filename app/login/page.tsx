@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
+import { normalizeRole } from "@/lib/auth/permissions";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -40,7 +41,24 @@ export default function LoginPage() {
       const session = data.session ?? (await waitForSession());
       if (!session) throw new Error("No se pudo establecer la sesión. Intenta de nuevo.");
 
-      // ✅ La home (app/page.tsx) redirige según rol
+      const { data: userData, error: userError } = await supabase.auth.getUser();
+      if (userError) throw userError;
+      if (!userData?.user) throw new Error("No se pudo obtener el usuario autenticado.");
+
+      const { data: profile, error: profileError } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", userData.user.id)
+        .maybeSingle();
+
+      if (profileError) throw profileError;
+
+      if (normalizeRole(profile?.role) === "superadmin") {
+        router.replace("/superadmin");
+        router.refresh();
+        return;
+      }
+
       router.replace("/home");
       router.refresh();
     } catch (e: any) {

@@ -421,7 +421,7 @@ export default function SuperadminGlobalTemplateBuilderPage() {
 
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
           <button onClick={() => router.push(`/superadmin/templates/${templateId}/import`)} style={btnWhite}>
-            Importar Excel
+            Importar catálogo
           </button>
 
           <button onClick={toggleTemplateActive} style={btnBlack} disabled={saving}>

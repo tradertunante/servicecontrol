@@ -78,6 +78,11 @@ export default function HomePage() {
 
         setDebug(`uid=${uid} role_raw=${String(prof.role)} role_clean=${role}`);
 
+        if (profile.role === "superadmin") {
+          router.replace("/superadmin");
+          return;
+        }
+
         if (
           profile.role === "engineering" ||
           profile.role === "systems" ||

@@ -1,7 +1,7 @@
 // app/superadmin/page.tsx
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, type CSSProperties } from "react";
 import { useRouter } from "next/navigation";
 
 type Card = {
@@ -15,8 +15,8 @@ export default function SuperadminHomePage() {
   const router = useRouter();
 
   const styles = useMemo(() => {
-    const page: React.CSSProperties = { padding: 24, paddingTop: 24 };
-    const headerWrap: React.CSSProperties = {
+    const page: CSSProperties = { padding: 24, paddingTop: 24 };
+    const headerWrap: CSSProperties = {
       display: "flex",
       alignItems: "flex-end",
       justifyContent: "space-between",
@@ -24,17 +24,17 @@ export default function SuperadminHomePage() {
       flexWrap: "wrap",
     };
 
-    const title: React.CSSProperties = { fontSize: 40, fontWeight: 950, letterSpacing: -0.6 };
-    const subtitle: React.CSSProperties = { opacity: 0.75, marginTop: 8 };
+    const title: CSSProperties = { fontSize: 40, fontWeight: 950, letterSpacing: -0.6 };
+    const subtitle: CSSProperties = { opacity: 0.75, marginTop: 8 };
 
-    const grid: React.CSSProperties = {
+    const grid: CSSProperties = {
       marginTop: 22,
       display: "grid",
       gridTemplateColumns: "repeat(12, 1fr)",
       gap: 18,
     };
 
-    const card: React.CSSProperties = {
+    const card: CSSProperties = {
       gridColumn: "span 6",
       background: "var(--card-bg)",
       border: "1px solid var(--header-border)",
@@ -46,12 +46,12 @@ export default function SuperadminHomePage() {
       transition: "transform 120ms ease, box-shadow 120ms ease",
     };
 
-    const cardTop: React.CSSProperties = { display: "flex", alignItems: "center", gap: 10, marginBottom: 6 };
-    const icon: React.CSSProperties = { fontSize: 18 };
-    const cardTitle: React.CSSProperties = { fontSize: 18, fontWeight: 950 };
-    const cardSub: React.CSSProperties = { opacity: 0.75, fontSize: 13, lineHeight: 1.35 };
+    const cardTop: CSSProperties = { display: "flex", alignItems: "center", gap: 10, marginBottom: 6 };
+    const icon: CSSProperties = { fontSize: 18 };
+    const cardTitle: CSSProperties = { fontSize: 18, fontWeight: 950 };
+    const cardSub: CSSProperties = { opacity: 0.75, fontSize: 13, lineHeight: 1.35 };
 
-    const hint: React.CSSProperties = {
+    const hint: CSSProperties = {
       marginTop: 18,
       opacity: 0.7,
       fontSize: 12,
@@ -61,6 +61,12 @@ export default function SuperadminHomePage() {
   }, []);
 
   const cards: Card[] = [
+    {
+      title: "Importar históricos",
+      subtitle: "Herramienta interna para cargar auditorías históricas por hotel y template.",
+      href: "/superadmin/historical-import",
+      icon: "📥",
+    },
     {
       title: "Biblioteca Global",
       subtitle: "Gestiona packs y plantillas base para todos los hoteles (catálogo global).",
@@ -107,7 +113,7 @@ export default function SuperadminHomePage() {
       </div>
 
       <div style={styles.hint}>
-        Consejo: “Biblioteca Global” centraliza los packs y sus plantillas para reutilizarlos entre hoteles.
+        Consejo: “Importar históricos” usa Excel estructurado por hotel y template; “Biblioteca Global” sigue siendo el catálogo base.
       </div>
     </main>
   );
