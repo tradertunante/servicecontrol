@@ -136,6 +136,8 @@ pendiente
 - `REPAIR 6` avanzó con cleanup arquitectónico: capa compartida `loadAreaOverviewData(...)` para `areas/history`, vista canónica compartida para reportes weekly/monthly y partición de `useAuditSession` en tipos + loader + helpers
 - reducción de hotspots en cliente sin reabrir repairs 1-5: `AreaHistoryPageClient.tsx`, `MonthlyAreaReportPageClient.tsx`, `WeeklyAreaReportPageClient.tsx` y `useAuditSession.ts`
 - documentación principal alineada con el estado real: submit ya corre por route handler + RPC y los reportes de período ya usan una sola superficie compartida
+- herramienta interna centralizada de `superadmin` para importación histórica masiva de auditorías vía Excel estructurado (`.xlsx/.xls`), protegida server-side y persistiendo cada fila mediante la RPC transaccional `import_historical_audit_run(...)`
+- la importación histórica oficial ya no cuelga del detalle de templates; ahora vive en `/superadmin/historical-import` con selección explícita de hotel y template operativo
 
 ### Hecho
 
