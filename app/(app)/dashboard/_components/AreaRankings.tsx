@@ -169,7 +169,7 @@ export default function AreaRankings({
         .list {
           display: flex;
           flex-direction: column;
-          gap: 14px;
+          gap: 10px;
         }
 
         .rankingRow {
@@ -177,9 +177,9 @@ export default function AreaRankings({
           grid-template-columns: 44px minmax(0, 1fr) minmax(124px, auto);
           grid-template-areas: "badge content aside";
           align-items: center;
-          column-gap: 16px;
+          column-gap: 14px;
           min-height: 0;
-          padding: 18px 18px 18px 16px;
+          padding: 13px 16px 13px 14px;
           border-radius: 16px;
           box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3), 0 8px 20px rgba(15, 23, 42, 0.04);
         }
@@ -208,7 +208,7 @@ export default function AreaRankings({
           display: flex;
           flex-direction: column;
           justify-content: center;
-          gap: 7px;
+          gap: 4px;
         }
 
         .rankingTitle {
@@ -226,7 +226,7 @@ export default function AreaRankings({
         .rankingTrend {
           display: flex;
           flex-wrap: wrap;
-          gap: 6px;
+          gap: 4px;
           align-items: center;
           min-width: 0;
         }
@@ -259,7 +259,7 @@ export default function AreaRankings({
           flex-direction: column;
           align-items: flex-end;
           justify-content: center;
-          gap: 10px;
+          gap: 6px;
           min-width: 124px;
           text-align: right;
           align-self: center;
@@ -268,7 +268,7 @@ export default function AreaRankings({
 
         .rankingScoreBlock {
           display: grid;
-          gap: 4px;
+          gap: 2px;
           justify-items: end;
         }
 
@@ -299,8 +299,8 @@ export default function AreaRankings({
             grid-template-areas:
               "badge content"
               "aside aside";
-            padding: 16px;
-            row-gap: 14px;
+            padding: 14px;
+            row-gap: 10px;
           }
 
           .rankingBadgeSlot {
@@ -312,7 +312,7 @@ export default function AreaRankings({
             flex-direction: row;
             align-items: center;
             justify-content: space-between;
-            gap: 12px;
+            gap: 10px;
             text-align: left;
             width: 100%;
           }

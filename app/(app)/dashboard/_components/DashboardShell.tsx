@@ -32,7 +32,7 @@ export function buildCardStyle(opts: {
     borderRadius: 18,
     border: `1px solid ${opts.border}`,
     background: opts.cardBg,
-    padding: 20,
+    padding: "16px 20px",
     boxShadow: opts.shadowLg,
     color: opts.fg,
   };

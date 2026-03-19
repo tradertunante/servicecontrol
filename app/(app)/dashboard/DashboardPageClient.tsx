@@ -18,6 +18,7 @@ import GaugesRow from "./_components/GaugesRow";
 import HeatMapCard from "./_components/HeatMapCard";
 import AreaRankings from "./_components/AreaRankings";
 import WorstAuditsCard from "./_components/WorstAuditsCard";
+import PendingTeamsCard from "./_components/PendingTeamsCard";
 import QuickLinks from "./_components/QuickLinks";
 import { useDashboardData } from "./_hooks/useDashboardData";
 import type { HeatMode } from "./_lib/dashboardUtils";
@@ -75,6 +76,7 @@ export default function DashboardPageClient({
     top3Areas,
     worst3Areas,
     worst3Audits,
+    pendingByTeam,
     selectedHotelName,
     canChooseHotel,
     resetForHotelChange,
@@ -93,6 +95,10 @@ export default function DashboardPageClient({
 
   const goWorstAuditDetail = (areaId: string, templateId: string) => {
     router.push(`/areas/${areaId}?tab=dashboard&period=THIS_MONTH&template=${templateId}`);
+  };
+
+  const goPendingTeamDetail = (teamKey: "it" | "maintenance") => {
+    router.push(teamKey === "it" ? "/it" : "/engineering");
   };
 
   const handleChangeHotel = () => {
@@ -175,18 +181,28 @@ export default function DashboardPageClient({
         selectedYear={selectedYear}
       />
 
-      <WorstAuditsCard
-        card={card}
-        rowBg={rowBg}
-        border={border}
+        <WorstAuditsCard
+          card={card}
+          rowBg={rowBg}
+          border={border}
         fg={fg}
         miniBtn={miniBtn}
-        worst3Audits={worst3Audits}
-        onGoWorstAuditDetail={goWorstAuditDetail}
-      />
+          worst3Audits={worst3Audits}
+          onGoWorstAuditDetail={goWorstAuditDetail}
+        />
 
-      <QuickLinks
-        routerPush={(path) => router.push(path)}
+        <PendingTeamsCard
+          card={card}
+          rowBg={rowBg}
+          border={border}
+          fg={fg}
+          miniBtn={miniBtn}
+          pendingByTeam={pendingByTeam}
+          onGoDetail={goPendingTeamDetail}
+        />
+
+        <QuickLinks
+          routerPush={(path) => router.push(path)}
         inputBorder={inputBorder}
         inputBg={inputBg}
         fg={fg}
