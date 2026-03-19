@@ -73,6 +73,7 @@ export async function requireDepartmentRouteAccess(
 
   const routeScope = getDepartmentRouteScope(
     routeDepartment,
+    auth.profile.role,
     assignedDepartmentCode,
     hasAreaScope
   );

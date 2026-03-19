@@ -102,7 +102,12 @@ export async function fetchDepartmentCorrectiveActions(
     (row: { area_id?: string | null }) => !!row.area_id
   );
 
-  const routeScope = getDepartmentRouteScope(department, assignedDepartmentCode, hasAreaScope);
+  const routeScope = getDepartmentRouteScope(
+    department,
+    typedProfile.role,
+    assignedDepartmentCode,
+    hasAreaScope
+  );
 
   if (routeScope === "none") {
     return {
