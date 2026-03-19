@@ -10,6 +10,7 @@ import HotelInfoModule from "../_modules/hotel/HotelInfoModule";
 import AccessByAreaModule from "../_modules/access-by-area/AccessByAreaModule";
 import AreaAuditsModule from "../_modules/area-audits/AreaAuditsModule";
 import AuditTargetsModule from "../_modules/audit-targets/AuditTargetsModule";
+import BuilderModule from "../_modules/builder/BuilderModule";
 
 type ViewMode =
   | "hotel-info"
@@ -17,7 +18,8 @@ type ViewMode =
   | "users"
   | "access-by-area"
   | "area-audits"
-  | "audit-targets";
+  | "audit-targets"
+  | "builder";
 
 function v(name: string, fallback: string) {
   return `var(${name}, ${fallback})`;
@@ -103,6 +105,7 @@ export default function AdminShell({ initialHotelId }: { initialHotelId: string 
       [
         { key: "hotel-info" as const, label: "Hotel" },
         { key: "departments" as const, label: "Departamentos" },
+        { key: "builder" as const, label: "Biblioteca de estándares" },
         { key: "users" as const, label: "Usuarios" },
         { key: "access-by-area" as const, label: "Accesos por área" },
         { key: "area-audits" as const, label: "Auditorías por área" },
@@ -195,6 +198,8 @@ export default function AdminShell({ initialHotelId }: { initialHotelId: string 
             <DepartmentsModule hotelId={activeHotelId} />
           ) : viewMode === "users" ? (
             <UsersModule />
+          ) : viewMode === "builder" ? (
+            <BuilderModule hotelId={activeHotelId} />
           ) : viewMode === "access-by-area" ? (
             <AccessByAreaModule />
           ) : viewMode === "area-audits" ? (

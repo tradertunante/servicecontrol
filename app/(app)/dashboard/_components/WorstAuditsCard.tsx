@@ -109,7 +109,7 @@ export default function WorstAuditsCard({
         .list {
           display: flex;
           flex-direction: column;
-          gap: 10px;
+          gap: 8px;
         }
 
         .auditRow {
@@ -119,7 +119,7 @@ export default function WorstAuditsCard({
           align-items: center;
           column-gap: 12px;
           min-height: 0;
-          padding: 13px 16px 13px 14px;
+          padding: 10px 16px 10px 14px;
           border-radius: 15px;
           box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3), 0 8px 20px rgba(15, 23, 42, 0.04);
         }
@@ -165,7 +165,7 @@ export default function WorstAuditsCard({
           flex-direction: column;
           align-items: flex-end;
           justify-content: center;
-          gap: 5px;
+          gap: 3px;
           min-width: 116px;
           text-align: right;
           align-self: center;
@@ -191,8 +191,8 @@ export default function WorstAuditsCard({
             grid-template-areas:
               "badge content"
               "aside aside";
-            padding: 14px;
-            row-gap: 10px;
+            padding: 12px 14px;
+            row-gap: 8px;
           }
 
           .auditBadgeSlot {
@@ -204,7 +204,7 @@ export default function WorstAuditsCard({
             flex-direction: row;
             align-items: center;
             justify-content: space-between;
-            gap: 10px;
+            gap: 8px;
             text-align: left;
             width: 100%;
           }
