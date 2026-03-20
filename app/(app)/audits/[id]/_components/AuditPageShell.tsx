@@ -41,6 +41,9 @@ export default function AuditPageShell({
   roomNumber,
   savingRoomNumber,
   isHousekeeping,
+  requiresRoomNumber,
+  requiresAuditedEmployee,
+  showRoomNumberField,
   saving,
   uploading,
   submitting,
@@ -74,6 +77,9 @@ export default function AuditPageShell({
   roomNumber: string;
   savingRoomNumber: boolean;
   isHousekeeping: boolean;
+  requiresRoomNumber: boolean;
+  requiresAuditedEmployee: boolean;
+  showRoomNumberField: boolean;
   saving: boolean;
   uploading: boolean;
   submitting: boolean;
@@ -131,6 +137,11 @@ export default function AuditPageShell({
 
       <div className="rounded-2xl border border-slate-200 bg-white p-3.5 lg:rounded-3xl lg:p-4">
         <div className="mb-2 text-sm font-extrabold text-slate-900">Colaborador auditado</div>
+        {requiresAuditedEmployee ? (
+          <div className="mb-2 text-[11px] font-bold uppercase tracking-wide text-amber-700">
+            Obligatorio para enviar
+          </div>
+        ) : null}
         <select
           value={selectedMember}
           disabled={submitted || savingMember}
@@ -146,9 +157,14 @@ export default function AuditPageShell({
           ))}
         </select>
 
-        {isHousekeeping ? (
+        {showRoomNumberField ? (
           <div className="mt-3">
             <div className="mb-2 text-sm font-extrabold text-slate-900">Room number</div>
+            {requiresRoomNumber ? (
+              <div className="mb-2 text-[11px] font-bold uppercase tracking-wide text-amber-700">
+                Obligatorio para enviar
+              </div>
+            ) : null}
             <input
               value={roomNumber}
               disabled={submitted || savingRoomNumber}

@@ -58,6 +58,9 @@ export function useAuditSession(runId: string | undefined) {
   const saving = pendingCount > 0;
   const submitted = (run?.status ?? "") === "submitted";
   const isHousekeeping = (area?.type ?? "").toUpperCase() === "HK";
+  const requiresRoomNumber = template?.require_room_number === true;
+  const requiresAuditedEmployee = template?.require_audited_employee === true;
+  const showRoomNumberField = isHousekeeping || requiresRoomNumber;
 
   useEffect(() => {
     if (!runId) return;
@@ -255,7 +258,7 @@ export function useAuditSession(runId: string | undefined) {
   }
 
   async function saveRoomNumber(nextValue: string) {
-    if (!run || submitted || !isHousekeeping) return;
+    if (!run || submitted || !showRoomNumberField) return;
 
     const trimmedValue = nextValue.trim();
     setSavingRoomNumber(true);
@@ -373,6 +376,16 @@ export function useAuditSession(runId: string | undefined) {
   async function submitRun() {
     if (!run || !area || submitted) return;
 
+    if (requiresAuditedEmployee && !selectedMember.trim()) {
+      setError("Debes seleccionar el colaborador auditado antes de enviar esta auditoría.");
+      return;
+    }
+
+    if (requiresRoomNumber && !roomNumber.trim()) {
+      setError("Debes capturar el número de habitación antes de enviar esta auditoría.");
+      return;
+    }
+
     for (const question of questions) {
       const answer = answersByQ[question.id];
       if (!answer) continue;
@@ -402,6 +415,38 @@ export function useAuditSession(runId: string | undefined) {
     try {
       await flushAll();
       const accessToken = await getAccessToken();
+
+      const submitAnswersPayload = questions.map((question) => {
+        const current = answersByQ[question.id];
+        const draft = {
+          ...makeDraftAnswer(run.id, question.id, current),
+          answer: ((current?.answer ?? current?.result) ?? "PASS") as AnswerValue,
+          result: ((current?.result ?? current?.answer) ?? "PASS") as AnswerValue,
+          comment: current?.comment ?? null,
+          photo_path: current?.photo_path ?? null,
+        };
+        return {
+          question_id: question.id,
+          answer: draft.answer,
+          result: draft.result,
+          comment: draft.comment,
+          photo_path: draft.photo_path,
+        };
+      });
+
+      const draftResponse = await fetch(`/api/audits/${run.id}/draft`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({ answers: submitAnswersPayload }),
+      });
+
+      const draftPayload = (await draftResponse.json().catch(() => null)) as DraftSaveResponse | null;
+      if (!draftResponse.ok || !draftPayload?.ok) {
+        throw new Error(draftPayload?.error ?? "No se pudo persistir el estado actual antes de enviar.");
+      }
 
       const response = await fetch("/api/audits/submit", {
         method: "POST",
@@ -455,6 +500,9 @@ export function useAuditSession(runId: string | undefined) {
     roomNumber,
     savingRoomNumber,
     isHousekeeping,
+    requiresRoomNumber,
+    requiresAuditedEmployee,
+    showRoomNumberField,
     totals,
     setAnswer,
     setComment,

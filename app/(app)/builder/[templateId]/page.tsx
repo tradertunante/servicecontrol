@@ -12,12 +12,15 @@ type TemplateRow = {
   active: boolean | null;
   area_id: string | null;
   created_at: string | null;
+  require_room_number: boolean;
+  require_audited_employee: boolean;
 };
 
 type AreaRow = {
   id: string;
   name: string;
   type: string | null;
+  hotel_id: string | null;
 };
 
 type SectionRow = {
@@ -29,12 +32,14 @@ type SectionRow = {
 };
 
 type RequirementType = "never" | "if_fail" | "always";
+type ResponsibleDepartment = string | null;
 
 type QuestionRow = {
   id: string;
   audit_section_id: string;
   text: string;
   tag: string | null;
+  owner_department?: ResponsibleDepartment;
   order: number | null;
   active: boolean;
   comment_requirement: RequirementType;
@@ -49,11 +54,17 @@ type UiRow = {
   classification: string;
   tag: string;
   standard: string;
+  owner_department: ResponsibleDepartment;
   comment_requirement: RequirementType;
   photo_requirement: RequirementType;
   signature_requirement: RequirementType;
   active: boolean;
   order: number;
+};
+
+type ResponsibleDepartmentOption = {
+  value: string;
+  label: string;
 };
 
 function toBool(v: any): boolean {
@@ -64,6 +75,14 @@ function safeStr(v: any): string {
   return (v ?? "").toString();
 }
 
+function normalizeText(v: string | null | undefined) {
+  return (v ?? "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim()
+    .toLowerCase();
+}
+
 function normalizeOrder(n: number | null | undefined, fallback: number) {
   const x = Number(n);
   return Number.isFinite(x) && x > 0 ? x : fallback;
@@ -72,6 +91,85 @@ function normalizeOrder(n: number | null | undefined, fallback: number) {
 function toRequirement(v: any): RequirementType {
   if (v === "if_fail" || v === "always") return v;
   return "never";
+}
+
+function toResponsibleDepartment(v: any): ResponsibleDepartment {
+  if (typeof v !== "string") return null;
+  const normalized = v.trim();
+  return normalized ? normalized : null;
+}
+
+function slugifyResponsibleDepartment(v: string) {
+  return normalizeText(v)
+    .replace(/&/g, " and ")
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+}
+
+function getResponsibleDepartmentValue(area: Pick<AreaRow, "name" | "type"> | null): ResponsibleDepartment {
+  if (!area) return null;
+
+  const name = normalizeText(area.name);
+  const type = normalizeText(area.type);
+
+  if (name.includes("housekeeping") || name.includes("ama de llaves") || type === "housekeeping") {
+    return "housekeeping";
+  }
+
+  if (
+    name.includes("front office") ||
+    name.includes("front desk") ||
+    name.includes("recepcion") ||
+    name.includes("recepción") ||
+    type === "front_office" ||
+    type === "fo"
+  ) {
+    return "front_office";
+  }
+
+  if (
+    name === "it" ||
+    name.includes("systems") ||
+    name.includes("sistemas") ||
+    type === "it" ||
+    type === "systems"
+  ) {
+    return "it";
+  }
+
+  if (
+    name.includes("mantenimiento") ||
+    name.includes("maintenance") ||
+    name.includes("engineering") ||
+    name.includes("manto") ||
+    type === "eng" ||
+    type === "engineering"
+  ) {
+    return "engineering";
+  }
+
+  return slugifyResponsibleDepartment(area.name);
+}
+
+function buildResponsibleDepartmentOptions(areas: AreaRow[]): ResponsibleDepartmentOption[] {
+  const seen = new Set<string>();
+  const options: ResponsibleDepartmentOption[] = [];
+
+  const appendOption = (value: string | null, label: string) => {
+    if (!value || seen.has(value)) return;
+    seen.add(value);
+    options.push({ value, label });
+  };
+
+  appendOption("it", "IT");
+  appendOption("engineering", "Mantenimiento");
+
+  for (const area of [...areas].sort((a, b) => a.name.localeCompare(b.name, "es", { sensitivity: "base" }))) {
+    const value = getResponsibleDepartmentValue(area);
+    appendOption(value, area.name);
+  }
+
+  return options;
 }
 
 export default function BuilderTemplatePage() {
@@ -86,6 +184,8 @@ export default function BuilderTemplatePage() {
 
   const [template, setTemplate] = useState<TemplateRow | null>(null);
   const [area, setArea] = useState<AreaRow | null>(null);
+  const [hotelAreas, setHotelAreas] = useState<AreaRow[]>([]);
+  const [ownerDepartmentAvailable, setOwnerDepartmentAvailable] = useState(true);
 
   const [sections, setSections] = useState<SectionRow[]>([]);
   const [questions, setQuestions] = useState<QuestionRow[]>([]);
@@ -99,6 +199,19 @@ export default function BuilderTemplatePage() {
   // Rename
   const [nameDraft, setNameDraft] = useState("");
 
+  const responsibleDepartmentOptions = useMemo(() => buildResponsibleDepartmentOptions(hotelAreas), [hotelAreas]);
+  const responsibleDepartmentLabelByValue = useMemo(() => {
+    return new Map(responsibleDepartmentOptions.map((option) => [option.value, option.label]));
+  }, [responsibleDepartmentOptions]);
+
+  const templateResponsibleDepartment = useMemo(() => getResponsibleDepartmentValue(area), [area]);
+  const templateResponsibleLabel = useMemo(() => {
+    return (
+      (templateResponsibleDepartment ? responsibleDepartmentLabelByValue.get(templateResponsibleDepartment) : null) ??
+      (area?.name ? safeStr(area.name) : "Área del template")
+    );
+  }, [area, responsibleDepartmentLabelByValue, templateResponsibleDepartment]);
+
   useEffect(() => {
     if (!templateId) return;
 
@@ -106,28 +219,77 @@ export default function BuilderTemplatePage() {
       setLoading(true);
       setError(null);
       setInfo(null);
+      setOwnerDepartmentAvailable(true);
 
       try {
-        const { data: tData, error: tErr } = await supabase
-          .from("audit_templates")
-          .select("id,name,active,area_id,created_at")
-          .eq("id", templateId)
-          .single();
+        let tpl: TemplateRow | null = null;
+        {
+          const { data: tData, error: tErr } = await supabase
+            .from("audit_templates")
+            .select("id,name,active,area_id,created_at,require_room_number,require_audited_employee")
+            .eq("id", templateId)
+            .single();
 
-        if (tErr || !tData) throw tErr ?? new Error("No se encontró la auditoría.");
-        const tpl = tData as TemplateRow;
+          if (tErr) {
+            const message = String(tErr.message ?? "");
+            if (
+              message.includes("require_room_number") ||
+              message.includes("require_audited_employee")
+            ) {
+              const { data: fallbackData, error: fallbackErr } = await supabase
+                .from("audit_templates")
+                .select("id,name,active,area_id,created_at")
+                .eq("id", templateId)
+                .single();
+
+              if (fallbackErr || !fallbackData) throw fallbackErr ?? new Error("No se encontró la auditoría.");
+              tpl = {
+                ...(fallbackData as Omit<TemplateRow, "require_room_number" | "require_audited_employee">),
+                require_room_number: false,
+                require_audited_employee: false,
+              };
+            } else {
+              throw tErr;
+            }
+          } else if (tData) {
+            tpl = {
+              ...(tData as TemplateRow),
+              require_room_number: toBool((tData as TemplateRow).require_room_number),
+              require_audited_employee: toBool((tData as TemplateRow).require_audited_employee),
+            };
+          }
+        }
+
+        if (!tpl) throw new Error("No se encontró la auditoría.");
         setTemplate(tpl);
         setNameDraft(tpl.name ?? "");
 
         if (tpl.area_id) {
           const { data: aData, error: aErr } = await supabase
             .from("areas")
-            .select("id,name,type")
+            .select("id,name,type,hotel_id")
             .eq("id", tpl.area_id)
             .single();
-          if (!aErr && aData) setArea(aData as AreaRow);
+          if (!aErr && aData) {
+            const nextArea = aData as AreaRow;
+            setArea(nextArea);
+
+            if (nextArea.hotel_id) {
+              const { data: hotelAreasData, error: hotelAreasErr } = await supabase
+                .from("areas")
+                .select("id,name,type,hotel_id")
+                .eq("hotel_id", nextArea.hotel_id)
+                .order("name", { ascending: true });
+
+              if (hotelAreasErr) throw hotelAreasErr;
+              setHotelAreas((hotelAreasData ?? []) as AreaRow[]);
+            } else {
+              setHotelAreas([nextArea]);
+            }
+          }
         } else {
           setArea(null);
+          setHotelAreas([]);
         }
 
         const { data: sData, error: sErr } = await supabase
@@ -144,18 +306,40 @@ export default function BuilderTemplatePage() {
         const secIds = secs.map((s) => s.id);
         let qList: QuestionRow[] = [];
         if (secIds.length) {
+          const ownerDepartmentSelect =
+            "id,audit_section_id,text,tag,owner_department,order,active,comment_requirement,photo_requirement,signature_requirement,created_at";
+          const baseQuestionSelect =
+            "id,audit_section_id,text,tag,order,active,comment_requirement,photo_requirement,signature_requirement,created_at";
+
           const { data: qData, error: qErr } = await supabase
             .from("audit_questions")
-            .select(
-              "id,audit_section_id,text,tag,order,active,comment_requirement,photo_requirement,signature_requirement,created_at"
-            )
+            .select(ownerDepartmentSelect)
             .in("audit_section_id", secIds)
             .order("order", { ascending: true })
             .order("created_at", { ascending: true })
             .order("id", { ascending: true });
 
-          if (qErr) throw qErr;
-          qList = (qData ?? []) as QuestionRow[];
+          if (qErr) {
+            const message = safeStr(qErr.message);
+            if (message.includes("owner_department")) {
+              setOwnerDepartmentAvailable(false);
+
+              const { data: fallbackData, error: fallbackErr } = await supabase
+                .from("audit_questions")
+                .select(baseQuestionSelect)
+                .in("audit_section_id", secIds)
+                .order("order", { ascending: true })
+                .order("created_at", { ascending: true })
+                .order("id", { ascending: true });
+
+              if (fallbackErr) throw fallbackErr;
+              qList = ((fallbackData ?? []) as QuestionRow[]).map((row) => ({ ...row, owner_department: null }));
+            } else {
+              throw qErr;
+            }
+          } else {
+            qList = (qData ?? []) as QuestionRow[];
+          }
         }
         setQuestions(qList);
 
@@ -175,6 +359,7 @@ export default function BuilderTemplatePage() {
             classification: secNameById.get(q.audit_section_id) ?? "Sin sección",
             tag: safeStr(q.tag),
             standard: safeStr(q.text),
+            owner_department: toResponsibleDepartment(q.owner_department),
             comment_requirement: toRequirement(q.comment_requirement),
             photo_requirement: toRequirement(q.photo_requirement),
             signature_requirement: toRequirement(q.signature_requirement),
@@ -222,6 +407,9 @@ export default function BuilderTemplatePage() {
 
           if (patch.text !== undefined) next.standard = safeStr(patch.text);
           if (patch.tag !== undefined) next.tag = safeStr(patch.tag);
+          if (patch.owner_department !== undefined) {
+            next.owner_department = toResponsibleDepartment(patch.owner_department);
+          }
           if (patch.comment_requirement !== undefined) next.comment_requirement = toRequirement(patch.comment_requirement);
           if (patch.photo_requirement !== undefined) next.photo_requirement = toRequirement(patch.photo_requirement);
           if (patch.signature_requirement !== undefined) next.signature_requirement = toRequirement(patch.signature_requirement);
@@ -256,6 +444,27 @@ export default function BuilderTemplatePage() {
       setInfo("Nombre guardado ✅");
     } catch (e: any) {
       setError(e?.message ?? "No se pudo guardar el nombre.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function updateTemplateRequirements(
+    patch: Partial<Pick<TemplateRow, "require_room_number" | "require_audited_employee">>
+  ) {
+    if (!templateId || !template) return;
+
+    setSaving(true);
+    setError(null);
+    setInfo(null);
+
+    try {
+      const { error: upErr } = await supabase.from("audit_templates").update(patch).eq("id", templateId);
+      if (upErr) throw upErr;
+      setTemplate((prev) => (prev ? { ...prev, ...patch } : prev));
+      setInfo("Configuración guardada ✅");
+    } catch (e: any) {
+      setError(e?.message ?? "No se pudo guardar la configuración del template.");
     } finally {
       setSaving(false);
     }
@@ -519,6 +728,12 @@ export default function BuilderTemplatePage() {
 
       {error ? <div style={{ marginTop: 12, color: "crimson", fontWeight: 950 }}>{error}</div> : null}
       {info ? <div style={{ marginTop: 12, color: "green", fontWeight: 950 }}>{info}</div> : null}
+      {!ownerDepartmentAvailable ? (
+        <div style={{ marginTop: 12, color: "#8a5a00", fontWeight: 950 }}>
+          La columna <code>owner_department</code> aún no existe en esta base local. El editor sigue funcionando, pero el
+          selector de Responsable quedará deshabilitado hasta aplicar la migración nueva.
+        </div>
+      ) : null}
 
       <div style={{ ...card, marginTop: 16 }}>
         <div style={{ fontWeight: 950, marginBottom: 10 }}>Datos de la auditoría</div>
@@ -567,6 +782,34 @@ export default function BuilderTemplatePage() {
           {template?.created_at
             ? new Date(template.created_at).toLocaleDateString("es-ES", { year: "numeric", month: "short", day: "2-digit" })
             : "—"}
+        </div>
+
+        <div style={{ marginTop: 16, display: "grid", gap: 10 }}>
+          <div style={{ fontWeight: 900 }}>Requisitos al enviar</div>
+
+          <label style={{ display: "flex", alignItems: "center", gap: 10, fontWeight: 800 }}>
+            <input
+              type="checkbox"
+              checked={!!template?.require_room_number}
+              disabled={saving}
+              onChange={(event) =>
+                updateTemplateRequirements({ require_room_number: event.target.checked })
+              }
+            />
+            Requerir número de habitación
+          </label>
+
+          <label style={{ display: "flex", alignItems: "center", gap: 10, fontWeight: 800 }}>
+            <input
+              type="checkbox"
+              checked={!!template?.require_audited_employee}
+              disabled={saving}
+              onChange={(event) =>
+                updateTemplateRequirements({ require_audited_employee: event.target.checked })
+              }
+            />
+            Requerir colaborador auditado
+          </label>
         </div>
       </div>
 
@@ -663,7 +906,9 @@ export default function BuilderTemplatePage() {
         <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
           <div>
             <div style={{ fontWeight: 950, fontSize: 18 }}>Preguntas (tabla)</div>
-            <div style={{ opacity: 0.75, fontSize: 13 }}>STANDARD — TAG — CLASSIFICATION — Comentario — Foto — Firma</div>
+            <div style={{ opacity: 0.75, fontSize: 13 }}>
+              STANDARD — Responsable — TAG — CLASSIFICATION — Comentario — Foto — Firma
+            </div>
           </div>
 
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
@@ -690,12 +935,13 @@ export default function BuilderTemplatePage() {
         </div>
 
         <div style={{ marginTop: 14, overflowX: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 1400 }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 1560 }}>
             <colgroup>
               <col style={{ width: 90 }} />
               <col style={{ width: 260 }} />
               <col style={{ width: 240 }} />
               <col style={{ width: 660 }} />
+              <col style={{ width: 220 }} />
               <col style={{ width: 140 }} />
               <col style={{ width: 140 }} />
               <col style={{ width: 140 }} />
@@ -709,6 +955,7 @@ export default function BuilderTemplatePage() {
                 <th style={{ padding: "10px 8px", borderBottom: "1px solid rgba(0,0,0,0.15)" }}>CLASSIFICATION</th>
                 <th style={{ padding: "10px 8px", borderBottom: "1px solid rgba(0,0,0,0.15)" }}>TAG</th>
                 <th style={{ padding: "10px 8px", borderBottom: "1px solid rgba(0,0,0,0.15)" }}>STANDARD</th>
+                <th style={{ padding: "10px 8px", borderBottom: "1px solid rgba(0,0,0,0.15)" }}>Responsable</th>
                 <th style={{ padding: "10px 8px", borderBottom: "1px solid rgba(0,0,0,0.15)" }}>Comentario</th>
                 <th style={{ padding: "10px 8px", borderBottom: "1px solid rgba(0,0,0,0.15)" }}>Foto</th>
                 <th style={{ padding: "10px 8px", borderBottom: "1px solid rgba(0,0,0,0.15)" }}>Firma</th>
@@ -814,6 +1061,44 @@ export default function BuilderTemplatePage() {
                           background: "#fff",
                         }}
                       />
+                    </td>
+
+                    <td style={{ padding: "10px 8px", verticalAlign: "top" }}>
+                      <select
+                        value={r.owner_department ?? "__default__"}
+                        disabled={!ownerDepartmentAvailable}
+                        onChange={(e) => {
+                          if (!ownerDepartmentAvailable) return;
+                          const v = e.target.value === "__default__" ? null : toResponsibleDepartment(e.target.value);
+                          setRows((prev) =>
+                            prev.map((x) => (x.questionId === r.questionId ? { ...x, owner_department: v } : x))
+                          );
+                          updateQuestion(r.questionId, { owner_department: v });
+                        }}
+                        style={{
+                          width: "100%",
+                          padding: "10px 12px",
+                          borderRadius: 14,
+                          border: "1px solid rgba(0,0,0,0.18)",
+                          outline: "none",
+                          fontWeight: 900,
+                          background: ownerDepartmentAvailable ? "#fff" : "rgba(0,0,0,0.04)",
+                          cursor: ownerDepartmentAvailable ? "pointer" : "not-allowed",
+                          opacity: ownerDepartmentAvailable ? 1 : 0.7,
+                        }}
+                      >
+                        <option value="__default__">Por defecto ({templateResponsibleLabel})</option>
+                        {responsibleDepartmentOptions.map((option) => (
+                          <option key={option.value} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </select>
+                      <div style={{ marginTop: 6, fontSize: 12, opacity: 0.72, fontWeight: 800 }}>
+                        {r.owner_department
+                          ? `Actual: ${responsibleDepartmentLabelByValue.get(r.owner_department) ?? r.owner_department} · override manual`
+                          : `Actual: ${templateResponsibleLabel} · heredado del template`}
+                      </div>
                     </td>
 
                     <td style={{ padding: "10px 8px", verticalAlign: "top" }}>
@@ -931,7 +1216,7 @@ export default function BuilderTemplatePage() {
 
               {rows.length === 0 ? (
                 <tr>
-                  <td colSpan={9} style={{ padding: 14, opacity: 0.8 }}>
+                  <td colSpan={10} style={{ padding: 14, opacity: 0.8 }}>
                     No hay preguntas. Importa desde Excel o crea preguntas.
                   </td>
                 </tr>

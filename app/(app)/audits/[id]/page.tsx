@@ -47,6 +47,9 @@ export default function AuditRunPage() {
         roomNumber={session.roomNumber}
         savingRoomNumber={session.savingRoomNumber}
         isHousekeeping={session.isHousekeeping}
+        requiresRoomNumber={session.requiresRoomNumber}
+        requiresAuditedEmployee={session.requiresAuditedEmployee}
+        showRoomNumberField={session.showRoomNumberField}
         saving={session.saving}
         uploading={session.uploading}
         submitting={session.submitting}
