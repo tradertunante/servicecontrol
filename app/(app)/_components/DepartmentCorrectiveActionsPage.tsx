@@ -88,7 +88,7 @@ export default function DepartmentCorrectiveActionsPage({
         <DepartmentMetric label="Resolved" value={stats.resolved} />
       </div>
 
-      {loading ? <Card><div style={{ fontWeight: 900 }}>Cargando corrective actions…</div></Card> : null}
+      {loading ? <Card><div style={{ fontWeight: 900 }}>Cargando backlog operativo…</div></Card> : null}
 
       {errorMessage ? (
         <Card style={{ border: "1px solid rgba(255,0,0,0.25)", color: "crimson" }}>
@@ -98,9 +98,9 @@ export default function DepartmentCorrectiveActionsPage({
 
       {!loading && !errorMessage && rows.length === 0 ? (
         <Card>
-          <div style={{ fontWeight: 900 }}>No hay acciones correctivas</div>
+          <div style={{ fontWeight: 900 }}>No hay hallazgos pendientes</div>
           <div style={{ marginTop: 6, opacity: 0.72 }}>
-            No hay registros dentro del alcance visible para esta ruta.
+            No hay FAILs submitidos dentro del alcance visible para esta ruta.
           </div>
         </Card>
       ) : null}
@@ -146,6 +146,14 @@ export default function DepartmentCorrectiveActionsPage({
                   fontSize: 14,
                 }}
               >
+                <div>
+                  <div style={{ opacity: 0.6, fontSize: 12, fontWeight: 800 }}>Area</div>
+                  <div style={{ marginTop: 4, fontWeight: 700 }}>{row.area_name ?? "—"}</div>
+                </div>
+                <div>
+                  <div style={{ opacity: 0.6, fontSize: 12, fontWeight: 800 }}>Template</div>
+                  <div style={{ marginTop: 4, fontWeight: 700 }}>{row.template_name ?? "—"}</div>
+                </div>
                 <div>
                   <div style={{ opacity: 0.6, fontSize: 12, fontWeight: 800 }}>Habitación</div>
                   <div style={{ marginTop: 4, fontWeight: 700 }}>{row.room_number ?? "—"}</div>

@@ -8,7 +8,7 @@ export default async function EngineeringPage() {
     <DepartmentCorrectiveActionsPage
       department="engineering"
       title="Seguimiento Engineering"
-      description="Acciones correctivas no operativas del departamento de Engineering."
+      description="Backlog operativo de FAILs submitidos asignados al departamento de Engineering."
       userId={profile.id}
     />
   );

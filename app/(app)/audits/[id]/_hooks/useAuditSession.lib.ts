@@ -1,6 +1,7 @@
 "use client";
 
 import { supabase } from "@/lib/supabaseClient";
+import { toResponsibleDepartment } from "./responsibleDepartment";
 
 import type {
   AnswerRow,
@@ -11,7 +12,6 @@ import type {
   LoadedAuditSession,
   QuestionRow,
   RequirementType,
-  ResponsibleDepartment,
   SectionRow,
   TeamMemberLite,
   TemplateRow,
@@ -39,6 +39,13 @@ type RawQuestionRow = {
   blocks_reaudit_until_resolved: unknown;
 };
 
+type RawTemplateRow = {
+  id: string;
+  name: string;
+  require_room_number?: unknown;
+  require_audited_employee?: unknown;
+};
+
 function toRequirement(value: unknown): RequirementType {
   if (value === "if_fail" || value === "always") return value;
   return "never";
@@ -47,11 +54,6 @@ function toRequirement(value: unknown): RequirementType {
 function toCorrectiveFlow(value: unknown): CorrectiveFlow {
   if (value === "non_operational" || value === "mixed") return value;
   return "training_only";
-}
-
-function toResponsibleDepartment(value: unknown): ResponsibleDepartment {
-  if (value === "engineering" || value === "systems") return value;
-  return null;
 }
 
 export function getErrorMessage(error: unknown, fallback: string) {
@@ -95,6 +97,15 @@ function normalizeQuestion(question: RawQuestionRow): QuestionRow {
     corrective_flow: toCorrectiveFlow(question.corrective_flow),
     responsible_department: toResponsibleDepartment(question.responsible_department),
     blocks_reaudit_until_resolved: Boolean(question.blocks_reaudit_until_resolved),
+  };
+}
+
+function normalizeTemplate(template: RawTemplateRow): TemplateRow {
+  return {
+    id: template.id,
+    name: template.name,
+    require_room_number: Boolean(template.require_room_number),
+    require_audited_employee: Boolean(template.require_audited_employee),
   };
 }
 
@@ -156,11 +167,47 @@ export async function loadAuditSession(runId: string): Promise<LoadedAuditSessio
 
   const run = runData as LoadedAuditSession["run"];
 
-  const [{ data: templateData, error: templateError }, { data: areaData, error: areaError }] =
+  const [{ data: areaData, error: areaError }, templateResult] =
     await Promise.all([
-      supabase.from("audit_templates").select("id,name").eq("id", run.audit_template_id).single(),
       supabase.from("areas").select("id,name,type,hotel_id").eq("id", run.area_id).single(),
+      (async () => {
+        const primary = await supabase
+          .from("audit_templates")
+          .select("id,name,require_room_number,require_audited_employee")
+          .eq("id", run.audit_template_id)
+          .single();
+
+        if (!primary.error || !primary.error.message) return primary;
+
+        const message = String(primary.error.message ?? "");
+        if (
+          !message.includes("require_room_number") &&
+          !message.includes("require_audited_employee")
+        ) {
+          return primary;
+        }
+
+        const fallback = await supabase
+          .from("audit_templates")
+          .select("id,name")
+          .eq("id", run.audit_template_id)
+          .single();
+
+        if (fallback.error || !fallback.data) return fallback;
+
+        return {
+          data: {
+            ...(fallback.data as RawTemplateRow),
+            require_room_number: false,
+            require_audited_employee: false,
+          },
+          error: null,
+        };
+      })(),
     ]);
+
+  const templateData = templateResult.data as RawTemplateRow | null;
+  const templateError = templateResult.error;
 
   if (templateError || !templateData) throw templateError ?? new Error("Plantilla no encontrada.");
   if (areaError || !areaData) throw areaError ?? new Error("Área no encontrada.");
@@ -271,7 +318,7 @@ export async function loadAuditSession(runId: string): Promise<LoadedAuditSessio
 
   return {
     run,
-    template: templateData as TemplateRow,
+    template: normalizeTemplate(templateData),
     area: areaData as AreaRow,
     sections,
     questions,

@@ -9,6 +9,7 @@ set search_path = public
 as $$
 declare
   v_run record;
+  v_template record;
   v_actor record;
   v_rules record;
   v_existing_reaudit record;
@@ -93,8 +94,8 @@ begin
     if v_run.status = 'submitted' then
       select
         count(*)::int as total_questions,
-        count(*) filter (where coalesce(a.answer, a.result) = 'FAIL')::int as fail_count,
-        count(*) filter (where coalesce(a.answer, a.result) = 'NA')::int as na_count
+        count(*) filter (where upper(coalesce(a.result, a.answer, '')) = 'FAIL')::int as fail_count,
+        count(*) filter (where upper(coalesce(a.result, a.answer, '')) = 'NA')::int as na_count
       into v_total_questions, v_fail_count, v_na_count
       from public.audit_questions q
       join public.audit_sections s
@@ -296,6 +297,64 @@ begin
       );
     end if;
 
+    select
+      id,
+      require_room_number,
+      require_audited_employee
+    into v_template
+    from public.audit_templates
+    where id = v_run.audit_template_id;
+
+    if not found then
+      return jsonb_build_object(
+        'ok', false,
+        'code', 'TEMPLATE_NOT_FOUND',
+        'message', 'Audit template not found.',
+        'data', null,
+        'error', jsonb_build_object(
+          'type', 'not_found',
+          'field', 'audit_template_id',
+          'question_id', null,
+          'details', jsonb_build_object()
+        ),
+        'meta', v_meta
+      );
+    end if;
+
+    if coalesce(v_template.require_room_number, false) = true
+      and nullif(btrim(coalesce(v_run.room_number, '')), '') is null then
+      return jsonb_build_object(
+        'ok', false,
+        'code', 'ROOM_NUMBER_REQUIRED',
+        'message', 'Debes capturar el número de habitación antes de enviar esta auditoría.',
+        'data', null,
+        'error', jsonb_build_object(
+          'type', 'validation',
+          'field', 'room_number',
+          'question_id', null,
+          'details', jsonb_build_object()
+        ),
+        'meta', v_meta
+      );
+    end if;
+
+    if coalesce(v_template.require_audited_employee, false) = true
+      and v_run.team_member_id is null then
+      return jsonb_build_object(
+        'ok', false,
+        'code', 'AUDITED_EMPLOYEE_REQUIRED',
+        'message', 'Debes seleccionar el colaborador auditado antes de enviar esta auditoría.',
+        'data', null,
+        'error', jsonb_build_object(
+          'type', 'validation',
+          'field', 'team_member_id',
+          'question_id', null,
+          'details', jsonb_build_object()
+        ),
+        'meta', v_meta
+      );
+    end if;
+
     if not exists (
       select 1
       from public.audit_questions q
@@ -391,7 +450,7 @@ begin
       where audit_run_id = v_run.id
         and question_id = v_q.id;
 
-      v_answer_value := upper(coalesce(v_a.answer, v_a.result, ''));
+      v_answer_value := upper(coalesce(v_a.result, v_a.answer, ''));
 
       if v_answer_value not in ('PASS', 'FAIL', 'NA') then
         return jsonb_build_object(
@@ -404,7 +463,7 @@ begin
             'field', 'answer',
             'question_id', v_q.id,
             'details', jsonb_build_object(
-              'value', coalesce(v_a.answer, v_a.result)
+              'value', coalesce(v_a.result, v_a.answer)
             )
           ),
           'meta', v_meta
@@ -585,7 +644,7 @@ begin
         q.blocks_reaudit_until_resolved,
         a.comment,
         a.photo_path,
-        upper(coalesce(a.answer, a.result, '')) as answer_value
+        upper(coalesce(a.result, a.answer, '')) as answer_value
       from public.audit_questions q
       join public.audit_sections s
         on s.id = q.audit_section_id

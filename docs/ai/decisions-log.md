@@ -89,6 +89,136 @@ Adoptar:
 
 ---
 
+## Decisión 8
+
+### Fecha
+2026-03-18
+
+### Decisión
+Modelar el departamento responsable a nivel de `audit_questions` como metadato del standard dentro del template.
+
+### Contexto
+Cada standard del template necesita declarar qué equipo operativo es responsable para poder reutilizar esa señal en dashboards y flujos posteriores, sin inferencias frágiles por nombre de área o por lógica duplicada en cliente.
+
+### Alternativas consideradas
+- calcular responsabilidad por mapeos externos de áreas
+- guardar responsabilidad en otra tabla paralela
+- persistir el metadato directamente en `audit_questions`
+
+### Decisión final
+Añadir `responsible_department` en `audit_questions` y editarlo inline desde el builder junto al resto de atributos del standard.
+
+### Impacto esperado
+- base consistente para dashboards por equipo
+- menos lógica derivada o heurística en cliente
+- compatibilidad con autosave y editor actual sin reescritura
+
+---
+
+## Decisión 9
+
+### Fecha
+2026-03-18
+
+### Decisión
+Resolver `responsible_department` desde las áreas reales configuradas por hotel, no desde una taxonomía fija global.
+
+### Contexto
+La operación trabaja a nivel de departamentos/áreas reales como `Housekeeping`, `Front Office`, `IRD`, `IT` o `Mantenimiento`. Una lista fija con macro-divisiones como `F&B` no representa bien ese nivel operativo y vuelve ambiguo el responsable real del standard.
+
+### Alternativas consideradas
+- mantener un enum fijo global
+- mezclar enum fijo con etiquetas visibles del hotel
+- usar como fuente de verdad las `areas` reales del hotel
+
+### Decisión final
+Construir el selector desde `areas` del hotel dueño del template, manteniendo solo normalizaciones puntuales para compatibilidad operativa (`IT` y `Mantenimiento`).
+
+### Impacto esperado
+- selector alineado con la operación real del hotel
+- menos confusión visual en builder
+- base más útil para dashboards y asignación operativa posterior
+
+---
+
+## Decisión 10
+
+### Fecha
+2026-03-19
+
+### Decisión
+Separar ownership operativo general y routing correctivo no operativo en campos distintos de `audit_questions`.
+
+### Contexto
+`responsible_department` ya estaba acoplado a la lógica correctiva no operativa mediante constraints y la RPC de submit. Reutilizarlo desde el builder como dueño general del standard rompía combinaciones válidas cuando la pregunta seguía en `training_only`.
+
+### Alternativas consideradas
+- relajar el constraint actual
+- seguir reutilizando `responsible_department` y completar más campos desde frontend
+- crear un campo separado para ownership operativo
+
+### Decisión final
+Mantener `responsible_department` para corrective logic no operativa y crear `owner_department` para ownership operativo general y dashboards.
+
+### Impacto esperado
+- se preserva la integridad de corrective actions y reauditorías
+- el builder puede asignar dueño operativo sin violar constraints existentes
+- el dashboard futuro tiene una fuente de verdad separada y coherente
+
+---
+
+## Decisión 11
+
+### Fecha
+2026-03-19
+
+### Decisión
+Separar las vistas `/it` y `/engineering` del modelo `audit_corrective_actions` y alimentarlas con backlog operativo derivado de FAILs submitidos por `owner_department`.
+
+### Contexto
+Los FAILs con `owner_department = it|engineering` no generan `audit_corrective_actions` cuando la pregunta sigue en `training_only`, porque `audit_corrective_actions` pertenece a la lógica correctiva no operativa basada en `corrective_flow` y `responsible_department`.
+
+### Alternativas consideradas
+- generar `audit_corrective_actions` nuevos para cualquier FAIL con `owner_department`
+- seguir reutilizando las pantallas departamentales sobre corrective actions
+- construir un backlog operativo separado a partir de `audit_runs`, `audit_answers` y `audit_questions.owner_department`
+
+### Decisión final
+Mantener `audit_corrective_actions` exclusivamente para corrective logic y reauditorías, y mover `/it` y `/engineering` a una fuente nueva de backlog operativo derivada directamente de FAILs submitidos.
+
+### Impacto esperado
+- consistencia semántica entre ownership operativo y lógica correctiva
+- mejor trazabilidad de FAILs por departamento sin contaminar corrective actions
+- base limpia para evolucionar después un workflow operativo propio para IT y Mantenimiento
+
+---
+
+## Decisión 12
+
+### Fecha
+2026-03-19
+
+### Decisión
+Hacer obligatorios `room_number` y `team_member_id` por configuración de template, no como regla global.
+
+### Contexto
+Algunos templates operativos, como Guest Room, pierden utilidad si la auditoría se envía sin habitación o sin colaborador auditado. Esa obligatoriedad depende del tipo de template y no debe imponerse al resto del producto.
+
+### Alternativas consideradas
+- hacer ambos campos obligatorios globalmente
+- mantenerlos opcionales y resolverlo solo en reporting
+- modelar flags de submit por `audit_template`
+
+### Decisión final
+Añadir `require_room_number` y `require_audited_employee` en `audit_templates`, exponerlos en builder y validarlos al enviar en la RPC `submit_audit_run`, con espejo UX mínimo en cliente.
+
+### Impacto esperado
+- los templates que lo necesiten exigirán cabecera completa al submit
+- los templates existentes mantienen comportamiento actual por default `false`
+- la regla queda modelada donde corresponde: en la configuración del template y en el submit server-side
+
+---
+
 ## Decisión 3
 
 ### Fecha

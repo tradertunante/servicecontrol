@@ -139,6 +139,17 @@ pendiente
 - herramienta interna centralizada de `superadmin` para importación histórica masiva de auditorías vía Excel estructurado (`.xlsx/.xls`), protegida server-side y persistiendo cada fila mediante la RPC transaccional `import_historical_audit_run(...)`
 - la importación histórica oficial ya no cuelga del detalle de templates; ahora vive en `/superadmin/historical-import` con selección explícita de hotel y template operativo
 
+### Hecho el 2026-03-18
+
+- `audit_questions` ahora soporta `responsible_department` como metadato editable desde el builder para preparar dashboards y flujos operativos por equipo sin duplicar lógica de template
+- el builder de templates ahora resuelve los responsables válidos desde `areas` reales del hotel en lugar de una lista fija, manteniendo herencia desde el área dueña del template
+
+### Hecho el 2026-03-19
+
+- separación explícita de semánticas en `audit_questions`: `owner_department` queda como ownership operativo general del standard y `responsible_department` se preserva exclusivamente para la lógica correctiva no operativa ya existente
+- `/it` y `/engineering` dejan de depender conceptualmente de `audit_corrective_actions` para el seguimiento operativo general; su backlog se redefine sobre FAILs submitidos en `audit_answers` filtrados por `audit_questions.owner_department`
+- `audit_templates` ahora soporta flags de submit por template (`require_room_number`, `require_audited_employee`) para exigir metadatos de cabecera sin volverlos obligatorios globales
+
 ### Hecho
 
 - análisis de arquitectura del repo

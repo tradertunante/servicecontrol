@@ -200,7 +200,7 @@ export function canManageUsers(role: Role | string | null | undefined): boolean 
 
 export function canSubmitAudit(role: Role | string | null | undefined): boolean {
   const r = norm(role);
-  return ["superadmin", "admin", "auditor", "quality"].includes(r);
+  return ["superadmin", "admin", "general_manager", "manager", "auditor", "quality"].includes(r);
 }
 
 export function canManageSetup(role: Role | string | null | undefined): boolean {

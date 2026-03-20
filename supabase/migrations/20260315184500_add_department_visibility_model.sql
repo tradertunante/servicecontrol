@@ -33,7 +33,12 @@ cross join (
     ('engineering', 'Engineering'),
     ('it', 'IT')
 ) as d(code, name)
-on conflict (hotel_id, code) do nothing;
+where not exists (
+  select 1
+  from public.hotel_departments hd
+  where hd.hotel_id = h.id
+    and hd.code = d.code
+);
 
 alter table public.profiles
 add column if not exists assigned_department_id uuid null references public.hotel_departments(id) on delete set null;
@@ -196,7 +201,7 @@ select
   ar.room_number,
   ar.score as audit_score,
   ca.opened_at as created_at,
-  ar.created_at as audit_created_at
+  ar.executed_at as audit_created_at
 from public.audit_corrective_actions ca
 join public.hotel_departments d
   on d.id = ca.assigned_department_id
