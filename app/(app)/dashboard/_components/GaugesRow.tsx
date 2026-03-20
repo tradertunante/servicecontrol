@@ -27,16 +27,37 @@ export default function GaugesRow({
   monthScore,
   quarterScore,
   yearScore,
+  prevMonthScore,
+  prevQuarterScore,
+  prevYearScore,
 }: {
   card: CSSProperties;
   monthScore: ScoreAgg;
   quarterScore: ScoreAgg;
   yearScore: ScoreAgg;
+  prevMonthScore: ScoreAgg;
+  prevQuarterScore: ScoreAgg;
+  prevYearScore: ScoreAgg;
 }) {
   const items = [
-    { title: monthTitle(), score: monthScore },
-    { title: quarterTitle(), score: quarterScore },
-    { title: yearTitle(), score: yearScore },
+    {
+      title: monthTitle(),
+      score: monthScore,
+      previousTitle: monthTitle(-1),
+      previousScore: prevMonthScore,
+    },
+    {
+      title: quarterTitle(),
+      score: quarterScore,
+      previousTitle: quarterTitle(-1),
+      previousScore: prevQuarterScore,
+    },
+    {
+      title: yearTitle(),
+      score: yearScore,
+      previousTitle: yearTitle(-1),
+      previousScore: prevYearScore,
+    },
   ];
 
   return (
@@ -45,20 +66,38 @@ export default function GaugesRow({
         const avgNum = safeNumber(a.score?.avg);
         const label = formatPct(a.score?.avg);
         const count = a.score?.count ?? 0;
+        const prevLabel = formatPct(a.previousScore?.avg);
+        const prevCount = a.previousScore?.count ?? 0;
+        const hasPrevData = a.previousScore?.avg != null;
 
         return (
           <div key={idx} style={card} className="card gaugeCard">
-            <div className="gaugeWrap">
-              {/* ✅ FIX: GaugeChart requiere 'label' */}
-              <GaugeChart value={avgNum ?? 0} label={label} />
+            <div className="gaugeTitle">{a.title}</div>
 
-              <div className="gaugeText">
-                <div className="gaugePct">{label}</div>
-                <div className="gaugeCount">({count} auditorías)</div>
+            <div className="gaugeBody">
+              <div className="gaugeWrap">
+                <GaugeChart value={avgNum ?? 0} label="" />
+
+                <div className="gaugeText">
+                  <div className="gaugePct">{label}</div>
+                  <div className="gaugeCount">({count} auditorías)</div>
+                </div>
+              </div>
+
+              <div className="gaugeCompare">
+                <div className="gaugeCompareTitle">{a.previousTitle}</div>
+                {hasPrevData ? (
+                  <>
+                    <div className="gaugeComparePct">{prevLabel}</div>
+                    <div className="gaugeCompareCount">
+                      {prevCount === 1 ? "1 auditoría" : `${prevCount} auditorías`}
+                    </div>
+                  </>
+                ) : (
+                  <div className="gaugeCompareEmpty">Sin dato previo</div>
+                )}
               </div>
             </div>
-
-            <div className="gaugeTitle">{a.title}</div>
           </div>
         );
       })}
@@ -72,11 +111,15 @@ export default function GaugesRow({
         }
 
         .gaugeCard {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          justify-content: center;
+          display: grid;
           gap: 12px;
+        }
+
+        .gaugeBody {
+          display: grid;
+          grid-template-columns: minmax(0, 1fr) 120px;
+          gap: 14px;
+          align-items: end;
         }
 
         .gaugeWrap {
@@ -124,11 +167,62 @@ export default function GaugesRow({
         .gaugeTitle {
           font-weight: 950;
           opacity: 0.85;
+          text-align: center;
+        }
+
+        .gaugeCompare {
+          min-width: 0;
+          display: grid;
+          gap: 2px;
+          align-content: end;
+          justify-items: start;
+          text-align: left;
+          padding-left: 2px;
+          padding-bottom: 18px;
+        }
+
+        .gaugeCompareTitle {
+          font-size: 11px;
+          font-weight: 800;
+          opacity: 0.68;
+          line-height: 1.25;
+        }
+
+        .gaugeComparePct {
+          font-size: 20px;
+          font-weight: 950;
+          line-height: 1;
+          letter-spacing: -0.03em;
+          opacity: 0.82;
+        }
+
+        .gaugeCompareCount,
+        .gaugeCompareEmpty {
+          font-size: 11px;
+          line-height: 1.35;
+          opacity: 0.58;
+          font-weight: 700;
         }
 
         @media (max-width: 720px) {
+          .gaugeBody {
+            grid-template-columns: 1fr;
+            gap: 10px;
+          }
+
+          .gaugeCompare {
+            justify-items: center;
+            text-align: center;
+            padding-left: 0;
+            padding-bottom: 0;
+          }
+
           .gaugePct {
             font-size: 30px;
+          }
+
+          .gaugeComparePct {
+            font-size: 19px;
           }
         }
       `}</style>
@@ -136,18 +230,23 @@ export default function GaugesRow({
   );
 }
 
-function monthTitle() {
+function monthTitle(yearOffset = 0) {
   const d = new Date();
+  d.setFullYear(d.getFullYear() + yearOffset);
   const m = d.toLocaleDateString("es-ES", { month: "long" });
   const cap = m.charAt(0).toUpperCase() + m.slice(1);
   return `${cap} de ${d.getFullYear()}`;
 }
 
-function quarterTitle() {
+function quarterTitle(yearOffset = 0) {
+  const d = new Date();
+  d.setFullYear(d.getFullYear() + yearOffset);
   const q = Math.floor(new Date().getMonth() / 3) + 1;
-  return `Q${q} ${new Date().getFullYear()}`;
+  return `Q${q} ${d.getFullYear()}`;
 }
 
-function yearTitle() {
-  return `Año ${new Date().getFullYear()}`;
+function yearTitle(yearOffset = 0) {
+  const d = new Date();
+  d.setFullYear(d.getFullYear() + yearOffset);
+  return `Año ${d.getFullYear()}`;
 }
