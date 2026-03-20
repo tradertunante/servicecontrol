@@ -21,7 +21,22 @@ type HotelDepartmentRow = {
   code: string | null;
 };
 
-type QuestionRow = {
+type BacklogItemRow = {
+  id: string;
+  hotel_id: string | null;
+  area_id: string | null;
+  audit_run_id: string;
+  question_id: string;
+  owner_department: string | null;
+  title: string | null;
+  status: string | null;
+  resolution_comment: string | null;
+  ready_for_reaudit: boolean | null;
+  created_at: string | null;
+  updated_at: string | null;
+};
+
+type QuestionTextRow = {
   id: string;
   text: string | null;
   owner_department: string | null;
@@ -63,8 +78,31 @@ function parseDepartment(value: string | null): DepartmentCode {
   return normalized === "it" || normalized === "engineering" ? normalized : null;
 }
 
-function getOwnerDepartmentValues(department: Exclude<DepartmentCode, null>) {
+function getOwnerDepartmentValues(department: DepartmentCode) {
   return department === "it" ? ["it", "systems"] : ["engineering"];
+}
+
+function buildScopeLabel(routeScope: "department" | "area", isOwnDepartmentView: boolean) {
+  if (routeScope === "area") {
+    return "Visibilidad limitada a las áreas operativas que tienes asignadas.";
+  }
+
+  if (isOwnDepartmentView) {
+    return "Visibilidad de tu departamento.";
+  }
+
+  return "Visibilidad completa del hotel para este departamento.";
+}
+
+function isMissingBacklogTable(message: string) {
+  const normalized = message.toLowerCase();
+  return (
+    normalized.includes("department_backlog_items") &&
+    (normalized.includes("schema cache") ||
+      normalized.includes("could not find the table") ||
+      normalized.includes("relation") ||
+      normalized.includes("does not exist"))
+  );
 }
 
 export async function GET(request: NextRequest) {
@@ -128,6 +166,7 @@ export async function GET(request: NextRequest) {
     assignedDepartmentCode,
     allowedAreaIds.length > 0,
   );
+  const isOwnDepartmentView = assignedDepartmentCode === department;
 
   if (routeScope === "none") {
     return NextResponse.json({
@@ -136,6 +175,9 @@ export async function GET(request: NextRequest) {
       rows: [],
       scopeLabel: "",
       userName: caller.profile.full_name ?? null,
+      viewMode: isOwnDepartmentView ? "department" : "global",
+      storageMode: "backlog",
+      warningMessage: null,
     });
   }
 
@@ -144,13 +186,127 @@ export async function GET(request: NextRequest) {
       ok: true,
       redirectTo: null,
       rows: [],
-      scopeLabel: "Visibilidad limitada a las areas operativas que tienes asignadas.",
+      scopeLabel: buildScopeLabel(routeScope, isOwnDepartmentView),
       userName: caller.profile.full_name ?? null,
+      viewMode: isOwnDepartmentView ? "department" : "global",
+      storageMode: "backlog",
+      warningMessage: null,
+    });
+  }
+
+  let itemsQuery = admin
+    .from("department_backlog_items")
+    .select(
+      "id,hotel_id,area_id,audit_run_id,question_id,owner_department,title,status,resolution_comment,ready_for_reaudit,created_at,updated_at",
+    )
+    .eq("hotel_id", hotelResult.hotelId)
+    .eq("owner_department", department)
+    .order("created_at", { ascending: false });
+
+  if (routeScope === "area") {
+    itemsQuery = itemsQuery.in("area_id", allowedAreaIds);
+  }
+
+  const { data: itemData, error: itemError } = await itemsQuery;
+  const shouldUseFallback = !!itemError && isMissingBacklogTable(itemError.message);
+  if (itemError && !shouldUseFallback) return jsonError(itemError.message, 500);
+
+  if (!shouldUseFallback) {
+    const items = (itemData ?? []) as BacklogItemRow[];
+
+    if (items.length === 0) {
+      return NextResponse.json({
+        ok: true,
+        redirectTo: null,
+        rows: [],
+        scopeLabel: buildScopeLabel(routeScope, isOwnDepartmentView),
+        userName: caller.profile.full_name ?? null,
+        viewMode: isOwnDepartmentView ? "department" : "global",
+        storageMode: "backlog",
+        warningMessage: null,
+      });
+    }
+
+    const runIds = Array.from(new Set(items.map((row) => row.audit_run_id).filter(Boolean)));
+
+    const { data: runData, error: runError } = await admin
+      .from("audit_runs")
+      .select("id, hotel_id, area_id, audit_template_id, room_number, score, executed_at")
+      .in("id", runIds);
+
+    if (runError) return jsonError(runError.message, 500);
+
+    const runs = (runData ?? []) as RunRow[];
+    const runMap = new Map(runs.map((row) => [row.id, row]));
+    const areaIds = Array.from(new Set(items.map((row) => row.area_id ?? "").filter(Boolean)));
+    const templateIds = Array.from(
+      new Set(items.map((row) => runMap.get(row.audit_run_id)?.audit_template_id ?? "").filter(Boolean)),
+    );
+
+    const [{ data: areaData, error: areaError }, { data: templateData, error: templateError }] =
+      await Promise.all([
+        areaIds.length > 0
+          ? admin.from("areas").select("id, name").in("id", areaIds)
+          : Promise.resolve({ data: [] as AreaRow[], error: null }),
+        templateIds.length > 0
+          ? admin.from("audit_templates").select("id, name").in("id", templateIds)
+          : Promise.resolve({ data: [] as TemplateRow[], error: null }),
+      ]);
+
+    if (areaError) return jsonError(areaError.message, 500);
+    if (templateError) return jsonError(templateError.message, 500);
+
+    const areaMap = new Map(((areaData ?? []) as AreaRow[]).map((row) => [row.id, row.name ?? null]));
+    const templateMap = new Map(
+      ((templateData ?? []) as TemplateRow[]).map((row) => [row.id, row.name ?? null]),
+    );
+
+    const rows = items
+      .map((item) => {
+        const run = runMap.get(item.audit_run_id);
+        if (!run) return null;
+
+        return {
+          backlog_item_id: item.id,
+          audit_run_id: item.audit_run_id,
+          question_id: item.question_id,
+          title: item.title ?? "Hallazgo sin texto",
+          status: item.status ?? "open",
+          department_code: department,
+          owner_department: item.owner_department ?? department,
+          hotel_id: String(run.hotel_id ?? hotelResult.hotelId),
+          area_id: String(run.area_id ?? ""),
+          area_name: run.area_id ? areaMap.get(run.area_id) ?? null : null,
+          audit_template_id: run.audit_template_id ?? null,
+          template_name: run.audit_template_id ? templateMap.get(run.audit_template_id) ?? null : null,
+          resolution_comment: item.resolution_comment ?? null,
+          ready_for_reaudit: item.ready_for_reaudit ?? false,
+          room_number: run.room_number ?? null,
+          audit_score: run.score ?? null,
+          created_at: item.created_at ?? run.executed_at ?? null,
+          updated_at: item.updated_at ?? null,
+        };
+      })
+      .filter(Boolean)
+      .sort((a, b) => {
+        const left = new Date(b?.created_at ?? 0).getTime();
+        const right = new Date(a?.created_at ?? 0).getTime();
+        return left - right;
+      });
+
+    return NextResponse.json({
+      ok: true,
+      redirectTo: null,
+      rows,
+      scopeLabel: buildScopeLabel(routeScope, isOwnDepartmentView),
+      userName: caller.profile.full_name ?? null,
+      viewMode: isOwnDepartmentView ? "department" : "global",
+      storageMode: "backlog",
+      warningMessage: null,
     });
   }
 
   const ownerDepartmentValues = getOwnerDepartmentValues(department);
-
   const { data: questionData, error: questionError } = await admin
     .from("audit_questions")
     .select("id, text, owner_department")
@@ -159,7 +315,7 @@ export async function GET(request: NextRequest) {
 
   if (questionError) return jsonError(questionError.message, 500);
 
-  const questions = (questionData ?? []) as QuestionRow[];
+  const questions = (questionData ?? []) as QuestionTextRow[];
   const questionIds = questions.map((row) => row.id);
 
   if (questionIds.length === 0) {
@@ -167,11 +323,12 @@ export async function GET(request: NextRequest) {
       ok: true,
       redirectTo: null,
       rows: [],
-      scopeLabel:
-        routeScope === "department"
-          ? "Visibilidad completa de tu departamento."
-          : "Visibilidad limitada a las areas operativas que tienes asignadas.",
+      scopeLabel: buildScopeLabel(routeScope, isOwnDepartmentView),
       userName: caller.profile.full_name ?? null,
+      viewMode: isOwnDepartmentView ? "department" : "global",
+      storageMode: "fallback",
+      warningMessage:
+        "Falta aplicar la migración del backlog operativo. Mostrando FAILs reales en modo lectura temporal.",
     });
   }
 
@@ -189,17 +346,17 @@ export async function GET(request: NextRequest) {
   });
 
   const runIds = Array.from(new Set(failAnswers.map((row) => row.audit_run_id).filter(Boolean)));
-
   if (runIds.length === 0) {
     return NextResponse.json({
       ok: true,
       redirectTo: null,
       rows: [],
-      scopeLabel:
-        routeScope === "department"
-          ? "Visibilidad completa de tu departamento."
-          : "Visibilidad limitada a las areas operativas que tienes asignadas.",
+      scopeLabel: buildScopeLabel(routeScope, isOwnDepartmentView),
       userName: caller.profile.full_name ?? null,
+      viewMode: isOwnDepartmentView ? "department" : "global",
+      storageMode: "fallback",
+      warningMessage:
+        "Falta aplicar la migración del backlog operativo. Mostrando FAILs reales en modo lectura temporal.",
     });
   }
 
@@ -215,19 +372,17 @@ export async function GET(request: NextRequest) {
   }
 
   const { data: runData, error: runError } = await runsQuery;
+
   if (runError) return jsonError(runError.message, 500);
 
   const runs = (runData ?? []) as RunRow[];
   const runMap = new Map(runs.map((row) => [row.id, row]));
   const filteredAnswers = failAnswers.filter((row) => runMap.has(row.audit_run_id));
-
   const areaIds = Array.from(
     new Set(filteredAnswers.map((row) => runMap.get(row.audit_run_id)?.area_id ?? "").filter(Boolean)),
   );
   const templateIds = Array.from(
-    new Set(
-      filteredAnswers.map((row) => runMap.get(row.audit_run_id)?.audit_template_id ?? "").filter(Boolean),
-    ),
+    new Set(filteredAnswers.map((row) => runMap.get(row.audit_run_id)?.audit_template_id ?? "").filter(Boolean)),
   );
 
   const [{ data: areaData, error: areaError }, { data: templateData, error: templateError }] =
@@ -256,13 +411,11 @@ export async function GET(request: NextRequest) {
       if (!run || !question) return null;
 
       return {
-        corrective_action_id: `${answer.audit_run_id}:${answer.question_id}`,
+        backlog_item_id: `fallback:${answer.audit_run_id}:${answer.question_id}:${department}`,
         audit_run_id: answer.audit_run_id,
         question_id: answer.question_id,
         title: question.text ?? "Hallazgo sin texto",
         status: "open",
-        assigned_department_id: null,
-        assigned_department: department,
         department_code: department,
         owner_department: question.owner_department ?? department,
         hotel_id: String(run.hotel_id ?? hotelResult.hotelId),
@@ -270,9 +423,12 @@ export async function GET(request: NextRequest) {
         area_name: run.area_id ? areaMap.get(run.area_id) ?? null : null,
         audit_template_id: run.audit_template_id ?? null,
         template_name: run.audit_template_id ? templateMap.get(run.audit_template_id) ?? null : null,
+        resolution_comment: null,
+        ready_for_reaudit: false,
         room_number: run.room_number ?? null,
         audit_score: run.score ?? null,
         created_at: run.executed_at ?? null,
+        updated_at: null,
       };
     })
     .filter(Boolean)
@@ -286,10 +442,11 @@ export async function GET(request: NextRequest) {
     ok: true,
     redirectTo: null,
     rows,
-    scopeLabel:
-      routeScope === "department"
-        ? "Visibilidad completa de tu departamento."
-        : "Visibilidad limitada a las areas operativas que tienes asignadas.",
+    scopeLabel: buildScopeLabel(routeScope, isOwnDepartmentView),
     userName: caller.profile.full_name ?? null,
+    viewMode: isOwnDepartmentView ? "department" : "global",
+    storageMode: "fallback",
+    warningMessage:
+      "Falta aplicar la migración del backlog operativo. Mostrando FAILs reales en modo lectura temporal.",
   });
 }

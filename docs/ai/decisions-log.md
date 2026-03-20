@@ -989,3 +989,40 @@ Además, una importación histórica toca varias tablas (`audit_runs` y `audit_a
 - evita mezclar datos entre hoteles
 - evita `audit_runs` referenciando assets globales no operativos
 - permite importación parcial por filas sin sacrificar atomicidad por auditoría
+
+---
+
+## Decisión 17
+
+### Fecha
+2026-03-20
+
+### Decisión
+El seguimiento operativo de FAILs para `/it` y `/engineering` vive en una entidad propia `department_backlog_items`, separada tanto de `audit_answers` como de `audit_corrective_actions`.
+
+### Contexto
+El producto ya separó dos conceptos:
+
+- `responsible_department` y `audit_corrective_actions` para lógica correctiva no operativa
+- `owner_department` para ownership operativo general del hallazgo
+
+Las pantallas `/it` y `/engineering` primero se alimentaron de FAILs crudos, pero eso no resolvía el caso de uso operativo mínimo: cambiar estado, documentar solución y marcar listo para reauditoría sin contaminar el resultado bruto de auditoría.
+
+### Alternativas consideradas
+- escribir estados operativos directamente en `audit_answers`
+- seguir reutilizando `audit_corrective_actions`
+- construir backlog solo en lectura desde FAILs sin persistencia propia
+
+### Decisión final
+- crear `public.department_backlog_items` como tabla específica del backlog operativo
+- crear cada backlog item al momento de `submit_audit_run(...)` para FAILs submitidos con `owner_department = it|engineering`
+- mantener `audit_corrective_actions` intacta para corrective logic no operativa
+- hacer que `/it` y `/engineering` trabajen sobre backlog items editables con un MVP simple:
+  - `status`
+  - `resolution_comment`
+  - `ready_for_reaudit`
+
+### Impacto esperado
+- trazabilidad operativa clara sin mezclar modelos
+- backlog persistente y editable para IT/Mantenimiento
+- menor riesgo de corromper score, answers o corrective actions existentes

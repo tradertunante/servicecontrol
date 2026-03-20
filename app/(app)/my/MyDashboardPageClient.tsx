@@ -3,8 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
-import { setActiveHotel } from "@/lib/auth/activeHotelClient";
-import { supabase } from "@/lib/supabaseClient";
+import { signOutAndRedirect } from "@/lib/auth";
 import type { Profile } from "@/lib/types";
 
 import { useMyDashboardData } from "./_hooks/useMyDashboardData";
@@ -55,19 +54,7 @@ export default function MyDashboardPageClient({
     if (isLoggingOut) return;
 
     setIsLoggingOut(true);
-
-    try {
-      await setActiveHotel(null);
-    } catch (error) {
-      console.warn("Could not clear active hotel during logout:", error);
-    }
-
-    try {
-      await supabase.auth.signOut();
-    } finally {
-      router.replace("/login");
-      router.refresh();
-    }
+    await signOutAndRedirect(router);
   }
 
   async function handleAudit() {
@@ -118,23 +105,6 @@ export default function MyDashboardPageClient({
       console.error("Error resolving audit area access:", error);
       alert("No se pudo abrir el área de auditoría.");
     }
-  }
-
-  if (isLoggingOut) {
-    return (
-      <div style={{ width: "100%", padding: "12px 14px 18px" }}>
-        <div
-          style={{
-            border: "1px solid var(--border)",
-            borderRadius: 14,
-            padding: 14,
-            background: "var(--card-bg)",
-          }}
-        >
-          Cerrando sesión...
-        </div>
-      </div>
-    );
   }
 
   return (

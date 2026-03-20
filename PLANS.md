@@ -413,3 +413,23 @@ Reducir la latencia percibida del módulo Team separando los flujos pesados en p
 - [ ] ejecutar `npx tsc --noEmit`
 - [ ] ejecutar `npm run lint`
 - [ ] aplicar migración en Supabase
+
+---
+
+## MVP backlog operativo IT / Mantenimiento
+
+### Estado
+- [x] `department_backlog_items` modela seguimiento operativo separado de `audit_answers` y `audit_corrective_actions`
+- [x] `submit_audit_run(...)` crea backlog items para FAILs submitidos con `owner_department = it|engineering`
+- [x] migración nueva backfillea FAILs submitidos históricos hacia el backlog operativo
+- [x] `/it` y `/engineering` ya leen y editan backlog items reales
+- [x] cada hallazgo permite cambiar `status`, `resolution_comment` y `ready_for_reaudit`
+
+### Riesgos residuales
+- falta aplicar en la instancia real la migración `20260320103000_add_department_backlog_items.sql`
+- el MVP no incorpora workflow adicional (`repaired_by`, evidencias, SLA o prioridad) por decisión de alcance
+
+### Verificación
+- [ ] ejecutar `npx eslint app/api/departments/backlog/route.ts app/api/departments/backlog/items/[id]/route.ts hooks/useDepartmentCorrectiveActions.ts 'app/(app)/_components/DepartmentCorrectiveActionsPage.tsx`
+- [ ] aplicar migración en Supabase
+- [ ] validar con un run submitido con FAILs hacia `it` y `engineering`

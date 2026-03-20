@@ -3,15 +3,18 @@ import { normalizeRole, type Role } from "@/lib/auth/permissions";
 export type DepartmentCode = "it" | "engineering" | null;
 export type DepartmentRouteScope = "department" | "area" | "none";
 
-function canOpenDepartmentRouteAsReader(role: unknown): boolean {
+function canOpenDepartmentRouteAsHotelReader(role: unknown): boolean {
   const normalizedRole = normalizeRole(role);
   return (
     normalizedRole === "admin" ||
     normalizedRole === "superadmin" ||
     normalizedRole === "quality" ||
-    normalizedRole === "general_manager" ||
-    normalizedRole === "manager"
+    normalizedRole === "general_manager"
   );
+}
+
+function canOpenDepartmentRouteAsAreaReader(role: unknown): boolean {
+  return normalizeRole(role) === "manager";
 }
 
 export function normalizeDepartmentCode(input: unknown): DepartmentCode {
@@ -38,13 +41,18 @@ export function getDepartmentRouteScope(
   hasAreaScope: boolean
 ): DepartmentRouteScope {
   const normalizedAssignedDepartment = normalizeDepartmentCode(assignedDepartmentCode);
-  const canOpenAsReader = canOpenDepartmentRouteAsReader(role);
+  const canOpenAsHotelReader = canOpenDepartmentRouteAsHotelReader(role);
+  const canOpenAsAreaReader = canOpenDepartmentRouteAsAreaReader(role);
 
   if (normalizedAssignedDepartment === routeDepartment) {
     return "department";
   }
 
-  if (canOpenAsReader) {
+  if (canOpenAsHotelReader) {
+    return "department";
+  }
+
+  if (canOpenAsAreaReader) {
     return "area";
   }
 
@@ -66,7 +74,8 @@ export function canAccessDepartmentRoute(
 ): boolean {
   return (
     resolveDepartmentCode(role, assignedDepartmentCode) === routeDepartment ||
-    canOpenDepartmentRouteAsReader(role)
+    canOpenDepartmentRouteAsHotelReader(role) ||
+    canOpenDepartmentRouteAsAreaReader(role)
   );
 }
 

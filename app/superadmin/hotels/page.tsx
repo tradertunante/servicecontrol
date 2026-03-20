@@ -3,6 +3,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { signOutAndRedirect } from "@/lib/auth";
 import { getClientProfile } from "@/lib/auth/clientProfile";
 import { supabase } from "@/lib/supabaseClient";
 import { fetchActiveHotel, setActiveHotel } from "@/lib/auth/activeHotelClient";
@@ -97,9 +98,7 @@ export default function SuperadminHotelsPage() {
   };
 
   const logout = async () => {
-    await supabase.auth.signOut();
-    await setActiveHotel(null);
-    router.replace("/login");
+    await signOutAndRedirect(router);
   };
 
   const createHotel = async () => {
