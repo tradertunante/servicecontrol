@@ -332,6 +332,15 @@ export function useDashboardData({
   const monthScore   = useMemo(() => getMonthScore(runs, thisYear, thisMonth),     [runs, thisYear, thisMonth]);
   const quarterScore = useMemo(() => getQuarterScore(runs, thisYear, thisQuarter), [runs, thisYear, thisQuarter]);
   const yearScore    = useMemo(() => getYearScore(runs, thisYear),                 [runs, thisYear]);
+  const prevMonthScore = useMemo(
+    () => getMonthScore(runs, thisYear - 1, thisMonth),
+    [runs, thisYear, thisMonth]
+  );
+  const prevQuarterScore = useMemo(
+    () => getQuarterScore(runs, thisYear - 1, thisQuarter),
+    [runs, thisYear, thisQuarter]
+  );
+  const prevYearScore = useMemo(() => getYearScore(runs, thisYear - 1), [runs, thisYear]);
 
   const monthLabels = useMemo(() => {
     return heatMode === "YEAR" ? buildMonthLabelsForYear() : buildMonthLabelsRolling12M();
@@ -432,6 +441,9 @@ export function useDashboardData({
     monthScore,
     quarterScore,
     yearScore,
+    prevMonthScore,
+    prevQuarterScore,
+    prevYearScore,
     heatMapData,
     heatMapDataInternal,
     heatMapDataQuality,

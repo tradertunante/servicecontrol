@@ -68,6 +68,9 @@ export default function DashboardPageClient({
     monthScore,
     quarterScore,
     yearScore,
+    prevMonthScore,
+    prevQuarterScore,
+    prevYearScore,
     heatMapData,
     heatMapDataInternal,
     heatMapDataQuality,
@@ -153,7 +156,15 @@ export default function DashboardPageClient({
         onChangeHotel={handleChangeHotel}
       />
 
-      <GaugesRow card={card} monthScore={monthScore} quarterScore={quarterScore} yearScore={yearScore} />
+      <GaugesRow
+        card={card}
+        monthScore={monthScore}
+        quarterScore={quarterScore}
+        yearScore={yearScore}
+        prevMonthScore={prevMonthScore}
+        prevQuarterScore={prevQuarterScore}
+        prevYearScore={prevYearScore}
+      />
 
       <HeatMapCard
         card={card}
