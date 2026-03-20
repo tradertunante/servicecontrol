@@ -23,6 +23,7 @@ type AreaRow = { id: string; name: string; type: string | null; hotel_id: string
 type TemplateRow = { id: string; name: string; hotel_id: string | null };
 type HeatCell = { value: number | null; count: number };
 type RunsByArea = Map<string, AuditRunRow[]>;
+type DepartmentBacklogResponse = { rows?: unknown[] };
 
 export type HeatRow = {
   key: string;
@@ -179,7 +180,10 @@ export function useDashboardData({
   const [areas, setAreas] = useState<AreaRow[]>([]);
   const [templates, setTemplates] = useState<TemplateRow[]>([]);
   const [runs, setRuns] = useState<AuditRunRow[]>([]);
-  const [pendingRuns, setPendingRuns] = useState<Array<Pick<AuditRunRow, "id" | "area_id" | "status">>>([]);
+  const [pendingByTeam, setPendingByTeam] = useState<PendingTeamItem[]>([
+    { teamKey: "it", teamLabel: "IT", pendingCount: 0 },
+    { teamKey: "maintenance", teamLabel: "Mantenimiento", pendingCount: 0 },
+  ]);
   const [selectedHotelName, setSelectedHotelName] = useState<string>("");
 
   const canChooseHotel = profile?.role === "superadmin";
@@ -189,7 +193,10 @@ export function useDashboardData({
     setAreas([]);
     setTemplates([]);
     setRuns([]);
-    setPendingRuns([]);
+    setPendingByTeam([
+      { teamKey: "it", teamLabel: "IT", pendingCount: 0 },
+      { teamKey: "maintenance", teamLabel: "Mantenimiento", pendingCount: 0 },
+    ]);
   };
 
   useEffect(() => {
@@ -232,19 +239,37 @@ export function useDashboardData({
           .not("executed_at", "is", null)
           .not("score", "is", null);
 
-        const pendingRunsPromise = supabase
-          .from("audit_runs")
-          .select("id,area_id,status")
-          .eq("hotel_id", activeHotelId)
-          .in("status", ["draft", "pending", "pending_review"]);
+        const backlogItPromise = fetch(`/api/departments/backlog?department=it&hotel_id=${activeHotelId}`, {
+          method: "GET",
+          credentials: "include",
+          cache: "no-store",
+        }).then(async (response) => {
+          const payload = (await response.json().catch(() => null)) as DepartmentBacklogResponse | null;
+          if (!response.ok || !payload) throw new Error("No se pudo cargar backlog IT.");
+          return payload;
+        });
 
-        const [hotelsRes, selectedHotelRes, areasRes, templatesRes, runsRes, pendingRunsRes] = await Promise.all([
+        const backlogEngineeringPromise = fetch(
+          `/api/departments/backlog?department=engineering&hotel_id=${activeHotelId}`,
+          {
+            method: "GET",
+            credentials: "include",
+            cache: "no-store",
+          }
+        ).then(async (response) => {
+          const payload = (await response.json().catch(() => null)) as DepartmentBacklogResponse | null;
+          if (!response.ok || !payload) throw new Error("No se pudo cargar backlog de Mantenimiento.");
+          return payload;
+        });
+
+        const [hotelsRes, selectedHotelRes, areasRes, templatesRes, runsRes, backlogItRes, backlogEngineeringRes] = await Promise.all([
           hotelsPromise,
           selectedHotelPromise,
           areasPromise,
           templatesPromise,
           runsPromise,
-          pendingRunsPromise,
+          backlogItPromise,
+          backlogEngineeringPromise,
         ]);
 
         if (hotelsRes.error) throw hotelsRes.error;
@@ -252,7 +277,6 @@ export function useDashboardData({
         if (areasRes.error) throw areasRes.error;
         if (templatesRes.error) throw templatesRes.error;
         if (runsRes.error) throw runsRes.error;
-        if (pendingRunsRes.error) throw pendingRunsRes.error;
         if (!alive) return;
 
         const hotelsData = (hotelsRes.data ?? []) as HotelRow[];
@@ -267,11 +291,18 @@ export function useDashboardData({
         setAreas((areasRes.data ?? []) as AreaRow[]);
         setTemplates((templatesRes.data ?? []) as TemplateRow[]);
         setRuns((runsRes.data ?? []) as AuditRunRow[]);
-        setPendingRuns(
-          ((pendingRunsRes.data ?? []) as Array<Pick<AuditRunRow, "id" | "area_id" | "status">>).filter(
-            (run) => Boolean(run.area_id)
-          )
-        );
+        setPendingByTeam([
+          {
+            teamKey: "it",
+            teamLabel: "IT",
+            pendingCount: Array.isArray(backlogItRes.rows) ? backlogItRes.rows.length : 0,
+          },
+          {
+            teamKey: "maintenance",
+            teamLabel: "Mantenimiento",
+            pendingCount: Array.isArray(backlogEngineeringRes.rows) ? backlogEngineeringRes.rows.length : 0,
+          },
+        ]);
       } catch (e: any) {
         if (!alive) return;
         setError(e?.message ?? "No se pudo cargar el dashboard.");
@@ -391,57 +422,6 @@ export function useDashboardData({
         } as WorstAuditItem;
       });
   }, [runs, templateById, areaById]);
-
-  const pendingByTeam = useMemo<PendingTeamItem[]>(() => {
-    const normalize = (value: string | null | undefined) =>
-      (value ?? "")
-        .normalize("NFD")
-        .replace(/[\u0300-\u036f]/g, "")
-        .trim()
-        .toLowerCase();
-
-    const matchesIt = (area: AreaRow) => {
-      const name = normalize(area.name);
-      const type = normalize(area.type);
-      return (
-        name === "it" ||
-        name.includes(" it ") ||
-        name.startsWith("it ") ||
-        name.endsWith(" it") ||
-        name.includes("systems") ||
-        name.includes("sistemas") ||
-        type === "it"
-      );
-    };
-
-    const matchesMaintenance = (area: AreaRow) => {
-      const name = normalize(area.name);
-      const type = normalize(area.type);
-      return (
-        name.includes("mantenimiento") ||
-        name.includes("manto") ||
-        name.includes("maintenance") ||
-        name.includes("engineering") ||
-        type === "eng"
-      );
-    };
-
-    const itAreaIds = new Set(areas.filter(matchesIt).map((area) => area.id));
-    const maintenanceAreaIds = new Set(areas.filter(matchesMaintenance).map((area) => area.id));
-
-    let itPending = 0;
-    let maintenancePending = 0;
-
-    for (const run of pendingRuns) {
-      if (itAreaIds.has(run.area_id)) itPending += 1;
-      if (maintenanceAreaIds.has(run.area_id)) maintenancePending += 1;
-    }
-
-    return [
-      { teamKey: "it", teamLabel: "IT", pendingCount: itPending },
-      { teamKey: "maintenance", teamLabel: "Mantenimiento", pendingCount: maintenancePending },
-    ];
-  }, [areas, pendingRuns]);
 
   return {
     loading,

@@ -5,22 +5,23 @@ import { useQuery } from "@tanstack/react-query";
 export type DepartmentCode = "it" | "engineering";
 
 export type DepartmentActionRow = {
-  corrective_action_id: string;
+  backlog_item_id: string;
   audit_run_id: string;
   question_id: string;
   title: string;
   status: string;
-  assigned_department_id: string | null;
-  assigned_department: string | null;
+  owner_department: string;
   hotel_id: string;
   area_id: string;
   area_name?: string | null;
   audit_template_id?: string | null;
   template_name?: string | null;
-  owner_department?: string | null;
+  resolution_comment?: string | null;
+  ready_for_reaudit?: boolean;
   room_number: string | null;
   audit_score: number | null;
   created_at: string | null;
+  updated_at?: string | null;
 };
 
 export type DepartmentCorrectiveActionsResult = {
@@ -28,6 +29,9 @@ export type DepartmentCorrectiveActionsResult = {
   rows: DepartmentActionRow[];
   scopeLabel: string;
   userName: string | null;
+  viewMode: "department" | "global";
+  storageMode: "backlog" | "fallback";
+  warningMessage?: string | null;
 };
 
 export function getDepartmentCorrectiveActionsQueryKey(
@@ -60,6 +64,9 @@ export async function fetchDepartmentCorrectiveActions(
     rows: (payload.rows ?? []) as DepartmentActionRow[],
     scopeLabel: payload.scopeLabel ?? "",
     userName: payload.userName ?? null,
+    viewMode: payload.viewMode === "department" ? "department" : "global",
+    storageMode: payload.storageMode === "fallback" ? "fallback" : "backlog",
+    warningMessage: payload.warningMessage ?? null,
   };
 }
 

@@ -824,6 +824,3 @@ begin
 end;
 $$;
 
-revoke all on function public.submit_audit_run(uuid, uuid) from public;
-revoke all on function public.submit_audit_run(uuid, uuid) from anon;
-revoke all on function public.submit_audit_run(uuid, uuid) from authenticated;
