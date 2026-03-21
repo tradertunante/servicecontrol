@@ -15,6 +15,7 @@ type AuditRunRow = {
   score: number | null;
   status: string | null;
   executed_at: string | null;
+  executed_by: string | null;
 };
 
 type AreaRow = {
@@ -101,7 +102,7 @@ export async function buildAreaPeriodReport(args: {
 
   const { data: runData, error: runErr } = await admin
     .from("audit_runs")
-    .select("id,area_id,audit_template_id,score,status,executed_at")
+    .select("id,area_id,audit_template_id,score,status,executed_at,executed_by")
     .eq("area_id", areaId)
     .eq("hotel_id", hotelId)
     .eq("status", "submitted")
@@ -169,6 +170,18 @@ export async function buildAreaPeriodReport(args: {
     sections = (data ?? []) as SectionRow[];
   }
 
+  const auditorIds = Array.from(new Set(runs.map((r) => r.executed_by).filter((x): x is string => !!x)));
+  let auditorNameById = new Map<string, string>();
+  if (auditorIds.length > 0) {
+    const { data: profileData } = await admin
+      .from("profiles")
+      .select("id,full_name")
+      .in("id", auditorIds);
+    auditorNameById = new Map(
+      (profileData ?? []).map((p: { id: string; full_name: string | null }) => [p.id, p.full_name ?? ""])
+    );
+  }
+
   const templateById = new Map<string, string>(templates.map((t) => [t.id, t.name]));
   const questionById = new Map<string, QuestionRow>(questions.map((q) => [q.id, q]));
   const sectionNameById = new Map<string, string>(sections.map((s) => [s.id, s.name]));
@@ -199,7 +212,7 @@ export async function buildAreaPeriodReport(args: {
       run_id: run.id,
       executed_at: run.executed_at,
       template_name: templateById.get(run.audit_template_id) ?? "Template",
-      auditor_name: null,
+      auditor_name: run.executed_by ? (auditorNameById.get(run.executed_by) || null) : null,
       score: run.score,
       status: run.status,
       fail,
