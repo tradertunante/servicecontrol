@@ -28,11 +28,25 @@ export default function TasksPage() {
         return;
       }
 
-      // 1) tareas target recientes
+      // Get hotel_id from profile
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("hotel_id")
+        .eq("id", uid)
+        .maybeSingle();
+
+      const hotelId = profile?.hotel_id;
+      if (!hotelId) {
+        setLoading(false);
+        return;
+      }
+
+      // 1) tareas target recientes filtradas por hotel
       const { data: tasks } = await supabase
         .from("tasks")
         .select("id, title, status, due_date, task_type, created_at")
         .eq("task_type", "target")
+        .eq("hotel_id", hotelId)
         .order("created_at", { ascending: false })
         .limit(50);
 

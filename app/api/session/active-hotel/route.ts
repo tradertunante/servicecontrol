@@ -7,7 +7,7 @@ import { jsonError } from "@/lib/api/response";
 
 function buildCookieOptions() {
   return {
-    httpOnly: false,
+    httpOnly: true,
     sameSite: "lax" as const,
     secure: process.env.NODE_ENV === "production",
     path: "/",
