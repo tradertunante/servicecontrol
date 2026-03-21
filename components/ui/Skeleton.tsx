@@ -56,9 +56,9 @@ export function SkeletonCard({ lines = 3, style }: { lines?: number; style?: Rea
   );
 }
 
-export function SkeletonList({ rows = 4, style }: { rows?: number; style?: React.CSSProperties }) {
+export function SkeletonList({ rows = 4, style, className }: { rows?: number; style?: React.CSSProperties; className?: string }) {
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 10, ...style }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: 10, ...style }} className={className}>
       {Array.from({ length: rows }).map((_, i) => (
         <SkeletonCard key={i} lines={2} />
       ))}

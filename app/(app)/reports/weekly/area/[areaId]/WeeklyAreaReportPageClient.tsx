@@ -100,7 +100,7 @@ export default function WeeklyAreaReportPageClient({ report }: { report: WeeklyA
         {
           key: "template",
           label: "Template",
-          render: (audit) => <span style={{ fontWeight: 800 }}>{audit.template_name}</span>,
+          render: (audit) => <span className="font-extrabold">{audit.template_name}</span>,
         },
         {
           key: "auditor",
@@ -110,7 +110,7 @@ export default function WeeklyAreaReportPageClient({ report }: { report: WeeklyA
         {
           key: "score",
           label: "Score",
-          render: (audit) => <span style={{ fontWeight: 900 }}>{formatScore(audit.score)}</span>,
+          render: (audit) => <span className="font-black">{formatScore(audit.score)}</span>,
         },
         {
           key: "fail",
