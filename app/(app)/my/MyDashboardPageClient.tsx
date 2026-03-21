@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { signOutAndRedirect } from "@/lib/auth";
+import { supabase } from "@/lib/supabaseClient";
 import type { Profile } from "@/lib/types";
 
 import { useMyDashboardData } from "./_hooks/useMyDashboardData";
@@ -86,7 +87,7 @@ export default function MyDashboardPageClient({
         new Set(
           (data ?? [])
             .map((row: { area_id: string | null }) => row.area_id)
-            .filter((areaId): areaId is string => !!areaId)
+            .filter((areaId: string | null): areaId is string => !!areaId)
         )
       );
 

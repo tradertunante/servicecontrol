@@ -1,4 +1,5 @@
 import type { ResponsibleDepartment } from "./responsibleDepartment";
+export type { ResponsibleDepartment };
 
 export type AuditRunRow = {
   id: string;

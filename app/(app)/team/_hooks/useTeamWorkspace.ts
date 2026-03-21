@@ -68,7 +68,7 @@ export function useTeamWorkspace({
 
                 return areaQuery.in("id", areaIds);
               })()
-            : areaQuery;
+            : await areaQuery;
 
         if (areaError) throw areaError;
         if (!cancelled) setManagerAreaOptions((areaData ?? []) as ManagerAreaOption[]);
