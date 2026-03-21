@@ -5,10 +5,10 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { useToast } from "@/app/providers/ToastProvider";
 import { useQuery } from "@tanstack/react-query";
-import { fetchActiveHotel } from "@/lib/auth/activeHotelClient";
 import { supabase } from "@/lib/supabaseClient";
-import type { Profile, Role } from "@/lib/types";
 import { goBackOrFallback } from "@/lib/navigation/clientBack";
+import { useProfile } from "@/hooks/useProfile";
+import { useHotelId } from "@/hooks/useHotelId";
 
 function getPageTitle(pathname: string | null): string {
   if (!pathname) return "";
@@ -94,43 +94,21 @@ export default function HotelHeader() {
 
   const pageTitle = useMemo(() => getPageTitle(pathname), [pathname]);
 
-  const { data: headerData, isLoading: loading } = useQuery({
-    queryKey: ["header-context"],
+  const { data: profile, isLoading: profileLoading } = useProfile();
+  const { data: activeHotelId, isLoading: hotelIdLoading } = useHotelId();
+
+  const { data: hotelName, isLoading: hotelNameLoading } = useQuery({
+    queryKey: ["hotel-name", activeHotelId],
     queryFn: async () => {
-      const [{ data: userData, error: userErr }, hotelContext] = await Promise.all([
-        supabase.auth.getUser(),
-        fetchActiveHotel().catch(() => null),
-      ]);
-
-      if (userErr || !userData?.user) return null;
-
-      const uid = userData.user.id;
-      const hotelIdToUse = hotelContext?.hotel_id ?? null;
-
-      const [{ data: profileData, error: profileErr }, hotelResult] = await Promise.all([
-        supabase.from("profiles").select("id, hotel_id, role").eq("id", uid).single(),
-        hotelIdToUse
-          ? supabase.from("hotels").select("name").eq("id", hotelIdToUse).single()
-          : Promise.resolve({ data: null, error: null }),
-      ]);
-
-      if (profileErr || !profileData) return null;
-
-      const role = String(profileData.role ?? "") as Role;
-      const profile: Profile = { id: uid, role, hotel_id: profileData.hotel_id ?? null };
-
-      return {
-        profile,
-        activeHotelId: hotelIdToUse,
-        hotelName: hotelResult.data?.name ?? null,
-      };
+      const { data, error } = await supabase.from("hotels").select("name").eq("id", activeHotelId!).single();
+      if (error || !data) return null;
+      return data.name as string;
     },
-    staleTime: 5 * 60 * 1000,
+    enabled: !!activeHotelId,
+    staleTime: 10 * 60 * 1000,
   });
 
-  const profile = headerData?.profile ?? null;
-  const activeHotelId = headerData?.activeHotelId ?? null;
-  const hotelName = headerData?.hotelName ?? null;
+  const loading = profileLoading || hotelIdLoading || hotelNameLoading;
 
   const isAdmin = profile?.role === "admin" || profile?.role === "superadmin";
   const displayHotel = hotelName ?? (loading ? "Cargando…" : "Selecciona hotel");
