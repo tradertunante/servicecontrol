@@ -3,6 +3,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { useToast } from "@/app/providers/ToastProvider";
 import { supabase } from "@/lib/supabaseClient";
 import HotelHeader from "@/app/components/HotelHeader";
 
@@ -34,6 +35,7 @@ type Question = {
 
 export default function LibraryDetailPage() {
   const router = useRouter();
+  const toast = useToast();
   const params = useParams();
   const libraryId = params?.id as string;
 
@@ -287,7 +289,7 @@ export default function LibraryDetailPage() {
                   <button
                     style={btnWhite}
                     onClick={() => {
-                      alert("Aquí luego irá 'Importar plantilla'");
+                      toast.warn("Aquí luego irá 'Importar plantilla'");
                     }}
                   >
                     Importar

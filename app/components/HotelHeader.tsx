@@ -3,6 +3,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
+import { useToast } from "@/app/providers/ToastProvider";
 import { useQuery } from "@tanstack/react-query";
 import { fetchActiveHotel } from "@/lib/auth/activeHotelClient";
 import { supabase } from "@/lib/supabaseClient";
@@ -72,6 +73,7 @@ async function resolveAuditTarget(hotelId?: string | null) {
 
 export default function HotelHeader() {
   const router = useRouter();
+  const toast = useToast();
   const pathname = usePathname();
   const headerRef = useRef<HTMLDivElement | null>(null);
 
@@ -145,13 +147,13 @@ export default function HotelHeader() {
 
       const target = await resolveAuditTarget(activeHotelId);
       if (!target) {
-        alert("No tienes ningún área asignada para auditar.");
+        toast.warn("No tienes ningún área asignada para auditar.");
         return;
       }
       router.push(target);
     } catch (error) {
       console.error("Error resolving audit area access:", error);
-      alert("No se pudo abrir el área de auditoría.");
+      toast.error("No se pudo abrir el área de auditoría.");
     }
   };
 
