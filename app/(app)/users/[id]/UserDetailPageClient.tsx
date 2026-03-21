@@ -79,7 +79,7 @@ export default function UserDetailPageClient({
       .eq("user_id", targetUserId)
       .eq("hotel_id", hotelId);
     if (accessErr) throw accessErr;
-    setSelectedAreaIds((accessData ?? []).map((row: any) => row.area_id));
+    setSelectedAreaIds((accessData ?? []).map((row: { area_id: string }) => row.area_id));
     setAreasLoading(false);
   }
 
@@ -120,8 +120,8 @@ export default function UserDetailPageClient({
 
         try {
           await loadAreasAndAccess(targetUser.id, scopedHotelId);
-        } catch (e: any) {
-          setMsg(`Error cargando areas: ${e?.message ?? "desconocido"}`);
+        } catch (e: unknown) {
+          setMsg(`Error cargando areas: ${e instanceof Error ? e.message : "desconocido"}`);
         }
       } finally {
         setLoading(false);
@@ -173,8 +173,8 @@ export default function UserDetailPageClient({
       const payload = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(payload?.error ?? "No se pudo guardar accesos de areas.");
       setMsg("Guardado.");
-    } catch (e: any) {
-      setMsg(`Error guardando areas: ${e?.message ?? "desconocido"}`);
+    } catch (e: unknown) {
+      setMsg(`Error guardando areas: ${e instanceof Error ? e.message : "desconocido"}`);
     } finally {
       setSaving(false);
     }
@@ -207,16 +207,16 @@ export default function UserDetailPageClient({
         },
       });
       const text = await res.text();
-      let payload: any = null;
+      let payload: { error?: string } | null = null;
       try {
-        payload = JSON.parse(text);
+        payload = JSON.parse(text) as { error?: string };
       } catch {
         payload = { error: text?.slice(0, 200) || "Respuesta no-JSON." };
       }
       if (!res.ok) throw new Error(payload?.error ?? "No se pudo borrar el usuario.");
       router.push("/users");
-    } catch (e: any) {
-      setMsg(`Error borrando: ${e?.message ?? "desconocido"}`);
+    } catch (e: unknown) {
+      setMsg(`Error borrando: ${e instanceof Error ? e.message : "desconocido"}`);
     } finally {
       setDeleting(false);
       setShowDelete(false);

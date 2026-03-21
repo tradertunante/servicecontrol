@@ -88,9 +88,9 @@ export default function LibraryDetailPage() {
         if (!alive) return;
         setTemplates((t ?? []) as Template[]);
         setLoading(false);
-      } catch (e: any) {
+      } catch (e: unknown) {
         if (!alive) return;
-        setError(e?.message ?? "Error cargando la biblioteca.");
+        setError(e instanceof Error ? e.message : "Error cargando la biblioteca.");
         setLoading(false);
       }
     })();
@@ -145,9 +145,9 @@ export default function LibraryDetailPage() {
         if (!alive) return;
         setQuestions((q ?? []) as Question[]);
         setModalLoading(false);
-      } catch (e: any) {
+      } catch (e: unknown) {
         if (!alive) return;
-        setModalError(e?.message ?? "Error cargando la plantilla.");
+        setModalError(e instanceof Error ? e.message : "Error cargando la plantilla.");
         setModalLoading(false);
       }
     })();

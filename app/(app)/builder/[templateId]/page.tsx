@@ -67,11 +67,11 @@ type ResponsibleDepartmentOption = {
   label: string;
 };
 
-function toBool(v: any): boolean {
+function toBool(v: unknown): boolean {
   return v === true;
 }
 
-function safeStr(v: any): string {
+function safeStr(v: unknown): string {
   return (v ?? "").toString();
 }
 
@@ -88,12 +88,12 @@ function normalizeOrder(n: number | null | undefined, fallback: number) {
   return Number.isFinite(x) && x > 0 ? x : fallback;
 }
 
-function toRequirement(v: any): RequirementType {
+function toRequirement(v: unknown): RequirementType {
   if (v === "if_fail" || v === "always") return v;
   return "never";
 }
 
-function toResponsibleDepartment(v: any): ResponsibleDepartment {
+function toResponsibleDepartment(v: unknown): ResponsibleDepartment {
   if (typeof v !== "string") return null;
   const normalized = v.trim();
   return normalized ? normalized : null;
@@ -381,9 +381,9 @@ export default function BuilderTemplatePage() {
 
         setRows(ui);
         setLoading(false);
-      } catch (e: any) {
+      } catch (e: unknown) {
         setLoading(false);
-        setError(e?.message ?? "Error cargando el editor.");
+        setError(e instanceof Error ? e.message : "Error cargando el editor.");
       }
     })();
   }, [templateId]);
@@ -421,8 +421,8 @@ export default function BuilderTemplatePage() {
       );
 
       setInfo("Guardado ✅");
-    } catch (e: any) {
-      setError(e?.message ?? "No se pudo guardar.");
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "No se pudo guardar.");
     } finally {
       setSaving(false);
     }
@@ -442,8 +442,8 @@ export default function BuilderTemplatePage() {
       if (upErr) throw upErr;
       setTemplate((t) => (t ? { ...t, name: nextName } : t));
       setInfo("Nombre guardado ✅");
-    } catch (e: any) {
-      setError(e?.message ?? "No se pudo guardar el nombre.");
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "No se pudo guardar el nombre.");
     } finally {
       setSaving(false);
     }
@@ -463,8 +463,8 @@ export default function BuilderTemplatePage() {
       if (upErr) throw upErr;
       setTemplate((prev) => (prev ? { ...prev, ...patch } : prev));
       setInfo("Configuración guardada ✅");
-    } catch (e: any) {
-      setError(e?.message ?? "No se pudo guardar la configuración del template.");
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "No se pudo guardar la configuración del template.");
     } finally {
       setSaving(false);
     }
@@ -483,8 +483,8 @@ export default function BuilderTemplatePage() {
       if (upErr) throw upErr;
       setTemplate({ ...template, active: !next });
       setInfo(!next ? "Activada ✅" : "Desactivada ✅");
-    } catch (e: any) {
-      setError(e?.message ?? "No se pudo cambiar el estado.");
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "No se pudo cambiar el estado.");
     } finally {
       setSaving(false);
     }
@@ -523,8 +523,8 @@ export default function BuilderTemplatePage() {
       }
 
       setInfo("Reglas aplicadas ✅");
-    } catch (e: any) {
-      setError(e?.message ?? "No se pudo aplicar.");
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "No se pudo aplicar.");
     } finally {
       setSaving(false);
     }
@@ -544,8 +544,8 @@ export default function BuilderTemplatePage() {
 
       setRows((prev) => prev.filter((r) => r.questionId !== questionId));
       setInfo("Borrada ✅");
-    } catch (e: any) {
-      setError(e?.message ?? "No se pudo borrar.");
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "No se pudo borrar.");
     } finally {
       setSaving(false);
     }
@@ -569,7 +569,7 @@ export default function BuilderTemplatePage() {
 
       if (sErr) throw sErr;
 
-      const sectionIds = (secs ?? []).map((s: any) => s.id);
+      const sectionIds = (secs ?? []).map((s: { id: string }) => s.id);
       if (sectionIds.length > 0) {
         const { error: qDelErr } = await supabase.from("audit_questions").delete().in("audit_section_id", sectionIds);
         if (qDelErr) throw qDelErr;
@@ -582,8 +582,8 @@ export default function BuilderTemplatePage() {
       setSections([]);
       setQuestions([]);
       setInfo("Borrado completo ✅");
-    } catch (e: any) {
-      setError(e?.message ?? "No se pudo borrar.");
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "No se pudo borrar.");
     } finally {
       setSaving(false);
     }
@@ -645,8 +645,8 @@ export default function BuilderTemplatePage() {
       });
 
       setInfo("Orden actualizado ✅");
-    } catch (e: any) {
-      setError(e?.message ?? "No se pudo mover.");
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "No se pudo mover.");
     } finally {
       setSaving(false);
     }

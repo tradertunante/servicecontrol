@@ -64,9 +64,9 @@ export default function NewUserPageClient({
         }),
       });
       const text = await res.text();
-      let payload: any = null;
+      let payload: { error?: string } | null = null;
       try {
-        payload = JSON.parse(text);
+        payload = JSON.parse(text) as { error?: string };
       } catch {
         payload = { error: text?.slice(0, 200) || "Respuesta no-JSON." };
       }
@@ -77,8 +77,8 @@ export default function NewUserPageClient({
       setPassword("");
       setPassword2("");
       setRole("auditor");
-    } catch (e: any) {
-      setError(e?.message ?? "Error creando el usuario.");
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Error creando el usuario.");
     } finally {
       setBusy(false);
     }

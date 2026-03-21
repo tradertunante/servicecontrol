@@ -33,6 +33,8 @@ export type HeatRow = {
   kind: "area" | "audit";
   parentKey?: string;
   channel?: "internal" | "quality";
+  channelLabel?: string;
+  compareTag?: "internal" | "quality";
 };
 
 export type AreaRankingItem = {
@@ -303,9 +305,9 @@ export function useDashboardData({
             pendingCount: Array.isArray(backlogEngineeringRes.rows) ? backlogEngineeringRes.rows.length : 0,
           },
         ]);
-      } catch (e: any) {
+      } catch (e: unknown) {
         if (!alive) return;
-        setError(e?.message ?? "No se pudo cargar el dashboard.");
+        setError(e instanceof Error ? e.message : "No se pudo cargar el dashboard.");
       } finally {
         if (alive) setLoading(false);
       }

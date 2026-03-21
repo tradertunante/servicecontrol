@@ -161,9 +161,9 @@ export function useTeamData({
           );
           setSummary(mapRpcSummary(payload.summary));
         }
-      } catch (e: any) {
+      } catch (e: unknown) {
         if (!cancelled) {
-          setError(e?.message ?? "No se pudo cargar Team.");
+          setError(e instanceof Error ? e.message : "No se pudo cargar Team.");
           setLeaderboard([]);
           setTeamTargets([]);
           setTeamRecentRuns([]);

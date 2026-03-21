@@ -373,7 +373,7 @@ export default function TeamTargetAssignmentsCard({
     const uid = auth.data.user?.id ?? null;
 
     const areaUserIds = Array.from(
-      new Set((uaaResp.data ?? []).map((row: any) => row.user_id).filter(Boolean))
+      new Set((uaaResp.data ?? []).map((row: { user_id: string }) => row.user_id).filter(Boolean))
     );
 
     const candidateUserIds = Array.from(new Set(areaUserIds)) as string[];
@@ -463,15 +463,23 @@ export default function TeamTargetAssignmentsCard({
       nextMap[target.audit_template_id] = {};
     }
 
-    for (const row of assResp.data ?? []) {
-      const auditTemplateId = (row as any).audit_template_id as string;
-      const userId = (row as any).user_id as string;
+    type AssRespRow = {
+      id: string | null;
+      audit_template_id: string;
+      user_id: string;
+      target_count: number;
+      active: boolean | null;
+    };
+
+    for (const row of (assResp.data ?? []) as AssRespRow[]) {
+      const auditTemplateId = row.audit_template_id;
+      const userId = row.user_id;
 
       if (!nextMap[auditTemplateId]) nextMap[auditTemplateId] = {};
 
       const existing = nextMap[auditTemplateId][userId];
-      const nextId = String((row as any).id ?? "");
-      const nextCount = Number((row as any).target_count ?? 0);
+      const nextId = String(row.id ?? "");
+      const nextCount = Number(row.target_count ?? 0);
 
       if (existing) {
         nextMap[auditTemplateId][userId] = {
@@ -486,7 +494,7 @@ export default function TeamTargetAssignmentsCard({
         id: nextId || undefined,
         user_id: userId,
         target_count: normalizeAssignmentValue(nextCount),
-        active: Boolean((row as any).active ?? true),
+        active: Boolean(row.active ?? true),
         source_ids: nextId ? [nextId] : [],
       };
     }
