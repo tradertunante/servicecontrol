@@ -6,7 +6,8 @@ import type { Profile } from "@/lib/types";
 import MemberForm from "./MemberForm";
 import MembersImportPanel from "./MembersImportPanel";
 import MembersTable from "./MembersTable";
-import type { MemberAreaOption, MemberRecord, MembersResponse } from "../_lib/memberTypes";
+import { Pagination } from "@/components/ui/Pagination";
+import type { MemberAreaOption, MemberRecord, MembersPagination, MembersResponse } from "../_lib/memberTypes";
 
 type FormValues = {
   full_name: string;
@@ -90,6 +91,8 @@ export default function MembersModule({
   const [selectedAreaId, setSelectedAreaId] = useState("ALL");
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive">("active");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
+  const [page, setPage] = useState(1);
+  const [pagination, setPagination] = useState<MembersPagination | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -127,6 +130,8 @@ export default function MembersModule({
 
       const params = new URLSearchParams();
       params.set("status", statusFilter);
+      params.set("page", String(page));
+      params.set("page_size", "50");
       const query = params.toString() ? `?${params.toString()}` : "";
       const res = await fetch(`/api/members${query}`, {
         headers: {
@@ -144,12 +149,13 @@ export default function MembersModule({
       setAreaOptions(payload && "available_areas" in payload ? payload.available_areas : []);
       setHotelId(payload && "hotel_id" in payload ? payload.hotel_id : hotelId);
       setRole(payload && "role" in payload ? payload.role : "");
+      setPagination(payload && "pagination" in payload ? (payload.pagination ?? null) : null);
     } catch (err) {
       setError(normalizeError(err instanceof Error ? err.message : null, "No se pudo cargar miembros."));
     } finally {
       setLoading(false);
     }
-  }, [hotelId, statusFilter]);
+  }, [hotelId, statusFilter, page]);
 
   useEffect(() => {
     if (!hotelContextReady) return;
@@ -341,7 +347,7 @@ export default function MembersModule({
         <div style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}>
           <input
             value={search}
-            onChange={(event) => setSearch(event.target.value)}
+            onChange={(event) => { setSearch(event.target.value); setPage(1); }}
             placeholder="Buscar por nombre o numero"
             style={{
               border: "1px solid #d1d5db",
@@ -353,7 +359,7 @@ export default function MembersModule({
           />
           <select
             value={selectedAreaId}
-            onChange={(event) => setSelectedAreaId(event.target.value)}
+            onChange={(event) => { setSelectedAreaId(event.target.value); setPage(1); }}
             style={{
               border: "1px solid #d1d5db",
               borderRadius: 10,
@@ -371,7 +377,7 @@ export default function MembersModule({
           </select>
           <select
             value={statusFilter}
-            onChange={(event) => setStatusFilter(event.target.value as "all" | "active" | "inactive")}
+            onChange={(event) => { setStatusFilter(event.target.value as "all" | "active" | "inactive"); setPage(1); }}
             style={{
               border: "1px solid #d1d5db",
               borderRadius: 10,
@@ -433,12 +439,21 @@ export default function MembersModule({
           Cargando miembros...
         </div>
       ) : (
-        <MembersTable
-          members={filteredMembers}
-          busyMemberId={saving ? busyMemberId : null}
-          onEdit={beginEdit}
-          onDelete={(member) => void handleDelete(member)}
-        />
+        <>
+          <MembersTable
+            members={filteredMembers}
+            busyMemberId={saving ? busyMemberId : null}
+            onEdit={beginEdit}
+            onDelete={(member) => void handleDelete(member)}
+          />
+          {pagination && (
+            <Pagination
+              page={pagination.page}
+              totalPages={pagination.total_pages}
+              onPageChange={(newPage) => setPage(newPage)}
+            />
+          )}
+        </>
       )}
     </div>
   );

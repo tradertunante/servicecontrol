@@ -84,7 +84,8 @@ export function useReauditsData({
         .or(
           "status.eq.pending_training,status.eq.blocked_by_non_operational,and(status.eq.draft,ready_for_reaudit.eq.true)"
         )
-        .order("scheduled_for", { ascending: true, nullsFirst: false });
+        .order("scheduled_for", { ascending: true, nullsFirst: false })
+        .limit(200);
 
       if (runsErr) throw runsErr;
 
