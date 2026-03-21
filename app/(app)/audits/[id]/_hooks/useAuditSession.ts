@@ -180,8 +180,11 @@ export function useAuditSession(runId: string | undefined) {
 
   function setAnswer(questionId: string, nextValue: AnswerValue) {
     if (!runId || submitted) return;
-
     setError(null);
+
+    // Capturar valor previo para rollback
+    const prevAnswer = answersByQ[questionId];
+
     const nextDraft = updateAnswerDraft(questionId, (draft) => ({
       ...draft,
       answer: nextValue,
@@ -194,6 +197,11 @@ export function useAuditSession(runId: string | undefined) {
       try {
         await persistAnswerDraft(questionId, nextDraft);
       } catch (saveError: unknown) {
+        // Rollback al valor previo
+        setAnswersByQ((prev) => ({
+          ...prev,
+          [questionId]: prevAnswer ?? makeDraftAnswer(runId, questionId),
+        }));
         setError(getErrorMessage(saveError, "No se pudo guardar la respuesta."));
       }
     });
@@ -201,8 +209,10 @@ export function useAuditSession(runId: string | undefined) {
 
   function setComment(questionId: string, comment: string) {
     if (!runId || submitted) return;
-
     setError(null);
+
+    const prevAnswer = answersByQ[questionId];
+
     const nextDraft = updateAnswerDraft(questionId, (draft) => ({
       ...draft,
       comment,
@@ -214,6 +224,10 @@ export function useAuditSession(runId: string | undefined) {
       try {
         await persistAnswerDraft(questionId, nextDraft);
       } catch (saveError: unknown) {
+        setAnswersByQ((prev) => ({
+          ...prev,
+          [questionId]: prevAnswer ?? makeDraftAnswer(runId, questionId),
+        }));
         setError(getErrorMessage(saveError, "No se pudo guardar el comentario."));
       }
     });
@@ -222,6 +236,7 @@ export function useAuditSession(runId: string | undefined) {
   async function saveTeamMember(nextId: string) {
     if (!run || submitted) return;
 
+    const prevMember = selectedMember;
     setSavingMember(true);
     setError(null);
 
@@ -251,6 +266,7 @@ export function useAuditSession(runId: string | undefined) {
           : prev,
       );
     } catch (memberError: unknown) {
+      setSelectedMember(prevMember); // restaurar
       setError(getErrorMessage(memberError, "No se pudo asignar el colaborador."));
     } finally {
       setSavingMember(false);
@@ -260,6 +276,7 @@ export function useAuditSession(runId: string | undefined) {
   async function saveRoomNumber(nextValue: string) {
     if (!run || submitted || !showRoomNumberField) return;
 
+    const prevRoomNumber = roomNumber; // capturar previo
     const trimmedValue = nextValue.trim();
     setSavingRoomNumber(true);
     setError(null);
@@ -284,6 +301,7 @@ export function useAuditSession(runId: string | undefined) {
       setRoomNumber(nextRoomNumber ?? "");
       setRun((prev) => (prev ? { ...prev, room_number: nextRoomNumber } : prev));
     } catch (roomError: unknown) {
+      setRoomNumber(prevRoomNumber); // rollback
       setError(getErrorMessage(roomError, "No se pudo guardar el numero de habitacion."));
     } finally {
       setSavingRoomNumber(false);
@@ -413,7 +431,13 @@ export function useAuditSession(runId: string | undefined) {
     setError(null);
 
     try {
-      await flushAll();
+      try {
+        await flushAll();
+      } catch (flushError: unknown) {
+        setError(getErrorMessage(flushError, "Error guardando respuestas pendientes. Intenta de nuevo."));
+        setSubmitting(false);
+        return;
+      }
       const accessToken = await getAccessToken();
 
       const submitAnswersPayload = questions.map((question) => {

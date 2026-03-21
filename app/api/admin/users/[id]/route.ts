@@ -9,10 +9,7 @@ import {
   loadManagedUser,
   resolveManagedHotelId,
 } from "@/lib/auth/userManagement";
-
-function jsonError(message: string, status = 400) {
-  return NextResponse.json({ ok: false, error: message }, { status });
-}
+import { jsonError } from "@/lib/api/response";
 
 export async function GET(
   request: NextRequest,

@@ -68,6 +68,12 @@ export function useReauditsData({
         return;
       }
 
+      if (profile && profile.role !== "superadmin" && profile.hotel_id && profile.hotel_id !== activeHotelId) {
+        setError("Hotel ID no coincide con tu perfil.");
+        setLoading(false);
+        return;
+      }
+
       const { data, error: runsErr } = await supabase
         .from("audit_runs")
         .select(

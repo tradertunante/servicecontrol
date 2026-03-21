@@ -3,10 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { HOTEL_SCOPE_COOKIE } from "@/lib/auth/cookies";
 import { authorizeRouteRequest, getActiveHotel } from "@/lib/auth/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
-
-function jsonError(message: string, status = 400) {
-  return NextResponse.json({ ok: false, error: message }, { status });
-}
+import { jsonError } from "@/lib/api/response";
 
 function buildCookieOptions() {
   return {

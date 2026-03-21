@@ -9,10 +9,7 @@ import {
   resolveMembersHotelId,
   uniqueStrings,
 } from "@/lib/members/server";
-
-function jsonError(message: string, status = 400, extra?: Record<string, unknown>) {
-  return NextResponse.json({ ok: false, error: message, ...(extra ?? {}) }, { status });
-}
+import { jsonError } from "@/lib/api/response";
 
 export async function PATCH(
   request: NextRequest,
@@ -56,7 +53,8 @@ export async function PATCH(
       .maybeSingle();
 
     if (memberError) {
-      return jsonError(memberError.message, 500);
+      console.error("[members] member lookup error:", memberError.message);
+      return jsonError("Error interno al buscar miembro.", 500);
     }
 
     if (!member) {
@@ -84,7 +82,8 @@ export async function PATCH(
         .in("area_id", hotelAreaIds);
 
       if (currentLinksError) {
-        return jsonError(currentLinksError.message, 500);
+        console.error("[members] current links error:", currentLinksError.message);
+        return jsonError("Error interno al verificar áreas.", 500);
       }
 
       const currentAreaIds = uniqueStrings((currentLinks ?? []).map((row) => row.area_id));
@@ -110,7 +109,8 @@ export async function PATCH(
         .in("area_id", hotelAreaIds);
 
       if (duplicateLinksError) {
-        return jsonError(duplicateLinksError.message, 500);
+        console.error("[members] duplicate links error:", duplicateLinksError.message);
+        return jsonError("Error interno al verificar duplicados.", 500);
       }
 
       const duplicateAreaIds = uniqueStrings((duplicateLinks ?? []).map((row) => row.area_id));
@@ -137,16 +137,21 @@ export async function PATCH(
             }
           : undefined;
 
-      return jsonError(duplicateMessage, 409, {
-        conflict_member: canRevealDuplicateIdentity
-          ? {
-              id: duplicateMember.id,
-              full_name: duplicateMember.full_name,
-              active: duplicateMember.active,
-            }
-          : null,
-        ...(debugInfo ?? {}),
-      });
+      return NextResponse.json(
+        {
+          ok: false,
+          error: duplicateMessage,
+          conflict_member: canRevealDuplicateIdentity
+            ? {
+                id: duplicateMember.id,
+                full_name: duplicateMember.full_name,
+                active: duplicateMember.active,
+              }
+            : null,
+          ...(debugInfo ?? {}),
+        },
+        { status: 409 }
+      );
     }
 
     const { error: updateError } = await admin
@@ -163,28 +168,40 @@ export async function PATCH(
       if (updateError.code === "23505") {
         return jsonError("El numero de colaborador ya existe en este hotel.", 409);
       }
-      return jsonError(updateError.message, 500);
+      console.error("[members] update error:", updateError.message);
+      return jsonError("Error interno al actualizar miembro.", 500);
     }
 
-    const { error: deleteLinksError } = await admin
-      .from("team_member_areas")
-      .delete()
-      .eq("team_member_id", memberId)
-      .in("area_id", hotelAreaIds);
-
-    if (deleteLinksError) {
-      return jsonError(deleteLinksError.message, 500);
-    }
-
+    // 1. Insert/upsert new area links first (safe: duplicates are ignored)
     const linkRows = requestedAreaIds.map((areaId) => ({
       team_member_id: memberId,
       area_id: areaId,
     }));
 
-    const { error: insertLinksError } = await admin.from("team_member_areas").insert(linkRows);
+    const { error: insertLinksError } = await admin
+      .from("team_member_areas")
+      .upsert(linkRows, { onConflict: "team_member_id,area_id", ignoreDuplicates: true });
 
     if (insertLinksError) {
-      return jsonError(insertLinksError.message, 500);
+      console.error("[members] insert links error:", insertLinksError.message);
+      return jsonError("Error interno al asignar áreas.", 500);
+    }
+
+    // 2. Remove only the old area links that are NOT in the new set
+    const requestedAreaSet = new Set(requestedAreaIds);
+    const staleAreaIds = hotelAreaIds.filter((areaId) => !requestedAreaSet.has(areaId));
+
+    if (staleAreaIds.length > 0) {
+      const { error: deleteLinksError } = await admin
+        .from("team_member_areas")
+        .delete()
+        .eq("team_member_id", memberId)
+        .in("area_id", staleAreaIds);
+
+      if (deleteLinksError) {
+        console.error("[members] delete stale links error:", deleteLinksError.message);
+        return jsonError("Error interno al limpiar áreas anteriores.", 500);
+      }
     }
 
     return NextResponse.json({ ok: true });

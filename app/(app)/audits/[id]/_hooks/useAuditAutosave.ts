@@ -41,7 +41,19 @@ export function useAuditAutosave(delayMs = 450) {
       if (!action) return;
 
       const promise = (async () => {
-        await action();
+        let lastError: unknown;
+        for (let attempt = 0; attempt < 3; attempt++) {
+          try {
+            await action();
+            return;
+          } catch (err) {
+            lastError = err;
+            if (attempt < 2) {
+              await new Promise((r) => setTimeout(r, 300 * (attempt + 1)));
+            }
+          }
+        }
+        throw lastError;
       })().finally(() => {
         runningRef.current.delete(key);
         refreshPendingCount();

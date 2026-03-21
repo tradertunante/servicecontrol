@@ -7,16 +7,14 @@ import {
   type TrainingRole,
 } from "@/lib/trainings/server";
 
+import { jsonError } from "@/lib/api/response";
+
 const TRAINING_ALLOWED_ROLES: TrainingRole[] = [
   "admin",
   "quality",
   "manager",
   "general_manager",
 ];
-
-function jsonError(message: string, status = 400) {
-  return NextResponse.json({ ok: false, error: message }, { status });
-}
 
 function jsonNoStore(body: unknown, status = 200) {
   return NextResponse.json(body, {

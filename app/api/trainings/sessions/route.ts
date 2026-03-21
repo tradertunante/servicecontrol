@@ -8,10 +8,7 @@ import {
   loadTrainingTopic,
 } from "@/lib/trainings/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
-
-function jsonError(message: string, status = 400) {
-  return NextResponse.json({ ok: false, error: message }, { status });
-}
+import { jsonError } from "@/lib/api/response";
 
 function jsonNoStore(body: unknown) {
   return NextResponse.json(body, {

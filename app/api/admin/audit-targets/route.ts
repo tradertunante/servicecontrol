@@ -2,10 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { authorizeRouteRequest, resolveRouteHotelScope } from "@/lib/auth/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
-
-function jsonError(message: string, status = 400) {
-  return NextResponse.json({ ok: false, error: message }, { status });
-}
+import { jsonError } from "@/lib/api/response";
 
 async function getHotelScope(request: NextRequest) {
   const caller = await authorizeRouteRequest(request, { roles: ["admin", "superadmin"] });
