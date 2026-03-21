@@ -1026,3 +1026,36 @@ Las pantallas `/it` y `/engineering` primero se alimentaron de FAILs crudos, per
 - trazabilidad operativa clara sin mezclar modelos
 - backlog persistente y editable para IT/Mantenimiento
 - menor riesgo de corromper score, answers o corrective actions existentes
+
+---
+
+## Decisión 18
+
+### Fecha
+2026-03-20
+
+### Decisión
+La navegación operativa del hotel debe apoyarse en una sola matriz clara de roles y en un flujo principal basado en `Team`, no en retrocesos hardcodeados ni en duplicación entre `/areas` y `/team`.
+
+### Contexto
+La app mezclaba varias decisiones locales:
+
+- botón atrás cliente con `router.back()` seguido de `push(...)`
+- header con fallback hardcodeado por pathname
+- tabs del módulo Team visibles por condicionales dispersas
+- `superadmin` bloqueado en `/formaciones`
+- dashboard y listado de áreas enviando a `/areas/*` aunque el flujo operativo más completo vive en `/team/*`
+
+Eso generaba historial roto, menús inconsistentes por rol y rutas que terminaban en `/dashboard` sin ser el destino natural.
+
+### Decisión final
+- unificar el comportamiento del botón atrás con `history` real y fallback por `replace(...)`
+- tratar a `superadmin`, `admin`, `general_manager` y `quality` como lectores hotel-wide del workspace Team
+- centralizar tabs visibles de Team en una sola lista declarativa
+- permitir `superadmin` en `Formaciones`
+- hacer que dashboard/listado de áreas abran el flujo operativo en `/team/general` o `/team/historial`
+
+### Impacto esperado
+- historial más predecible
+- navegación por módulos más coherente entre roles altos y manager
+- menos duplicación funcional entre `/areas` y `/team`

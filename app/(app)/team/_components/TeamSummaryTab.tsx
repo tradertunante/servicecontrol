@@ -422,17 +422,17 @@ export default function TeamSummaryTab({
                       >
                         {group.template}
                       </div>
-                      <div style={{ opacity: 0.8, fontSize: 13, marginTop: 4 }}>
-                        {group.completed} / {group.target}
-                      </div>
                       <div style={{ opacity: 0.8, fontSize: 12, marginTop: 4 }}>
                         faltan <b>{group.remaining}</b>
                       </div>
                     </div>
 
-                    <div style={{ textAlign: "right", whiteSpace: "nowrap" }}>
+                    <div style={{ textAlign: "right", whiteSpace: "nowrap", display: "grid", gap: 4 }}>
                       <div style={{ fontWeight: 800, fontSize: 20 }}>
                         {formatPct(group.progressPct)}
+                      </div>
+                      <div style={{ fontWeight: 800, fontSize: 16, opacity: 0.88 }}>
+                        {group.completed} / {group.target}
                       </div>
                     </div>
                   </div>

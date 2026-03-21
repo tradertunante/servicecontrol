@@ -291,10 +291,12 @@ export function useMyDashboardData({
 
         const runsResp = await supabase
           .from("audit_runs")
-          .select("id, executed_at, score, audit_template_id")
+          .select("id, executed_at, score, audit_template_id, status")
           .eq("hotel_id", hotelId)
           .eq("executed_by", uid)
+          .eq("status", "submitted")
           .not("executed_at", "is", null)
+          .not("score", "is", null)
           .gte("executed_at", range.startISO)
           .lte("executed_at", range.endISO)
           .order("executed_at", { ascending: false });
