@@ -3,21 +3,22 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { authorizeRouteRequest } from "@/lib/auth/server";
 import { resolveManagedUserAccess } from "@/lib/auth/userManagement";
+import { jsonError } from "@/lib/api/response";
 
 export async function POST(req: NextRequest) {
   const reqId = Math.random().toString(16).slice(2, 8);
 
   try {
     const caller = await authorizeRouteRequest(req, { roles: ["admin", "superadmin"] });
-    if (!caller) return NextResponse.json({ error: "No autorizado (falta token)." }, { status: 401 });
+    if (!caller) return jsonError("No autorizado (falta token).", 401);
 
     const body = await req.json().catch(() => null);
     const user_id = String(body?.user_id ?? "");
 
-    if (!user_id) return NextResponse.json({ error: "Falta user_id." }, { status: 400 });
+    if (!user_id) return jsonError("Falta user_id.", 400);
     const targetScope = await resolveManagedUserAccess(caller.profile, user_id);
     if (!targetScope.ok) {
-      return NextResponse.json({ error: targetScope.error }, { status: targetScope.status });
+      return jsonError(targetScope.error, targetScope.status);
     }
 
     const admin = supabaseAdmin();
@@ -30,7 +31,7 @@ export async function POST(req: NextRequest) {
 
     if (rowsErr) {
       console.error(`[uaa-get:${reqId}]`, rowsErr.message);
-      return NextResponse.json({ error: rowsErr.message }, { status: 400 });
+      return jsonError(rowsErr.message, 400);
     }
 
     return NextResponse.json({
@@ -39,6 +40,6 @@ export async function POST(req: NextRequest) {
     });
   } catch (e: any) {
     console.error(`[uaa-get:${reqId}] Unexpected`, e?.message);
-    return NextResponse.json({ error: e?.message ?? "Error inesperado." }, { status: 500 });
+    return jsonError(e?.message ?? "Error inesperado.", 500);
   }
 }

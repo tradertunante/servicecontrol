@@ -3,23 +3,24 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { authorizeRouteRequest } from "@/lib/auth/server";
 import { resolveManagedUserAccess } from "@/lib/auth/userManagement";
+import { jsonError } from "@/lib/api/response";
 
 export async function POST(req: NextRequest) {
   const reqId = Math.random().toString(16).slice(2, 8);
 
   try {
     const caller = await authorizeRouteRequest(req, { roles: ["admin", "superadmin"] });
-    if (!caller) return NextResponse.json({ error: "No autorizado (falta token)." }, { status: 401 });
+    if (!caller) return jsonError("No autorizado (falta token).", 401);
 
     const body = await req.json().catch(() => null);
     const user_id = String(body?.user_id ?? "");
     const area_ids_raw = Array.isArray(body?.area_ids) ? body.area_ids : [];
     const area_ids = area_ids_raw.map((x: any) => String(x)).filter(Boolean);
 
-    if (!user_id) return NextResponse.json({ error: "Falta user_id." }, { status: 400 });
+    if (!user_id) return jsonError("Falta user_id.", 400);
     const targetScope = await resolveManagedUserAccess(caller.profile, user_id);
     if (!targetScope.ok) {
-      return NextResponse.json({ error: targetScope.error }, { status: targetScope.status });
+      return jsonError(targetScope.error, targetScope.status);
     }
 
     const admin = supabaseAdmin();
@@ -34,7 +35,7 @@ export async function POST(req: NextRequest) {
 
     if (error) {
       console.error(`[uaa-set:${reqId}] rpc`, error.message);
-      return NextResponse.json({ error: error.message }, { status: 400 });
+      return jsonError(error.message, 400);
     }
 
     const payload = (data ?? null) as {
@@ -46,12 +47,12 @@ export async function POST(req: NextRequest) {
 
     if (!payload?.ok) {
       const status = String(payload?.code ?? "") === "INVALID_AREAS" ? 400 : 500;
-      return NextResponse.json({ error: payload?.message ?? "No se pudo actualizar los accesos." }, { status });
+      return jsonError(payload?.message ?? "No se pudo actualizar los accesos.", status);
     }
 
     return NextResponse.json({ ok: true, count: Number(payload.data?.count ?? 0) });
   } catch (e: any) {
     console.error(`[uaa-set:${reqId}] Unexpected`, e?.message);
-    return NextResponse.json({ error: e?.message ?? "Error inesperado." }, { status: 500 });
+    return jsonError(e?.message ?? "Error inesperado.", 500);
   }
 }
