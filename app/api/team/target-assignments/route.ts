@@ -7,6 +7,8 @@ import {
 } from "@/lib/auth/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
+import { jsonError } from "@/lib/api/response";
+
 type AssignmentInput = {
   id?: string;
   source_ids?: string[];
@@ -14,10 +16,6 @@ type AssignmentInput = {
   target_count?: number;
   active?: boolean;
 };
-
-function jsonError(message: string, status = 400) {
-  return NextResponse.json({ ok: false, error: message }, { status });
-}
 
 export async function POST(request: NextRequest) {
   const caller = await authorizeRouteRequest(request, {

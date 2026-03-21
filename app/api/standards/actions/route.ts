@@ -3,10 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { authorizeRouteRequest } from "@/lib/auth/server";
 import { resolveManagedHotelId } from "@/lib/auth/userManagement";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
-
-function jsonError(message: string, status = 400) {
-  return NextResponse.json({ ok: false, error: message }, { status });
-}
+import { jsonError } from "@/lib/api/response";
 
 export async function POST(request: NextRequest) {
   try {

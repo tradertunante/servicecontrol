@@ -7,10 +7,7 @@ import {
 } from "@/lib/auth/server";
 import { readAuditLogs, writeAuditLogs } from "@/lib/auditLogs";
 import type { AuditLogEntryInput } from "@/lib/auditLogTypes";
-
-function jsonError(message: string, status = 400) {
-  return NextResponse.json({ ok: false, error: message }, { status });
-}
+import { jsonError } from "@/lib/api/response";
 
 function jsonNoStore(body: unknown) {
   return NextResponse.json(body, {

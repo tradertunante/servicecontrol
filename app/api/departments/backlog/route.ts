@@ -8,6 +8,7 @@ import {
 } from "@/app/(app)/_lib/departmentAccess";
 import { authorizeRouteRequest, resolveRouteHotelScope } from "@/lib/auth/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { jsonError } from "@/lib/api/response";
 
 type ProfileDepartmentRow = {
   assigned_department_id: string | null;
@@ -68,10 +69,6 @@ type TemplateRow = {
   id: string;
   name: string | null;
 };
-
-function jsonError(message: string, status = 400) {
-  return NextResponse.json({ ok: false, error: message }, { status });
-}
 
 function parseDepartment(value: string | null): DepartmentCode {
   const normalized = normalizeDepartmentCode(value);

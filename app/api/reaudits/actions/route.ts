@@ -11,10 +11,7 @@ import {
   buildReassignmentBlock,
   buildTrainingConfirmationBlock,
 } from "@/app/(app)/team/_lib/reauditUtils";
-
-function jsonError(message: string, status = 400) {
-  return NextResponse.json({ ok: false, error: message }, { status });
-}
+import { jsonError } from "@/lib/api/response";
 
 type ReauditActionRpcResponse = {
   ok?: boolean;

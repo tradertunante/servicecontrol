@@ -3,6 +3,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
+import { useQuery } from "@tanstack/react-query";
 import { fetchActiveHotel } from "@/lib/auth/activeHotelClient";
 import { supabase } from "@/lib/supabaseClient";
 import type { Profile, Role } from "@/lib/types";
@@ -74,11 +75,7 @@ export default function HotelHeader() {
   const pathname = usePathname();
   const headerRef = useRef<HTMLDivElement | null>(null);
 
-  const [hotelName, setHotelName] = useState<string | null>(null);
-  const [profile, setProfile] = useState<Profile | null>(null);
-  const [loading, setLoading] = useState(true);
   const [isHoveringHotel, setIsHoveringHotel] = useState(false);
-  const [activeHotelId, setActiveHotelId] = useState<string | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   useEffect(() => {
@@ -95,53 +92,43 @@ export default function HotelHeader() {
 
   const pageTitle = useMemo(() => getPageTitle(pathname), [pathname]);
 
-  useEffect(() => {
-    let alive = true;
-    (async () => {
-      try {
-        setLoading(true);
-        const { data: userData, error: userErr } = await supabase.auth.getUser();
-        if (!alive) return;
-        if (userErr || !userData?.user) { setProfile(null); setHotelName(null); setLoading(false); return; }
+  const { data: headerData, isLoading: loading } = useQuery({
+    queryKey: ["header-context"],
+    queryFn: async () => {
+      const [{ data: userData, error: userErr }, hotelContext] = await Promise.all([
+        supabase.auth.getUser(),
+        fetchActiveHotel().catch(() => null),
+      ]);
 
-        const uid = userData.user.id;
+      if (userErr || !userData?.user) return null;
 
-        const { data: profileData, error: profileErr } = await supabase
-          .from("profiles")
-          .select("id, hotel_id, role")
-          .eq("id", uid)
-          .single();
+      const uid = userData.user.id;
+      const hotelIdToUse = hotelContext?.hotel_id ?? null;
 
-        if (!alive) return;
-        if (profileErr || !profileData) { setProfile(null); setHotelName(null); setLoading(false); return; }
+      const [{ data: profileData, error: profileErr }, hotelResult] = await Promise.all([
+        supabase.from("profiles").select("id, hotel_id, role").eq("id", uid).single(),
+        hotelIdToUse
+          ? supabase.from("hotels").select("name").eq("id", hotelIdToUse).single()
+          : Promise.resolve({ data: null, error: null }),
+      ]);
 
-        const role = String(profileData.role ?? "") as Role;
-        const prof: Profile = {
-          id: uid,
-          role,
-          hotel_id: profileData.hotel_id ?? null,
-        };
-        setProfile(prof);
+      if (profileErr || !profileData) return null;
 
-        const hotelContext = await fetchActiveHotel().catch(() => null);
-        const hotelIdToUse = hotelContext?.hotel_id ?? null;
-        setActiveHotelId(hotelIdToUse);
-        if (!hotelIdToUse) { setHotelName(null); setLoading(false); return; }
+      const role = String(profileData.role ?? "") as Role;
+      const profile: Profile = { id: uid, role, hotel_id: profileData.hotel_id ?? null };
 
-        const { data: hotel, error: hotelErr } = await supabase.from("hotels").select("name").eq("id", hotelIdToUse).single();
-        if (!alive) return;
-        if (hotelErr || !hotel) { setHotelName(null); setLoading(false); return; }
+      return {
+        profile,
+        activeHotelId: hotelIdToUse,
+        hotelName: hotelResult.data?.name ?? null,
+      };
+    },
+    staleTime: 5 * 60 * 1000,
+  });
 
-        setHotelName(hotel.name);
-        setLoading(false);
-      } catch (e) {
-        if (!alive) return;
-        console.error("Error loading header:", e);
-        setLoading(false);
-      }
-    })();
-    return () => { alive = false; };
-  }, [pathname]);
+  const profile = headerData?.profile ?? null;
+  const activeHotelId = headerData?.activeHotelId ?? null;
+  const hotelName = headerData?.hotelName ?? null;
 
   const isAdmin = profile?.role === "admin" || profile?.role === "superadmin";
   const displayHotel = hotelName ?? (loading ? "Cargando…" : "Selecciona hotel");

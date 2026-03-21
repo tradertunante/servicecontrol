@@ -125,6 +125,10 @@ export function useTeamData({
         const uid = initialProfile.id;
         const prof = initialProfile;
 
+        if (prof.role !== "superadmin" && prof.hotel_id && prof.hotel_id !== hotelId) {
+          throw new Error("Hotel ID no coincide con tu perfil.");
+        }
+
         if (!canAccessTeam(prof.role)) {
           throw new Error("No tienes acceso a la vista de equipo.");
         }
