@@ -8,160 +8,34 @@ import { postAuditLogEntries } from "@/lib/auditLogsClient";
 import type { AuditLogEntryInput } from "@/lib/auditLogTypes";
 import { supabase } from "@/lib/supabaseClient";
 
-type PeriodKey = "daily" | "weekly" | "monthly";
+import CardHeader from "./target-assignments/CardHeader";
+import FeedbackBanner from "./target-assignments/FeedbackBanner";
+import FilterBar from "./target-assignments/FilterBar";
+import TemplateAssignmentCard from "./target-assignments/TemplateAssignmentCard";
 
-type AreaRow = {
-  id: string;
-  name: string;
-};
+import {
+  buildBtn,
+  buildEquitableDistribution,
+  buildInput,
+  buildLoadBasedDistribution,
+  buildSelect,
+  getAssignmentStatus,
+  getTemplateName,
+  normalizeAssignmentValue,
+  normalizeRelation,
+} from "./target-assignments/types";
 
-type TeamUserRow = {
-  id: string;
-  full_name: string | null;
-  role: string | null;
-  hotel_id?: string | null;
-  active?: boolean | null;
-};
-
-type ViewerProfile = {
-  id: string;
-  role: string | null;
-};
-
-type NameRelation = {
-  name: string | null;
-};
-
-type MaybeRelation = NameRelation | NameRelation[] | null;
-
-type AreaTemplateTargetRowRaw = {
-  id: string;
-  hotel_id: string;
-  area_id: string;
-  audit_template_id: string;
-  period: string;
-  target_count: number;
-  active: boolean | null;
-  audit_templates?: MaybeRelation;
-};
-
-type AreaTemplateTargetRow = {
-  id: string;
-  hotel_id: string;
-  area_id: string;
-  audit_template_id: string;
-  period: string;
-  target_count: number;
-  active: boolean | null;
-  audit_templates: NameRelation | null;
-};
-
-type AssignmentRow = {
-  id?: string;
-  user_id: string;
-  target_count: number;
-  active: boolean;
-  source_ids?: string[];
-};
-
-type TemplateAssignmentMap = Record<string, Record<string, AssignmentRow>>;
-type FeedbackState = {
-  type: "success" | "info";
-  text: string;
-} | null;
-
-function buildBtn(): CSSProperties {
-  return {
-    border: "1px solid rgba(255,255,255,0.14)",
-    borderRadius: 12,
-    padding: "10px 12px",
-    background: "rgba(255,255,255,0.06)",
-    cursor: "pointer",
-    color: "white",
-  };
-}
-
-function buildInput(): CSSProperties {
-  return {
-    width: "100%",
-    padding: "10px 12px",
-    borderRadius: 12,
-    border: "1px solid rgba(255,255,255,0.14)",
-    background: "rgba(0,0,0,0.18)",
-    color: "white",
-    outline: "none",
-  };
-}
-
-function buildSelect(): CSSProperties {
-  return buildInput();
-}
-
-function getPeriodLabel(period: string) {
-  if (period === "daily") return "diario";
-  if (period === "weekly") return "semanal";
-  if (period === "monthly") return "mensual";
-  return period;
-}
-
-function normalizeAssignmentValue(value: number) {
-  if (!Number.isFinite(value)) return 0;
-  return Math.max(0, Math.floor(value));
-}
-
-function getAssignmentStatus(targetCount: number, assignedTotal: number, hasGoal: boolean) {
-  if (!hasGoal) return "Sin objetivo";
-  if (assignedTotal === 0) return "Pendiente";
-  if (assignedTotal < targetCount) return "Parcial";
-  if (assignedTotal === targetCount) return "Completo";
-  return "Excedido";
-}
-
-function buildEquitableDistribution(targetCount: number, memberCount: number) {
-  if (memberCount <= 0) return [];
-
-  const normalizedTarget = normalizeAssignmentValue(targetCount);
-  const base = Math.floor(normalizedTarget / memberCount);
-  const remainder = normalizedTarget % memberCount;
-
-  return Array.from({ length: memberCount }, (_, index) =>
-    base + (index < remainder ? 1 : 0)
-  );
-}
-
-function buildLoadBasedDistribution(targetCount: number, currentLoads: number[]) {
-  const normalizedTarget = normalizeAssignmentValue(targetCount);
-  if (currentLoads.length === 0) return [];
-
-  const nextAssignments = Array.from({ length: currentLoads.length }, () => 0);
-
-  for (let unit = 0; unit < normalizedTarget; unit += 1) {
-    let selectedIndex = 0;
-    let selectedLoad = currentLoads[0] + nextAssignments[0];
-
-    for (let index = 1; index < currentLoads.length; index += 1) {
-      const candidateLoad = currentLoads[index] + nextAssignments[index];
-      if (candidateLoad < selectedLoad) {
-        selectedIndex = index;
-        selectedLoad = candidateLoad;
-      }
-    }
-
-    nextAssignments[selectedIndex] += 1;
-  }
-
-  return nextAssignments;
-}
-
-function normalizeRelation(value: MaybeRelation): NameRelation | null {
-  if (!value) return null;
-  if (Array.isArray(value)) return value[0] ?? null;
-  return value;
-}
-
-function getTemplateName(row: AreaTemplateTargetRow) {
-  return row.audit_templates?.name ?? "Template sin nombre";
-}
+import type {
+  AreaRow,
+  AreaTemplateTargetRow,
+  AreaTemplateTargetRowRaw,
+  AssignmentRow,
+  FeedbackState,
+  PeriodKey,
+  TeamUserRow,
+  TemplateAssignmentMap,
+  ViewerProfile,
+} from "./target-assignments/types";
 
 export default function TeamTargetAssignmentsCard({
   card,
@@ -316,7 +190,6 @@ export default function TeamTargetAssignmentsCard({
     setError(null);
     setFeedback(null);
 
-    // 1) Targets por template para el área + periodo
     const targetsResp = await supabase
       .from("area_template_targets")
       .select(`
@@ -356,7 +229,6 @@ export default function TeamTargetAssignmentsCard({
 
     setTemplateTargets(targetRows);
 
-    // 2) Usuarios del área
     const uaaResp = await supabase
       .from("user_area_access")
       .select("user_id")
@@ -368,9 +240,6 @@ export default function TeamTargetAssignmentsCard({
       setLoading(false);
       return;
     }
-
-    const auth = await supabase.auth.getUser();
-    const uid = auth.data.user?.id ?? null;
 
     const areaUserIds = Array.from(
       new Set((uaaResp.data ?? []).map((row: { user_id: string }) => row.user_id).filter(Boolean))
@@ -414,7 +283,6 @@ export default function TeamTargetAssignmentsCard({
 
     setTeamUsers(users);
 
-    // 3) Repartos guardados por template
     const templateIds = targetRows.map((x) => x.audit_template_id).filter(Boolean);
 
     if (templateIds.length === 0) {
@@ -522,7 +390,6 @@ export default function TeamTargetAssignmentsCard({
   }
 
   function updateAssignment(templateId: string, userId: string, value: number) {
-    const target = templateTargets.find((x) => x.audit_template_id === templateId);
     const nextValue = normalizeAssignmentValue(value);
 
     setAssignmentsByTemplate((prev) => ({
@@ -586,10 +453,7 @@ export default function TeamTargetAssignmentsCard({
         };
       }
 
-      return {
-        ...prev,
-        [templateId]: nextTemplate,
-      };
+      return { ...prev, [templateId]: nextTemplate };
     });
 
     setTemplateHints((prev) => ({
@@ -648,10 +512,7 @@ export default function TeamTargetAssignmentsCard({
         };
       }
 
-      return {
-        ...prev,
-        [templateId]: nextTemplate,
-      };
+      return { ...prev, [templateId]: nextTemplate };
     });
 
     setTemplateHints((prev) => ({
@@ -684,13 +545,7 @@ export default function TeamTargetAssignmentsCard({
   }, [templateTargets, assignmentsByTemplate]);
 
   const templateDirtyState = useMemo(() => {
-    const next: Record<
-      string,
-      {
-        dirty: boolean;
-        changedRows: AssignmentRow[];
-      }
-    > = {};
+    const next: Record<string, { dirty: boolean; changedRows: AssignmentRow[] }> = {};
 
     for (const target of templateTargets) {
       const templateId = target.audit_template_id;
@@ -719,17 +574,11 @@ export default function TeamTargetAssignmentsCard({
           currentValue !== initialValue ||
           Boolean(currentRow.active) !== Boolean(initialRow.active)
         ) {
-          changedRows.push({
-            ...currentRow,
-            target_count: currentValue,
-          });
+          changedRows.push({ ...currentRow, target_count: currentValue });
         }
       }
 
-      next[templateId] = {
-        dirty: changedRows.length > 0,
-        changedRows,
-      };
+      next[templateId] = { dirty: changedRows.length > 0, changedRows };
     }
 
     return next;
@@ -773,6 +622,7 @@ export default function TeamTargetAssignmentsCard({
       setSaving(false);
       return;
     }
+
     const logEntries: AuditLogEntryInput[] = [];
     const targetsToSave = templateId
       ? templateTargets.filter((target) => target.audit_template_id === templateId)
@@ -812,12 +662,12 @@ export default function TeamTargetAssignmentsCard({
     }
 
     for (const target of targetsToSave) {
-      const templateId = target.audit_template_id;
-      const templateAssignments = templateDirtyState[templateId]?.changedRows ?? [];
+      const tId = target.audit_template_id;
+      const templateAssignments = templateDirtyState[tId]?.changedRows ?? [];
 
       for (const row of templateAssignments) {
         const normalizedTargetCount = normalizeAssignmentValue(Number(row.target_count ?? 0));
-        const oldRow = initialAssignmentsByTemplate[templateId]?.[row.user_id];
+        const oldRow = initialAssignmentsByTemplate[tId]?.[row.user_id];
         const oldTargetCount = normalizeAssignmentValue(Number(oldRow?.target_count ?? 0));
         const action =
           oldTargetCount === 0 && normalizedTargetCount > 0
@@ -834,7 +684,7 @@ export default function TeamTargetAssignmentsCard({
             hotel_id: hotelId,
             actor_user_id: createdBy,
             entity_type: "team_target_assignment",
-            entity_id: `${hotelId}:${selectedAreaId}:${selectedPeriod}:${templateId}:${row.user_id}`,
+            entity_id: `${hotelId}:${selectedAreaId}:${selectedPeriod}:${tId}:${row.user_id}`,
             action,
             old_value:
               oldTargetCount > 0
@@ -844,7 +694,7 @@ export default function TeamTargetAssignmentsCard({
             metadata: {
               area_id: selectedAreaId,
               area_name: getAreaName(selectedAreaId),
-              audit_template_id: templateId,
+              audit_template_id: tId,
               template_name: getTemplateName(target),
               affected_user_id: row.user_id,
               affected_user_name: userName,
@@ -878,145 +728,31 @@ export default function TeamTargetAssignmentsCard({
 
   return (
     <div style={card}>
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          gap: 12,
-          alignItems: "flex-start",
-          flexWrap: "wrap",
-        }}
-      >
-        <div>
-          <div style={{ fontSize: 18, fontWeight: 800 }}>
-            Reparto del objetivo por auditoría
-          </div>
-          <div style={{ opacity: 0.8, marginTop: 6, fontSize: 13 }}>
-            Reparte el objetivo de cada template entre los auditores de tu equipo según
-            el periodo seleccionado.
-          </div>
-        </div>
+      <CardHeader
+        btn={btn}
+        loading={loading}
+        saving={saving}
+        selectedAreaId={selectedAreaId}
+        onRefresh={() => selectedAreaId && loadAreaContext(selectedAreaId, selectedPeriod)}
+        onOpenHistory={() => setHistoryOpen(true)}
+      />
 
-        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-          <button
-            style={btn}
-            onClick={() => selectedAreaId && loadAreaContext(selectedAreaId, selectedPeriod)}
-            disabled={loading || saving}
-          >
-            Refrescar
-          </button>
-          <button style={btn} onClick={() => setHistoryOpen(true)} disabled={!selectedAreaId}>
-            Historial
-          </button>
-        </div>
-      </div>
+      <FeedbackBanner error={error} feedback={feedback} />
 
-      {error ? (
-        <div
-          style={{
-            marginTop: 12,
-            padding: 12,
-            borderRadius: 14,
-            border: "1px solid rgba(255,0,0,0.25)",
-            background: "rgba(255,0,0,0.06)",
-          }}
-        >
-          <b>Error:</b> {error}
-        </div>
-      ) : null}
-
-      {feedback ? (
-        <div
-          style={{
-            marginTop: 12,
-            padding: 12,
-            borderRadius: 14,
-            border:
-              feedback.type === "success"
-                ? "1px solid rgba(16,185,129,0.28)"
-                : "1px solid rgba(255,255,255,0.14)",
-            background:
-              feedback.type === "success"
-                ? "rgba(16,185,129,0.08)"
-                : "rgba(255,255,255,0.04)",
-          }}
-        >
-          {feedback.text}
-        </div>
-      ) : null}
-
-      <div
-        style={{
-          marginTop: 14,
-          padding: 14,
-          borderRadius: 16,
-          border: "1px solid rgba(255,255,255,0.10)",
-          background: "rgba(0,0,0,0.10)",
-        }}
-      >
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-            gap: 12,
-          }}
-        >
-          <div>
-            <div style={{ opacity: 0.8, fontSize: 12, marginBottom: 6 }}>Área</div>
-            <select
-              style={select}
-              value={selectedAreaId}
-              onChange={(e) => setSelectedAreaId(e.target.value)}
-            >
-              <option value="">
-                {areas.length ? "Selecciona un área…" : "No tienes áreas asignadas"}
-              </option>
-              {areas.map((a) => (
-                <option key={a.id} value={a.id}>
-                  {a.name}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <div style={{ opacity: 0.8, fontSize: 12, marginBottom: 6 }}>Periodo</div>
-            <select
-              style={select}
-              value={selectedPeriod}
-              onChange={(e) => setSelectedPeriod(e.target.value as PeriodKey)}
-            >
-              <option value="daily">Diario</option>
-              <option value="weekly">Semanal</option>
-              <option value="monthly">Mensual</option>
-            </select>
-          </div>
-
-          <div>
-            <div style={{ opacity: 0.8, fontSize: 12, marginBottom: 6 }}>Objetivo total</div>
-            <div style={input}>{selectedAreaId ? overallSummary.totalTarget : "—"}</div>
-          </div>
-
-          <div>
-            <div style={{ opacity: 0.8, fontSize: 12, marginBottom: 6 }}>Asignado</div>
-            <div style={input}>{selectedAreaId ? overallSummary.totalAssigned : "—"}</div>
-          </div>
-
-          <div>
-            <div style={{ opacity: 0.8, fontSize: 12, marginBottom: 6 }}>Pendiente</div>
-            <div style={input}>{selectedAreaId ? overallSummary.remaining : "—"}</div>
-          </div>
-
-          <div>
-            <div style={{ opacity: 0.8, fontSize: 12, marginBottom: 6 }}>Estado</div>
-            <div style={input}>{selectedAreaId ? overallSummary.status : "—"}</div>
-          </div>
-        </div>
-      </div>
+      <FilterBar
+        select={select}
+        input={input}
+        areas={areas}
+        selectedAreaId={selectedAreaId}
+        selectedPeriod={selectedPeriod}
+        overallSummary={overallSummary}
+        onAreaChange={setSelectedAreaId}
+        onPeriodChange={setSelectedPeriod}
+      />
 
       <div style={{ marginTop: 14 }}>
         <div style={{ fontWeight: 800, marginBottom: 10 }}>
-          Templates del área · periodo {getPeriodLabel(selectedPeriod)}
+          Templates del área · periodo {selectedPeriod === "daily" ? "diario" : selectedPeriod === "weekly" ? "semanal" : "mensual"}
         </div>
 
         {loading ? (
@@ -1034,165 +770,26 @@ export default function TeamTargetAssignmentsCard({
           </div>
         ) : (
           <div style={{ display: "grid", gap: 12 }}>
-            {templateTargets.map((target) => {
-              const templateId = target.audit_template_id;
-              const templateAssignments = assignmentsByTemplate[templateId] ?? {};
-
-              const assignedTotal = Object.values(templateAssignments).reduce(
-                (acc, row) => acc + Number(row.target_count ?? 0),
-                0
-              );
-
-              const targetCount = Number(target.target_count ?? 0);
-              const remaining = Math.max(targetCount - assignedTotal, 0);
-              const status = getAssignmentStatus(targetCount, assignedTotal, true);
-              const templateDirty = templateDirtyState[templateId]?.dirty ?? false;
-              const templateHint = templateHints[templateId] ?? "";
-
-              return (
-                <div
-                  key={target.id}
-                  style={{
-                    border: "1px solid rgba(255,255,255,0.10)",
-                    borderRadius: 16,
-                    padding: 14,
-                    background: "rgba(0,0,0,0.12)",
-                  }}
-                >
-                  <div
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      gap: 12,
-                      alignItems: "flex-start",
-                      flexWrap: "wrap",
-                    }}
-                  >
-                    <div>
-                      <div style={{ fontSize: 16, fontWeight: 800 }}>
-                        {getTemplateName(target)}
-                      </div>
-                      <div style={{ opacity: 0.78, marginTop: 4, fontSize: 13 }}>
-                        Objetivo {getPeriodLabel(selectedPeriod)} para esta auditoría.
-                      </div>
-                    </div>
-
-                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                      <button
-                        style={btn}
-                        onClick={() => autoDistributeTemplate(templateId, targetCount)}
-                        disabled={saving || loading || teamUsers.length === 0}
-                      >
-                        Auto-repartir
-                      </button>
-                      <button
-                        style={btn}
-                        onClick={() => autoDistributeTemplateByLoad(templateId, targetCount)}
-                        disabled={saving || loading || teamUsers.length === 0}
-                      >
-                        Auto-repartir por carga
-                      </button>
-                    </div>
-
-                    <div
-                      style={{
-                        display: "grid",
-                        gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))",
-                        gap: 8,
-                        minWidth: 320,
-                        flex: 1,
-                      }}
-                    >
-                      <div style={input}>Meta: {targetCount}</div>
-                      <div style={input}>Asignado: {assignedTotal} / {targetCount}</div>
-                      <div style={input}>Pendiente: {remaining}</div>
-                      <div style={input}>Estado: {status}</div>
-                    </div>
-                  </div>
-
-                  <div style={{ marginTop: 12, display: "grid", gap: 10 }}>
-                    {teamUsers.map((user) => {
-                      const row = templateAssignments[user.id] ?? {
-                        user_id: user.id,
-                        target_count: 0,
-                        active: true,
-                      };
-
-                      return (
-                        <div
-                          key={`${templateId}_${user.id}`}
-                          style={{
-                            border: "1px solid rgba(255,255,255,0.10)",
-                            borderRadius: 14,
-                            padding: 12,
-                            background: "rgba(255,255,255,0.03)",
-                            display: "grid",
-                            gridTemplateColumns: "minmax(220px, 1fr) 180px",
-                            gap: 12,
-                            alignItems: "center",
-                          }}
-                        >
-                          <div>
-                            <div style={{ fontWeight: 750 }}>
-                              {user.full_name ?? user.id.slice(0, 8)}
-                            </div>
-                            <div style={{ opacity: 0.8, marginTop: 4, fontSize: 13 }}>
-                              Rol: <b>{user.role ?? "—"}</b>
-                              {user.id === managerId ? " · tú" : ""}
-                            </div>
-                          </div>
-
-                          <div>
-                            <div style={{ opacity: 0.8, fontSize: 12, marginBottom: 6 }}>
-                              Objetivo asignado
-                            </div>
-                            <input
-                              style={input}
-                              type="number"
-                              min={0}
-                              step={1}
-                              value={row.target_count}
-                              onChange={(e) =>
-                                updateAssignment(
-                                  templateId,
-                                  user.id,
-                                  Number(e.target.value)
-                                )
-                              }
-                            />
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-
-                  <div
-                    style={{
-                      marginTop: 12,
-                      display: "flex",
-                      justifyContent: "space-between",
-                      gap: 10,
-                      alignItems: "center",
-                      flexWrap: "wrap",
-                    }}
-                  >
-                    <div style={{ opacity: 0.8, fontSize: 12.5 }}>
-                      {templateDirty
-                        ? "Cambios sin guardar"
-                        : templateHint || "Sin cambios pendientes en este template."}
-                    </div>
-
-                    <button
-                      style={btn}
-                      onClick={() => saveAssignments(templateId)}
-                      disabled={saving || loading || !templateDirty}
-                    >
-                      {saving ? "Guardando…" : "Guardar template"}
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
+            {templateTargets.map((target) => (
+              <TemplateAssignmentCard
+                key={target.id}
+                btn={btn}
+                input={input}
+                target={target}
+                selectedPeriod={selectedPeriod}
+                teamUsers={teamUsers}
+                managerId={managerId}
+                templateAssignments={assignmentsByTemplate[target.audit_template_id] ?? {}}
+                templateDirty={templateDirtyState[target.audit_template_id]?.dirty ?? false}
+                templateHint={templateHints[target.audit_template_id] ?? ""}
+                saving={saving}
+                loading={loading}
+                onUpdateAssignment={updateAssignment}
+                onAutoDistribute={autoDistributeTemplate}
+                onAutoDistributeByLoad={autoDistributeTemplateByLoad}
+                onSave={saveAssignments}
+              />
+            ))}
           </div>
         )}
       </div>
@@ -1203,7 +800,11 @@ export default function TeamTargetAssignmentsCard({
           onClick={() => saveAssignments()}
           disabled={saving || loading || !selectedAreaId || templateTargets.length === 0}
         >
-          {saving ? "Guardando…" : totalChangedAssignments > 0 ? `Guardar ${totalChangedAssignments} cambio${totalChangedAssignments === 1 ? "" : "s"}` : "Guardar cambios"}
+          {saving
+            ? "Guardando…"
+            : totalChangedAssignments > 0
+              ? `Guardar ${totalChangedAssignments} cambio${totalChangedAssignments === 1 ? "" : "s"}`
+              : "Guardar cambios"}
         </button>
       </div>
 
