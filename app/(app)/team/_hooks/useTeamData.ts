@@ -145,7 +145,13 @@ export function useTeamData({
         if (!cancelled) {
           setLeaderboard(Array.isArray(payload.leaderboard) ? payload.leaderboard : []);
           setTeamTargets(Array.isArray(payload.team_targets) ? payload.team_targets : []);
-          setTeamRecentRuns(Array.isArray(payload.recent_runs) ? payload.recent_runs : []);
+          setTeamRecentRuns(
+            Array.isArray(payload.recent_runs)
+              ? payload.recent_runs.filter(
+                  (row) => row.score !== null && row.score !== undefined && Number.isFinite(Number(row.score))
+                )
+              : []
+          );
           setTeamTemplateProgress(
             Array.isArray(payload.template_progress) ? payload.template_progress : []
           );

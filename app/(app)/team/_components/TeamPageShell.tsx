@@ -26,6 +26,14 @@ function buildBtnStyle(): CSSProperties {
 
 type TeamSectionKey = "general" | "progress" | "reaudits" | "history" | "actions";
 
+type TeamNavItem = {
+  key: string;
+  label: string;
+  href: string;
+  active: boolean;
+  visible: boolean;
+};
+
 export default function TeamPageShell({
   profile,
   profileError,
@@ -66,19 +74,12 @@ export default function TeamPageShell({
     });
   }, [profile?.id, queryClient]);
 
-  const showSummaryTab =
+  const canSeeAreaWorkspace =
     profile?.role === "superadmin" ||
     profile?.role === "admin" ||
+    profile?.role === "general_manager" ||
     profile?.role === "manager" ||
     profile?.role === "quality";
-
-  const showReauditsTab =
-    profile?.role === "superadmin" ||
-    profile?.role === "admin" ||
-    profile?.role === "manager" ||
-    profile?.role === "quality";
-
-  const showManagerAreaTabs = profile?.role === "manager";
   const showMembersLink =
     profile?.role === "superadmin" ||
     profile?.role === "admin" ||
@@ -91,6 +92,74 @@ export default function TeamPageShell({
     profile?.role === "general_manager" ||
     profile?.role === "manager" ||
     profile?.role === "quality";
+  const showSummaryTab = canSeeAreaWorkspace;
+  const showReauditsTab = canSeeAreaWorkspace;
+
+  const navItems: TeamNavItem[] = [
+    {
+      key: "general",
+      label: "General",
+      href: "/team/general",
+      active: activeSection === "general",
+      visible: canSeeAreaWorkspace,
+    },
+    {
+      key: "progress",
+      label: "Progreso",
+      href: "/team/progreso",
+      active: activeSection === "progress",
+      visible: showSummaryTab,
+    },
+    {
+      key: "reaudits",
+      label: "Recuperación",
+      href: "/team/recuperacion",
+      active: activeSection === "reaudits",
+      visible: showReauditsTab,
+    },
+    {
+      key: "history",
+      label: "Historial",
+      href: "/team/historial",
+      active: activeSection === "history",
+      visible: canSeeAreaWorkspace,
+    },
+    {
+      key: "actions",
+      label: "Formaciones",
+      href: "/formaciones",
+      active: activeSection === "actions",
+      visible: true,
+    },
+    {
+      key: "analytics",
+      label: "Analisis",
+      href: "/analytics",
+      active: false,
+      visible: true,
+    },
+    {
+      key: "members",
+      label: "Members",
+      href: "/members",
+      active: false,
+      visible: !!showMembersLink,
+    },
+    {
+      key: "it",
+      label: "IT",
+      href: "/it",
+      active: false,
+      visible: !!showDepartmentNav,
+    },
+    {
+      key: "engineering",
+      label: "Engineering",
+      href: "/engineering",
+      active: false,
+      visible: !!showDepartmentNav,
+    },
+  ];
 
   const tabStyle = (isActive: boolean): CSSProperties => ({
     ...btn,
@@ -143,55 +212,19 @@ export default function TeamPageShell({
           flexWrap: "wrap",
         }}
       >
-        {showManagerAreaTabs ? (
-          <button style={tabStyle(activeSection === "general")} onClick={() => router.push("/team/general")}>
-            General
-          </button>
-        ) : null}
-
-        {showSummaryTab ? (
-          <button style={tabStyle(activeSection === "progress")} onClick={() => router.push("/team/progreso")}>
-            Progreso
-          </button>
-        ) : null}
-
-        {showReauditsTab ? (
-          <button style={tabStyle(activeSection === "reaudits")} onClick={() => router.push("/team/recuperacion")}>
-            Recuperación
-          </button>
-        ) : null}
-
-        {showManagerAreaTabs ? (
-          <button style={tabStyle(activeSection === "history")} onClick={() => router.push("/team/historial")}>
-            Historial
-          </button>
-        ) : null}
-
-        <button style={tabStyle(activeSection === "actions")} onClick={() => router.push("/formaciones")}>
-          Formaciones
-        </button>
-
-        <button style={tabStyle(false)} onClick={() => router.push("/analytics")}>
-          Analisis
-        </button>
-
-        {showMembersLink ? (
-          <button style={tabStyle(false)} onClick={() => router.push("/members")}>
-            Members
-          </button>
-        ) : null}
-
-        {showDepartmentNav ? (
-          <Link href="/it" prefetch style={tabStyle(false)}>
-            IT
-          </Link>
-        ) : null}
-
-        {showDepartmentNav ? (
-          <Link href="/engineering" prefetch style={tabStyle(false)}>
-            Engineering
-          </Link>
-        ) : null}
+        {navItems
+          .filter((item) => item.visible)
+          .map((item) =>
+            item.href === "/it" || item.href === "/engineering" ? (
+              <Link key={item.key} href={item.href} prefetch style={tabStyle(item.active)}>
+                {item.label}
+              </Link>
+            ) : (
+              <button key={item.key} style={tabStyle(item.active)} onClick={() => router.push(item.href)}>
+                {item.label}
+              </button>
+            )
+          )}
       </div>
 
       {profileError ? (

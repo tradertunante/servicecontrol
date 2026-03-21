@@ -6,6 +6,7 @@ import { useRouter, usePathname } from "next/navigation";
 import { fetchActiveHotel } from "@/lib/auth/activeHotelClient";
 import { supabase } from "@/lib/supabaseClient";
 import type { Profile, Role } from "@/lib/types";
+import { goBackOrFallback } from "@/lib/navigation/clientBack";
 
 function getPageTitle(pathname: string | null): string {
   if (!pathname) return "";
@@ -172,11 +173,19 @@ export default function HotelHeader() {
       <div ref={headerRef} className="scHeader">
         <div className="left">
           {showBack && (
-            <button className="iconBtn" onClick={() => navTo(backTarget!)} aria-label="Atrás" title="Atrás" disabled={loading}>←</button>
+            <button
+              className="iconBtn"
+              onClick={() => goBackOrFallback(router, backTarget!)}
+              aria-label="Atrás"
+              title="Atrás"
+              disabled={loading}
+            >
+              ←
+            </button>
           )}
           <div className="titleBlock">
             <button onClick={() => navTo(hotelHomeTarget)} onMouseEnter={() => setIsHoveringHotel(true)} onMouseLeave={() => setIsHoveringHotel(false)} className="hotelBtn" title={displayHotel} aria-label="Ir al inicio del hotel" disabled={loading}>
-|              {displayHotel}
+              {displayHotel}
             </button>
             {pageTitle && <div className="pageTitle">{pageTitle}</div>}
           </div>

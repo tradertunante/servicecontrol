@@ -433,3 +433,22 @@ Reducir la latencia percibida del módulo Team separando los flujos pesados en p
 - [ ] ejecutar `npx eslint app/api/departments/backlog/route.ts app/api/departments/backlog/items/[id]/route.ts hooks/useDepartmentCorrectiveActions.ts 'app/(app)/_components/DepartmentCorrectiveActionsPage.tsx`
 - [ ] aplicar migración en Supabase
 - [ ] validar con un run submitido con FAILs hacia `it` y `engineering`
+
+---
+
+## Navegación y Team shell
+
+### Estado
+- [x] botón atrás cliente unificado con fallback por `replace(...)` y uso de `history` real
+- [x] `Formaciones` ya permite entrada de `superadmin`
+- [x] Team shell centraliza tabs visibles por rol en una sola lista
+- [x] roles altos (`superadmin`, `admin`, `general_manager`, `quality`) ya reutilizan el workspace de áreas del módulo Team
+- [x] dashboard y listado de áreas ahora abren el flujo operativo en `/team/*` en vez de quedarse en `/areas/*`
+- [x] actividad reciente ya excluye runs sin score y no submitidos
+
+### Riesgos residuales
+- quedan superficies legacy en `/areas/[areaId]` que siguen existiendo para compatibilidad
+- `rpc_team_summary_v2` sigue siendo la fuente de Team; si se quiere filtrar por `status` server-side habrá que versionar la RPC
+
+### Verificación
+- [x] `npx eslint lib/navigation/clientBack.ts app/components/BackButton.tsx app/components/HotelHeader.tsx lib/auth/permissions.tsx app/(app)/formaciones/layout.tsx app/(app)/team/_hooks/useTeamWorkspace.ts app/(app)/team/_components/TeamPageShell.tsx app/(app)/dashboard/DashboardPageClient.tsx app/(app)/areas/AreasPageClient.tsx app/(app)/my/_hooks/useMyDashboardData.ts app/(app)/team/_hooks/useTeamData.ts`

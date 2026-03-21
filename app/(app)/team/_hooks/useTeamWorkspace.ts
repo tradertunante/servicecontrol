@@ -23,7 +23,13 @@ export function useTeamWorkspace({
     let cancelled = false;
 
     async function loadManagerAreas() {
-      if (profile?.role !== "manager") {
+      const canSeeHotelAreas =
+        profile?.role === "superadmin" ||
+        profile?.role === "admin" ||
+        profile?.role === "general_manager" ||
+        profile?.role === "quality";
+
+      if (profile?.role !== "manager" && !canSeeHotelAreas) {
         setManagerAreaOptions([]);
         setManagerAreasError(null);
         setManagerAreasLoading(false);
@@ -34,30 +40,35 @@ export function useTeamWorkspace({
         setManagerAreasLoading(true);
         setManagerAreasError(null);
 
-        const { data: accessData, error: accessError } = await supabase
-          .from("user_area_access")
-          .select("area_id")
-          .eq("user_id", profile.id)
-          .eq("hotel_id", initialHotelId);
-
-        if (accessError) throw accessError;
-
-        const areaIds = Array.from(
-          new Set((accessData ?? []).map((row: { area_id: string | null }) => row.area_id).filter(Boolean))
-        ) as string[];
-
-        if (areaIds.length === 0) {
-          if (cancelled) return;
-          setManagerAreaOptions([]);
-          setManagerAreasLoading(false);
-          return;
-        }
-
-        const { data: areaData, error: areaError } = await supabase
+        const areaQuery = supabase
           .from("areas")
           .select("id,name,type")
-          .in("id", areaIds)
+          .eq("hotel_id", initialHotelId)
+          .eq("active", true)
           .order("name", { ascending: true });
+
+        const { data: areaData, error: areaError } =
+          profile?.role === "manager"
+            ? await (async () => {
+                const { data: accessData, error: accessError } = await supabase
+                  .from("user_area_access")
+                  .select("area_id")
+                  .eq("user_id", profile.id)
+                  .eq("hotel_id", initialHotelId);
+
+                if (accessError) throw accessError;
+
+                const areaIds = Array.from(
+                  new Set((accessData ?? []).map((row: { area_id: string | null }) => row.area_id).filter(Boolean))
+                ) as string[];
+
+                if (areaIds.length === 0) {
+                  return { data: [] as ManagerAreaOption[], error: null };
+                }
+
+                return areaQuery.in("id", areaIds);
+              })()
+            : areaQuery;
 
         if (areaError) throw areaError;
         if (!cancelled) setManagerAreaOptions((areaData ?? []) as ManagerAreaOption[]);

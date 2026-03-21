@@ -106,7 +106,7 @@ export default function AreasPageClient({
     return areas.filter((a) => `${a.name ?? ""} ${a.type ?? ""} ${a.id ?? ""}`.toLowerCase().includes(q));
   }, [areas, query]);
 
-  const goArea = (areaId: string) => router.push(`/areas/${areaId}?tab=dashboard`);
+  const goArea = (areaId: string) => router.push(`/team/general?area=${areaId}`);
   const canManage = profile?.role === "admin" || profile?.role === "superadmin";
 
   return (
