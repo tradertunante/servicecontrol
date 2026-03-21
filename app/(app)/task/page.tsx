@@ -51,13 +51,13 @@ export default function TasksPage() {
         .limit(50);
 
       // 2) assignments del usuario
-      const taskIds = (tasks ?? []).map((t: any) => t.id);
+      const taskIds = (tasks ?? []).map((t) => t.id);
       const { data: assigns } = taskIds.length
         ? await supabase.from("task_assignments").select("task_id").in("task_id", taskIds).eq("user_id", uid)
-        : { data: [] as any[] };
+        : { data: [] as { task_id: string }[] };
 
-      const mySet = new Set((assigns ?? []).map((a: any) => a.task_id));
-      const my = (tasks ?? []).filter((t: any) => mySet.has(t.id));
+      const mySet = new Set((assigns ?? []).map((a: { task_id: string }) => a.task_id));
+      const my = (tasks ?? []).filter((t) => mySet.has(t.id));
 
       if (!cancel) setRows(my);
       if (!cancel) setLoading(false);

@@ -57,8 +57,8 @@ export default function NewTemplatePageClient({
         } else {
           setSelectedAreaId("");
         }
-      } catch (e: any) {
-        setError(e?.message ?? "Error al cargar datos.");
+      } catch (e: unknown) {
+        setError(e instanceof Error ? e.message : "Error al cargar datos.");
       } finally {
         setLoading(false);
       }
@@ -108,8 +108,8 @@ export default function NewTemplatePageClient({
 
       setSuccess("Auditoria creada. Redirigiendo al editor...");
       setTimeout(() => router.push(`/builder/${payload.template_id}`), 700);
-    } catch (e: any) {
-      setError(e?.message ?? "No se pudo crear la auditoria.");
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "No se pudo crear la auditoria.");
       setSaving(false);
     }
   }

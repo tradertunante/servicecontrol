@@ -72,8 +72,8 @@ export function useTeamWorkspace({
 
         if (areaError) throw areaError;
         if (!cancelled) setManagerAreaOptions((areaData ?? []) as ManagerAreaOption[]);
-      } catch (error: any) {
-        if (!cancelled) setManagerAreasError(error?.message ?? "No se pudieron cargar las áreas asignadas.");
+      } catch (error: unknown) {
+        if (!cancelled) setManagerAreasError(error instanceof Error ? error.message : "No se pudieron cargar las áreas asignadas.");
       } finally {
         if (!cancelled) setManagerAreasLoading(false);
       }

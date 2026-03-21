@@ -66,7 +66,7 @@ export default function DepartmentsModule({ hotelId }: { hotelId: string }) {
         if (!err) {
           setSupportsActive(true);
           setSupportsSortOrder(true);
-          setItems((data ?? []) as any);
+          setItems((data ?? []) as AreaRow[]);
           return;
         }
 
@@ -86,7 +86,7 @@ export default function DepartmentsModule({ hotelId }: { hotelId: string }) {
         if (!err) {
           setSupportsActive(true);
           setSupportsSortOrder(false);
-          setItems((data ?? []) as any);
+          setItems((data ?? []) as AreaRow[]);
           return;
         }
 
@@ -108,11 +108,11 @@ export default function DepartmentsModule({ hotelId }: { hotelId: string }) {
 
         setSupportsActive(false);
         setSupportsSortOrder(false);
-        setItems((data ?? []) as any);
+        setItems((data ?? []) as AreaRow[]);
       }
-    } catch (e: any) {
+    } catch (e: unknown) {
       console.error("[DepartmentsModule] load() error:", e);
-      setError(e?.message || "Error cargando departamentos (areas).");
+      setError((e instanceof Error ? e.message : null) || "Error cargando departamentos (areas).");
       setItems([]);
     } finally {
       setLoading(false);
@@ -185,7 +185,7 @@ export default function DepartmentsModule({ hotelId }: { hotelId: string }) {
     setSaving(true);
     try {
       if (editing) {
-        const patch: any = { name: n };
+        const patch: Record<string, unknown> = { name: n };
         if (supportsSortOrder) patch.sort_order = so;
         if (supportsActive) patch.active = active;
 
@@ -198,7 +198,7 @@ export default function DepartmentsModule({ hotelId }: { hotelId: string }) {
         if (err) throw err;
         setMessage("Departamento actualizado.");
       } else {
-        const payload: any = { name: n, hotel_id: activeHotelId };
+        const payload: Record<string, unknown> = { name: n, hotel_id: activeHotelId };
         if (supportsSortOrder) payload.sort_order = so;
         if (supportsActive) payload.active = true;
 
@@ -210,9 +210,9 @@ export default function DepartmentsModule({ hotelId }: { hotelId: string }) {
 
       setOpen(false);
       await load();
-    } catch (e: any) {
+    } catch (e: unknown) {
       console.error("[DepartmentsModule] save error:", e);
-      setError(e?.message || "Error guardando departamento.");
+      setError((e instanceof Error ? e.message : null) || "Error guardando departamento.");
     } finally {
       setSaving(false);
     }
@@ -242,9 +242,9 @@ export default function DepartmentsModule({ hotelId }: { hotelId: string }) {
 
       setItems((prev) => prev.map((x) => (x.id === row.id ? { ...x, active: next } : x)));
       setMessage(next ? "Departamento activado." : "Departamento desactivado.");
-    } catch (e: any) {
+    } catch (e: unknown) {
       console.error("[DepartmentsModule] toggleActive error:", e);
-      setError(e?.message || "Error actualizando estado.");
+      setError((e instanceof Error ? e.message : null) || "Error actualizando estado.");
     } finally {
       setBusyId(null);
     }
@@ -269,9 +269,9 @@ export default function DepartmentsModule({ hotelId }: { hotelId: string }) {
 
       setItems((prev) => prev.filter((x) => x.id !== row.id));
       setMessage("Departamento borrado.");
-    } catch (e: any) {
+    } catch (e: unknown) {
       console.error("[DepartmentsModule] delete error:", e);
-      setError(e?.message || "Error borrando departamento.");
+      setError((e instanceof Error ? e.message : null) || "Error borrando departamento.");
     } finally {
       setBusyId(null);
     }
@@ -343,7 +343,7 @@ export default function DepartmentsModule({ hotelId }: { hotelId: string }) {
         {supportsActive ? (
           <select
             value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value as any)}
+            onChange={(e) => setStatusFilter(e.target.value as "all" | "active" | "inactive")}
             style={{
               padding: "10px 12px",
               borderRadius: 12,

@@ -63,9 +63,9 @@ export default function StandardsPageClient({
         await loadAll(hotelId);
         if (!alive) return;
         setLoading(false);
-      } catch (e: any) {
+      } catch (e: unknown) {
         if (!alive) return;
-        setError(e?.message ?? "Error al cargar la biblioteca.");
+        setError(e instanceof Error ? e.message : "Error al cargar la biblioteca.");
         setLoading(false);
       }
     })();
@@ -110,7 +110,7 @@ export default function StandardsPageClient({
       if (!res.ok) throw new Error(payload?.error ?? "No se pudo duplicar el pack.");
       toast.success("Pack duplicado correctamente en el hotel.");
       await loadAll(hotelIdInUse);
-    } catch (e: any) { toast.error(e?.message ?? "No se pudo duplicar el pack."); }
+    } catch (e: unknown) { toast.error(e instanceof Error ? e.message : "No se pudo duplicar el pack."); }
     finally { setBusyPackId(null); }
   };
 
@@ -137,7 +137,7 @@ export default function StandardsPageClient({
       const payload = await res.json().catch(() => null);
       if (!res.ok) throw new Error(payload?.error ?? "No se pudo asignar el area.");
       await loadAll(hotelIdInUse);
-    } catch (e: any) { toast.error(e?.message ?? "No se pudo asignar el área."); }
+    } catch (e: unknown) { toast.error(e instanceof Error ? e.message : "No se pudo asignar el área."); }
     finally { setSavingTemplateId(null); }
   };
 
@@ -166,7 +166,7 @@ export default function StandardsPageClient({
       const payload = await res.json().catch(() => null);
       if (!res.ok) throw new Error(payload?.error ?? "No se pudo duplicar la auditoria.");
       await loadAll(hotelIdInUse);
-    } catch (e: any) { toast.error(e?.message ?? "No se pudo duplicar la auditoría."); }
+    } catch (e: unknown) { toast.error(e instanceof Error ? e.message : "No se pudo duplicar la auditoría."); }
     finally { setDuplicatingTemplateId(null); }
   };
 
