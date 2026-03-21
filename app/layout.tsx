@@ -3,6 +3,7 @@ import "./globals.css";
 import type { Metadata } from "next";
 import QueryProvider from "./providers/QueryProvider";
 import AuthSessionSync from "./components/AuthSessionSync";
+import ToastProvider from "./providers/ToastProvider";
 
 export const metadata: Metadata = {
   title: "ServiceControl",
@@ -22,7 +23,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body>
         <QueryProvider>
           <AuthSessionSync />
-          {children}
+          <ToastProvider>
+            {children}
+          </ToastProvider>
         </QueryProvider>
       </body>
     </html>

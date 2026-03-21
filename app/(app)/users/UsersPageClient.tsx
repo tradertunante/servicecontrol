@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useToast } from "@/app/providers/ToastProvider";
 
 import BackButton from "@/app/components/BackButton";
 import { supabase } from "@/lib/supabaseClient";
@@ -23,6 +24,7 @@ export default function UsersPageClient({
   hotelId: string;
 }) {
   const router = useRouter();
+  const toast = useToast();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [users, setUsers] = useState<UserRow[]>([]);
@@ -59,14 +61,14 @@ export default function UsersPageClient({
     const name = target?.full_name || target?.email || userId.slice(0, 8);
 
     if (userId === initialProfile.id) {
-      alert("No puedes borrarte a ti mismo.");
+      toast.error("No puedes borrarte a ti mismo.");
       return;
     }
 
     if (!confirm(`Vas a borrar permanentemente a: ${name}\n\n¿Quieres continuar?`)) return;
     const typed = prompt("Para confirmar, escribe BORRAR");
     if ((typed ?? "").trim().toUpperCase() !== "BORRAR") {
-      alert("Cancelado.");
+      toast.warn("Cancelado.");
       return;
     }
 
@@ -92,7 +94,7 @@ export default function UsersPageClient({
       if (!res.ok) throw new Error(payload?.error ?? "No se pudo borrar.");
       await load();
     } catch (e: any) {
-      alert(`Error borrando: ${e?.message ?? "desconocido"}`);
+      toast.error(`Error borrando: ${e?.message ?? "desconocido"}`);
     } finally {
       setBusyId(null);
     }

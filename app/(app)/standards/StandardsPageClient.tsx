@@ -3,6 +3,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useToast } from "@/app/providers/ToastProvider";
 import { supabase } from "@/lib/supabaseClient";
 import { setActiveHotel } from "@/lib/auth/activeHotelClient";
 import HotelHeader from "@/app/components/HotelHeader";
@@ -21,6 +22,7 @@ export default function StandardsPageClient({
   hotelId: string;
 }) {
   const router = useRouter();
+  const toast = useToast();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [profile] = useState<Profile>(initialProfile);
@@ -86,7 +88,7 @@ export default function StandardsPageClient({
   }, [profile, hotelIdInUse, router]);
 
   const duplicatePackToHotel = async (packId: string) => {
-    if (!hotelIdInUse) return alert("No hay hotel seleccionado.");
+    if (!hotelIdInUse) { toast.warn("No hay hotel seleccionado."); return; }
     setBusyPackId(packId);
     try {
       const { data } = await supabase.auth.getSession();
@@ -106,9 +108,9 @@ export default function StandardsPageClient({
       });
       const payload = await res.json().catch(() => null);
       if (!res.ok) throw new Error(payload?.error ?? "No se pudo duplicar el pack.");
-      alert("Pack duplicado correctamente en el hotel.");
+      toast.success("Pack duplicado correctamente en el hotel.");
       await loadAll(hotelIdInUse);
-    } catch (e: any) { alert(e?.message ?? "No se pudo duplicar el pack."); }
+    } catch (e: any) { toast.error(e?.message ?? "No se pudo duplicar el pack."); }
     finally { setBusyPackId(null); }
   };
 
@@ -135,12 +137,12 @@ export default function StandardsPageClient({
       const payload = await res.json().catch(() => null);
       if (!res.ok) throw new Error(payload?.error ?? "No se pudo asignar el area.");
       await loadAll(hotelIdInUse);
-    } catch (e: any) { alert(e?.message ?? "No se pudo asignar el área."); }
+    } catch (e: any) { toast.error(e?.message ?? "No se pudo asignar el área."); }
     finally { setSavingTemplateId(null); }
   };
 
   const duplicateHotelTemplate = async (template: HotelTemplate) => {
-    if (!hotelIdInUse) return alert("No hay hotel seleccionado.");
+    if (!hotelIdInUse) { toast.warn("No hay hotel seleccionado."); return; }
     const name = window.prompt("Nombre para la copia:", `${template.name} (Copia)`);
     if (!name) return;
     setDuplicatingTemplateId(template.id);
@@ -164,7 +166,7 @@ export default function StandardsPageClient({
       const payload = await res.json().catch(() => null);
       if (!res.ok) throw new Error(payload?.error ?? "No se pudo duplicar la auditoria.");
       await loadAll(hotelIdInUse);
-    } catch (e: any) { alert(e?.message ?? "No se pudo duplicar la auditoría."); }
+    } catch (e: any) { toast.error(e?.message ?? "No se pudo duplicar la auditoría."); }
     finally { setDuplicatingTemplateId(null); }
   };
 

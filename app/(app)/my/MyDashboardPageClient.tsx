@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useToast } from "@/app/providers/ToastProvider";
 
 import { signOutAndRedirect } from "@/lib/auth";
 import { supabase } from "@/lib/supabaseClient";
@@ -24,6 +25,7 @@ export default function MyDashboardPageClient({
   initialHotelId: string;
 }) {
   const router = useRouter();
+  const toast = useToast();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   const { selectedPeriod, setSelectedPeriod, viewMode, setViewMode } = useMyView();
@@ -71,7 +73,7 @@ export default function MyDashboardPageClient({
       } = await supabase.auth.getUser();
 
       if (userError || !user) {
-        alert("No se pudo identificar tu usuario para abrir el área de auditoría.");
+        toast.error("No se pudo identificar tu usuario para abrir el área de auditoría.");
         return;
       }
 
@@ -92,7 +94,7 @@ export default function MyDashboardPageClient({
       );
 
       if (areaIds.length === 0) {
-        alert("No tienes ningún área asignada para auditar.");
+        toast.warn("No tienes ningún área asignada para auditar.");
         return;
       }
 
@@ -104,7 +106,7 @@ export default function MyDashboardPageClient({
       router.push("/areas");
     } catch (error) {
       console.error("Error resolving audit area access:", error);
-      alert("No se pudo abrir el área de auditoría.");
+      toast.error("No se pudo abrir el área de auditoría.");
     }
   }
 
