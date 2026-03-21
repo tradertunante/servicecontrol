@@ -11,7 +11,7 @@ export default async function BuilderPage() {
   });
 
   return (
-    <main style={{ padding: 24, paddingTop: 96 }}>
+    <main className="p-6 pt-24">
       <HotelHeader />
       <BuilderShell profile={profile} hotelIdInUse={hotelId} />
     </main>

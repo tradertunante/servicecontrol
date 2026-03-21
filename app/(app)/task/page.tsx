@@ -69,28 +69,23 @@ export default function TasksPage() {
   }, []);
 
   return (
-    <div style={{ padding: 18, width: "100%" }}>
-      <div style={{ fontSize: 22, fontWeight: 700 }}>Mis tareas</div>
-      <div style={{ opacity: 0.8, marginTop: 6 }}>Tareas objetivo asignadas a ti.</div>
+    <div className="p-[18px] w-full">
+      <div className="text-[22px] font-bold">Mis tareas</div>
+      <div className="opacity-80 mt-[6px]">Tareas objetivo asignadas a ti.</div>
 
       {loading ? (
-        <div style={{ marginTop: 14 }}>Cargando…</div>
+        <div className="mt-[14px]">Cargando…</div>
       ) : rows.length === 0 ? (
-        <div style={{ marginTop: 14, opacity: 0.85 }}>No tienes tareas ahora mismo.</div>
+        <div className="mt-[14px] opacity-[0.85]">No tienes tareas ahora mismo.</div>
       ) : (
-        <div style={{ marginTop: 14, display: "grid", gap: 10 }}>
+        <div className="mt-[14px] grid gap-[10px]">
           {rows.map((r) => (
             <div
               key={r.id}
-              style={{
-                border: "1px solid rgba(255,255,255,0.10)",
-                borderRadius: 14,
-                padding: 12,
-                background: "rgba(255,255,255,0.04)",
-              }}
+              className="border border-[rgba(255,255,255,0.10)] rounded-[14px] p-3 bg-[rgba(255,255,255,0.04)]"
             >
-              <div style={{ fontWeight: 650 }}>{r.title ?? "Tarea"}</div>
-              <div style={{ opacity: 0.8, marginTop: 4, fontSize: 13 }}>
+              <div className="font-[650]">{r.title ?? "Tarea"}</div>
+              <div className="opacity-80 mt-1 text-[13px]">
                 Estado: <b>{r.status ?? "—"}</b> · Vence: <b>{r.due_date?.slice(0, 10) ?? "—"}</b>
               </div>
             </div>

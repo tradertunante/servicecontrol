@@ -11,9 +11,9 @@ export default async function AdminPage() {
   });
 
   return (
-    <div style={{ minHeight: "100vh", background: "#eef1f5" }}>
+    <div className="min-h-screen bg-[#eef1f5]">
       <HotelHeader />
-      <div style={{ padding: 18 }}>
+      <div className="p-[18px]">
         <AdminShell initialHotelId={hotelId} />
       </div>
     </div>

@@ -100,124 +100,85 @@ export default function UsersPageClient({
     }
   }
 
-  const card: React.CSSProperties = {
-    borderRadius: 18,
-    border: "1px solid rgba(0,0,0,0.08)",
-    background: "rgba(255,255,255,0.75)",
-    overflow: "hidden",
-  };
-  const topBtn: React.CSSProperties = {
-    padding: "12px 16px",
-    borderRadius: 12,
-    border: "1px solid rgba(0,0,0,0.2)",
-    background: "#000",
-    color: "#fff",
-    fontWeight: 950,
-    cursor: "pointer",
-    height: 44,
-  };
-  const topBtnLight: React.CSSProperties = { ...topBtn, background: "#fff", color: "#000" };
-  const headerCell: React.CSSProperties = {
-    fontWeight: 950,
-    padding: "14px 16px",
-    borderBottom: "1px solid rgba(0,0,0,0.06)",
-    background: "rgba(255,255,255,0.85)",
-  };
-  const rowCell: React.CSSProperties = {
-    padding: "14px 16px",
-    borderBottom: "1px solid rgba(0,0,0,0.05)",
-    verticalAlign: "middle",
-  };
-  const actionBtn: React.CSSProperties = {
-    padding: "10px 14px",
-    borderRadius: 12,
-    border: "1px solid rgba(0,0,0,0.35)",
-    background: "#fff",
-    fontWeight: 950,
-    cursor: "pointer",
-    height: 42,
-  };
-  const dangerBtn: React.CSSProperties = {
-    padding: "10px 14px",
-    borderRadius: 12,
-    border: "1px solid rgba(220,20,60,0.55)",
-    background: "rgba(220,20,60,0.08)",
-    color: "crimson",
-    fontWeight: 950,
-    cursor: "pointer",
-    height: 42,
-  };
-
   if (loading) {
     return (
-      <main style={{ padding: 24 }}>
+      <main className="p-6">
         <BackButton fallback="/" />
-        <h1 style={{ fontSize: 56, marginBottom: 6 }}>Usuarios</h1>
-        <div style={{ opacity: 0.8 }}>Cargando...</div>
+        <h1 className="text-[56px] mb-1.5">Usuarios</h1>
+        <div className="opacity-80">Cargando...</div>
       </main>
     );
   }
 
   if (error) {
     return (
-      <main style={{ padding: 24 }}>
+      <main className="p-6">
         <BackButton fallback="/" />
-        <h1 style={{ fontSize: 56, marginBottom: 6 }}>Usuarios</h1>
-        <div style={{ color: "crimson", fontWeight: 950 }}>{error}</div>
+        <h1 className="text-[56px] mb-1.5">Usuarios</h1>
+        <div className="text-[crimson] font-[950]">{error}</div>
       </main>
     );
   }
 
   return (
-    <main style={{ padding: 24 }}>
+    <main className="p-6">
       <BackButton fallback="/" />
-      <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+      <div className="flex justify-between gap-3 flex-wrap">
         <div>
-          <h1 style={{ fontSize: 56, marginBottom: 6 }}>Usuarios</h1>
-          <div style={{ opacity: 0.8 }}>
-            {initialProfile.role} · Hotel: <span style={{ fontFamily: "monospace" }}>{hotelId}</span>
+          <h1 className="text-[56px] mb-1.5">Usuarios</h1>
+          <div className="opacity-80">
+            {initialProfile.role} · Hotel: <span className="font-mono">{hotelId}</span>
           </div>
         </div>
-        <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-          <button style={topBtn} onClick={() => router.push("/users/new")}>
+        <div className="flex gap-3 items-center">
+          <button
+            className="px-4 py-3 rounded-xl border border-black/20 bg-black text-white font-[950] cursor-pointer h-11"
+            onClick={() => router.push("/users/new")}
+          >
             + Crear usuario
           </button>
-          <button style={topBtnLight} onClick={() => router.push("/")}>
+          <button
+            className="px-4 py-3 rounded-xl border border-black/20 bg-white text-black font-[950] cursor-pointer h-11"
+            onClick={() => router.push("/")}
+          >
             Volver
           </button>
         </div>
       </div>
-      <div style={{ marginTop: 18, ...card }}>
-        <div style={{ display: "grid", gridTemplateColumns: "2fr 2fr 1fr 1fr 220px", alignItems: "center" }}>
-          <div style={headerCell}>Nombre</div>
-          <div style={headerCell}>Email</div>
-          <div style={headerCell}>Rol</div>
-          <div style={headerCell}>Estado</div>
-          <div style={headerCell}></div>
+      <div className="mt-[18px] rounded-[18px] border border-black/[0.08] bg-white/75 overflow-hidden">
+        <div className="grid [grid-template-columns:2fr_2fr_1fr_1fr_220px] items-center">
+          <div className="font-[950] px-4 py-[14px] border-b border-black/[0.06] bg-white/85">Nombre</div>
+          <div className="font-[950] px-4 py-[14px] border-b border-black/[0.06] bg-white/85">Email</div>
+          <div className="font-[950] px-4 py-[14px] border-b border-black/[0.06] bg-white/85">Rol</div>
+          <div className="font-[950] px-4 py-[14px] border-b border-black/[0.06] bg-white/85">Estado</div>
+          <div className="font-[950] px-4 py-[14px] border-b border-black/[0.06] bg-white/85"></div>
           {users.map((user) => (
-            <div key={user.id} style={{ display: "contents" }}>
-              <div style={rowCell}>
-                <div style={{ fontWeight: 950 }}>
+            <div key={user.id} className="contents">
+              <div className="px-4 py-[14px] border-b border-black/[0.05] align-middle">
+                <div className="font-[950]">
                   {user.full_name?.trim() ? user.full_name : "—"}
-                  <span style={{ marginLeft: 10, opacity: 0.55, fontSize: 13 }}>{user.id.slice(0, 8)}…</span>
+                  <span className="ml-2.5 opacity-55 text-[13px]">{user.id.slice(0, 8)}…</span>
                 </div>
               </div>
-              <div style={rowCell}>
-                <div style={{ opacity: 0.9, fontWeight: 800 }}>{user.email ?? "—"}</div>
+              <div className="px-4 py-[14px] border-b border-black/[0.05] align-middle">
+                <div className="opacity-90 font-[800]">{user.email ?? "—"}</div>
               </div>
-              <div style={rowCell}>
-                <div style={{ fontWeight: 900 }}>{user.role}</div>
+              <div className="px-4 py-[14px] border-b border-black/[0.05] align-middle">
+                <div className="font-[900]">{user.role}</div>
               </div>
-              <div style={rowCell}>
-                <div style={{ fontWeight: 900 }}>{user.active ? "Activo" : "Inactivo"}</div>
+              <div className="px-4 py-[14px] border-b border-black/[0.05] align-middle">
+                <div className="font-[900]">{user.active ? "Activo" : "Inactivo"}</div>
               </div>
-              <div style={{ ...rowCell, display: "flex", justifyContent: "flex-end", gap: 10, flexWrap: "wrap" }}>
-                <button style={actionBtn} onClick={() => router.push(`/users/${user.id}`)}>
+              <div className="px-4 py-[14px] border-b border-black/[0.05] align-middle flex justify-end gap-2.5 flex-wrap">
+                <button
+                  className="px-[14px] py-2.5 rounded-xl border border-black/35 bg-white font-[950] cursor-pointer h-[42px]"
+                  onClick={() => router.push(`/users/${user.id}`)}
+                >
                   Editar
                 </button>
                 <button
+                  className="px-[14px] py-2.5 rounded-xl border border-[rgba(220,20,60,0.55)] bg-[rgba(220,20,60,0.08)] text-[crimson] font-[950] cursor-pointer h-[42px]"
                   style={{
-                    ...dangerBtn,
                     opacity: busyId === user.id ? 0.6 : 1,
                     cursor: busyId ? "not-allowed" : "pointer",
                   }}
@@ -230,7 +191,7 @@ export default function UsersPageClient({
             </div>
           ))}
           {users.length === 0 ? (
-            <div style={{ padding: 16, opacity: 0.8, gridColumn: "1 / -1" }}>No hay usuarios para mostrar.</div>
+            <div className="p-4 opacity-80 [grid-column:1_/_-1]">No hay usuarios para mostrar.</div>
           ) : null}
         </div>
       </div>

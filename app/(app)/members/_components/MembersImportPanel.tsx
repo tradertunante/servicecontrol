@@ -12,51 +12,6 @@ import {
 } from "@/lib/members/import";
 import type { MemberAreaOption, MemberImportPreviewRow, MemberImportResponse } from "../_lib/memberTypes";
 
-function cardStyle() {
-  return {
-    border: "1px solid #e5e7eb",
-    background: "#fff",
-    padding: 16,
-    borderRadius: 12,
-    display: "grid",
-    gap: 12,
-  } as const;
-}
-
-function inputStyle() {
-  return {
-    border: "1px solid #d1d5db",
-    borderRadius: 10,
-    padding: "10px 12px",
-    width: "100%",
-    background: "#fff",
-  } as const;
-}
-
-function primaryButtonStyle(disabled = false) {
-  return {
-    border: "1px solid #d1d5db",
-    background: disabled ? "#f3f4f6" : "#111827",
-    color: disabled ? "#9ca3af" : "#fff",
-    padding: "10px 12px",
-    borderRadius: 10,
-    fontWeight: 700,
-    cursor: disabled ? "not-allowed" : "pointer",
-  } as const;
-}
-
-function secondaryButtonStyle(disabled = false) {
-  return {
-    border: "1px solid #d1d5db",
-    background: "#fff",
-    color: disabled ? "#9ca3af" : "#111827",
-    padding: "10px 12px",
-    borderRadius: 10,
-    fontWeight: 700,
-    cursor: disabled ? "not-allowed" : "pointer",
-  } as const;
-}
-
 function normalizeError(message: string | null | undefined, fallback: string) {
   const safeMessage = String(message ?? "").trim();
   return safeMessage || fallback;
@@ -193,26 +148,30 @@ export default function MembersImportPanel({
   }
 
   return (
-    <div style={cardStyle()}>
-      <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", alignItems: "start" }}>
-        <div style={{ display: "grid", gap: 6 }}>
-          <div style={{ fontSize: 18, fontWeight: 800 }}>Importar Excel</div>
-          <div style={{ color: "#4b5563", lineHeight: 1.5 }}>
+    <div className="border border-[#e5e7eb] bg-white p-4 rounded-xl grid gap-3">
+      <div className="flex justify-between gap-3 flex-wrap items-start">
+        <div className="grid gap-1.5">
+          <div className="text-lg font-extrabold">Importar Excel</div>
+          <div className="text-[#4b5563] leading-[1.5]">
             Sube un archivo <b>.xlsx</b> o <b>.xls</b> con columnas <b>full_name</b>, <b>employee_number</b>, <b>active</b> y <b>areas</b>.
             Las areas deben coincidir por nombre visible del hotel actual y pueden venir separadas por comas.
           </div>
         </div>
-        <button type="button" onClick={downloadTemplate} style={secondaryButtonStyle(false)}>
+        <button
+          type="button"
+          onClick={downloadTemplate}
+          className="border border-[#d1d5db] bg-white text-[#111827] px-3 py-2.5 rounded-[10px] font-bold cursor-pointer"
+        >
           Descargar plantilla
         </button>
       </div>
 
-      <div style={{ display: "grid", gap: 8 }}>
-        <div style={{ fontWeight: 700 }}>Formato esperado</div>
-        <div style={{ color: "#4b5563", lineHeight: 1.5 }}>
+      <div className="grid gap-2">
+        <div className="font-bold">Formato esperado</div>
+        <div className="text-[#4b5563] leading-[1.5]">
           `full_name` y `employee_number` son obligatorios. `active` acepta `true/false`, `yes/no`, `si/no`, `1/0`. Si viene vacio, se toma como activo. `areas` es opcional.
         </div>
-        <div style={{ color: "#4b5563", lineHeight: 1.5 }}>
+        <div className="text-[#4b5563] leading-[1.5]">
           Areas disponibles en tu alcance actual: {areaOptions.length ? areaOptions.map((area) => area.name).join(", ") : "Sin areas disponibles"}
         </div>
       </div>
@@ -220,12 +179,17 @@ export default function MembersImportPanel({
       <input
         type="file"
         accept=".xlsx,.xls,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        style={inputStyle()}
+        className="border border-[#d1d5db] rounded-[10px] px-3 py-2.5 w-full bg-white"
         onChange={(event) => void handleFileChange(event.target.files?.[0] ?? null)}
       />
 
-      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-        <button type="button" onClick={() => void importNow()} disabled={importing || loadingPreview || !selectedFile} style={primaryButtonStyle(importing || loadingPreview || !selectedFile)}>
+      <div className="flex gap-2 flex-wrap">
+        <button
+          type="button"
+          onClick={() => void importNow()}
+          disabled={importing || loadingPreview || !selectedFile}
+          className={`border border-[#d1d5db] px-3 py-2.5 rounded-[10px] font-bold ${importing || loadingPreview || !selectedFile ? "bg-[#f3f4f6] text-[#9ca3af] cursor-not-allowed" : "bg-[#111827] text-white cursor-pointer"}`}
+        >
           {importing ? "Procesando importacion..." : "Importar Excel"}
         </button>
         <button
@@ -237,44 +201,44 @@ export default function MembersImportPanel({
             setError(null);
           }}
           disabled={importing}
-          style={secondaryButtonStyle(importing)}
+          className={`border border-[#d1d5db] bg-white px-3 py-2.5 rounded-[10px] font-bold ${importing ? "text-[#9ca3af] cursor-not-allowed" : "text-[#111827] cursor-pointer"}`}
         >
           Limpiar
         </button>
       </div>
 
-      {loadingPreview ? <div style={{ color: "#4b5563" }}>Leyendo archivo y preparando vista previa...</div> : null}
-      {error ? <div style={{ color: "#b91c1c", fontWeight: 600 }}>{error}</div> : null}
+      {loadingPreview ? <div className="text-[#4b5563]">Leyendo archivo y preparando vista previa...</div> : null}
+      {error ? <div className="text-[#b91c1c] font-semibold">{error}</div> : null}
 
       {previewRows.length > 0 ? (
-        <div style={{ display: "grid", gap: 8 }}>
-          <div style={{ fontSize: 16, fontWeight: 800 }}>
+        <div className="grid gap-2">
+          <div className="text-base font-extrabold">
             Vista previa: {previewSummary.rows} filas detectadas
           </div>
-          <div style={{ overflowX: "auto", border: "1px solid #e5e7eb", borderRadius: 10 }}>
-            <table style={{ width: "100%", borderCollapse: "collapse" }}>
-              <thead style={{ background: "#f9fafb" }}>
+          <div className="overflow-x-auto border border-[#e5e7eb] rounded-[10px]">
+            <table className="w-full border-collapse">
+              <thead className="bg-[#f9fafb]">
                 <tr>
-                  <th style={{ textAlign: "left", padding: 10 }}>Fila</th>
-                  <th style={{ textAlign: "left", padding: 10 }}>Nombre</th>
-                  <th style={{ textAlign: "left", padding: 10 }}>No. colaborador</th>
-                  <th style={{ textAlign: "left", padding: 10 }}>Activo</th>
-                  <th style={{ textAlign: "left", padding: 10 }}>Areas</th>
+                  <th className="text-left p-2.5">Fila</th>
+                  <th className="text-left p-2.5">Nombre</th>
+                  <th className="text-left p-2.5">No. colaborador</th>
+                  <th className="text-left p-2.5">Activo</th>
+                  <th className="text-left p-2.5">Areas</th>
                 </tr>
               </thead>
               <tbody>
                 {previewRows.slice(0, 8).map((row) => (
-                  <tr key={row.row_number} style={{ borderTop: "1px solid #e5e7eb" }}>
-                    <td style={{ padding: 10 }}>{row.row_number}</td>
-                    <td style={{ padding: 10 }}>{row.full_name || "—"}</td>
-                    <td style={{ padding: 10 }}>{row.employee_number || "—"}</td>
-                    <td style={{ padding: 10 }}>{row.active || "true"}</td>
-                    <td style={{ padding: 10 }}>{row.areas || "—"}</td>
+                  <tr key={row.row_number} className="border-t border-[#e5e7eb]">
+                    <td className="p-2.5">{row.row_number}</td>
+                    <td className="p-2.5">{row.full_name || "—"}</td>
+                    <td className="p-2.5">{row.employee_number || "—"}</td>
+                    <td className="p-2.5">{row.active || "true"}</td>
+                    <td className="p-2.5">{row.areas || "—"}</td>
                   </tr>
                 ))}
                 {previewRows.length > 8 ? (
-                  <tr style={{ borderTop: "1px solid #e5e7eb" }}>
-                    <td colSpan={5} style={{ padding: 10, color: "#4b5563" }}>
+                  <tr className="border-t border-[#e5e7eb]">
+                    <td colSpan={5} className="p-2.5 text-[#4b5563]">
                       ... y {previewRows.length - 8} filas mas.
                     </td>
                   </tr>
@@ -286,34 +250,34 @@ export default function MembersImportPanel({
       ) : null}
 
       {result ? (
-        <div style={{ display: "grid", gap: 10 }}>
-          <div style={{ fontSize: 16, fontWeight: 800 }}>
+        <div className="grid gap-2.5">
+          <div className="text-base font-extrabold">
             Resultado: {result.created_count} creados, {result.skipped_count} omitidos, {result.error_count} con error
           </div>
-          <div style={{ color: "#4b5563" }}>
+          <div className="text-[#4b5563]">
             Total procesado: {result.total_rows}. La importacion es parcial: las filas validas se crean aunque otras fallen.
           </div>
-          <div style={{ overflowX: "auto", border: "1px solid #e5e7eb", borderRadius: 10 }}>
-            <table style={{ width: "100%", borderCollapse: "collapse" }}>
-              <thead style={{ background: "#f9fafb" }}>
+          <div className="overflow-x-auto border border-[#e5e7eb] rounded-[10px]">
+            <table className="w-full border-collapse">
+              <thead className="bg-[#f9fafb]">
                 <tr>
-                  <th style={{ textAlign: "left", padding: 10 }}>Fila</th>
-                  <th style={{ textAlign: "left", padding: 10 }}>Estado</th>
-                  <th style={{ textAlign: "left", padding: 10 }}>Nombre</th>
-                  <th style={{ textAlign: "left", padding: 10 }}>No. colaborador</th>
-                  <th style={{ textAlign: "left", padding: 10 }}>Mensaje</th>
+                  <th className="text-left p-2.5">Fila</th>
+                  <th className="text-left p-2.5">Estado</th>
+                  <th className="text-left p-2.5">Nombre</th>
+                  <th className="text-left p-2.5">No. colaborador</th>
+                  <th className="text-left p-2.5">Mensaje</th>
                 </tr>
               </thead>
               <tbody>
                 {result.row_results.map((row) => (
-                  <tr key={`${row.row_number}-${row.employee_number}-${row.status}`} style={{ borderTop: "1px solid #e5e7eb" }}>
-                    <td style={{ padding: 10 }}>{row.row_number}</td>
-                    <td style={{ padding: 10, fontWeight: 700 }}>
+                  <tr key={`${row.row_number}-${row.employee_number}-${row.status}`} className="border-t border-[#e5e7eb]">
+                    <td className="p-2.5">{row.row_number}</td>
+                    <td className="p-2.5 font-bold">
                       {row.status === "created" ? "Creado" : row.status === "skipped" ? "Omitido" : "Error"}
                     </td>
-                    <td style={{ padding: 10 }}>{row.full_name || "—"}</td>
-                    <td style={{ padding: 10 }}>{row.employee_number || "—"}</td>
-                    <td style={{ padding: 10 }}>{row.message}</td>
+                    <td className="p-2.5">{row.full_name || "—"}</td>
+                    <td className="p-2.5">{row.employee_number || "—"}</td>
+                    <td className="p-2.5">{row.message}</td>
                   </tr>
                 ))}
               </tbody>

@@ -224,14 +224,17 @@ export default function UserDetailPageClient({
     }
   };
 
-  if (loading) return <p style={{ padding: 24, fontFamily: "system-ui" }}>Cargando...</p>;
+  if (loading) return <p className="p-6 font-[system-ui]">Cargando...</p>;
 
   if (!userRow) {
     return (
-      <main style={{ padding: 24, fontFamily: "system-ui" }}>
-        <h1 style={{ fontSize: 22, fontWeight: 900 }}>Editar usuario</h1>
-        <p style={{ marginTop: 12 }}>{msg ?? "No disponible."}</p>
-        <button onClick={() => router.push("/users")} style={{ marginTop: 12, padding: "10px 14px", borderRadius: 10, border: "1px solid #000", background: "#fff", cursor: "pointer", fontWeight: 800 }}>
+      <main className="p-6 font-[system-ui]">
+        <h1 className="text-[22px] font-black">Editar usuario</h1>
+        <p className="mt-3">{msg ?? "No disponible."}</p>
+        <button
+          onClick={() => router.push("/users")}
+          className="mt-3 px-[14px] py-2.5 rounded-[10px] border border-black bg-white cursor-pointer font-extrabold"
+        >
           Volver
         </button>
       </main>
@@ -239,44 +242,87 @@ export default function UserDetailPageClient({
   }
 
   return (
-    <main style={{ padding: 24, fontFamily: "system-ui" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+    <main className="p-6 font-[system-ui]">
+      <div className="flex justify-between gap-3 flex-wrap">
         <div>
-          <h1 style={{ fontSize: 24, fontWeight: 950, margin: 0 }}>Editar usuario</h1>
-          <div style={{ marginTop: 8, opacity: 0.75 }}><span style={{ fontWeight: 900 }}>Email:</span> {userRow.email ?? "—"}</div>
-          <div style={{ marginTop: 6, opacity: 0.7 }}>ID: <span style={{ fontFamily: "monospace" }}>{userRow.id}</span></div>
-          <div style={{ marginTop: 6, opacity: 0.7 }}>Hotel: <span style={{ fontFamily: "monospace" }}>{userRow.hotel_id}</span></div>
+          <h1 className="text-2xl font-black m-0">Editar usuario</h1>
+          <div className="mt-2 opacity-75"><span className="font-black">Email:</span> {userRow.email ?? "—"}</div>
+          <div className="mt-1.5 opacity-70">ID: <span className="font-mono">{userRow.id}</span></div>
+          <div className="mt-1.5 opacity-70">Hotel: <span className="font-mono">{userRow.hotel_id}</span></div>
         </div>
-        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-          <button onClick={() => router.push("/users")} style={{ padding: "10px 14px", borderRadius: 10, border: "1px solid #ddd", background: "#fff", cursor: "pointer", fontWeight: 900 }}>Volver</button>
-          <button onClick={save} disabled={saving} style={{ padding: "10px 14px", borderRadius: 10, border: "1px solid #000", background: "#000", color: "#fff", cursor: "pointer", fontWeight: 950, opacity: saving ? 0.6 : 1 }}>{saving ? "Guardando..." : "Guardar"}</button>
-          <button onClick={() => setShowDelete((value) => !value)} style={{ padding: "10px 14px", borderRadius: 10, border: "1px solid rgba(220,20,60,0.6)", background: "rgba(220,20,60,0.08)", color: "crimson", cursor: "pointer", fontWeight: 950 }}>Borrar usuario</button>
+        <div className="flex gap-2.5 flex-wrap">
+          <button
+            onClick={() => router.push("/users")}
+            className="px-[14px] py-2.5 rounded-[10px] border border-[#ddd] bg-white cursor-pointer font-black"
+          >
+            Volver
+          </button>
+          <button
+            onClick={save}
+            disabled={saving}
+            className={`px-[14px] py-2.5 rounded-[10px] border border-black bg-black text-white cursor-pointer font-black ${saving ? "opacity-60" : "opacity-100"}`}
+          >
+            {saving ? "Guardando..." : "Guardar"}
+          </button>
+          <button
+            onClick={() => setShowDelete((value) => !value)}
+            className="px-[14px] py-2.5 rounded-[10px] border border-[rgba(220,20,60,0.6)] bg-[rgba(220,20,60,0.08)] text-[crimson] cursor-pointer font-black"
+          >
+            Borrar usuario
+          </button>
         </div>
       </div>
 
-      {msg ? <div style={{ marginTop: 14, padding: 12, borderRadius: 12, border: "1px solid rgba(0,0,0,0.2)", background: "#fff" }}>{msg}</div> : null}
+      {msg ? (
+        <div className="mt-[14px] p-3 rounded-xl border border-black/20 bg-white">{msg}</div>
+      ) : null}
 
       {showDelete ? (
-        <div style={{ marginTop: 14, padding: 14, borderRadius: 14, border: "1px solid rgba(220,20,60,0.35)", background: "rgba(220,20,60,0.06)" }}>
-          <div style={{ fontWeight: 950, color: "crimson" }}>Borrado permanente</div>
-          <div style={{ marginTop: 6, opacity: 0.85 }}>Para confirmar, escribe <span style={{ fontWeight: 950 }}>BORRAR</span>.</div>
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 10 }}>
-            <input value={deleteConfirm} onChange={(e) => setDeleteConfirm(e.target.value)} placeholder="Escribe BORRAR" style={{ padding: 12, borderRadius: 10, border: "1px solid rgba(220,20,60,0.4)", minWidth: 240, fontWeight: 900 }} />
-            <button onClick={deleteUser} disabled={deleting} style={{ padding: "12px 14px", borderRadius: 10, border: "1px solid crimson", background: "crimson", color: "#fff", fontWeight: 950, cursor: "pointer", opacity: deleting ? 0.6 : 1 }}>{deleting ? "Borrando..." : "Confirmar borrado"}</button>
-            <button onClick={() => { setShowDelete(false); setDeleteConfirm(""); }} style={{ padding: "12px 14px", borderRadius: 10, border: "1px solid rgba(0,0,0,0.2)", background: "#fff", fontWeight: 900, cursor: "pointer" }}>Cancelar</button>
+        <div className="mt-[14px] p-[14px] rounded-[14px] border border-[rgba(220,20,60,0.35)] bg-[rgba(220,20,60,0.06)]">
+          <div className="font-black text-[crimson]">Borrado permanente</div>
+          <div className="mt-1.5 opacity-85">Para confirmar, escribe <span className="font-black">BORRAR</span>.</div>
+          <div className="flex gap-2.5 flex-wrap mt-2.5">
+            <input
+              value={deleteConfirm}
+              onChange={(e) => setDeleteConfirm(e.target.value)}
+              placeholder="Escribe BORRAR"
+              className="p-3 rounded-[10px] border border-[rgba(220,20,60,0.4)] min-w-[240px] font-black"
+            />
+            <button
+              onClick={deleteUser}
+              disabled={deleting}
+              className={`px-[14px] py-3 rounded-[10px] border border-[crimson] bg-[crimson] text-white font-black cursor-pointer ${deleting ? "opacity-60" : "opacity-100"}`}
+            >
+              {deleting ? "Borrando..." : "Confirmar borrado"}
+            </button>
+            <button
+              onClick={() => { setShowDelete(false); setDeleteConfirm(""); }}
+              className="px-[14px] py-3 rounded-[10px] border border-black/20 bg-white font-black cursor-pointer"
+            >
+              Cancelar
+            </button>
           </div>
         </div>
       ) : null}
 
-      <div style={{ marginTop: 18, display: "grid", gap: 14 }}>
-        <label style={{ display: "grid", gap: 6 }}>
-          <span style={{ fontWeight: 900 }}>Nombre</span>
-          <input value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Nombre y apellidos" style={{ padding: 12, borderRadius: 10, border: "1px solid #ddd" }} />
+      <div className="mt-[18px] grid gap-[14px]">
+        <label className="grid gap-1.5">
+          <span className="font-black">Nombre</span>
+          <input
+            value={fullName}
+            onChange={(e) => setFullName(e.target.value)}
+            placeholder="Nombre y apellidos"
+            className="p-3 rounded-[10px] border border-[#ddd]"
+          />
         </label>
 
-        <label style={{ display: "grid", gap: 6 }}>
-          <span style={{ fontWeight: 900 }}>Rol</span>
-          <select value={role} onChange={(e) => setRole(e.target.value as Role)} style={{ padding: 12, borderRadius: 10, border: "1px solid #ddd" }}>
+        <label className="grid gap-1.5">
+          <span className="font-black">Rol</span>
+          <select
+            value={role}
+            onChange={(e) => setRole(e.target.value as Role)}
+            className="p-3 rounded-[10px] border border-[#ddd]"
+          >
             {availableRoleOptions.map((candidateRole) => (
               <option key={candidateRole} value={candidateRole}>
                 {candidateRole}
@@ -285,22 +331,26 @@ export default function UserDetailPageClient({
           </select>
         </label>
 
-        <label style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <label className="flex items-center gap-2.5">
           <input type="checkbox" checked={active} onChange={(e) => setActive(e.target.checked)} />
-          <span style={{ fontWeight: 900 }}>Usuario activo</span>
+          <span className="font-black">Usuario activo</span>
         </label>
       </div>
 
-      <div style={{ marginTop: 22 }}>
-        <h2 style={{ fontSize: 18, fontWeight: 950, margin: 0 }}>Areas habilitadas</h2>
-        <div style={{ marginTop: 12 }}>
-          {areasLoading ? <div style={{ opacity: 0.8 }}>Cargando areas...</div> : areas.length === 0 ? <div style={{ opacity: 0.8 }}>No hay areas activas en este hotel.</div> : (
-            <div style={{ display: "grid", gap: 10 }}>
+      <div className="mt-[22px]">
+        <h2 className="text-lg font-black m-0">Areas habilitadas</h2>
+        <div className="mt-3">
+          {areasLoading ? (
+            <div className="opacity-80">Cargando areas...</div>
+          ) : areas.length === 0 ? (
+            <div className="opacity-80">No hay areas activas en este hotel.</div>
+          ) : (
+            <div className="grid gap-2.5">
               {areas.map((area) => (
-                <label key={area.id} style={{ display: "flex", gap: 10, alignItems: "center", padding: 12, borderRadius: 12, border: "1px solid #ddd" }}>
+                <label key={area.id} className="flex gap-2.5 items-center p-3 rounded-xl border border-[#ddd]">
                   <input type="checkbox" checked={selectedAreaIds.includes(area.id)} onChange={() => toggleArea(area.id)} />
-                  <span style={{ fontWeight: 900 }}>{area.name}</span>
-                  <span style={{ opacity: 0.7 }}>{area.type ?? "Sin tipo"}</span>
+                  <span className="font-black">{area.name}</span>
+                  <span className="opacity-70">{area.type ?? "Sin tipo"}</span>
                 </label>
               ))}
             </div>
