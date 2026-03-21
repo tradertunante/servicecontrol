@@ -37,7 +37,7 @@ const MODULE_ROLE_MAP: Record<AuthorizationModule, Role[]> = {
   builder: ["admin", "superadmin"],
   users: ["admin", "superadmin"],
   team: ["superadmin", "admin", "general_manager", "manager", "quality", "engineering", "systems", "it"],
-  team_manager: ["manager"],
+  team_manager: ["superadmin", "admin", "general_manager", "manager", "quality"],
   members: ["manager", "quality", "general_manager", "admin", "superadmin"],
 };
 
