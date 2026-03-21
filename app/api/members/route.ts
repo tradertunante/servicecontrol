@@ -19,6 +19,10 @@ export async function GET(request: NextRequest) {
     const rawStatus = request.nextUrl.searchParams.get("status")?.trim().toLowerCase() ?? "active";
     const status: "all" | "active" | "inactive" =
       rawStatus === "inactive" ? "inactive" : rawStatus === "all" ? "all" : "active";
+
+    const page = Math.max(1, parseInt(request.nextUrl.searchParams.get("page") ?? "1", 10) || 1);
+    const pageSize = Math.min(100, Math.max(10, parseInt(request.nextUrl.searchParams.get("page_size") ?? "50", 10) || 50));
+
     const hotelResult = resolveMembersHotelId(callerResult.caller);
     if (!hotelResult.ok) return jsonError(hotelResult.error, hotelResult.status);
 
@@ -39,12 +43,22 @@ export async function GET(request: NextRequest) {
       status
     );
 
+    const total = payload.members.length;
+    const start = (page - 1) * pageSize;
+    const pagedMembers = payload.members.slice(start, start + pageSize);
+
     return NextResponse.json({
       ok: true,
-      members: payload.members,
+      members: pagedMembers,
       available_areas: payload.availableAreas,
       hotel_id: hotelResult.hotelId,
       role: callerResult.caller.role,
+      pagination: {
+        page,
+        page_size: pageSize,
+        total,
+        total_pages: Math.ceil(total / pageSize),
+      },
     });
   } catch (error) {
     return jsonError(error instanceof Error ? error.message : "Error inesperado.", 500);

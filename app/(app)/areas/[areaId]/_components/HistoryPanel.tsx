@@ -155,7 +155,8 @@ export default function HistoryPanel({
         .eq("status", "submitted")
         .gte("executed_at", startISO)
         .lte("executed_at", endISO)
-        .order("executed_at", { ascending: false });
+        .order("executed_at", { ascending: false })
+        .limit(100);
 
       if (urlTemplate !== "ALL") {
         q = q.eq("audit_template_id", urlTemplate);
@@ -267,7 +268,8 @@ export default function HistoryPanel({
         .eq("audit_template_id", histTemplateId)
         .gte("executed_at", start)
         .lt("executed_at", end)
-        .order("executed_at", { ascending: false });
+        .order("executed_at", { ascending: false })
+        .limit(100);
 
       if (rErr) throw rErr;
 
