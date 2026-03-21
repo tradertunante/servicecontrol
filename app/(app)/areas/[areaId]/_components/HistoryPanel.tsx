@@ -3,7 +3,7 @@
 
 import Card from "@/components/ui/Card";
 import { useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 
 import type { AuditRunRow, AuditTemplate, PeriodKey, Role } from "../_lib/areaTypes";
@@ -95,6 +95,7 @@ export default function HistoryPanel({
   embeddedFailClassification?: string | null;
   hotelId: string;
 }) {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const now = new Date();
 
@@ -496,6 +497,12 @@ export default function HistoryPanel({
                 <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
                   <button onClick={() => onViewRun(r.id)} style={primaryBtn}>
                     Ver auditoría
+                  </button>
+                  <button
+                    onClick={() => router.push(`/reports/audit/${r.id}`)}
+                    style={ghostBtn}
+                  >
+                    Ver reporte
                   </button>
 
                   {showDelete ? (
