@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import type { CSSProperties } from "react";
 import { useRouter } from "next/navigation";
 import type { AuditReportData } from "@/lib/reports/auditReportTypes";
+import { exportAuditReportToExcel } from "@/lib/reports/exportExcel";
 
 const SUCCESS_SCORE_MIN = 90;
 const WARNING_SCORE_MIN = 75;
@@ -420,6 +421,9 @@ export default function AuditReportPageClient({
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
             <button onClick={() => window.print()} style={btnStyle(true)}>
               Imprimir / PDF
+            </button>
+            <button onClick={() => exportAuditReportToExcel(report)} style={btnStyle(false)}>
+              Exportar Excel
             </button>
             <button
               onClick={() => router.push(`/areas/${report.run.area_id}/history/${report.run.id}`)}
