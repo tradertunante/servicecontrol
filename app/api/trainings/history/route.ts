@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { getTrainingsCaller, getTrainingsVisibleAreaIds } from "@/lib/trainings/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
-import { jsonError } from "@/lib/api/response";
+import { jsonError, jsonDbError } from "@/lib/api/response";
 
 function jsonNoStore(body: unknown) {
   return NextResponse.json(body, {
@@ -39,7 +39,7 @@ export async function GET(request: NextRequest) {
         .eq("status", "closed")
         .maybeSingle();
 
-      if (sessionError) return jsonError(sessionError.message, 500);
+      if (sessionError) return jsonDbError(sessionError);
       if (!session) return jsonError("Sesion historica no encontrada.", 404);
 
       const { data: topic, error: topicError } = await admin
@@ -49,7 +49,7 @@ export async function GET(request: NextRequest) {
         .eq("hotel_id", caller.caller.hotelId)
         .maybeSingle();
 
-      if (topicError) return jsonError(topicError.message, 500);
+      if (topicError) return jsonDbError(topicError);
       if (!topic || topic.is_active === false) {
         return jsonError("Sesion historica no disponible.", 404);
       }
@@ -67,7 +67,7 @@ export async function GET(request: NextRequest) {
         .eq("session_id", session.id)
         .order("checked_in_at", { ascending: false });
 
-      if (attendancesError) return jsonError(attendancesError.message, 500);
+      if (attendancesError) return jsonDbError(attendancesError);
 
       const memberIds = Array.from(
         new Set(
@@ -85,7 +85,7 @@ export async function GET(request: NextRequest) {
             .in("id", memberIds)
         : { data: [], error: null };
 
-      if (membersError) return jsonError(membersError.message, 500);
+      if (membersError) return jsonDbError(membersError);
 
       const memberNameById = new Map<string, string | null>();
       for (const member of members ?? []) {
@@ -123,7 +123,7 @@ export async function GET(request: NextRequest) {
       .eq("status", "closed")
       .order("closed_at", { ascending: false });
 
-    if (sessionsError) return jsonError(sessionsError.message, 500);
+    if (sessionsError) return jsonDbError(sessionsError);
 
     const topicIds = Array.from(
       new Set((sessions ?? []).map((session) => String(session.topic_id ?? "")).filter(Boolean))
@@ -136,7 +136,7 @@ export async function GET(request: NextRequest) {
           .in("id", topicIds)
       : { data: [], error: null };
 
-    if (topicsError) return jsonError(topicsError.message, 500);
+    if (topicsError) return jsonDbError(topicsError);
 
     const topicTitleById = new Map<string, string>();
     const topicAreaById = new Map<string, string | null>();
@@ -159,7 +159,7 @@ export async function GET(request: NextRequest) {
       ? await admin.from("training_attendances").select("session_id").in("session_id", sessionIds)
       : { data: [], error: null };
 
-    if (attendancesError) return jsonError(attendancesError.message, 500);
+    if (attendancesError) return jsonDbError(attendancesError);
 
     const attendanceCountBySession = new Map<string, number>();
     for (const attendance of attendances ?? []) {

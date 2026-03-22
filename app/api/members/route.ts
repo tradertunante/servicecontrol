@@ -9,7 +9,7 @@ import {
   resolveMembersHotelId,
   uniqueStrings,
 } from "@/lib/members/server";
-import { jsonError } from "@/lib/api/response";
+import { jsonError, jsonDbError } from "@/lib/api/response";
 
 export async function GET(request: NextRequest) {
   try {
@@ -137,7 +137,7 @@ export async function POST(request: NextRequest) {
     const { error: linkError } = await admin.from("team_member_areas").insert(linkRows);
 
     if (linkError) {
-      return jsonError(linkError.message, 500);
+      return jsonDbError(linkError);
     }
 
     return NextResponse.json({ ok: true, member_id: member.id });

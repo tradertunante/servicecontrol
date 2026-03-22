@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { authorizeRouteRequest, resolveRouteHotelScope } from "@/lib/auth/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
-import { jsonError } from "@/lib/api/response";
+import { jsonError, jsonDbError } from "@/lib/api/response";
 
 async function getHotelScope(request: NextRequest) {
   const caller = await authorizeRouteRequest(request, { roles: ["admin", "superadmin"] });
@@ -41,9 +41,9 @@ export async function POST(request: NextRequest) {
       .maybeSingle(),
   ]);
 
-  if (areaErr) return jsonError(areaErr.message, 500);
+  if (areaErr) return jsonDbError(areaErr);
   if (!area?.id) return jsonError("El área no pertenece al hotel activo.", 403);
-  if (templateErr) return jsonError(templateErr.message, 500);
+  if (templateErr) return jsonDbError(templateErr);
   if (!template?.id || (template.area_id && String(template.area_id) !== areaId)) {
     return jsonError("La plantilla no pertenece al área/hotel activo.", 403);
   }
@@ -87,6 +87,6 @@ export async function DELETE(request: NextRequest) {
     .eq("id", rowId)
     .eq("hotel_id", scope.hotelId);
 
-  if (error) return jsonError(error.message, 500);
+  if (error) return jsonDbError(error);
   return NextResponse.json({ ok: true });
 }

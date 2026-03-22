@@ -8,7 +8,7 @@ import {
 } from "@/app/(app)/_lib/departmentAccess";
 import { authorizeRouteRequest, resolveRouteHotelScope } from "@/lib/auth/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
-import { jsonError } from "@/lib/api/response";
+import { jsonError, jsonDbError } from "@/lib/api/response";
 
 type ProfileDepartmentRow = {
   assigned_department_id: string | null;
@@ -120,7 +120,7 @@ export async function GET(request: NextRequest) {
     .eq("id", caller.profile.id)
     .maybeSingle();
 
-  if (profileError) return jsonError(profileError.message, 500);
+  if (profileError) return jsonDbError(profileError);
 
   const assignedDepartmentId =
     String((profileData as ProfileDepartmentRow | null)?.assigned_department_id ?? "").trim() || null;
@@ -134,7 +134,7 @@ export async function GET(request: NextRequest) {
       .eq("id", assignedDepartmentId)
       .maybeSingle();
 
-    if (departmentError) return jsonError(departmentError.message, 500);
+    if (departmentError) return jsonDbError(departmentError);
 
     assignedDepartmentCode = normalizeDepartmentCode(
       (departmentData as HotelDepartmentRow | null)?.code ?? null
@@ -147,7 +147,7 @@ export async function GET(request: NextRequest) {
     .eq("user_id", caller.profile.id)
     .eq("hotel_id", hotelResult.hotelId);
 
-  if (areaScopeError) return jsonError(areaScopeError.message, 500);
+  if (areaScopeError) return jsonDbError(areaScopeError);
 
   const allowedAreaIds = Array.from(
     new Set(
@@ -206,7 +206,7 @@ export async function GET(request: NextRequest) {
 
   const { data: itemData, error: itemError } = await itemsQuery;
   const shouldUseFallback = !!itemError && isMissingBacklogTable(itemError.message);
-  if (itemError && !shouldUseFallback) return jsonError(itemError.message, 500);
+  if (itemError && !shouldUseFallback) return jsonDbError(itemError);
 
   if (!shouldUseFallback) {
     const items = (itemData ?? []) as BacklogItemRow[];
@@ -231,7 +231,7 @@ export async function GET(request: NextRequest) {
       .select("id, hotel_id, area_id, audit_template_id, room_number, score, executed_at")
       .in("id", runIds);
 
-    if (runError) return jsonError(runError.message, 500);
+    if (runError) return jsonDbError(runError);
 
     const runs = (runData ?? []) as RunRow[];
     const runMap = new Map(runs.map((row) => [row.id, row]));
@@ -250,8 +250,8 @@ export async function GET(request: NextRequest) {
           : Promise.resolve({ data: [] as TemplateRow[], error: null }),
       ]);
 
-    if (areaError) return jsonError(areaError.message, 500);
-    if (templateError) return jsonError(templateError.message, 500);
+    if (areaError) return jsonDbError(areaError);
+    if (templateError) return jsonDbError(templateError);
 
     const areaMap = new Map(((areaData ?? []) as AreaRow[]).map((row) => [row.id, row.name ?? null]));
     const templateMap = new Map(
@@ -310,7 +310,7 @@ export async function GET(request: NextRequest) {
     .in("owner_department", ownerDepartmentValues)
     .eq("active", true);
 
-  if (questionError) return jsonError(questionError.message, 500);
+  if (questionError) return jsonDbError(questionError);
 
   const questions = (questionData ?? []) as QuestionTextRow[];
   const questionIds = questions.map((row) => row.id);
@@ -335,7 +335,7 @@ export async function GET(request: NextRequest) {
     .in("question_id", questionIds)
     .or("answer.eq.FAIL,result.eq.FAIL");
 
-  if (answerError) return jsonError(answerError.message, 500);
+  if (answerError) return jsonDbError(answerError);
 
   const failAnswers = ((answerData ?? []) as AnswerRow[]).filter((row) => {
     const value = String(row.result ?? row.answer ?? "").trim().toUpperCase();
@@ -370,7 +370,7 @@ export async function GET(request: NextRequest) {
 
   const { data: runData, error: runError } = await runsQuery;
 
-  if (runError) return jsonError(runError.message, 500);
+  if (runError) return jsonDbError(runError);
 
   const runs = (runData ?? []) as RunRow[];
   const runMap = new Map(runs.map((row) => [row.id, row]));
@@ -392,8 +392,8 @@ export async function GET(request: NextRequest) {
         : Promise.resolve({ data: [] as TemplateRow[], error: null }),
     ]);
 
-  if (areaError) return jsonError(areaError.message, 500);
-  if (templateError) return jsonError(templateError.message, 500);
+  if (areaError) return jsonDbError(areaError);
+  if (templateError) return jsonDbError(templateError);
 
   const questionMap = new Map(questions.map((row) => [row.id, row]));
   const areaMap = new Map(((areaData ?? []) as AreaRow[]).map((row) => [row.id, row.name ?? null]));

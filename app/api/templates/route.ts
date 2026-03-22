@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { authorizeRouteRequest, resolveRouteHotelScope } from "@/lib/auth/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
-import { jsonError } from "@/lib/api/response";
+import { jsonError, jsonDbError } from "@/lib/api/response";
 
 export async function POST(request: NextRequest) {
   const caller = await authorizeRouteRequest(request, { roles: ["admin", "superadmin"] });
@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
     .eq("hotel_id", hotelResult.hotelId)
     .maybeSingle();
 
-  if (areaErr) return jsonError(areaErr.message, 500);
+  if (areaErr) return jsonDbError(areaErr);
   if (!area?.id) return jsonError("El área no pertenece al hotel activo.", 403);
 
   const { data, error } = await admin

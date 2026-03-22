@@ -7,7 +7,7 @@ import {
   type TrainingRole,
 } from "@/lib/trainings/server";
 
-import { jsonError } from "@/lib/api/response";
+import { jsonError, jsonDbError } from "@/lib/api/response";
 
 const TRAINING_ALLOWED_ROLES: TrainingRole[] = [
   "admin",
@@ -49,7 +49,7 @@ export async function GET(request: NextRequest) {
       .order("created_at", { ascending: false });
 
     if (topicsError) {
-      return jsonError(topicsError.message, 500);
+      return jsonDbError(topicsError);
     }
 
     const areaIds = Array.from(
@@ -60,7 +60,7 @@ export async function GET(request: NextRequest) {
       : { data: [], error: null };
 
     if (areasError) {
-      return jsonError(areasError.message, 500);
+      return jsonDbError(areasError);
     }
 
     const areaNameById = new Map<string, string>();
@@ -78,7 +78,7 @@ export async function GET(request: NextRequest) {
       : { data: [], error: null };
 
     if (sessionsError) {
-      return jsonError(sessionsError.message, 500);
+      return jsonDbError(sessionsError);
     }
 
     const sessionIds = (sessions ?? []).map((session) => session.id as string);
@@ -91,7 +91,7 @@ export async function GET(request: NextRequest) {
       : { data: [], error: null };
 
     if (attendancesError) {
-      return jsonError(attendancesError.message, 500);
+      return jsonDbError(attendancesError);
     }
 
     const attendanceCountBySession = new Map<string, number>();
@@ -104,7 +104,7 @@ export async function GET(request: NextRequest) {
       : { data: [], error: null };
 
     if (membersError) {
-      return jsonError(membersError.message, 500);
+      return jsonDbError(membersError);
     }
 
     const memberNameById = new Map<string, string | null>();
@@ -215,7 +215,7 @@ export async function POST(request: NextRequest) {
       .maybeSingle();
 
     if (areaError) {
-      return jsonError(areaError.message, 500);
+      return jsonDbError(areaError);
     }
 
     if (!area || area.active === false) {

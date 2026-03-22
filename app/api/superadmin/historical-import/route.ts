@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { jsonDbError } from "@/lib/api/response";
 import * as XLSX from "xlsx";
 
 import {
@@ -115,7 +116,7 @@ export async function GET(request: NextRequest) {
     .eq("active", true)
     .order("name", { ascending: true });
 
-  if (hotelsError) return jsonError(hotelsError.message, 500);
+  if (hotelsError) return jsonDbError(hotelsError);
 
   const payload: Record<string, unknown> = {
     hotels: (hotels ?? []).map((hotel) => ({
