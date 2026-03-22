@@ -89,7 +89,7 @@ export default function WeeklyAreaReportPageClient({ report }: { report: WeeklyA
       kpis={[
         { label: "Fail rate", value: formatPct(report.summary.fail_rate_pct) },
         { label: "FAIL totales", value: String(report.summary.fail_count), tone: "fail" },
-        { label: "OK totales", value: String(report.summary.ok_count), tone: "ok" },
+        { label: "Pass totales", value: String(report.summary.ok_count), tone: "ok" },
       ]}
       auditColumns={[
         {
@@ -126,7 +126,7 @@ export default function WeeklyAreaReportPageClient({ report }: { report: WeeklyA
         },
         {
           key: "ok",
-          label: "OK",
+          label: "Pass",
           render: (audit) => audit.ok,
           tone: "ok",
         },

@@ -145,7 +145,7 @@ export default function MonthlyAreaReportPageClient({ report }: { report: Monthl
         },
         {
           key: "ok",
-          label: "OK",
+          label: "Pass",
           render: (audit) => audit.ok,
           tone: "ok",
         },

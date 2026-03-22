@@ -559,7 +559,7 @@ export default function AuditReportPageClient({
             </div>
 
             <div className="report-card" style={kpiStyle()}>
-              <div style={{ fontSize: 12, opacity: 0.6, fontWeight: 900 }}>OK</div>
+              <div style={{ fontSize: 12, opacity: 0.6, fontWeight: 900 }}>Pass</div>
               <div
                 className="report-kpi-value"
                 style={{ fontSize: 28, fontWeight: 900, marginTop: 6, color: "#15803d" }}
@@ -695,7 +695,7 @@ export default function AuditReportPageClient({
                           fontWeight: 900,
                         }}
                       >
-                        OK: {section.ok}
+                        Pass: {section.ok}
                       </span>
                     </div>
                   </div>
