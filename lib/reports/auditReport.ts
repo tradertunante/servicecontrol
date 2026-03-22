@@ -34,6 +34,7 @@ type AnswerRow = {
   result: string | null;
   answer: string | null;
   comment: string | null;
+  question_text: string | null;
 };
 
 type QuestionRow = {
@@ -94,7 +95,7 @@ export async function buildAuditReportData(runId: string, hotelId: string): Prom
       .single(),
     admin
       .from("audit_answers")
-      .select("question_id,result,answer,comment")
+      .select("question_id,result,answer,comment,question_text")
       .eq("audit_run_id", runId),
     admin
       .from("reaudit_training_logs")
@@ -170,7 +171,7 @@ export async function buildAuditReportData(runId: string, hotelId: string): Prom
 
       return {
         question_id: q.id,
-        question_text: q.text,
+        question_text: answer?.question_text || q.text,
         section_id,
         section_name,
         status: normalizeStatus(answer),
