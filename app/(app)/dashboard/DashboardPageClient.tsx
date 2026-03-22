@@ -20,6 +20,7 @@ import AreaRankings from "./_components/AreaRankings";
 import WorstAuditsCard from "./_components/WorstAuditsCard";
 import PendingTeamsCard from "./_components/PendingTeamsCard";
 import QuickLinks from "./_components/QuickLinks";
+import AreaTrendCard from "./_components/AreaTrendCard";
 import { useDashboardData } from "./_hooks/useDashboardData";
 import type { HeatMode } from "./_lib/dashboardUtils";
 
@@ -178,6 +179,8 @@ export default function DashboardPageClient({
         setSelectedYear={setSelectedYear}
         availableYears={availableYears}
       />
+
+      <AreaTrendCard runs={runs} areas={areas} />
 
       <AreaRankings
         card={card}
