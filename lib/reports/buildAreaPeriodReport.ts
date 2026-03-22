@@ -105,6 +105,7 @@ export async function buildAreaPeriodReport(args: {
     .select("id,area_id,audit_template_id,score,status,executed_at,executed_by")
     .eq("area_id", areaId)
     .eq("hotel_id", hotelId)
+    .is("archived_at", null)
     .eq("status", "submitted")
     .gte("executed_at", `${startDate}T00:00:00`)
     .lt("executed_at", `${endExclusiveStr}T00:00:00`)

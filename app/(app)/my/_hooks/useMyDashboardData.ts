@@ -293,6 +293,7 @@ export function useMyDashboardData({
           .from("audit_runs")
           .select("id, executed_at, score, audit_template_id, status")
           .eq("hotel_id", hotelId)
+          .is("archived_at", null)
           .eq("executed_by", uid)
           .eq("status", "submitted")
           .not("executed_at", "is", null)
