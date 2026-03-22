@@ -73,7 +73,8 @@ export async function authorizeAuditRunAccess(
     .maybeSingle();
 
   if (runError) {
-    return { ok: false, status: 500, error: runError.message };
+    console.error("[authorizeAuditRunAccess] DB error:", runError.message);
+    return { ok: false, status: 500, error: "Error interno al verificar la auditoría." };
   }
 
   if (!run?.id) {
