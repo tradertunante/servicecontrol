@@ -81,6 +81,7 @@ export function useReauditsData({
           "id,hotel_id,area_id,audit_template_id,team_member_id,assigned_auditor_id,parent_audit_run_id,status,score,scheduled_for,requires_training,training_confirmed,ready_for_reaudit,blocking_issue_count,origin_type,notes,executed_at"
         )
         .eq("hotel_id", activeHotelId)
+        .is("archived_at", null)
         .eq("is_reaudit", true)
         .or(
           "status.eq.pending_training,status.eq.blocked_by_non_operational,and(status.eq.draft,ready_for_reaudit.eq.true)"

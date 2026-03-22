@@ -230,6 +230,7 @@ export async function loadAreaOverviewData(
     .from("audit_runs")
     .select("id,status,score,notes,executed_at,executed_by,audit_template_id,area_id")
     .eq("area_id", areaId)
+    .is("archived_at", null)
     .order("executed_at", { ascending: false })
     .limit(80);
 

@@ -459,6 +459,7 @@ export async function buildAnalyticsPagePayload(args: {
     .select("id,executed_at,team_member_id,area_id,status,hotel_id,audit_template_id")
     .eq("hotel_id", hotelId)
     .eq("area_id", selectedArea.id)
+    .is("archived_at", null)
     .eq("status", "submitted")
     .not("team_member_id", "is", null)
     .gte("executed_at", fromISO)

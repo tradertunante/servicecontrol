@@ -237,6 +237,7 @@ export function useDashboardData({
           .from("audit_runs")
           .select("id,area_id,audit_template_id,executed_at,score,audit_channel")
           .eq("hotel_id", activeHotelId)
+          .is("archived_at", null)
           .eq("status", "submitted")
           .not("executed_at", "is", null)
           .not("score", "is", null);
