@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { jsonDbError } from "@/lib/api/response";
 import * as XLSX from "xlsx";
 
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
@@ -47,7 +48,7 @@ async function handleTemplateRequest(hotelId: string, templateId: string, reques
     .eq("hotel_id", hotelId)
     .maybeSingle();
 
-  if (error) return jsonError(error.message, 500);
+  if (error) return jsonDbError(error);
   if (!template?.id) return jsonError("El template seleccionado no pertenece al hotel.", 404);
   if (template.active === false) return jsonError("El template seleccionado está inactivo.", 409);
 

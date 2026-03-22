@@ -1,21 +1,12 @@
 "use client";
 
 import { useEffect, useMemo, useRef } from "react";
+import { useAuditSessionContext } from "../_context/AuditSessionContext";
 import AuditHeader from "./AuditHeader";
 import AuditQuestionCard from "./AuditQuestionCard";
 import AuditStickyFooter from "./AuditStickyFooter";
 import DesktopAuditLayout from "./DesktopAuditLayout";
 import MobileAuditLayout from "./MobileAuditLayout";
-import type {
-  AnswerRow,
-  AnswerValue,
-  AuditRunRow,
-  AreaRow,
-  QuestionRow,
-  SectionRow,
-  TeamMemberLite,
-  TemplateRow,
-} from "../_hooks/useAuditSession";
 
 function fmtDate(iso: string | null) {
   if (!iso) return "Sin fecha";
@@ -29,73 +20,44 @@ function fmtDate(iso: string | null) {
   });
 }
 
-export default function AuditPageShell({
-  run,
-  template,
-  area,
-  sections,
-  groupedQuestions,
-  answersByQ,
-  teamMembers,
-  selectedMember,
-  roomNumber,
-  savingRoomNumber,
-  isHousekeeping,
-  saving,
-  uploading,
-  submitting,
-  savingMember,
-  submitted,
-  error,
-  activeQuestionId,
-  activeSectionId,
-  canGoPrevious,
-  canGoNext,
-  onSelectSection,
-  onSelectMember,
-  onChangeRoomNumber,
-  onSaveRoomNumber,
-  onSelectAnswer,
-  onChangeComment,
-  onUploadPhoto,
-  onDeletePhoto,
-  onPreviousQuestion,
-  onNextQuestion,
-  onSubmit,
-}: {
-  run: AuditRunRow;
-  template: TemplateRow | null;
-  area: AreaRow | null;
-  sections: SectionRow[];
-  groupedQuestions: Record<string, QuestionRow[]>;
-  answersByQ: Record<string, AnswerRow>;
-  teamMembers: TeamMemberLite[];
-  selectedMember: string;
-  roomNumber: string;
-  savingRoomNumber: boolean;
-  isHousekeeping: boolean;
-  saving: boolean;
-  uploading: boolean;
-  submitting: boolean;
-  savingMember: boolean;
-  submitted: boolean;
-  error: string | null;
-  activeQuestionId: string | null;
-  activeSectionId: string | null;
-  canGoPrevious: boolean;
-  canGoNext: boolean;
-  onSelectSection: (sectionId: string) => void;
-  onSelectMember: (memberId: string) => void;
-  onChangeRoomNumber: (value: string) => void;
-  onSaveRoomNumber: (value: string) => void;
-  onSelectAnswer: (questionId: string, value: AnswerValue) => void;
-  onChangeComment: (questionId: string, value: string) => void;
-  onUploadPhoto: (questionId: string, file: File) => void;
-  onDeletePhoto: (questionId: string) => void;
-  onPreviousQuestion: () => void;
-  onNextQuestion: () => void;
-  onSubmit: () => void;
-}) {
+export default function AuditPageShell() {
+  const {
+    run,
+    template,
+    area,
+    sections,
+    groupedQuestions,
+    answersByQ,
+    teamMembers,
+    selectedMember,
+    roomNumber,
+    savingRoomNumber,
+    requiresRoomNumber,
+    requiresAuditedEmployee,
+    showRoomNumberField,
+    saving,
+    uploading,
+    submitting,
+    savingMember,
+    submitted,
+    error,
+    activeQuestionId,
+    activeSectionId,
+    canGoPrevious,
+    canGoNext,
+    onSelectSection,
+    saveTeamMember: onSelectMember,
+    setRoomNumber: onChangeRoomNumber,
+    saveRoomNumber: onSaveRoomNumber,
+    setAnswer: onSelectAnswer,
+    setComment: onChangeComment,
+    uploadPhoto: onUploadPhoto,
+    deletePhoto: onDeletePhoto,
+    onPreviousQuestion,
+    onNextQuestion,
+    submitRun: onSubmit,
+  } = useAuditSessionContext();
+
   const questionRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
   useEffect(() => {
@@ -109,6 +71,10 @@ export default function AuditPageShell({
     () => sections.reduce((sum, section) => sum + (groupedQuestions[section.id]?.length ?? 0), 0),
     [groupedQuestions, sections]
   );
+
+  // run is guaranteed non-null by the guard in page.tsx; this early return
+  // keeps TypeScript happy without unsafe assertions.
+  if (!run) return null;
 
   const header = (
     <div className="space-y-2 bg-slate-50">
@@ -131,6 +97,11 @@ export default function AuditPageShell({
 
       <div className="rounded-2xl border border-slate-200 bg-white p-3.5 lg:rounded-3xl lg:p-4">
         <div className="mb-2 text-sm font-extrabold text-slate-900">Colaborador auditado</div>
+        {requiresAuditedEmployee ? (
+          <div className="mb-2 text-[11px] font-bold uppercase tracking-wide text-amber-700">
+            Obligatorio para enviar
+          </div>
+        ) : null}
         <select
           value={selectedMember}
           disabled={submitted || savingMember}
@@ -146,9 +117,14 @@ export default function AuditPageShell({
           ))}
         </select>
 
-        {isHousekeeping ? (
+        {showRoomNumberField ? (
           <div className="mt-3">
             <div className="mb-2 text-sm font-extrabold text-slate-900">Room number</div>
+            {requiresRoomNumber ? (
+              <div className="mb-2 text-[11px] font-bold uppercase tracking-wide text-amber-700">
+                Obligatorio para enviar
+              </div>
+            ) : null}
             <input
               value={roomNumber}
               disabled={submitted || savingRoomNumber}

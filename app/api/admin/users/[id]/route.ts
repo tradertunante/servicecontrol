@@ -9,10 +9,7 @@ import {
   loadManagedUser,
   resolveManagedHotelId,
 } from "@/lib/auth/userManagement";
-
-function jsonError(message: string, status = 400) {
-  return NextResponse.json({ ok: false, error: message }, { status });
-}
+import { jsonError, jsonDbError } from "@/lib/api/response";
 
 export async function GET(
   request: NextRequest,
@@ -86,7 +83,7 @@ export async function PATCH(
       .eq("id", userId)
       .eq("hotel_id", hotelResult.hotelId);
 
-    if (error) return jsonError(error.message, 500);
+    if (error) return jsonDbError(error);
 
     return NextResponse.json({ ok: true });
   } catch (error) {

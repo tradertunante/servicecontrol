@@ -90,8 +90,8 @@ export function useReauditActions({
       onSuccess?.();
       await onReload();
       return true;
-    } catch (e: any) {
-      setActionError(e?.message || "No se pudo confirmar el training.");
+    } catch (e: unknown) {
+      setActionError(e instanceof Error ? e.message : "No se pudo confirmar el training.");
       return false;
     } finally {
       setSavingId(null);
@@ -172,8 +172,8 @@ export function useReauditActions({
       onSuccess?.();
       await onReload();
       return true;
-    } catch (e: any) {
-      setActionError(e?.message || "No se pudo reasignar el auditor.");
+    } catch (e: unknown) {
+      setActionError(e instanceof Error ? e.message : "No se pudo reasignar el auditor.");
       return false;
     } finally {
       setSavingId(null);

@@ -40,9 +40,9 @@ export default function AreasPageClient({
         if (!alive) return;
         setHotelName((h as HotelRow)?.name ?? null);
         setLoading(false);
-      } catch (e: any) {
+      } catch (e: unknown) {
         if (!alive) return;
-        setError(e?.message ?? "No se pudo cargar la página de áreas.");
+        setError(e instanceof Error ? e.message : "No se pudo cargar la página de áreas.");
         setLoading(false);
       }
     })();
@@ -78,7 +78,7 @@ export default function AreasPageClient({
             .eq("user_id", profile.id)
             .eq("hotel_id", hotelId);
           if (accessErr) throw accessErr;
-          const allowedIds = (accessData ?? []).map((r: any) => r.area_id).filter(Boolean);
+          const allowedIds = (accessData ?? []).map((r: { area_id: string }) => r.area_id).filter(Boolean);
           if (allowedIds.length > 0) {
             const { data: areasData, error: areasErr } = await supabase
               .from("areas")
@@ -92,9 +92,9 @@ export default function AreasPageClient({
         }
         if (!alive) return;
         setAreas(areasList); setLoading(false);
-      } catch (e: any) {
+      } catch (e: unknown) {
         if (!alive) return;
-        setError(e?.message ?? "No se pudieron cargar las áreas."); setLoading(false);
+        setError(e instanceof Error ? e.message : "No se pudieron cargar las áreas."); setLoading(false);
       }
     })();
     return () => { alive = false; };
@@ -106,7 +106,7 @@ export default function AreasPageClient({
     return areas.filter((a) => `${a.name ?? ""} ${a.type ?? ""} ${a.id ?? ""}`.toLowerCase().includes(q));
   }, [areas, query]);
 
-  const goArea = (areaId: string) => router.push(`/areas/${areaId}?tab=dashboard`);
+  const goArea = (areaId: string) => router.push(`/team/general?area=${areaId}`);
   const canManage = profile?.role === "admin" || profile?.role === "superadmin";
 
   return (

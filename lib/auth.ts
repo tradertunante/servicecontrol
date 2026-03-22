@@ -1,3 +1,6 @@
+import type { AppRouterInstance } from "next/dist/shared/lib/app-router-context.shared-runtime";
+
+import { setActiveHotel } from "./auth/activeHotelClient";
 import { supabase } from "./supabaseClient";
 
 export async function getCurrentUser() {
@@ -7,4 +10,19 @@ export async function getCurrentUser() {
 
 export async function signOut() {
   await supabase.auth.signOut();
+}
+
+export async function signOutAndRedirect(router: AppRouterInstance) {
+  try {
+    await setActiveHotel(null);
+  } catch (error) {
+    console.warn("Could not clear active hotel during logout:", error);
+  }
+
+  try {
+    await supabase.auth.signOut();
+  } finally {
+    router.replace("/login");
+    router.refresh();
+  }
 }

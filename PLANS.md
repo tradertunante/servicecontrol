@@ -139,6 +139,17 @@ pendiente
 - herramienta interna centralizada de `superadmin` para importación histórica masiva de auditorías vía Excel estructurado (`.xlsx/.xls`), protegida server-side y persistiendo cada fila mediante la RPC transaccional `import_historical_audit_run(...)`
 - la importación histórica oficial ya no cuelga del detalle de templates; ahora vive en `/superadmin/historical-import` con selección explícita de hotel y template operativo
 
+### Hecho el 2026-03-18
+
+- `audit_questions` ahora soporta `responsible_department` como metadato editable desde el builder para preparar dashboards y flujos operativos por equipo sin duplicar lógica de template
+- el builder de templates ahora resuelve los responsables válidos desde `areas` reales del hotel en lugar de una lista fija, manteniendo herencia desde el área dueña del template
+
+### Hecho el 2026-03-19
+
+- separación explícita de semánticas en `audit_questions`: `owner_department` queda como ownership operativo general del standard y `responsible_department` se preserva exclusivamente para la lógica correctiva no operativa ya existente
+- `/it` y `/engineering` dejan de depender conceptualmente de `audit_corrective_actions` para el seguimiento operativo general; su backlog se redefine sobre FAILs submitidos en `audit_answers` filtrados por `audit_questions.owner_department`
+- `audit_templates` ahora soporta flags de submit por template (`require_room_number`, `require_audited_employee`) para exigir metadatos de cabecera sin volverlos obligatorios globales
+
 ### Hecho
 
 - análisis de arquitectura del repo
@@ -402,3 +413,42 @@ Reducir la latencia percibida del módulo Team separando los flujos pesados en p
 - [ ] ejecutar `npx tsc --noEmit`
 - [ ] ejecutar `npm run lint`
 - [ ] aplicar migración en Supabase
+
+---
+
+## MVP backlog operativo IT / Mantenimiento
+
+### Estado
+- [x] `department_backlog_items` modela seguimiento operativo separado de `audit_answers` y `audit_corrective_actions`
+- [x] `submit_audit_run(...)` crea backlog items para FAILs submitidos con `owner_department = it|engineering`
+- [x] migración nueva backfillea FAILs submitidos históricos hacia el backlog operativo
+- [x] `/it` y `/engineering` ya leen y editan backlog items reales
+- [x] cada hallazgo permite cambiar `status`, `resolution_comment` y `ready_for_reaudit`
+
+### Riesgos residuales
+- falta aplicar en la instancia real la migración `20260320103000_add_department_backlog_items.sql`
+- el MVP no incorpora workflow adicional (`repaired_by`, evidencias, SLA o prioridad) por decisión de alcance
+
+### Verificación
+- [ ] ejecutar `npx eslint app/api/departments/backlog/route.ts app/api/departments/backlog/items/[id]/route.ts hooks/useDepartmentCorrectiveActions.ts 'app/(app)/_components/DepartmentCorrectiveActionsPage.tsx`
+- [ ] aplicar migración en Supabase
+- [ ] validar con un run submitido con FAILs hacia `it` y `engineering`
+
+---
+
+## Navegación y Team shell
+
+### Estado
+- [x] botón atrás cliente unificado con fallback por `replace(...)` y uso de `history` real
+- [x] `Formaciones` ya permite entrada de `superadmin`
+- [x] Team shell centraliza tabs visibles por rol en una sola lista
+- [x] roles altos (`superadmin`, `admin`, `general_manager`, `quality`) ya reutilizan el workspace de áreas del módulo Team
+- [x] dashboard y listado de áreas ahora abren el flujo operativo en `/team/*` en vez de quedarse en `/areas/*`
+- [x] actividad reciente ya excluye runs sin score y no submitidos
+
+### Riesgos residuales
+- quedan superficies legacy en `/areas/[areaId]` que siguen existiendo para compatibilidad
+- `rpc_team_summary_v2` sigue siendo la fuente de Team; si se quiere filtrar por `status` server-side habrá que versionar la RPC
+
+### Verificación
+- [x] `npx eslint lib/navigation/clientBack.ts app/components/BackButton.tsx app/components/HotelHeader.tsx lib/auth/permissions.tsx app/(app)/formaciones/layout.tsx app/(app)/team/_hooks/useTeamWorkspace.ts app/(app)/team/_components/TeamPageShell.tsx app/(app)/dashboard/DashboardPageClient.tsx app/(app)/areas/AreasPageClient.tsx app/(app)/my/_hooks/useMyDashboardData.ts app/(app)/team/_hooks/useTeamData.ts`

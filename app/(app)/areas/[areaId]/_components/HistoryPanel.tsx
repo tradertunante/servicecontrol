@@ -2,8 +2,8 @@
 "use client";
 
 import Card from "@/components/ui/Card";
-import { useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 
 import type { AuditRunRow, AuditTemplate, PeriodKey, Role } from "../_lib/areaTypes";
@@ -95,6 +95,7 @@ export default function HistoryPanel({
   embeddedFailClassification?: string | null;
   hotelId: string;
 }) {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const now = new Date();
 
@@ -108,6 +109,11 @@ export default function HistoryPanel({
   const [histRuns, setHistRuns] = useState<AuditRunRow[]>([]);
   const [deletingRunId, setDeletingRunId] = useState<string | null>(null);
   const activeHotelId = hotelId;
+  const mountedRef = useRef(true);
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => { mountedRef.current = false; };
+  }, []);
 
   const showDelete = canDeleteAudits(profileRole);
 
@@ -154,7 +160,8 @@ export default function HistoryPanel({
         .eq("status", "submitted")
         .gte("executed_at", startISO)
         .lte("executed_at", endISO)
-        .order("executed_at", { ascending: false });
+        .order("executed_at", { ascending: false })
+        .limit(100);
 
       if (urlTemplate !== "ALL") {
         q = q.eq("audit_template_id", urlTemplate);
@@ -165,12 +172,14 @@ export default function HistoryPanel({
 
       const runs = (runsData ?? []) as AuditRunRow[];
       if (runs.length === 0) {
+        if (!mountedRef.current) return;
         setHistRuns([]);
         return;
       }
 
       // 2) Si no hay filtro de fail (por seguridad), lista directa
       if (!urlFailQ && !urlFailCls) {
+        if (!mountedRef.current) return;
         setHistRuns(runs);
         return;
       }
@@ -191,7 +200,8 @@ export default function HistoryPanel({
       const { data: ansData, error: ansErr } = await aQ;
       if (ansErr) throw ansErr;
 
-      const answers = (ansData ?? []) as any[];
+      type AnswerResultRow = { audit_run_id: string; question_id: string; result: string | null };
+      const answers = (ansData ?? []) as AnswerResultRow[];
 
       // si es por clasificación, necesitamos mapear question_id -> classification
       let allowedRunIds = new Set<string>();
@@ -200,6 +210,7 @@ export default function HistoryPanel({
         const qIds = Array.from(new Set(answers.map((a) => a.question_id).filter(Boolean)));
 
         if (qIds.length === 0) {
+          if (!mountedRef.current) return;
           setHistRuns([]);
           return;
         }
@@ -218,9 +229,15 @@ export default function HistoryPanel({
 
         if (qErr) throw qErr;
 
+        type QuestionClassRow = {
+          id: string;
+          classification: string | null;
+          audit_section_id: string | null;
+          audit_sections: { name: string }[] | null;
+        };
         const clsByQ: Record<string, string> = {};
-        for (const row of (qData ?? []) as any[]) {
-          const sectionName = String(row.audit_sections?.name ?? "Sin sección");
+        for (const row of (qData ?? []) as QuestionClassRow[]) {
+          const sectionName = String(row.audit_sections?.[0]?.name ?? "Sin sección");
           clsByQ[row.id] = String(row.classification ?? "").trim() || sectionName;
         }
 
@@ -234,12 +251,14 @@ export default function HistoryPanel({
       }
 
       const filtered = runs.filter((r) => allowedRunIds.has(r.id));
+      if (!mountedRef.current) return;
       setHistRuns(filtered);
     } catch (e: any) {
+      if (!mountedRef.current) return;
       setHistError(e?.message ?? "No se pudo cargar el historial filtrado.");
       setHistRuns([]);
     } finally {
-      setHistLoading(false);
+      if (mountedRef.current) setHistLoading(false);
     }
   }
 
@@ -266,7 +285,8 @@ export default function HistoryPanel({
         .eq("audit_template_id", histTemplateId)
         .gte("executed_at", start)
         .lt("executed_at", end)
-        .order("executed_at", { ascending: false });
+        .order("executed_at", { ascending: false })
+        .limit(100);
 
       if (rErr) throw rErr;
 
@@ -496,6 +516,12 @@ export default function HistoryPanel({
                 <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
                   <button onClick={() => onViewRun(r.id)} style={primaryBtn}>
                     Ver auditoría
+                  </button>
+                  <button
+                    onClick={() => router.push(`/reports/audit/${r.id}`)}
+                    style={ghostBtn}
+                  >
+                    Ver reporte
                   </button>
 
                   {showDelete ? (

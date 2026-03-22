@@ -1,4 +1,5 @@
 import { NextRequest } from "next/server";
+import { jsonDbError } from "@/lib/api/response";
 
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import {
@@ -92,7 +93,7 @@ export async function PATCH(
     .select("id")
     .eq("audit_template_id", template.templateId);
 
-  if (sectionsError) return jsonError(sectionsError.message, 500);
+  if (sectionsError) return jsonDbError(sectionsError);
 
   const sectionIds = (sections ?? []).map((row) => String(row.id ?? "")).filter(Boolean);
   if (sectionIds.length === 0) return jsonError("La plantilla no tiene secciones.", 409);
@@ -103,7 +104,7 @@ export async function PATCH(
     .in("id", questionIds)
     .in("audit_section_id", sectionIds);
 
-  if (questionsError) return jsonError(questionsError.message, 500);
+  if (questionsError) return jsonDbError(questionsError);
 
   const foundIds = new Set((questions ?? []).map((row) => String(row.id ?? "")));
   if (foundIds.size !== questionIds.length) {
@@ -115,7 +116,7 @@ export async function PATCH(
     .update(patch)
     .in("id", questionIds);
 
-  if (updateError) return jsonError(updateError.message, 500);
+  if (updateError) return jsonDbError(updateError);
 
   return jsonOk({
     question_ids: questionIds,

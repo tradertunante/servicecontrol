@@ -2,6 +2,7 @@
 "use client";
 
 import type { CSSProperties } from "react";
+import type { AuditRunRow } from "../_lib/dashboardTypes";
 
 type TrendPoint = {
   key: string; // "Dic", "Ene", etc.
@@ -109,7 +110,7 @@ export default function AreaRankings({
   miniBtn: CSSProperties;
   top3Areas: AreaRankingRow[];
   worst3Areas: AreaRankingRow[];
-  runs: any[];
+  runs: AuditRunRow[];
   onGoAreaDetail: (areaId: string) => void;
   selectedYear: number;
 }) {

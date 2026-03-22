@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { signOutAndRedirect } from "@/lib/auth";
 import { supabase } from "@/lib/supabaseClient";
 import { normalizeRole } from "@/lib/auth/permissions";
 import type { Profile } from "@/lib/types";
@@ -143,8 +144,7 @@ export default function HomePage() {
 
         <button
           onClick={async () => {
-            await supabase.auth.signOut();
-            router.replace("/login");
+            await signOutAndRedirect(router);
           }}
           style={{
             marginTop: 14,

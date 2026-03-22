@@ -2,10 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { authorizeRouteRequest, resolveRouteHotelScope } from "@/lib/auth/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
-
-function jsonError(message: string, status = 400) {
-  return NextResponse.json({ ok: false, error: message }, { status });
-}
+import { jsonError, jsonDbError } from "@/lib/api/response";
 
 type CorrectiveActionStatusRpcResponse = {
   ok?: boolean;
@@ -39,7 +36,7 @@ export async function POST(request: NextRequest) {
     p_next_status: nextStatus,
   });
 
-  if (error) return jsonError(error.message, 500);
+  if (error) return jsonDbError(error);
 
   const payload = (data ?? null) as CorrectiveActionStatusRpcResponse | null;
   if (!payload?.ok) {

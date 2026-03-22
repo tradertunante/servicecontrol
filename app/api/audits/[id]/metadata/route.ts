@@ -2,10 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { authorizeAuditRunAccess } from "@/lib/audits/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
-
-function jsonError(message: string, status = 400) {
-  return NextResponse.json({ ok: false, error: message }, { status });
-}
+import { jsonError } from "@/lib/api/response";
 
 function normalizeOptionalString(value: unknown) {
   if (value === undefined) return undefined;
@@ -53,7 +50,10 @@ export async function PATCH(
       .eq("id", teamMemberId)
       .maybeSingle();
 
-    if (teamMemberError) return jsonError(teamMemberError.message, 500);
+    if (teamMemberError) {
+      console.error("[metadata] team member lookup error:", teamMemberError.message);
+      return jsonError("Error interno al verificar el colaborador.", 500);
+    }
     if (!teamMember?.id || String(teamMember.hotel_id ?? "") !== access.hotelId) {
       return jsonError("El colaborador no pertenece al hotel activo.", 403);
     }
@@ -70,7 +70,8 @@ export async function PATCH(
     .single();
 
   if (error || !data) {
-    return jsonError(error?.message ?? "No se pudo actualizar la auditoría.", 500);
+    console.error("[metadata] update error:", error?.message);
+    return jsonError("No se pudo actualizar la auditoría.", 500);
   }
 
   return NextResponse.json({

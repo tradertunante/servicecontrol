@@ -8,10 +8,7 @@ import {
   loadTrainingTopic,
 } from "@/lib/trainings/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
-
-function jsonError(message: string, status = 400) {
-  return NextResponse.json({ ok: false, error: message }, { status });
-}
+import { jsonError, jsonDbError } from "@/lib/api/response";
 
 function jsonNoStore(body: unknown) {
   return NextResponse.json(body, {
@@ -37,7 +34,7 @@ export async function GET(request: NextRequest) {
       .eq("is_active", true)
       .maybeSingle();
 
-    if (topicError) return jsonError(topicError.message, 500);
+    if (topicError) return jsonDbError(topicError);
     if (!topic) return jsonError("Tema no encontrado.", 404);
 
     const { data: sessions, error: sessionsError } = await admin
@@ -48,14 +45,14 @@ export async function GET(request: NextRequest) {
       .eq("status", "open")
       .order("opened_at", { ascending: false });
 
-    if (sessionsError) return jsonError(sessionsError.message, 500);
+    if (sessionsError) return jsonDbError(sessionsError);
 
     const sessionIds = (sessions ?? []).map((session) => String(session.id));
     const { data: attendances, error: attendancesError } = sessionIds.length
       ? await admin.from("training_attendances").select("session_id").in("session_id", sessionIds)
       : { data: [], error: null };
 
-    if (attendancesError) return jsonError(attendancesError.message, 500);
+    if (attendancesError) return jsonDbError(attendancesError);
 
     const attendanceCountBySession = new Map<string, number>();
     for (const attendance of attendances ?? []) {
@@ -143,7 +140,7 @@ export async function POST(request: NextRequest) {
       .eq("status", "open")
       .maybeSingle();
 
-    if (existingOpenSessionError) return jsonError(existingOpenSessionError.message, 500);
+    if (existingOpenSessionError) return jsonDbError(existingOpenSessionError);
     if (existingOpenSession?.id) {
       return jsonError("Ya existe una sesion abierta para este tema.", 409);
     }
@@ -161,7 +158,7 @@ export async function POST(request: NextRequest) {
       .select("id")
       .maybeSingle();
 
-    if (error) return jsonError(error.message, 500);
+    if (error) return jsonDbError(error);
 
     return NextResponse.json({ ok: true, session_id: data?.id ?? null });
   } catch (error) {
@@ -217,7 +214,7 @@ export async function PATCH(request: NextRequest) {
       .eq("hotel_id", caller.caller.hotelId)
       .eq("status", "open");
 
-    if (error) return jsonError(error.message, 500);
+    if (error) return jsonDbError(error);
     return NextResponse.json({ ok: true });
   } catch (error) {
     return jsonError(error instanceof Error ? error.message : "Error inesperado.", 500);
@@ -268,7 +265,7 @@ export async function DELETE(request: NextRequest) {
       .eq("session_id", sessionId)
       .eq("hotel_id", caller.caller.hotelId);
 
-    if (attendancesError) return jsonError(attendancesError.message, 500);
+    if (attendancesError) return jsonDbError(attendancesError);
 
     const { error: tokensError } = await admin
       .from("training_registration_tokens")
@@ -276,7 +273,7 @@ export async function DELETE(request: NextRequest) {
       .eq("session_id", sessionId)
       .eq("hotel_id", caller.caller.hotelId);
 
-    if (tokensError) return jsonError(tokensError.message, 500);
+    if (tokensError) return jsonDbError(tokensError);
 
     const { error: sessionDeleteError } = await admin
       .from("training_sessions")
@@ -285,7 +282,7 @@ export async function DELETE(request: NextRequest) {
       .eq("hotel_id", caller.caller.hotelId)
       .eq("status", "closed");
 
-    if (sessionDeleteError) return jsonError(sessionDeleteError.message, 500);
+    if (sessionDeleteError) return jsonDbError(sessionDeleteError);
 
     return NextResponse.json({ ok: true });
   } catch (error) {

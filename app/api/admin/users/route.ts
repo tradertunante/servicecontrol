@@ -2,10 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { authorizeRouteRequest } from "@/lib/auth/server";
 import { createManagedUser, listManagedUsers } from "@/lib/auth/userManagement";
-
-function jsonError(message: string, status = 400) {
-  return NextResponse.json({ ok: false, error: message }, { status });
-}
+import { jsonError } from "@/lib/api/response";
 
 export async function GET(request: NextRequest) {
   try {

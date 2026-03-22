@@ -3,14 +3,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { HOTEL_SCOPE_COOKIE } from "@/lib/auth/cookies";
 import { authorizeRouteRequest, getActiveHotel } from "@/lib/auth/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
-
-function jsonError(message: string, status = 400) {
-  return NextResponse.json({ ok: false, error: message }, { status });
-}
+import { jsonError, jsonDbError } from "@/lib/api/response";
 
 function buildCookieOptions() {
   return {
-    httpOnly: false,
+    httpOnly: true,
     sameSite: "lax" as const,
     secure: process.env.NODE_ENV === "production",
     path: "/",
@@ -60,7 +57,7 @@ export async function POST(request: NextRequest) {
     .eq("id", hotelId)
     .maybeSingle();
 
-  if (error) return jsonError(error.message, 500);
+  if (error) return jsonDbError(error);
   if (!data?.id) return jsonError("El hotel seleccionado no existe.", 404);
 
   response.cookies.set(HOTEL_SCOPE_COOKIE, String(data.id), buildCookieOptions());

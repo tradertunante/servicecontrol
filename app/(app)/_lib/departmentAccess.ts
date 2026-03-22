@@ -3,6 +3,20 @@ import { normalizeRole, type Role } from "@/lib/auth/permissions";
 export type DepartmentCode = "it" | "engineering" | null;
 export type DepartmentRouteScope = "department" | "area" | "none";
 
+function canOpenDepartmentRouteAsHotelReader(role: unknown): boolean {
+  const normalizedRole = normalizeRole(role);
+  return (
+    normalizedRole === "admin" ||
+    normalizedRole === "superadmin" ||
+    normalizedRole === "quality" ||
+    normalizedRole === "general_manager"
+  );
+}
+
+function canOpenDepartmentRouteAsAreaReader(role: unknown): boolean {
+  return normalizeRole(role) === "manager";
+}
+
 export function normalizeDepartmentCode(input: unknown): DepartmentCode {
   const value = String(input ?? "").trim().toLowerCase();
   if (value === "engineering") return "engineering";
@@ -22,13 +36,24 @@ export function resolveDepartmentCode(role: unknown, assignedDepartmentCode: unk
 
 export function getDepartmentRouteScope(
   routeDepartment: Exclude<DepartmentCode, null>,
+  role: unknown,
   assignedDepartmentCode: unknown,
   hasAreaScope: boolean
 ): DepartmentRouteScope {
   const normalizedAssignedDepartment = normalizeDepartmentCode(assignedDepartmentCode);
+  const canOpenAsHotelReader = canOpenDepartmentRouteAsHotelReader(role);
+  const canOpenAsAreaReader = canOpenDepartmentRouteAsAreaReader(role);
 
   if (normalizedAssignedDepartment === routeDepartment) {
     return "department";
+  }
+
+  if (canOpenAsHotelReader) {
+    return "department";
+  }
+
+  if (canOpenAsAreaReader) {
+    return "area";
   }
 
   if (normalizedAssignedDepartment === "it" || normalizedAssignedDepartment === "engineering") {
@@ -47,7 +72,11 @@ export function canAccessDepartmentRoute(
   role: unknown,
   assignedDepartmentCode: unknown
 ): boolean {
-  return resolveDepartmentCode(role, assignedDepartmentCode) === routeDepartment;
+  return (
+    resolveDepartmentCode(role, assignedDepartmentCode) === routeDepartment ||
+    canOpenDepartmentRouteAsHotelReader(role) ||
+    canOpenDepartmentRouteAsAreaReader(role)
+  );
 }
 
 export function getDepartmentRedirectTarget(role: unknown, assignedDepartmentCode: unknown): string {

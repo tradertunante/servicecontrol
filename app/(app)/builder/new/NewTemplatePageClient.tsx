@@ -57,8 +57,8 @@ export default function NewTemplatePageClient({
         } else {
           setSelectedAreaId("");
         }
-      } catch (e: any) {
-        setError(e?.message ?? "Error al cargar datos.");
+      } catch (e: unknown) {
+        setError(e instanceof Error ? e.message : "Error al cargar datos.");
       } finally {
         setLoading(false);
       }
@@ -108,67 +108,50 @@ export default function NewTemplatePageClient({
 
       setSuccess("Auditoria creada. Redirigiendo al editor...");
       setTimeout(() => router.push(`/builder/${payload.template_id}`), 700);
-    } catch (e: any) {
-      setError(e?.message ?? "No se pudo crear la auditoria.");
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "No se pudo crear la auditoria.");
       setSaving(false);
     }
   }
 
-  const card: React.CSSProperties = {
-    borderRadius: 18,
-    border: "1px solid rgba(0,0,0,0.08)",
-    background: "rgba(255,255,255,0.85)",
-    padding: 20,
-    boxShadow: "0 10px 30px rgba(0,0,0,0.06)",
-  };
-  const btn: React.CSSProperties = {
-    padding: "12px 16px",
-    borderRadius: 12,
-    border: "1px solid rgba(0,0,0,0.2)",
-    background: "#000",
-    color: "#fff",
-    fontWeight: 900,
-    cursor: "pointer",
-    fontSize: 14,
-  };
   const disabled = saving || !templateName.trim() || !selectedAreaId || !selectedAreaExists;
 
   if (loading) {
     return (
-      <main style={{ padding: 24, paddingTop: 80 }}>
+      <main className="p-6 pt-20">
         <HotelHeader />
         <BackButton fallback="/builder" />
-        <div style={{ opacity: 0.8 }}>Cargando...</div>
+        <div className="opacity-80">Cargando...</div>
       </main>
     );
   }
 
   if (error && !areas.length) {
     return (
-      <main style={{ padding: 24, paddingTop: 80 }}>
+      <main className="p-6 pt-20">
         <HotelHeader />
         <BackButton fallback="/builder" />
-        <div style={{ color: "crimson", fontWeight: 900 }}>{error}</div>
+        <div className="text-[crimson] font-[900]">{error}</div>
       </main>
     );
   }
 
   return (
-    <main style={{ padding: 24, paddingTop: 80 }}>
+    <main className="p-6 pt-20">
       <HotelHeader />
       <BackButton fallback="/builder" />
-      <div style={{ marginBottom: 20 }}>
-        <div style={{ opacity: 0.7, fontSize: 14 }}>
+      <div className="mb-5">
+        <div className="opacity-70 text-sm">
           Crea una nueva plantilla de auditoria para {initialProfile.full_name ?? "tu hotel"}
         </div>
       </div>
-      {error ? <div style={{ marginBottom: 12, color: "crimson", fontWeight: 950 }}>{error}</div> : null}
-      {success ? <div style={{ marginBottom: 12, color: "green", fontWeight: 950 }}>{success}</div> : null}
-      <div style={card}>
-        <div style={{ fontSize: 20, fontWeight: 950, marginBottom: 16 }}>Nueva Auditoria</div>
-        <div style={{ display: "grid", gap: 16 }}>
+      {error ? <div className="mb-3 text-[crimson] font-[950]">{error}</div> : null}
+      {success ? <div className="mb-3 text-green-600 font-[950]">{success}</div> : null}
+      <div className="rounded-[18px] border border-black/[0.08] bg-white/85 p-5 shadow-[0_10px_30px_rgba(0,0,0,0.06)]">
+        <div className="text-xl font-[950] mb-4">Nueva Auditoria</div>
+        <div className="grid gap-4">
           <div>
-            <label style={{ fontWeight: 900, marginBottom: 8, display: "block" }}>
+            <label className="font-[900] mb-2 block">
               Nombre de la auditoria
             </label>
             <input
@@ -176,32 +159,15 @@ export default function NewTemplatePageClient({
               value={templateName}
               onChange={(e) => setTemplateName(e.target.value)}
               placeholder="Ej: Auditoria Diaria Housekeeping"
-              style={{
-                width: "100%",
-                padding: "12px 14px",
-                borderRadius: 14,
-                border: "1px solid rgba(0,0,0,0.18)",
-                outline: "none",
-                fontWeight: 900,
-                fontSize: 16,
-              }}
+              className="w-full px-[14px] py-3 rounded-[14px] border border-black/[0.18] outline-none font-[900] text-base"
             />
           </div>
           <div>
-            <label style={{ fontWeight: 900, marginBottom: 8, display: "block" }}>Area</label>
+            <label className="font-[900] mb-2 block">Area</label>
             <select
               value={selectedAreaId}
               onChange={(e) => setSelectedAreaId(e.target.value)}
-              style={{
-                width: "100%",
-                padding: "12px 14px",
-                borderRadius: 14,
-                border: "1px solid rgba(0,0,0,0.18)",
-                outline: "none",
-                fontWeight: 900,
-                fontSize: 16,
-                cursor: "pointer",
-              }}
+              className="w-full px-[14px] py-3 rounded-[14px] border border-black/[0.18] outline-none font-[900] text-base cursor-pointer"
             >
               {areas.map((area) => (
                 <option key={area.id} value={area.id}>
@@ -210,11 +176,15 @@ export default function NewTemplatePageClient({
               ))}
             </select>
           </div>
-          <div style={{ marginTop: 8 }}>
+          <div className="mt-2">
             <button
               onClick={handleCreate}
               disabled={disabled}
-              style={{ ...btn, opacity: disabled ? 0.5 : 1, cursor: disabled ? "not-allowed" : "pointer" }}
+              className="px-4 py-3 rounded-xl border border-black/20 bg-black text-white font-[900] text-sm"
+              style={{
+                opacity: disabled ? 0.5 : 1,
+                cursor: disabled ? "not-allowed" : "pointer",
+              }}
             >
               {saving ? "Creando..." : "Crear Auditoria"}
             </button>

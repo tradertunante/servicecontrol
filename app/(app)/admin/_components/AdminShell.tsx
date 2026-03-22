@@ -10,6 +10,7 @@ import HotelInfoModule from "../_modules/hotel/HotelInfoModule";
 import AccessByAreaModule from "../_modules/access-by-area/AccessByAreaModule";
 import AreaAuditsModule from "../_modules/area-audits/AreaAuditsModule";
 import AuditTargetsModule from "../_modules/audit-targets/AuditTargetsModule";
+import BuilderModule from "../_modules/builder/BuilderModule";
 
 type ViewMode =
   | "hotel-info"
@@ -17,7 +18,8 @@ type ViewMode =
   | "users"
   | "access-by-area"
   | "area-audits"
-  | "audit-targets";
+  | "audit-targets"
+  | "builder";
 
 function v(name: string, fallback: string) {
   return `var(${name}, ${fallback})`;
@@ -103,6 +105,7 @@ export default function AdminShell({ initialHotelId }: { initialHotelId: string 
       [
         { key: "hotel-info" as const, label: "Hotel" },
         { key: "departments" as const, label: "Departamentos" },
+        { key: "builder" as const, label: "Biblioteca de estándares" },
         { key: "users" as const, label: "Usuarios" },
         { key: "access-by-area" as const, label: "Accesos por área" },
         { key: "area-audits" as const, label: "Auditorías por área" },
@@ -111,49 +114,29 @@ export default function AdminShell({ initialHotelId }: { initialHotelId: string 
     []
   );
 
-  const headerRow: CSSProperties = {
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: 12,
-    flexWrap: "wrap",
-    marginBottom: 12,
-  };
-
-  const titleStyle: CSSProperties = {
-    fontSize: 18,
-    fontWeight: 900,
-    letterSpacing: 0.2,
-  };
-
-  const subStyle: CSSProperties = {
-    marginTop: 3,
-    fontSize: 13,
-    opacity: 0.85,
-  };
-
+  // Dynamic: depends on isNarrow state
   const layoutStyle: CSSProperties = isNarrow
     ? { display: "grid", gridTemplateColumns: "1fr", gap: 14, alignItems: "start", width: "100%" }
     : { display: "grid", gridTemplateColumns: "260px 1fr", gap: 14, alignItems: "start", width: "100%" };
 
   return (
-    <div style={{ width: "100%", padding: 18 }}>
+    <div className="w-full p-[18px]">
       <div style={layoutStyle}>
         <aside style={sidebar}>
-          <div style={headerRow}>
+          <div className="flex items-center justify-between gap-3 flex-wrap mb-3">
             <div>
-              <div style={titleStyle}>Administración</div>
-              <div style={subStyle}>Gestiona hotel, usuarios, accesos, auditorías y objetivos.</div>
+              <div className="text-[18px] font-black tracking-[0.2px]">Administración</div>
+              <div className="mt-[3px] text-[13px] opacity-[0.85]">Gestiona hotel, usuarios, accesos, auditorías y objetivos.</div>
             </div>
 
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <div className="flex gap-2 flex-wrap">
               <div style={buildPillStyle()}>
                 <b>Hotel:</b> {activeHotelId ? activeHotelId.slice(0, 8) + "…" : "—"}
               </div>
             </div>
           </div>
 
-          <div style={{ display: "grid", gap: 8, marginTop: 6 }}>
+          <div className="grid gap-2 mt-[6px]">
             {navItems.map((it) => {
               const active = viewMode === it.key;
               return (
@@ -178,13 +161,13 @@ export default function AdminShell({ initialHotelId }: { initialHotelId: string 
           </div>
 
           {!activeHotelId ? (
-            <div style={{ marginTop: 12, fontSize: 12, opacity: 0.85, lineHeight: 1.35 }}>
+            <div className="mt-3 text-[12px] opacity-[0.85] leading-[1.35]">
               Selecciona un hotel (HotelPicker) para poder administrar módulos por hotel.
             </div>
           ) : null}
         </aside>
 
-        <main style={{ width: "100%" }}>
+        <main className="w-full">
           {!activeHotelId ? (
             <div style={card}>
               <b>Selecciona un hotel</b> (HotelPicker) para poder administrar módulos por hotel.
@@ -195,6 +178,8 @@ export default function AdminShell({ initialHotelId }: { initialHotelId: string 
             <DepartmentsModule hotelId={activeHotelId} />
           ) : viewMode === "users" ? (
             <UsersModule />
+          ) : viewMode === "builder" ? (
+            <BuilderModule hotelId={activeHotelId} />
           ) : viewMode === "access-by-area" ? (
             <AccessByAreaModule />
           ) : viewMode === "area-audits" ? (

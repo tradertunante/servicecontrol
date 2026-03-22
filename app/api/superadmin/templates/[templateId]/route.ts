@@ -1,4 +1,5 @@
 import { NextRequest } from "next/server";
+import { jsonDbError } from "@/lib/api/response";
 
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { jsonError, jsonOk, loadGlobalTemplate, requireSuperadminRoute } from "@/lib/superadmin/server";
@@ -41,7 +42,7 @@ export async function PATCH(
     .eq("scope", "global");
 
   if (error) {
-    return jsonError(error.message, 500);
+    return jsonDbError(error);
   }
 
   return jsonOk({ template_id: template.templateId, updated_by: caller.profile.id });

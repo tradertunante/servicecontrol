@@ -22,22 +22,19 @@ export default function AdminNav({ activeTab }: { activeTab: TabKey }) {
   }
 
   return (
-    <div style={{ display: "grid", gap: 10 }}>
+    <div className="grid gap-[10px]">
       {items.map((it) => {
         const active = it.key === activeTab;
         return (
           <button
             key={it.key}
             onClick={() => go(it.key)}
-            style={{
-              textAlign: "left",
-              padding: "12px 14px",
-              borderRadius: 14,
-              border: "1px solid var(--border)",
-              background: active ? "rgba(0,120,255,0.08)" : "var(--card-bg)",
-              fontWeight: 900,
-              cursor: "pointer",
-            }}
+            className={[
+              "text-left py-3 px-[14px] rounded-[14px]",
+              "border border-[var(--border)]",
+              active ? "bg-[rgba(0,120,255,0.08)]" : "bg-[var(--card-bg)]",
+              "font-black cursor-pointer",
+            ].join(" ")}
           >
             {it.label}
           </button>

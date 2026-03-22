@@ -265,7 +265,8 @@ export default function AreaHistoryPageClient({
         .eq("audit_template_id", histTemplateId)
         .gte("executed_at", start)
         .lt("executed_at", end)
-        .order("executed_at", { ascending: false });
+        .order("executed_at", { ascending: false })
+        .limit(100);
 
       if (rErr) throw rErr;
 

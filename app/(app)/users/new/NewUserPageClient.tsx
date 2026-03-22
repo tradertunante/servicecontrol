@@ -64,9 +64,9 @@ export default function NewUserPageClient({
         }),
       });
       const text = await res.text();
-      let payload: any = null;
+      let payload: { error?: string } | null = null;
       try {
-        payload = JSON.parse(text);
+        payload = JSON.parse(text) as { error?: string };
       } catch {
         payload = { error: text?.slice(0, 200) || "Respuesta no-JSON." };
       }
@@ -77,37 +77,42 @@ export default function NewUserPageClient({
       setPassword("");
       setPassword2("");
       setRole("auditor");
-    } catch (e: any) {
-      setError(e?.message ?? "Error creando el usuario.");
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Error creando el usuario.");
     } finally {
       setBusy(false);
     }
   }
 
   return (
-    <div style={{ padding: 24 }}>
-      <h1 style={{ fontSize: 44, fontWeight: 800, margin: 0 }}>Crear usuario</h1>
-      <p style={{ marginTop: 10, opacity: 0.85 }}>
+    <div className="p-6">
+      <h1 className="text-[44px] font-[800] m-0">Crear usuario</h1>
+      <p className="mt-2.5 opacity-85">
         {initialProfile.role}. El usuario se creara dentro del hotel activo {hotelId}.
       </p>
-      {error ? <div style={{ color: "#b00020", fontWeight: 800, marginTop: 8 }}>{error}</div> : null}
-      {ok ? <div style={{ color: "rgba(0,0,0,0.8)", fontWeight: 800, marginTop: 8 }}>{ok}</div> : null}
-      <div style={{ display: "grid", gap: 12, marginTop: 16 }}>
-        <input value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Nombre completo (opcional)" style={{ padding: 12 }} />
-        <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email *" type="email" style={{ padding: 12 }} />
-        <input value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Password * (minimo 8)" type={showPasswords ? "text" : "password"} style={{ padding: 12 }} />
-        <input value={password2} onChange={(e) => setPassword2(e.target.value)} placeholder="Repetir password *" type={showPasswords ? "text" : "password"} style={{ padding: 12 }} />
-        <button type="button" onClick={() => setShowPasswords((value) => !value)} style={{ padding: 12, fontWeight: 900 }}>
+      {error ? <div className="text-[#b00020] font-[800] mt-2">{error}</div> : null}
+      {ok ? <div className="text-black/80 font-[800] mt-2">{ok}</div> : null}
+      <div className="grid gap-3 mt-4">
+        <input value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Nombre completo (opcional)" className="p-3" />
+        <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email *" type="email" className="p-3" />
+        <input value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Password * (minimo 8)" type={showPasswords ? "text" : "password"} className="p-3" />
+        <input value={password2} onChange={(e) => setPassword2(e.target.value)} placeholder="Repetir password *" type={showPasswords ? "text" : "password"} className="p-3" />
+        <button type="button" onClick={() => setShowPasswords((value) => !value)} className="p-3 font-[900]">
           {showPasswords ? "Ocultar contrasenas" : "Mostrar contrasenas"}
         </button>
-        <select value={effectiveRole} onChange={(e) => setRole(e.target.value as Role)} style={{ padding: 12 }}>
+        <select value={effectiveRole} onChange={(e) => setRole(e.target.value as Role)} className="p-3">
           {assignableRoles.map((candidateRole) => (
             <option key={candidateRole} value={candidateRole}>
               {candidateRole}
             </option>
           ))}
         </select>
-        <button onClick={handleCreate} disabled={!canSubmit} style={{ padding: 14, fontWeight: 900, opacity: canSubmit ? 1 : 0.5, cursor: canSubmit ? "pointer" : "not-allowed" }}>
+        <button
+          onClick={handleCreate}
+          disabled={!canSubmit}
+          className="p-[14px] font-[900]"
+          style={{ opacity: canSubmit ? 1 : 0.5, cursor: canSubmit ? "pointer" : "not-allowed" }}
+        >
           {busy ? "Creando..." : "Crear usuario"}
         </button>
         <BackButton />

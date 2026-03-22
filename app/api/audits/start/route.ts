@@ -7,10 +7,7 @@ import {
   resolveRouteHotelScope,
 } from "@/lib/auth/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
-
-function jsonError(message: string, status = 400) {
-  return NextResponse.json({ ok: false, error: message }, { status });
-}
+import { jsonError, jsonDbError } from "@/lib/api/response";
 
 type StartAuditRpcResponse = {
   ok?: boolean;
@@ -57,12 +54,12 @@ export async function POST(request: NextRequest) {
       .maybeSingle(),
   ]);
 
-  if (areaErr) return jsonError(areaErr.message, 500);
+  if (areaErr) return jsonDbError(areaErr);
   if (!area?.id || String(area.hotel_id ?? "") !== hotelResult.hotelId || area.active === false) {
     return jsonError("El área no pertenece al hotel activo.", 403);
   }
 
-  if (templateErr) return jsonError(templateErr.message, 500);
+  if (templateErr) return jsonDbError(templateErr);
   if (
     !template?.id ||
     String(template.hotel_id ?? "") !== hotelResult.hotelId ||

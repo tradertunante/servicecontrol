@@ -68,6 +68,9 @@ export default function DashboardPageClient({
     monthScore,
     quarterScore,
     yearScore,
+    prevMonthScore,
+    prevQuarterScore,
+    prevYearScore,
     heatMapData,
     heatMapDataInternal,
     heatMapDataQuality,
@@ -90,11 +93,11 @@ export default function DashboardPageClient({
   }, [availableYears, selectedYear]);
 
   const goAreaDetail = (areaId: string) => {
-    router.push(`/areas/${areaId}?tab=dashboard&period=THIS_YEAR&template=ALL`);
+    router.push(`/team/general?area=${areaId}`);
   };
 
   const goWorstAuditDetail = (areaId: string, templateId: string) => {
-    router.push(`/areas/${areaId}?tab=dashboard&period=THIS_MONTH&template=${templateId}`);
+    router.push(`/team/historial?area=${areaId}&template=${templateId}&period=THIS_MONTH`);
   };
 
   const goPendingTeamDetail = (teamKey: "it" | "maintenance") => {
@@ -153,7 +156,15 @@ export default function DashboardPageClient({
         onChangeHotel={handleChangeHotel}
       />
 
-      <GaugesRow card={card} monthScore={monthScore} quarterScore={quarterScore} yearScore={yearScore} />
+      <GaugesRow
+        card={card}
+        monthScore={monthScore}
+        quarterScore={quarterScore}
+        yearScore={yearScore}
+        prevMonthScore={prevMonthScore}
+        prevQuarterScore={prevQuarterScore}
+        prevYearScore={prevYearScore}
+      />
 
       <HeatMapCard
         card={card}

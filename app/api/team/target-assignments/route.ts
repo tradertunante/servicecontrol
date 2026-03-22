@@ -7,6 +7,8 @@ import {
 } from "@/lib/auth/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
+import { jsonError, jsonDbError } from "@/lib/api/response";
+
 type AssignmentInput = {
   id?: string;
   source_ids?: string[];
@@ -14,10 +16,6 @@ type AssignmentInput = {
   target_count?: number;
   active?: boolean;
 };
-
-function jsonError(message: string, status = 400) {
-  return NextResponse.json({ ok: false, error: message }, { status });
-}
 
 export async function POST(request: NextRequest) {
   const caller = await authorizeRouteRequest(request, {
@@ -48,7 +46,7 @@ export async function POST(request: NextRequest) {
     .eq("hotel_id", hotelResult.hotelId)
     .maybeSingle();
 
-  if (areaErr) return jsonError(areaErr.message, 500);
+  if (areaErr) return jsonDbError(areaErr);
   if (!area?.id) return jsonError("El área no pertenece al hotel activo.", 403);
 
   const templateIds = Array.from(
@@ -206,7 +204,7 @@ export async function POST(request: NextRequest) {
         .eq("hotel_id", hotelResult.hotelId)
         .in("id", duplicateIds);
 
-      if (deactivateErr) return jsonError(deactivateErr.message, 500);
+      if (deactivateErr) return jsonDbError(deactivateErr);
     }
 
     saved += 1;

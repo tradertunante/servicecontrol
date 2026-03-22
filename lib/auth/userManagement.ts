@@ -133,7 +133,8 @@ export async function listManagedUsers(actorProfile: Profile) {
     .from("profiles")
     .select("id, full_name, email, role, active, hotel_id")
     .eq("hotel_id", hotelResult.hotelId)
-    .order("full_name", { ascending: true });
+    .order("full_name", { ascending: true })
+    .limit(200);
 
   if (error) {
     return {

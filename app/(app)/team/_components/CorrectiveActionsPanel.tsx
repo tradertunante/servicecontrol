@@ -155,9 +155,9 @@ export default function CorrectiveActionsPanel({
 
       setRows(enriched);
       setLoading(false);
-    } catch (e: any) {
+    } catch (e: unknown) {
       setLoading(false);
-      setError(e?.message || "Error cargando corrective actions.");
+      setError(e instanceof Error ? e.message : "Error cargando corrective actions.");
     }
   }
 
@@ -254,8 +254,8 @@ export default function CorrectiveActionsPanel({
       );
 
       await loadData();
-    } catch (e: any) {
-      setError(e?.message || "No se pudo actualizar la acción.");
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "No se pudo actualizar la acción.");
     } finally {
       setSavingId(null);
     }
@@ -332,7 +332,7 @@ export default function CorrectiveActionsPanel({
         {canSeeAll ? (
           <select
             value={deptFilter}
-            onChange={(e) => setDeptFilter(e.target.value as any)}
+            onChange={(e) => setDeptFilter(e.target.value as "all" | "engineering" | "systems")}
             style={btnBase}
           >
             <option value="all">Todos los departamentos</option>
@@ -343,7 +343,7 @@ export default function CorrectiveActionsPanel({
 
         <select
           value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value as any)}
+          onChange={(e) => setStatusFilter(e.target.value as "all" | "open" | "in_progress" | "resolved")}
           style={btnBase}
         >
           <option value="all">Todos los estados</option>

@@ -126,9 +126,8 @@ function chip(text: string, kind?: "FAIL" | "NA") {
 }
 
 function normalizeAnswerValue(row: AnswerRow) {
-  // audit_answers may contain mixed legacy/current values in answer/result.
-  // Always normalize from answer first, then result.
-  return String(row.answer ?? row.result ?? "").trim().toUpperCase();
+  // `result` is the canonical current field. Fall back to `answer` only for legacy rows.
+  return String(row.result ?? row.answer ?? "").trim().toUpperCase();
 }
 
 export default function AuditRunViewPage() {

@@ -52,7 +52,7 @@ function rpcErrorResponse({
 export async function POST(request: NextRequest) {
   try {
     const body = (await request.json().catch(() => null)) as SubmitAuditBody | null;
-    const runId = typeof body?.run_id === "string" ? body.run_id : "";
+    const runId = typeof body?.run_id === "string" ? body.run_id.trim() : "";
 
     if (!runId || !isUuid(runId)) {
       return rpcErrorResponse({
@@ -153,7 +153,7 @@ export async function POST(request: NextRequest) {
     if (runError) {
       return rpcErrorResponse({
         code: "RUN_LOOKUP_FAILED",
-        message: runError.message,
+        message: "Error interno al buscar la auditoría.",
         status: 500,
         error: {
           type: "internal",
@@ -245,20 +245,16 @@ export async function POST(request: NextRequest) {
     });
 
     if (error) {
+      console.error("[submit_audit_run] RPC error:", { message: error.message, details: error.details, hint: error.hint, code: error.code });
       return rpcErrorResponse({
         code: "RPC_EXECUTION_FAILED",
-        message: "Failed to execute submit_audit_run.",
+        message: "Error interno al procesar la auditoría.",
         status: 500,
         error: {
           type: "internal",
           field: null,
           question_id: null,
-          details: {
-            message: error.message,
-            details: error.details,
-            hint: error.hint,
-            code: error.code,
-          },
+          details: {},
         },
         meta: {
           run_id: runId,

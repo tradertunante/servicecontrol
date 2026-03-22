@@ -1,37 +1,27 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/lib/supabaseClient";
-import {
-  getDepartmentRedirectTarget,
-  getDepartmentRouteScope,
-  normalizeDepartmentCode,
-} from "@/app/(app)/_lib/departmentAccess";
 
 export type DepartmentCode = "it" | "engineering";
 
 export type DepartmentActionRow = {
-  corrective_action_id: string;
+  backlog_item_id: string;
   audit_run_id: string;
   question_id: string;
   title: string;
   status: string;
-  assigned_department_id: string | null;
-  assigned_department: string | null;
+  owner_department: string;
   hotel_id: string;
   area_id: string;
+  area_name?: string | null;
+  audit_template_id?: string | null;
+  template_name?: string | null;
+  resolution_comment?: string | null;
+  ready_for_reaudit?: boolean;
   room_number: string | null;
   audit_score: number | null;
   created_at: string | null;
-};
-
-type ProfileRow = {
-  id: string;
-  full_name: string | null;
-  role: string | null;
-  hotel_id: string | null;
-  active: boolean | null;
-  assigned_department_id?: string | null;
+  updated_at?: string | null;
 };
 
 export type DepartmentCorrectiveActionsResult = {
@@ -39,6 +29,9 @@ export type DepartmentCorrectiveActionsResult = {
   rows: DepartmentActionRow[];
   scopeLabel: string;
   userName: string | null;
+  viewMode: "department" | "global";
+  storageMode: "backlog" | "fallback";
+  warningMessage?: string | null;
 };
 
 export function getDepartmentCorrectiveActionsQueryKey(
@@ -49,85 +42,31 @@ export function getDepartmentCorrectiveActionsQueryKey(
 }
 
 export async function fetchDepartmentCorrectiveActions(
-  userId: string,
+  _userId: string,
   department: DepartmentCode
 ): Promise<DepartmentCorrectiveActionsResult> {
-  const { data: profile, error: profileErr } = await supabase
-    .from("profiles")
-    .select("id, full_name, role, hotel_id, active, assigned_department_id")
-    .eq("id", userId)
-    .single();
+  const response = await fetch(`/api/departments/backlog?department=${department}`, {
+    method: "GET",
+    credentials: "include",
+    cache: "no-store",
+  });
 
-  if (profileErr || !profile) {
-    throw profileErr ?? new Error("No se pudo cargar tu perfil.");
+  const payload = (await response.json().catch(() => null)) as
+    | (DepartmentCorrectiveActionsResult & { ok?: boolean; error?: string | null })
+    | null;
+
+  if (!response.ok || !payload) {
+    throw new Error(payload?.error ?? "No se pudo cargar el backlog operativo del departamento.");
   }
-
-  const typedProfile = profile as ProfileRow;
-  if (typedProfile.active === false) {
-    return {
-      redirectTo: getDepartmentRedirectTarget(typedProfile.role, null),
-      rows: [],
-      scopeLabel: "",
-      userName: typedProfile.full_name ?? null,
-    };
-  }
-
-  let assignedDepartmentCode: string | null = null;
-  const assignedDepartmentId = typedProfile.assigned_department_id ?? null;
-
-  if (assignedDepartmentId) {
-    const { data: departmentRow, error: departmentErr } = await supabase
-      .from("hotel_departments")
-      .select("code")
-      .eq("id", assignedDepartmentId)
-      .maybeSingle();
-
-    if (departmentErr) throw departmentErr;
-
-    assignedDepartmentCode = normalizeDepartmentCode(
-      (departmentRow as { code?: string | null } | null)?.code ?? null
-    );
-  }
-
-  const { data: areaScopeRows, error: areaScopeErr } = await supabase
-    .from("user_area_access")
-    .select("area_id")
-    .eq("user_id", userId)
-    .eq("hotel_id", typedProfile.hotel_id ?? "")
-    .limit(1);
-
-  if (areaScopeErr) throw areaScopeErr;
-
-  const hasAreaScope = (areaScopeRows ?? []).some(
-    (row: { area_id?: string | null }) => !!row.area_id
-  );
-
-  const routeScope = getDepartmentRouteScope(department, assignedDepartmentCode, hasAreaScope);
-
-  if (routeScope === "none") {
-    return {
-      redirectTo: getDepartmentRedirectTarget(typedProfile.role, assignedDepartmentCode),
-      rows: [],
-      scopeLabel: "",
-      userName: typedProfile.full_name ?? null,
-    };
-  }
-
-  const { data: actions, error: actionsErr } = await supabase.rpc(
-    "get_scoped_department_corrective_actions",
-    { p_user_id: userId, p_target_department_code: department }
-  );
-
-  if (actionsErr) throw actionsErr;
 
   return {
-    redirectTo: null,
-    rows: (actions ?? []) as DepartmentActionRow[],
-    scopeLabel:
-      routeScope === "department"
-        ? "Visibilidad completa de tu departamento."
-        : "Visibilidad limitada a las areas operativas que tienes asignadas.",
-    userName: typedProfile.full_name ?? null,
+    redirectTo: payload.redirectTo ?? null,
+    rows: (payload.rows ?? []) as DepartmentActionRow[],
+    scopeLabel: payload.scopeLabel ?? "",
+    userName: payload.userName ?? null,
+    viewMode: payload.viewMode === "department" ? "department" : "global",
+    storageMode: payload.storageMode === "fallback" ? "fallback" : "backlog",
+    warningMessage: payload.warningMessage ?? null,
   };
 }
 

@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import type { CSSProperties } from "react";
 import { useRouter } from "next/navigation";
 import type { AuditReportData } from "@/lib/reports/auditReportTypes";
+import { exportAuditReportToExcel } from "@/lib/reports/exportExcel";
 
 const SUCCESS_SCORE_MIN = 90;
 const WARNING_SCORE_MIN = 75;
@@ -421,6 +422,9 @@ export default function AuditReportPageClient({
             <button onClick={() => window.print()} style={btnStyle(true)}>
               Imprimir / PDF
             </button>
+            <button onClick={() => exportAuditReportToExcel(report)} style={btnStyle(false)}>
+              Exportar Excel
+            </button>
             <button
               onClick={() => router.push(`/areas/${report.run.area_id}/history/${report.run.id}`)}
               style={btnStyle(false)}
@@ -555,7 +559,7 @@ export default function AuditReportPageClient({
             </div>
 
             <div className="report-card" style={kpiStyle()}>
-              <div style={{ fontSize: 12, opacity: 0.6, fontWeight: 900 }}>OK</div>
+              <div style={{ fontSize: 12, opacity: 0.6, fontWeight: 900 }}>Pass</div>
               <div
                 className="report-kpi-value"
                 style={{ fontSize: 28, fontWeight: 900, marginTop: 6, color: "#15803d" }}
@@ -691,7 +695,7 @@ export default function AuditReportPageClient({
                           fontWeight: 900,
                         }}
                       >
-                        OK: {section.ok}
+                        Pass: {section.ok}
                       </span>
                     </div>
                   </div>
