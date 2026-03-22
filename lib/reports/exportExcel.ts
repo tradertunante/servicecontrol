@@ -32,7 +32,7 @@ export function exportAuditReportToExcel(data: AuditReportData): void {
     ["Habitación", data.run.room_number ?? ""],
     ["Fecha", data.run.executed_at ?? ""],
     ["Total preguntas", data.summary.total],
-    ["OK", data.summary.ok],
+    ["Pass", data.summary.ok],
     ["FAIL", data.summary.fail],
     ["N/A", data.summary.na],
   ];
@@ -72,7 +72,7 @@ export function exportAreaPeriodReportToExcel(data: AreaPeriodReportData): void 
     ["Puntuación media", data.summary.avg_score ?? ""],
     ["Tasa de fallos %", data.summary.fail_rate_pct],
     ["Total respuestas", data.summary.total_answers],
-    ["OK", data.summary.ok_count],
+    ["Pass", data.summary.ok_count],
     ["FAIL", data.summary.fail_count],
     ["N/A", data.summary.na_count],
   ];
@@ -80,7 +80,7 @@ export function exportAreaPeriodReportToExcel(data: AreaPeriodReportData): void 
   XLSX.utils.book_append_sheet(wb, wsResumen, "Resumen");
 
   // Sheet 2: Auditorías
-  const auditHeader = ["Fecha", "Template", "Auditor", "Puntuación", "OK", "FAIL", "N/A", "Total"];
+  const auditHeader = ["Fecha", "Template", "Auditor", "Puntuación", "Pass", "FAIL", "N/A", "Total"];
   const auditRows = data.audits.map((audit) => [
     audit.executed_at ?? "",
     audit.template_name,

@@ -614,7 +614,7 @@ export default function AreaPeriodReportPage({
                           className="report-badge"
                           style={{ ...badgeStyle("OK"), padding: "5px 10px", borderRadius: 999, fontWeight: 900 }}
                         >
-                          OK: {section.ok}
+                          Pass: {section.ok}
                         </span>
                         <span
                           className="report-badge"
