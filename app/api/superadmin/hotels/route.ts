@@ -1,4 +1,5 @@
 import { NextRequest } from "next/server";
+import { jsonDbError } from "@/lib/api/response";
 
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { jsonError, jsonOk, requireSuperadminRoute } from "@/lib/superadmin/server";
@@ -17,7 +18,7 @@ export async function POST(request: NextRequest) {
     .insert([{ name, active: true }])
     .select("id, name, active, created_at");
 
-  if (error) return jsonError(error.message, 500);
+  if (error) return jsonDbError(error);
 
   return jsonOk({
     hotels: (data ?? []).map((row) => ({

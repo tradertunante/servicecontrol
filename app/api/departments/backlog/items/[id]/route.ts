@@ -10,7 +10,7 @@ import {
   resolveRouteHotelScope,
 } from "@/lib/auth/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
-import { jsonError } from "@/lib/api/response";
+import { jsonError, jsonDbError } from "@/lib/api/response";
 
 type BacklogItemRow = {
   id: string;
@@ -61,7 +61,7 @@ export async function PATCH(
     .eq("id", itemId)
     .maybeSingle();
 
-  if (itemError) return jsonError(itemError.message, 500);
+  if (itemError) return jsonDbError(itemError);
   if (!(itemData as BacklogItemRow | null)?.id) return jsonError("Hallazgo no encontrado.", 404);
 
   const item = itemData as BacklogItemRow;
@@ -75,7 +75,7 @@ export async function PATCH(
     .eq("id", caller.profile.id)
     .maybeSingle();
 
-  if (profileError) return jsonError(profileError.message, 500);
+  if (profileError) return jsonDbError(profileError);
 
   const assignedDepartmentId =
     String((profileData as ProfileDepartmentRow | null)?.assigned_department_id ?? "").trim() || null;
@@ -88,7 +88,7 @@ export async function PATCH(
       .eq("id", assignedDepartmentId)
       .maybeSingle();
 
-    if (departmentError) return jsonError(departmentError.message, 500);
+    if (departmentError) return jsonDbError(departmentError);
     assignedDepartmentCode = normalizeDepartmentCode(
       (departmentData as HotelDepartmentRow | null)?.code ?? null,
     );

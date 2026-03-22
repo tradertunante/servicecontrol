@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { consumeTrainingRegistrationToken } from "@/lib/trainings/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
-import { jsonError } from "@/lib/api/response";
+import { jsonError, jsonDbError } from "@/lib/api/response";
 
 function normalizeEmployeeNumber(input: unknown) {
   return String(input ?? "").trim();
@@ -28,7 +28,7 @@ export async function POST(request: NextRequest) {
       .eq("id", sessionId)
       .maybeSingle();
 
-    if (sessionError) return jsonError(sessionError.message, 500);
+    if (sessionError) return jsonDbError(sessionError);
     if (!session) return jsonError("Sesion no encontrada.", 404);
     if (session.status !== "open") return jsonError("La sesion ya no esta abierta.", 409);
 
@@ -51,7 +51,7 @@ export async function POST(request: NextRequest) {
       .eq("employee_number", employeeNumber)
       .maybeSingle();
 
-    if (memberError) return jsonError(memberError.message, 500);
+    if (memberError) return jsonDbError(memberError);
 
     const resolvedMember = member ?? null;
 
@@ -63,7 +63,7 @@ export async function POST(request: NextRequest) {
         .eq("area_id", topicAreaId)
         .maybeSingle();
 
-      if (areaLinkError) return jsonError(areaLinkError.message, 500);
+      if (areaLinkError) return jsonDbError(areaLinkError);
       if (!areaLink) {
         return jsonError("El colaborador no pertenece al area de esta formacion.", 409);
       }
@@ -83,7 +83,7 @@ export async function POST(request: NextRequest) {
         return jsonError("La asistencia ya estaba registrada para esta sesion.", 409);
       }
 
-      return jsonError(insertError.message, 500);
+      return jsonDbError(insertError);
     }
 
     return NextResponse.json({

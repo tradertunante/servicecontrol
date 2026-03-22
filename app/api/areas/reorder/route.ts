@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { authorizeRouteRequest, resolveRouteHotelScope } from "@/lib/auth/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
-import { jsonError } from "@/lib/api/response";
+import { jsonError, jsonDbError } from "@/lib/api/response";
 
 export async function POST(request: NextRequest) {
   const caller = await authorizeRouteRequest(request, { roles: ["admin", "superadmin"] });
@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
     .eq("hotel_id", hotelResult.hotelId)
     .in("id", areaIds);
 
-  if (areasErr) return jsonError(areasErr.message, 500);
+  if (areasErr) return jsonDbError(areasErr);
 
   const allowedIds = new Set((areas ?? []).map((row) => String(row.id)));
   if (areaIds.some((areaId) => !allowedIds.has(areaId))) {
@@ -40,7 +40,7 @@ export async function POST(request: NextRequest) {
       .eq("id", areaId)
       .eq("hotel_id", hotelResult.hotelId);
 
-    if (error) return jsonError(error.message, 500);
+    if (error) return jsonDbError(error);
   }
 
   return NextResponse.json({ ok: true, count: areaIds.length });

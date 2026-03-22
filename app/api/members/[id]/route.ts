@@ -9,7 +9,7 @@ import {
   resolveMembersHotelId,
   uniqueStrings,
 } from "@/lib/members/server";
-import { jsonError } from "@/lib/api/response";
+import { jsonError, jsonDbError } from "@/lib/api/response";
 
 export async function PATCH(
   request: NextRequest,
@@ -236,7 +236,7 @@ export async function DELETE(
       .maybeSingle();
 
     if (memberError) {
-      return jsonError(memberError.message, 500);
+      return jsonDbError(memberError);
     }
 
     if (!member) {
@@ -259,7 +259,7 @@ export async function DELETE(
         .in("area_id", hotelAreaIds);
 
       if (currentLinksError) {
-        return jsonError(currentLinksError.message, 500);
+        return jsonDbError(currentLinksError);
       }
 
       const allowedAreaSet = new Set(allowedAreaIds);
@@ -282,7 +282,7 @@ export async function DELETE(
       .eq("hotel_id", hotelResult.hotelId);
 
     if (updateError) {
-      return jsonError(updateError.message, 500);
+      return jsonDbError(updateError);
     }
 
     return NextResponse.json({ ok: true });

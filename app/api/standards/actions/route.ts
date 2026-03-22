@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { authorizeRouteRequest } from "@/lib/auth/server";
 import { resolveManagedHotelId } from "@/lib/auth/userManagement";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
-import { jsonError } from "@/lib/api/response";
+import { jsonError, jsonDbError } from "@/lib/api/response";
 
 export async function POST(request: NextRequest) {
   try {
@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
         p_target_hotel_id: hotelResult.hotelId,
       });
 
-      if (error) return jsonError(error.message, 500);
+      if (error) return jsonDbError(error);
       return NextResponse.json({ ok: true });
     }
 
@@ -47,7 +47,7 @@ export async function POST(request: NextRequest) {
           .eq("hotel_id", hotelResult.hotelId)
           .maybeSingle();
 
-        if (areaError) return jsonError(areaError.message, 500);
+        if (areaError) return jsonDbError(areaError);
         if (!area?.id) return jsonError("El area no pertenece al hotel seleccionado.", 403);
       }
 
@@ -57,7 +57,7 @@ export async function POST(request: NextRequest) {
         .eq("id", templateId)
         .eq("hotel_id", hotelResult.hotelId);
 
-      if (error) return jsonError(error.message, 500);
+      if (error) return jsonDbError(error);
       return NextResponse.json({ ok: true });
     }
 
@@ -75,7 +75,7 @@ export async function POST(request: NextRequest) {
         .eq("hotel_id", hotelResult.hotelId)
         .maybeSingle();
 
-      if (templateError) return jsonError(templateError.message, 500);
+      if (templateError) return jsonDbError(templateError);
       if (!template?.id) return jsonError("La plantilla no pertenece al hotel seleccionado.", 403);
 
       const { error } = await admin.rpc("clone_hotel_audit_template", {
@@ -84,7 +84,7 @@ export async function POST(request: NextRequest) {
         p_new_name: newName,
       });
 
-      if (error) return jsonError(error.message, 500);
+      if (error) return jsonDbError(error);
       return NextResponse.json({ ok: true });
     }
 

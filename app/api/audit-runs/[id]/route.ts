@@ -6,7 +6,7 @@ import {
   resolveRouteHotelScope,
 } from "@/lib/auth/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
-import { jsonError } from "@/lib/api/response";
+import { jsonError, jsonDbError } from "@/lib/api/response";
 
 function mapDeleteAuditRunRpcError(message: string) {
   const normalized = String(message ?? "").toUpperCase();
@@ -52,7 +52,7 @@ export async function DELETE(
     .eq("id", runId)
     .maybeSingle();
 
-  if (runErr) return jsonError(runErr.message, 500);
+  if (runErr) return jsonDbError(runErr);
   if (!run?.id) {
     return jsonError("La auditoría no existe.", 404);
   }
