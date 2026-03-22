@@ -8,6 +8,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabaseClient";
 import { goBackOrFallback } from "@/lib/navigation/clientBack";
 import { useProfile } from "@/hooks/useProfile";
+import NotificationBell from "./NotificationBell";
 import { useHotelId } from "@/hooks/useHotelId";
 
 function getPageTitle(pathname: string | null): string {
@@ -180,6 +181,7 @@ export default function HotelHeader() {
 
       {/* Right */}
       <div className="flex items-center gap-2.5 flex-shrink-0 relative">
+        <NotificationBell />
         {/* Desktop actions */}
         <div className="hidden md:flex gap-2.5 items-center">
           {isAdmin && (
