@@ -218,7 +218,7 @@ export function useMyDashboardData({
         const areaIds = Array.from(
           new Set(
             (areaAccessResp.data ?? [])
-              .map((row: any) => row.area_id as string | null)
+              .map((row: { area_id: string | null }) => row.area_id)
               .filter(Boolean)
           )
         ) as string[];
@@ -254,7 +254,7 @@ export function useMyDashboardData({
 
         if (assignmentsResp.error) throw assignmentsResp.error;
 
-        const assignments = ((assignmentsResp.data ?? []) as any[]).map(
+        const assignments = ((assignmentsResp.data ?? []) as AssignmentRow[]).map(
           (row) =>
             ({
               id: row.id,
@@ -291,17 +291,19 @@ export function useMyDashboardData({
 
         const runsResp = await supabase
           .from("audit_runs")
-          .select("id, executed_at, score, audit_template_id")
+          .select("id, executed_at, score, audit_template_id, status")
           .eq("hotel_id", hotelId)
           .eq("executed_by", uid)
+          .eq("status", "submitted")
           .not("executed_at", "is", null)
+          .not("score", "is", null)
           .gte("executed_at", range.startISO)
           .lte("executed_at", range.endISO)
           .order("executed_at", { ascending: false });
 
         if (runsResp.error) throw runsResp.error;
 
-        const runs = (runsResp.data ?? []) as any[];
+        const runs = (runsResp.data ?? []) as { id: string; executed_at: string | null; score: number | null; audit_template_id: string }[];
 
         const runCountByTemplate: Record<string, number> = {};
         for (const run of runs) {
@@ -370,8 +372,8 @@ export function useMyDashboardData({
         }));
 
         if (!cancelled) setMyRecentRuns(recentRuns);
-      } catch (e: any) {
-        if (!cancelled) setError(e?.message ?? "Error inesperado.");
+      } catch (e: unknown) {
+        if (!cancelled) setError(e instanceof Error ? e.message : "Error inesperado.");
       } finally {
         if (!cancelled) setLoading(false);
       }

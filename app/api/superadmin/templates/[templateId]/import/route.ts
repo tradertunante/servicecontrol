@@ -1,4 +1,5 @@
 import { NextRequest } from "next/server";
+import { jsonDbError } from "@/lib/api/response";
 
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import {
@@ -67,7 +68,7 @@ export async function POST(
     .select("id, name")
     .eq("audit_template_id", template.templateId);
 
-  if (sectionsError) return jsonError(sectionsError.message, 500);
+  if (sectionsError) return jsonDbError(sectionsError);
 
   const sectionMap = new Map<string, { id: string; name: string }>();
   for (const section of existingSections ?? []) {
@@ -136,7 +137,7 @@ export async function POST(
     .insert(inserts);
 
   if (insertQuestionsError) {
-    return jsonError(insertQuestionsError.message, 500);
+    return jsonDbError(insertQuestionsError);
   }
 
   try {

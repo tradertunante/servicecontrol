@@ -89,6 +89,136 @@ Adoptar:
 
 ---
 
+## Decisión 8
+
+### Fecha
+2026-03-18
+
+### Decisión
+Modelar el departamento responsable a nivel de `audit_questions` como metadato del standard dentro del template.
+
+### Contexto
+Cada standard del template necesita declarar qué equipo operativo es responsable para poder reutilizar esa señal en dashboards y flujos posteriores, sin inferencias frágiles por nombre de área o por lógica duplicada en cliente.
+
+### Alternativas consideradas
+- calcular responsabilidad por mapeos externos de áreas
+- guardar responsabilidad en otra tabla paralela
+- persistir el metadato directamente en `audit_questions`
+
+### Decisión final
+Añadir `responsible_department` en `audit_questions` y editarlo inline desde el builder junto al resto de atributos del standard.
+
+### Impacto esperado
+- base consistente para dashboards por equipo
+- menos lógica derivada o heurística en cliente
+- compatibilidad con autosave y editor actual sin reescritura
+
+---
+
+## Decisión 9
+
+### Fecha
+2026-03-18
+
+### Decisión
+Resolver `responsible_department` desde las áreas reales configuradas por hotel, no desde una taxonomía fija global.
+
+### Contexto
+La operación trabaja a nivel de departamentos/áreas reales como `Housekeeping`, `Front Office`, `IRD`, `IT` o `Mantenimiento`. Una lista fija con macro-divisiones como `F&B` no representa bien ese nivel operativo y vuelve ambiguo el responsable real del standard.
+
+### Alternativas consideradas
+- mantener un enum fijo global
+- mezclar enum fijo con etiquetas visibles del hotel
+- usar como fuente de verdad las `areas` reales del hotel
+
+### Decisión final
+Construir el selector desde `areas` del hotel dueño del template, manteniendo solo normalizaciones puntuales para compatibilidad operativa (`IT` y `Mantenimiento`).
+
+### Impacto esperado
+- selector alineado con la operación real del hotel
+- menos confusión visual en builder
+- base más útil para dashboards y asignación operativa posterior
+
+---
+
+## Decisión 10
+
+### Fecha
+2026-03-19
+
+### Decisión
+Separar ownership operativo general y routing correctivo no operativo en campos distintos de `audit_questions`.
+
+### Contexto
+`responsible_department` ya estaba acoplado a la lógica correctiva no operativa mediante constraints y la RPC de submit. Reutilizarlo desde el builder como dueño general del standard rompía combinaciones válidas cuando la pregunta seguía en `training_only`.
+
+### Alternativas consideradas
+- relajar el constraint actual
+- seguir reutilizando `responsible_department` y completar más campos desde frontend
+- crear un campo separado para ownership operativo
+
+### Decisión final
+Mantener `responsible_department` para corrective logic no operativa y crear `owner_department` para ownership operativo general y dashboards.
+
+### Impacto esperado
+- se preserva la integridad de corrective actions y reauditorías
+- el builder puede asignar dueño operativo sin violar constraints existentes
+- el dashboard futuro tiene una fuente de verdad separada y coherente
+
+---
+
+## Decisión 11
+
+### Fecha
+2026-03-19
+
+### Decisión
+Separar las vistas `/it` y `/engineering` del modelo `audit_corrective_actions` y alimentarlas con backlog operativo derivado de FAILs submitidos por `owner_department`.
+
+### Contexto
+Los FAILs con `owner_department = it|engineering` no generan `audit_corrective_actions` cuando la pregunta sigue en `training_only`, porque `audit_corrective_actions` pertenece a la lógica correctiva no operativa basada en `corrective_flow` y `responsible_department`.
+
+### Alternativas consideradas
+- generar `audit_corrective_actions` nuevos para cualquier FAIL con `owner_department`
+- seguir reutilizando las pantallas departamentales sobre corrective actions
+- construir un backlog operativo separado a partir de `audit_runs`, `audit_answers` y `audit_questions.owner_department`
+
+### Decisión final
+Mantener `audit_corrective_actions` exclusivamente para corrective logic y reauditorías, y mover `/it` y `/engineering` a una fuente nueva de backlog operativo derivada directamente de FAILs submitidos.
+
+### Impacto esperado
+- consistencia semántica entre ownership operativo y lógica correctiva
+- mejor trazabilidad de FAILs por departamento sin contaminar corrective actions
+- base limpia para evolucionar después un workflow operativo propio para IT y Mantenimiento
+
+---
+
+## Decisión 12
+
+### Fecha
+2026-03-19
+
+### Decisión
+Hacer obligatorios `room_number` y `team_member_id` por configuración de template, no como regla global.
+
+### Contexto
+Algunos templates operativos, como Guest Room, pierden utilidad si la auditoría se envía sin habitación o sin colaborador auditado. Esa obligatoriedad depende del tipo de template y no debe imponerse al resto del producto.
+
+### Alternativas consideradas
+- hacer ambos campos obligatorios globalmente
+- mantenerlos opcionales y resolverlo solo en reporting
+- modelar flags de submit por `audit_template`
+
+### Decisión final
+Añadir `require_room_number` y `require_audited_employee` en `audit_templates`, exponerlos en builder y validarlos al enviar en la RPC `submit_audit_run`, con espejo UX mínimo en cliente.
+
+### Impacto esperado
+- los templates que lo necesiten exigirán cabecera completa al submit
+- los templates existentes mantienen comportamiento actual por default `false`
+- la regla queda modelada donde corresponde: en la configuración del template y en el submit server-side
+
+---
+
 ## Decisión 3
 
 ### Fecha
@@ -859,3 +989,73 @@ Además, una importación histórica toca varias tablas (`audit_runs` y `audit_a
 - evita mezclar datos entre hoteles
 - evita `audit_runs` referenciando assets globales no operativos
 - permite importación parcial por filas sin sacrificar atomicidad por auditoría
+
+---
+
+## Decisión 17
+
+### Fecha
+2026-03-20
+
+### Decisión
+El seguimiento operativo de FAILs para `/it` y `/engineering` vive en una entidad propia `department_backlog_items`, separada tanto de `audit_answers` como de `audit_corrective_actions`.
+
+### Contexto
+El producto ya separó dos conceptos:
+
+- `responsible_department` y `audit_corrective_actions` para lógica correctiva no operativa
+- `owner_department` para ownership operativo general del hallazgo
+
+Las pantallas `/it` y `/engineering` primero se alimentaron de FAILs crudos, pero eso no resolvía el caso de uso operativo mínimo: cambiar estado, documentar solución y marcar listo para reauditoría sin contaminar el resultado bruto de auditoría.
+
+### Alternativas consideradas
+- escribir estados operativos directamente en `audit_answers`
+- seguir reutilizando `audit_corrective_actions`
+- construir backlog solo en lectura desde FAILs sin persistencia propia
+
+### Decisión final
+- crear `public.department_backlog_items` como tabla específica del backlog operativo
+- crear cada backlog item al momento de `submit_audit_run(...)` para FAILs submitidos con `owner_department = it|engineering`
+- mantener `audit_corrective_actions` intacta para corrective logic no operativa
+- hacer que `/it` y `/engineering` trabajen sobre backlog items editables con un MVP simple:
+  - `status`
+  - `resolution_comment`
+  - `ready_for_reaudit`
+
+### Impacto esperado
+- trazabilidad operativa clara sin mezclar modelos
+- backlog persistente y editable para IT/Mantenimiento
+- menor riesgo de corromper score, answers o corrective actions existentes
+
+---
+
+## Decisión 18
+
+### Fecha
+2026-03-20
+
+### Decisión
+La navegación operativa del hotel debe apoyarse en una sola matriz clara de roles y en un flujo principal basado en `Team`, no en retrocesos hardcodeados ni en duplicación entre `/areas` y `/team`.
+
+### Contexto
+La app mezclaba varias decisiones locales:
+
+- botón atrás cliente con `router.back()` seguido de `push(...)`
+- header con fallback hardcodeado por pathname
+- tabs del módulo Team visibles por condicionales dispersas
+- `superadmin` bloqueado en `/formaciones`
+- dashboard y listado de áreas enviando a `/areas/*` aunque el flujo operativo más completo vive en `/team/*`
+
+Eso generaba historial roto, menús inconsistentes por rol y rutas que terminaban en `/dashboard` sin ser el destino natural.
+
+### Decisión final
+- unificar el comportamiento del botón atrás con `history` real y fallback por `replace(...)`
+- tratar a `superadmin`, `admin`, `general_manager` y `quality` como lectores hotel-wide del workspace Team
+- centralizar tabs visibles de Team en una sola lista declarativa
+- permitir `superadmin` en `Formaciones`
+- hacer que dashboard/listado de áreas abran el flujo operativo en `/team/general` o `/team/historial`
+
+### Impacto esperado
+- historial más predecible
+- navegación por módulos más coherente entre roles altos y manager
+- menos duplicación funcional entre `/areas` y `/team`

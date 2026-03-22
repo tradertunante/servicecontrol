@@ -8,7 +8,7 @@ export default async function ItPage() {
     <DepartmentCorrectiveActionsPage
       department="it"
       title="Seguimiento IT"
-      description="Acciones correctivas no operativas del departamento de IT."
+      description="Backlog operativo de FAILs submitidos asignados al departamento de IT."
       userId={profile.id}
     />
   );

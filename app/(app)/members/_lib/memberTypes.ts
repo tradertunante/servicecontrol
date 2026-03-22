@@ -13,12 +13,20 @@ export type MemberRecord = {
   area_names: string[];
 };
 
+export type MembersPagination = {
+  page: number;
+  page_size: number;
+  total: number;
+  total_pages: number;
+};
+
 export type MembersResponse = {
   ok: boolean;
   members: MemberRecord[];
   available_areas: MemberAreaOption[];
   hotel_id: string;
   role: string;
+  pagination?: MembersPagination;
 };
 
 export type MemberImportPreviewRow = {

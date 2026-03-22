@@ -1,6 +1,5 @@
 "use client";
 
-import type { CSSProperties } from "react";
 import type { MemberAreaOption } from "../_lib/memberTypes";
 
 type MemberFormValues = {
@@ -10,39 +9,22 @@ type MemberFormValues = {
   area_ids: string[];
 };
 
-function inputStyle(): CSSProperties {
-  return {
-    border: "1px solid #d1d5db",
-    borderRadius: 10,
-    padding: "10px 12px",
-    width: "100%",
-    background: "#fff",
-  };
+const inputClasses =
+  "border border-[#d1d5db] rounded-[10px] py-[10px] px-3 w-full bg-white";
+
+function buttonClasses(disabled = false) {
+  return [
+    "border border-[#d1d5db]",
+    disabled ? "bg-[#f3f4f6] text-[#9ca3af]" : "bg-[#111827] text-white",
+    "py-[10px] px-3",
+    "rounded-[10px]",
+    "font-bold",
+    disabled ? "cursor-not-allowed" : "cursor-pointer",
+  ].join(" ");
 }
 
-function buttonStyle(disabled = false): CSSProperties {
-  return {
-    border: "1px solid #d1d5db",
-    background: disabled ? "#f3f4f6" : "#111827",
-    color: disabled ? "#9ca3af" : "#fff",
-    padding: "10px 12px",
-    borderRadius: 10,
-    fontWeight: 700,
-    cursor: disabled ? "not-allowed" : "pointer",
-  };
-}
-
-function secondaryButtonStyle(): CSSProperties {
-  return {
-    border: "1px solid #d1d5db",
-    background: "#fff",
-    color: "#111827",
-    padding: "10px 12px",
-    borderRadius: 10,
-    fontWeight: 700,
-    cursor: "pointer",
-  };
-}
+const secondaryButtonClasses =
+  "border border-[#d1d5db] bg-white text-[#111827] py-[10px] px-3 rounded-[10px] font-bold cursor-pointer";
 
 export default function MemberForm({
   title,
@@ -64,33 +46,24 @@ export default function MemberForm({
   onCancel?: () => void;
 }) {
   return (
-    <div
-      style={{
-        border: "1px solid #e5e7eb",
-        background: "#fff",
-        padding: 16,
-        borderRadius: 12,
-        display: "grid",
-        gap: 12,
-      }}
-    >
-      <div style={{ fontSize: 18, fontWeight: 800 }}>{title}</div>
+    <div className="border border-[#e5e7eb] bg-white p-4 rounded-[12px] grid gap-3">
+      <div className="text-[18px] font-extrabold">{title}</div>
 
       <input
         value={values.full_name}
         onChange={(event) => onChange({ ...values, full_name: event.target.value })}
         placeholder="Nombre del miembro"
-        style={inputStyle()}
+        className={inputClasses}
       />
 
       <input
         value={values.employee_number}
         onChange={(event) => onChange({ ...values, employee_number: event.target.value })}
         placeholder="Numero de colaborador"
-        style={inputStyle()}
+        className={inputClasses}
       />
 
-      <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 14 }}>
+      <label className="flex items-center gap-2 text-[14px]">
         <input
           type="checkbox"
           checked={values.active}
@@ -100,12 +73,12 @@ export default function MemberForm({
       </label>
 
       <div>
-        <div style={{ fontWeight: 700, marginBottom: 8 }}>Areas asignadas</div>
-        <div style={{ display: "grid", gap: 8 }}>
+        <div className="font-bold mb-2">Areas asignadas</div>
+        <div className="grid gap-2">
           {areaOptions.map((area) => {
             const checked = values.area_ids.includes(area.id);
             return (
-              <label key={area.id} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 14 }}>
+              <label key={area.id} className="flex items-center gap-2 text-[14px]">
                 <input
                   type="checkbox"
                   checked={checked}
@@ -123,12 +96,12 @@ export default function MemberForm({
         </div>
       </div>
 
-      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-        <button onClick={onSubmit} disabled={busy} style={buttonStyle(busy)}>
+      <div className="flex gap-2 flex-wrap">
+        <button onClick={onSubmit} disabled={busy} className={buttonClasses(busy)}>
           {busy ? "Guardando..." : submitLabel}
         </button>
         {onCancel ? (
-          <button onClick={onCancel} type="button" style={secondaryButtonStyle()}>
+          <button onClick={onCancel} type="button" className={secondaryButtonClasses}>
             Cancelar
           </button>
         ) : null}

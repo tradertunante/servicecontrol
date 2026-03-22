@@ -1,4 +1,5 @@
 import { NextRequest } from "next/server";
+import { jsonDbError } from "@/lib/api/response";
 
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { jsonError, jsonOk, loadGlobalPack, requireSuperadminRoute } from "@/lib/superadmin/server";
@@ -33,7 +34,7 @@ export async function PATCH(
     .eq("pack_id", pack.packId)
     .eq("audit_template_id", templateId);
 
-  if (error) return jsonError(error.message, 500);
+  if (error) return jsonDbError(error);
 
   return jsonOk({
     pack_id: pack.packId,
@@ -65,7 +66,7 @@ export async function DELETE(
     .eq("pack_id", pack.packId)
     .eq("audit_template_id", templateId);
 
-  if (error) return jsonError(error.message, 500);
+  if (error) return jsonDbError(error);
 
   return jsonOk({
     pack_id: pack.packId,

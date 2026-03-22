@@ -1,4 +1,5 @@
 import { NextRequest } from "next/server";
+import { jsonDbError } from "@/lib/api/response";
 
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import {
@@ -79,7 +80,7 @@ export async function POST(
     .eq("audit_template_id", effectiveTemplateId)
     .maybeSingle();
 
-  if (existingLinkError) return jsonError(existingLinkError.message, 500);
+  if (existingLinkError) return jsonDbError(existingLinkError);
   if (existingLink?.pack_id) return jsonError("La plantilla ya esta asociada a este pack.", 409);
 
   let position: number;
@@ -97,7 +98,7 @@ export async function POST(
       position,
     });
 
-  if (insertLinkError) return jsonError(insertLinkError.message, 500);
+  if (insertLinkError) return jsonDbError(insertLinkError);
 
   return jsonOk({
     pack_id: pack.packId,

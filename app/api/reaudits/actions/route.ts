@@ -11,10 +11,7 @@ import {
   buildReassignmentBlock,
   buildTrainingConfirmationBlock,
 } from "@/app/(app)/team/_lib/reauditUtils";
-
-function jsonError(message: string, status = 400) {
-  return NextResponse.json({ ok: false, error: message }, { status });
-}
+import { jsonError, jsonDbError } from "@/lib/api/response";
 
 type ReauditActionRpcResponse = {
   ok?: boolean;
@@ -54,7 +51,7 @@ export async function POST(request: NextRequest) {
     .eq("id", runId)
     .maybeSingle();
 
-  if (runErr) return jsonError(runErr.message, 500);
+  if (runErr) return jsonDbError(runErr);
   if (!run?.id || String(run.hotel_id ?? "") !== hotelResult.hotelId) {
     return jsonError("La re-auditoría no pertenece al hotel activo.", 404);
   }
@@ -98,7 +95,7 @@ export async function POST(request: NextRequest) {
       p_next_auditor_id: null,
     });
 
-    if (error) return jsonError(error.message, 500);
+    if (error) return jsonDbError(error);
 
     const payload = (data ?? null) as ReauditActionRpcResponse | null;
     if (!payload?.ok) {
@@ -151,11 +148,11 @@ export async function POST(request: NextRequest) {
         .maybeSingle(),
     ]);
 
-  if (nextAuditorErr) return jsonError(nextAuditorErr.message, 500);
+  if (nextAuditorErr) return jsonDbError(nextAuditorErr);
   if (!nextAuditor?.id) {
     return jsonError("El auditor seleccionado no pertenece al hotel activo.", 403);
   }
-  if (areaAccessErr) return jsonError(areaAccessErr.message, 500);
+  if (areaAccessErr) return jsonDbError(areaAccessErr);
   if (!areaAccess?.user_id) {
     return jsonError("El auditor seleccionado no tiene acceso al área de esta re-auditoría.", 403);
   }
@@ -181,7 +178,7 @@ export async function POST(request: NextRequest) {
     p_next_auditor_id: nextAuditorId,
   });
 
-  if (error) return jsonError(error.message, 500);
+  if (error) return jsonDbError(error);
 
   const payload = (data ?? null) as ReauditActionRpcResponse | null;
   if (!payload?.ok) {

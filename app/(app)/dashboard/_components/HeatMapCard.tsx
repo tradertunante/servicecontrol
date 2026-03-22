@@ -5,6 +5,7 @@ import { useMemo, useState } from "react";
 import type { CSSProperties } from "react";
 import HeatMap from "@/app/components/HeatMap";
 import type { HeatMode } from "../_lib/dashboardUtils";
+import type { HeatRow } from "../_hooks/useDashboardData";
 
 export default function HeatMapCard({
   card,
@@ -19,9 +20,9 @@ export default function HeatMapCard({
   availableYears,
 }: {
   card: CSSProperties;
-  heatMapData: any[];
-  heatMapDataInternal: any[];
-  heatMapDataQuality: any[];
+  heatMapData: HeatRow[];
+  heatMapDataInternal: HeatRow[];
+  heatMapDataQuality: HeatRow[];
   monthLabels: string[];
   heatMode: HeatMode;
   setHeatMode: (m: HeatMode) => void;
@@ -53,14 +54,14 @@ export default function HeatMapCard({
     const qualChildren = heatMapDataQuality.filter((r) => r.kind === "audit");
 
     // Mapa de hijos por parentKey base
-    const intChildrenByParent = new Map<string, any[]>();
+    const intChildrenByParent = new Map<string, HeatRow[]>();
     for (const c of intChildren) {
       const base = stripChannel(c.parentKey ?? "");
       if (!intChildrenByParent.has(base)) intChildrenByParent.set(base, []);
       intChildrenByParent.get(base)!.push(c);
     }
 
-    const qualChildrenByParent = new Map<string, any[]>();
+    const qualChildrenByParent = new Map<string, HeatRow[]>();
     for (const c of qualChildren) {
       const base = stripChannel(c.parentKey ?? "");
       if (!qualChildrenByParent.has(base)) qualChildrenByParent.set(base, []);
@@ -73,7 +74,7 @@ export default function HeatMapCard({
       ...qualParents.map((r) => stripChannel(r.key)),
     ]));
 
-    const result: any[] = [];
+    const result: HeatRow[] = [];
 
     for (const baseKey of areaBaseKeys) {
       const intParent  = intParents.find((r)  => stripChannel(r.key) === baseKey);

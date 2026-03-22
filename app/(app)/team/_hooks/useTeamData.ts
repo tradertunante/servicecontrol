@@ -125,6 +125,10 @@ export function useTeamData({
         const uid = initialProfile.id;
         const prof = initialProfile;
 
+        if (prof.role !== "superadmin" && prof.hotel_id && prof.hotel_id !== hotelId) {
+          throw new Error("Hotel ID no coincide con tu perfil.");
+        }
+
         if (!canAccessTeam(prof.role)) {
           throw new Error("No tienes acceso a la vista de equipo.");
         }
@@ -145,15 +149,21 @@ export function useTeamData({
         if (!cancelled) {
           setLeaderboard(Array.isArray(payload.leaderboard) ? payload.leaderboard : []);
           setTeamTargets(Array.isArray(payload.team_targets) ? payload.team_targets : []);
-          setTeamRecentRuns(Array.isArray(payload.recent_runs) ? payload.recent_runs : []);
+          setTeamRecentRuns(
+            Array.isArray(payload.recent_runs)
+              ? payload.recent_runs.filter(
+                  (row) => row.score !== null && row.score !== undefined && Number.isFinite(Number(row.score))
+                )
+              : []
+          );
           setTeamTemplateProgress(
             Array.isArray(payload.template_progress) ? payload.template_progress : []
           );
           setSummary(mapRpcSummary(payload.summary));
         }
-      } catch (e: any) {
+      } catch (e: unknown) {
         if (!cancelled) {
-          setError(e?.message ?? "No se pudo cargar Team.");
+          setError(e instanceof Error ? e.message : "No se pudo cargar Team.");
           setLeaderboard([]);
           setTeamTargets([]);
           setTeamRecentRuns([]);

@@ -3,6 +3,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { useToast } from "@/app/providers/ToastProvider";
 import { supabase } from "@/lib/supabaseClient";
 import HotelHeader from "@/app/components/HotelHeader";
 
@@ -34,6 +35,7 @@ type Question = {
 
 export default function LibraryDetailPage() {
   const router = useRouter();
+  const toast = useToast();
   const params = useParams();
   const libraryId = params?.id as string;
 
@@ -86,9 +88,9 @@ export default function LibraryDetailPage() {
         if (!alive) return;
         setTemplates((t ?? []) as Template[]);
         setLoading(false);
-      } catch (e: any) {
+      } catch (e: unknown) {
         if (!alive) return;
-        setError(e?.message ?? "Error cargando la biblioteca.");
+        setError(e instanceof Error ? e.message : "Error cargando la biblioteca.");
         setLoading(false);
       }
     })();
@@ -143,9 +145,9 @@ export default function LibraryDetailPage() {
         if (!alive) return;
         setQuestions((q ?? []) as Question[]);
         setModalLoading(false);
-      } catch (e: any) {
+      } catch (e: unknown) {
         if (!alive) return;
-        setModalError(e?.message ?? "Error cargando la plantilla.");
+        setModalError(e instanceof Error ? e.message : "Error cargando la plantilla.");
         setModalLoading(false);
       }
     })();
@@ -155,139 +157,76 @@ export default function LibraryDetailPage() {
     };
   }, [openTemplateId]);
 
-  const pageWrap: React.CSSProperties = { padding: 24, paddingTop: 96 };
-
-  const btnDark: React.CSSProperties = {
-    padding: "10px 14px",
-    borderRadius: 12,
-    border: "1px solid rgba(0,0,0,0.2)",
-    background: "#000",
-    color: "#fff",
-    fontWeight: 900,
-    cursor: "pointer",
-    fontSize: 14,
-  };
-
-  const btnWhite: React.CSSProperties = {
-    padding: "10px 14px",
-    borderRadius: 12,
-    border: "1px solid rgba(0,0,0,0.18)",
-    background: "#fff",
-    color: "#000",
-    fontWeight: 900,
-    cursor: "pointer",
-    fontSize: 14,
-  };
-
-  const card: React.CSSProperties = {
-    borderRadius: 18,
-    border: "1px solid rgba(0,0,0,0.08)",
-    background: "rgba(255,255,255,0.85)",
-    padding: 18,
-    boxShadow: "0 10px 30px rgba(0,0,0,0.06)",
-  };
-
-  const overlay: React.CSSProperties = {
-    position: "fixed",
-    inset: 0,
-    background: "rgba(0,0,0,0.35)",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 18,
-    zIndex: 50,
-  };
-
-  const modal: React.CSSProperties = {
-    width: "min(980px, 100%)",
-    borderRadius: 18,
-    background: "#fff",
-    border: "1px solid rgba(0,0,0,0.12)",
-    boxShadow: "0 20px 60px rgba(0,0,0,0.25)",
-    padding: 18,
-  };
-
   if (loading) {
     return (
-      <main style={pageWrap}>
+      <main className="p-6 pt-24">
         <HotelHeader />
-        <div style={{ opacity: 0.8 }}>Cargando…</div>
+        <div className="opacity-80">Cargando…</div>
       </main>
     );
   }
 
   if (error) {
     return (
-      <main style={pageWrap}>
+      <main className="p-6 pt-24">
         <HotelHeader />
-        <div style={{ color: "crimson", fontWeight: 900 }}>{error}</div>
+        <div className="text-[crimson] font-black">{error}</div>
       </main>
     );
   }
 
   return (
-    <main style={pageWrap}>
+    <main className="p-6 pt-24">
       <HotelHeader />
 
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "flex-start",
-          gap: 16,
-          flexWrap: "wrap",
-        }}
-      >
+      <div className="flex justify-between items-start gap-4 flex-wrap">
         <div>
-          <div style={{ fontSize: 34, fontWeight: 950, letterSpacing: -0.6 }}>
+          <div className="text-[34px] font-black tracking-[-0.6px]">
             {library?.name ?? "Biblioteca"}
           </div>
-          <div style={{ marginTop: 6, opacity: 0.75, fontSize: 13 }}>
+          <div className="mt-1.5 opacity-75 text-[13px]">
             🌍 {library?.scope ?? "—"} · {library?.category ?? "—"}
           </div>
         </div>
 
-        <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
-          <button style={btnWhite} onClick={() => router.push("/standards")}>
+        <div className="flex gap-2.5 items-center flex-wrap">
+          <button
+            className="px-[14px] py-2.5 rounded-xl border border-black/[0.18] bg-white text-black font-black cursor-pointer text-sm"
+            onClick={() => router.push("/standards")}
+          >
             ← Atrás
           </button>
         </div>
       </div>
 
-      <div style={{ ...card, marginTop: 16 }}>
-        <div style={{ fontSize: 18, fontWeight: 950, marginBottom: 10 }}>📄 Plantillas</div>
+      <div className="rounded-[18px] border border-black/[0.08] bg-white/85 p-[18px] shadow-[0_10px_30px_rgba(0,0,0,0.06)] mt-4">
+        <div className="text-lg font-black mb-2.5">📄 Plantillas</div>
 
         {templates.length === 0 ? (
-          <div style={{ opacity: 0.75 }}>Esta biblioteca no tiene plantillas aún.</div>
+          <div className="opacity-75">Esta biblioteca no tiene plantillas aún.</div>
         ) : (
-          <div style={{ display: "grid", gap: 10 }}>
+          <div className="grid gap-2.5">
             {templates.map((t) => (
               <div
                 key={t.id}
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  gap: 12,
-                  padding: "12px 14px",
-                  borderRadius: 14,
-                  border: "1px solid rgba(0,0,0,0.08)",
-                  background: "rgba(0,0,0,0.02)",
-                }}
+                className="flex justify-between items-center gap-3 px-[14px] py-3 rounded-[14px] border border-black/[0.08] bg-black/[0.02]"
               >
                 <div>
-                  <div style={{ fontWeight: 950, fontSize: 15 }}>{t.name}</div>
-                  <div style={{ opacity: 0.7, fontSize: 12, marginTop: 2 }}>{t.description ?? "—"}</div>
+                  <div className="font-black text-[15px]">{t.name}</div>
+                  <div className="opacity-70 text-xs mt-0.5">{t.description ?? "—"}</div>
                 </div>
 
-                <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-                  <button style={btnDark} onClick={() => setOpenTemplateId(t.id)}>
+                <div className="flex gap-2.5 items-center">
+                  <button
+                    className="px-[14px] py-2.5 rounded-xl border border-black/20 bg-black text-white font-black cursor-pointer text-sm"
+                    onClick={() => setOpenTemplateId(t.id)}
+                  >
                     Ver
                   </button>
                   <button
-                    style={btnWhite}
+                    className="px-[14px] py-2.5 rounded-xl border border-black/[0.18] bg-white text-black font-black cursor-pointer text-sm"
                     onClick={() => {
-                      alert("Aquí luego irá 'Importar plantilla'");
+                      toast.warn("Aquí luego irá 'Importar plantilla'");
                     }}
                   >
                     Importar
@@ -300,78 +239,60 @@ export default function LibraryDetailPage() {
       </div>
 
       {openTemplateId && (
-        <div style={overlay} onClick={() => setOpenTemplateId(null)}>
-          <div style={modal} onClick={(e) => e.stopPropagation()}>
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                gap: 12,
-                alignItems: "flex-start",
-                flexWrap: "wrap",
-              }}
-            >
+        <div
+          className="fixed inset-0 bg-black/35 flex items-center justify-center p-[18px] z-50"
+          onClick={() => setOpenTemplateId(null)}
+        >
+          <div
+            className="w-[min(980px,100%)] rounded-[18px] bg-white border border-black/[0.12] shadow-[0_20px_60px_rgba(0,0,0,0.25)] p-[18px]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex justify-between gap-3 items-start flex-wrap">
               <div>
-                <div style={{ fontWeight: 950, fontSize: 18 }}>{openTemplate?.name ?? "Plantilla"}</div>
-                <div style={{ opacity: 0.7, marginTop: 4, fontSize: 13 }}>{openTemplate?.description ?? "—"}</div>
+                <div className="font-black text-lg">{openTemplate?.name ?? "Plantilla"}</div>
+                <div className="opacity-70 mt-1 text-[13px]">{openTemplate?.description ?? "—"}</div>
               </div>
-              <button style={btnWhite} onClick={() => setOpenTemplateId(null)}>
+              <button
+                className="px-[14px] py-2.5 rounded-xl border border-black/[0.18] bg-white text-black font-black cursor-pointer text-sm"
+                onClick={() => setOpenTemplateId(null)}
+              >
                 Cerrar
               </button>
             </div>
 
-            <div style={{ marginTop: 14 }}>
+            <div className="mt-[14px]">
               {modalLoading ? (
-                <div style={{ opacity: 0.8 }}>Cargando contenido…</div>
+                <div className="opacity-80">Cargando contenido…</div>
               ) : modalError ? (
-                <div style={{ color: "crimson", fontWeight: 900 }}>{modalError}</div>
+                <div className="text-[crimson] font-black">{modalError}</div>
               ) : sections.length === 0 ? (
-                <div style={{ opacity: 0.75 }}>Esta plantilla todavía no tiene secciones.</div>
+                <div className="opacity-75">Esta plantilla todavía no tiene secciones.</div>
               ) : (
-                <div style={{ display: "grid", gap: 10 }}>
+                <div className="grid gap-2.5">
                   {sections.map((s) => {
                     const qs = questions.filter((q) => q.section_id === s.id);
                     return (
                       <div
                         key={s.id}
-                        style={{
-                          borderRadius: 14,
-                          border: "1px solid rgba(0,0,0,0.08)",
-                          background: "rgba(0,0,0,0.02)",
-                          padding: 12,
-                        }}
+                        className="rounded-[14px] border border-black/[0.08] bg-black/[0.02] p-3"
                       >
-                        <div
-                          style={{
-                            display: "flex",
-                            justifyContent: "space-between",
-                            gap: 12,
-                            alignItems: "baseline",
-                            flexWrap: "wrap",
-                          }}
-                        >
-                          <div style={{ fontWeight: 950 }}>{s.name}</div>
-                          <div style={{ opacity: 0.7, fontSize: 12 }}>{qs.length} preguntas</div>
+                        <div className="flex justify-between gap-3 items-baseline flex-wrap">
+                          <div className="font-black">{s.name}</div>
+                          <div className="opacity-70 text-xs">{qs.length} preguntas</div>
                         </div>
 
                         {qs.length > 0 && (
-                          <div style={{ marginTop: 10, display: "grid", gap: 6 }}>
+                          <div className="mt-2.5 grid gap-1.5">
                             {qs.slice(0, 10).map((q) => (
                               <div
                                 key={q.id}
-                                style={{
-                                  padding: "8px 10px",
-                                  borderRadius: 12,
-                                  background: "#fff",
-                                  border: "1px solid rgba(0,0,0,0.06)",
-                                  fontSize: 13,
-                                }}
+                                className="px-2.5 py-2 rounded-xl bg-white border border-black/[0.06] text-[13px]"
                               >
                                 {q.text}
                               </div>
                             ))}
                             {qs.length > 10 && (
-                              <div style={{ opacity: 0.7, fontSize: 12 }}>…y {qs.length - 10} más</div>
+                              <div className="opacity-70 text-xs">…y {qs.length - 10} más</div>
                             )}
                           </div>
                         )}

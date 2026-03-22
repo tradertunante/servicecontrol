@@ -6,7 +6,8 @@ import type { Profile } from "@/lib/types";
 import MemberForm from "./MemberForm";
 import MembersImportPanel from "./MembersImportPanel";
 import MembersTable from "./MembersTable";
-import type { MemberAreaOption, MemberRecord, MembersResponse } from "../_lib/memberTypes";
+import { Pagination } from "@/components/ui/Pagination";
+import type { MemberAreaOption, MemberRecord, MembersPagination, MembersResponse } from "../_lib/memberTypes";
 
 type FormValues = {
   full_name: string;
@@ -90,6 +91,8 @@ export default function MembersModule({
   const [selectedAreaId, setSelectedAreaId] = useState("ALL");
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive">("active");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
+  const [page, setPage] = useState(1);
+  const [pagination, setPagination] = useState<MembersPagination | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -127,6 +130,8 @@ export default function MembersModule({
 
       const params = new URLSearchParams();
       params.set("status", statusFilter);
+      params.set("page", String(page));
+      params.set("page_size", "50");
       const query = params.toString() ? `?${params.toString()}` : "";
       const res = await fetch(`/api/members${query}`, {
         headers: {
@@ -144,12 +149,13 @@ export default function MembersModule({
       setAreaOptions(payload && "available_areas" in payload ? payload.available_areas : []);
       setHotelId(payload && "hotel_id" in payload ? payload.hotel_id : hotelId);
       setRole(payload && "role" in payload ? payload.role : "");
+      setPagination(payload && "pagination" in payload ? (payload.pagination ?? null) : null);
     } catch (err) {
       setError(normalizeError(err instanceof Error ? err.message : null, "No se pudo cargar miembros."));
     } finally {
       setLoading(false);
     }
-  }, [hotelId, statusFilter]);
+  }, [hotelId, statusFilter, page]);
 
   useEffect(() => {
     if (!hotelContextReady) return;
@@ -311,56 +317,28 @@ export default function MembersModule({
     role === "admin" || role === "superadmin" || role === "quality" || role === "general_manager";
 
   return (
-    <div style={{ display: "grid", gap: 16, padding: "24px 0" }}>
-      <div
-        style={{
-          border: "1px solid #e5e7eb",
-          background: "#fff",
-          padding: 16,
-          borderRadius: 12,
-        }}
-      >
-        <div style={{ fontSize: 24, fontWeight: 800 }}>Members</div>
-        <div style={{ marginTop: 6, color: "#4b5563", lineHeight: 1.5 }}>
+    <div className="grid gap-4 py-6">
+      <div className="border border-[#e5e7eb] bg-white p-4 rounded-xl">
+        <div className="text-2xl font-[800]">Members</div>
+        <div className="mt-1.5 text-[#4b5563] leading-[1.5]">
           Gestiona miembros, su estado y las areas donde pueden operar dentro de tu alcance actual.
         </div>
-        {error ? <div style={{ marginTop: 10, color: "#b91c1c", fontWeight: 600 }}>{error}</div> : null}
+        {error ? <div className="mt-2.5 text-[#b91c1c] font-semibold">{error}</div> : null}
       </div>
 
-      <div
-        style={{
-          border: "1px solid #e5e7eb",
-          background: "#fff",
-          padding: 16,
-          borderRadius: 12,
-          display: "grid",
-          gap: 10,
-        }}
-      >
-        <div style={{ fontSize: 18, fontWeight: 800 }}>Filtros</div>
-        <div style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}>
+      <div className="border border-[#e5e7eb] bg-white p-4 rounded-xl grid gap-2.5">
+        <div className="text-[18px] font-[800]">Filtros</div>
+        <div className="grid gap-2.5 [grid-template-columns:repeat(auto-fit,minmax(180px,1fr))]">
           <input
             value={search}
-            onChange={(event) => setSearch(event.target.value)}
+            onChange={(event) => { setSearch(event.target.value); setPage(1); }}
             placeholder="Buscar por nombre o numero"
-            style={{
-              border: "1px solid #d1d5db",
-              borderRadius: 10,
-              padding: "10px 12px",
-              width: "100%",
-              background: "#fff",
-            }}
+            className="border border-[#d1d5db] rounded-[10px] px-3 py-2.5 w-full bg-white"
           />
           <select
             value={selectedAreaId}
-            onChange={(event) => setSelectedAreaId(event.target.value)}
-            style={{
-              border: "1px solid #d1d5db",
-              borderRadius: 10,
-              padding: "10px 12px",
-              width: "100%",
-              background: "#fff",
-            }}
+            onChange={(event) => { setSelectedAreaId(event.target.value); setPage(1); }}
+            className="border border-[#d1d5db] rounded-[10px] px-3 py-2.5 w-full bg-white"
           >
             <option value="ALL">{isAdminLike ? "Todas las areas" : "Mis areas"}</option>
             {areaOptions.map((area) => (
@@ -371,14 +349,8 @@ export default function MembersModule({
           </select>
           <select
             value={statusFilter}
-            onChange={(event) => setStatusFilter(event.target.value as "all" | "active" | "inactive")}
-            style={{
-              border: "1px solid #d1d5db",
-              borderRadius: 10,
-              padding: "10px 12px",
-              width: "100%",
-              background: "#fff",
-            }}
+            onChange={(event) => { setStatusFilter(event.target.value as "all" | "active" | "inactive"); setPage(1); }}
+            className="border border-[#d1d5db] rounded-[10px] px-3 py-2.5 w-full bg-white"
           >
             <option value="all">Todos los estados</option>
             <option value="active">Solo activos</option>
@@ -387,13 +359,7 @@ export default function MembersModule({
           <select
             value={sortDirection}
             onChange={(event) => setSortDirection(event.target.value as "asc" | "desc")}
-            style={{
-              border: "1px solid #d1d5db",
-              borderRadius: 10,
-              padding: "10px 12px",
-              width: "100%",
-              background: "#fff",
-            }}
+            className="border border-[#d1d5db] rounded-[10px] px-3 py-2.5 w-full bg-white"
           >
             <option value="asc">Nombre A-Z</option>
             <option value="desc">Nombre Z-A</option>
@@ -422,23 +388,25 @@ export default function MembersModule({
       />
 
       {loading ? (
-        <div
-          style={{
-            border: "1px solid #e5e7eb",
-            background: "#fff",
-            padding: 16,
-            borderRadius: 12,
-          }}
-        >
+        <div className="border border-[#e5e7eb] bg-white p-4 rounded-xl">
           Cargando miembros...
         </div>
       ) : (
-        <MembersTable
-          members={filteredMembers}
-          busyMemberId={saving ? busyMemberId : null}
-          onEdit={beginEdit}
-          onDelete={(member) => void handleDelete(member)}
-        />
+        <>
+          <MembersTable
+            members={filteredMembers}
+            busyMemberId={saving ? busyMemberId : null}
+            onEdit={beginEdit}
+            onDelete={(member) => void handleDelete(member)}
+          />
+          {pagination && (
+            <Pagination
+              page={pagination.page}
+              totalPages={pagination.total_pages}
+              onPageChange={(newPage) => setPage(newPage)}
+            />
+          )}
+        </>
       )}
     </div>
   );

@@ -2,8 +2,9 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useToast } from "@/app/providers/ToastProvider";
 
-import { setActiveHotel } from "@/lib/auth/activeHotelClient";
+import { signOutAndRedirect } from "@/lib/auth";
 import { supabase } from "@/lib/supabaseClient";
 import type { Profile } from "@/lib/types";
 
@@ -24,6 +25,7 @@ export default function MyDashboardPageClient({
   initialHotelId: string;
 }) {
   const router = useRouter();
+  const toast = useToast();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   const { selectedPeriod, setSelectedPeriod, viewMode, setViewMode } = useMyView();
@@ -55,19 +57,7 @@ export default function MyDashboardPageClient({
     if (isLoggingOut) return;
 
     setIsLoggingOut(true);
-
-    try {
-      await setActiveHotel(null);
-    } catch (error) {
-      console.warn("Could not clear active hotel during logout:", error);
-    }
-
-    try {
-      await supabase.auth.signOut();
-    } finally {
-      router.replace("/login");
-      router.refresh();
-    }
+    await signOutAndRedirect(router);
   }
 
   async function handleAudit() {
@@ -83,7 +73,7 @@ export default function MyDashboardPageClient({
       } = await supabase.auth.getUser();
 
       if (userError || !user) {
-        alert("No se pudo identificar tu usuario para abrir el área de auditoría.");
+        toast.error("No se pudo identificar tu usuario para abrir el área de auditoría.");
         return;
       }
 
@@ -99,12 +89,12 @@ export default function MyDashboardPageClient({
         new Set(
           (data ?? [])
             .map((row: { area_id: string | null }) => row.area_id)
-            .filter((areaId): areaId is string => !!areaId)
+            .filter((areaId: string | null): areaId is string => !!areaId)
         )
       );
 
       if (areaIds.length === 0) {
-        alert("No tienes ningún área asignada para auditar.");
+        toast.warn("No tienes ningún área asignada para auditar.");
         return;
       }
 
@@ -116,25 +106,8 @@ export default function MyDashboardPageClient({
       router.push("/areas");
     } catch (error) {
       console.error("Error resolving audit area access:", error);
-      alert("No se pudo abrir el área de auditoría.");
+      toast.error("No se pudo abrir el área de auditoría.");
     }
-  }
-
-  if (isLoggingOut) {
-    return (
-      <div style={{ width: "100%", padding: "12px 14px 18px" }}>
-        <div
-          style={{
-            border: "1px solid var(--border)",
-            borderRadius: 14,
-            padding: 14,
-            background: "var(--card-bg)",
-          }}
-        >
-          Cerrando sesión...
-        </div>
-      </div>
-    );
   }
 
   return (

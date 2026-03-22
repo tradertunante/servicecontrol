@@ -49,13 +49,13 @@ export function useManagerAreaTemplates({
 
         setAreaHotelId(areaRes.data.hotel_id ?? null);
         setTemplates(
-          ((templatesRes.data ?? []) as AuditTemplate[]).filter((t: any) => t.active !== false)
+          ((templatesRes.data ?? []) as AuditTemplate[]).filter((t) => t.active !== false)
         );
         setLoading(false);
-      } catch (e: any) {
+      } catch (e: unknown) {
         if (cancelled) return;
         setLoading(false);
-        setError(e?.message ?? "No se pudieron cargar las auditorías del área.");
+        setError(e instanceof Error ? e.message : "No se pudieron cargar las auditorías del área.");
       }
     })();
 
@@ -101,8 +101,8 @@ export function useManagerAreaTemplates({
       }
 
       router.push(`/audits/${payload.run_id}`);
-    } catch (e: any) {
-      setError(e?.message ?? "No se pudo iniciar la auditoría.");
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "No se pudo iniciar la auditoría.");
     } finally {
       setStarting(null);
     }

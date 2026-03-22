@@ -1,22 +1,21 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { supabase } from "@/lib/supabaseClient";
 
 import { useAuditAutosave } from "./useAuditAutosave";
+import { useAuditLoader } from "./useAuditLoader";
+import { useAuditAnswers } from "./useAuditAnswers";
+import { useAuditMetadata } from "./useAuditMetadata";
 import {
   getAccessToken,
   getErrorMessage,
-  loadAuditSession,
   makeDraftAnswer,
   shouldShowField,
 } from "./useAuditSession.lib";
 import type {
-  AnswerRow,
   AnswerValue,
   DraftSaveResponse,
-  MetadataResponse,
   SubmitAuditResponse,
 } from "./useAuditSession.types";
 
@@ -36,342 +35,71 @@ export type {
 
 export function useAuditSession(runId: string | undefined) {
   const router = useRouter();
-  const { pendingCount, scheduleSave, flushAll } = useAuditAutosave();
+  const { pendingCount, scheduleSave: rawScheduleSave, flushAll } = useAuditAutosave();
 
-  const [loading, setLoading] = useState(true);
-  const [uploading, setUploading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [savingMember, setSavingMember] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const submittingRef = useRef(false);
 
-  const [run, setRun] = useState<import("./useAuditSession.types").AuditRunRow | null>(null);
-  const [template, setTemplate] = useState<import("./useAuditSession.types").TemplateRow | null>(null);
-  const [area, setArea] = useState<import("./useAuditSession.types").AreaRow | null>(null);
-  const [sections, setSections] = useState<import("./useAuditSession.types").SectionRow[]>([]);
-  const [questions, setQuestions] = useState<import("./useAuditSession.types").QuestionRow[]>([]);
-  const [answersByQ, setAnswersByQ] = useState<Record<string, AnswerRow>>({});
-  const [teamMembers, setTeamMembers] = useState<import("./useAuditSession.types").TeamMemberLite[]>([]);
-  const [selectedMember, setSelectedMember] = useState("");
-  const [roomNumber, setRoomNumber] = useState("");
-  const [savingRoomNumber, setSavingRoomNumber] = useState(false);
+  // Block new saves while submit is in progress to prevent race condition
+  const scheduleSave: typeof rawScheduleSave = useCallback(
+    (key, action) => {
+      if (submittingRef.current) return;
+      rawScheduleSave(key, action);
+    },
+    [rawScheduleSave],
+  );
+
+  const loaderState = useAuditLoader(runId);
+
+  const {
+    error, setError,
+    run, setRun,
+    questions,
+    answersByQ, setAnswersByQ,
+    selectedMember, setSelectedMember,
+    roomNumber, setRoomNumber,
+    submitted,
+    requiresAuditedEmployee,
+    requiresRoomNumber,
+    showRoomNumberField,
+  } = loaderState;
+
+  const { setAnswer, setComment, uploadPhoto, deletePhoto, uploading } = useAuditAnswers({
+    runId,
+    submitted,
+    questions,
+    answersByQ,
+    setAnswersByQ,
+    setError,
+    scheduleSave,
+  });
+
+  const { saveTeamMember, saveRoomNumber, savingMember, savingRoomNumber } = useAuditMetadata({
+    run,
+    submitted,
+    showRoomNumberField,
+    selectedMember,
+    setSelectedMember,
+    roomNumber,
+    setRoomNumber,
+    setError,
+    setRun,
+  });
 
   const saving = pendingCount > 0;
-  const submitted = (run?.status ?? "") === "submitted";
-  const isHousekeeping = (area?.type ?? "").toUpperCase() === "HK";
-
-  useEffect(() => {
-    if (!runId) return;
-
-    let alive = true;
-
-    (async () => {
-      setLoading(true);
-      setError(null);
-
-      try {
-        const session = await loadAuditSession(runId);
-        if (!alive) return;
-
-        setRun(session.run);
-        setTemplate(session.template);
-        setArea(session.area);
-        setSections(session.sections);
-        setQuestions(session.questions);
-        setAnswersByQ(session.answersByQ);
-        setTeamMembers(session.teamMembers);
-        setSelectedMember(session.run.team_member_id ?? "");
-        setRoomNumber(session.run.room_number ?? "");
-        setLoading(false);
-      } catch (sessionError: unknown) {
-        if (!alive) return;
-        setError(getErrorMessage(sessionError, "Error cargando auditoría."));
-        setLoading(false);
-      }
-    })();
-
-    return () => {
-      alive = false;
-    };
-  }, [runId]);
-
-  const totals = useMemo(() => {
-    const total = questions.length;
-    let answered = 0;
-    let fail = 0;
-    let na = 0;
-
-    for (const question of questions) {
-      const answer = answersByQ[question.id];
-      const value = (answer?.answer ?? answer?.result ?? null) as AnswerValue | null;
-      if (!value) continue;
-      answered += 1;
-      if (value === "FAIL") fail += 1;
-      if (value === "NA") na += 1;
-    }
-
-    const denom = Math.max(0, total - na);
-    const pass = Math.max(0, denom - fail);
-    const score = denom === 0 ? null : Math.round((pass / denom) * 100 * 10) / 10;
-
-    return { total, answered, fail, na, denom, pass, score };
-  }, [answersByQ, questions]);
-
-  const groupedQuestions = useMemo(() => {
-    const grouped: Record<string, import("./useAuditSession.types").QuestionRow[]> = {};
-    for (const question of questions) {
-      if (!grouped[question.audit_section_id]) {
-        grouped[question.audit_section_id] = [];
-      }
-      grouped[question.audit_section_id]!.push(question);
-    }
-    return grouped;
-  }, [questions]);
-
-  async function persistAnswerDraft(questionId: string, draft: AnswerRow) {
-    if (!runId) return;
-
-    const accessToken = await getAccessToken();
-    const response = await fetch(`/api/audits/${runId}/draft`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${accessToken}`,
-      },
-      body: JSON.stringify({
-        answers: [
-          {
-            question_id: questionId,
-            answer: draft.answer,
-            result: draft.result,
-            comment: draft.comment,
-            photo_path: draft.photo_path,
-          },
-        ],
-      }),
-    });
-
-    const payload = (await response.json().catch(() => null)) as DraftSaveResponse | null;
-    if (!response.ok || !payload?.ok || !payload.answers?.[0]) {
-      throw new Error(payload?.error ?? "No se pudo guardar.");
-    }
-
-    setAnswersByQ((prev) => ({
-      ...prev,
-      [questionId]: payload.answers![0],
-    }));
-  }
-
-  function updateAnswerDraft(questionId: string, updater: (draft: AnswerRow) => AnswerRow) {
-    if (!runId) return null;
-
-    let nextDraft: AnswerRow | null = null;
-    setAnswersByQ((prev) => {
-      nextDraft = updater(makeDraftAnswer(runId, questionId, prev[questionId]));
-      return {
-        ...prev,
-        [questionId]: nextDraft!,
-      };
-    });
-    return nextDraft;
-  }
-
-  function setAnswer(questionId: string, nextValue: AnswerValue) {
-    if (!runId || submitted) return;
-
-    setError(null);
-    const nextDraft = updateAnswerDraft(questionId, (draft) => ({
-      ...draft,
-      answer: nextValue,
-      result: nextValue,
-    }));
-
-    if (!nextDraft) return;
-
-    scheduleSave(`answer:${questionId}`, async () => {
-      try {
-        await persistAnswerDraft(questionId, nextDraft);
-      } catch (saveError: unknown) {
-        setError(getErrorMessage(saveError, "No se pudo guardar la respuesta."));
-      }
-    });
-  }
-
-  function setComment(questionId: string, comment: string) {
-    if (!runId || submitted) return;
-
-    setError(null);
-    const nextDraft = updateAnswerDraft(questionId, (draft) => ({
-      ...draft,
-      comment,
-    }));
-
-    if (!nextDraft) return;
-
-    scheduleSave(`answer:${questionId}`, async () => {
-      try {
-        await persistAnswerDraft(questionId, nextDraft);
-      } catch (saveError: unknown) {
-        setError(getErrorMessage(saveError, "No se pudo guardar el comentario."));
-      }
-    });
-  }
-
-  async function saveTeamMember(nextId: string) {
-    if (!run || submitted) return;
-
-    setSavingMember(true);
-    setError(null);
-
-    try {
-      const accessToken = await getAccessToken();
-      const response = await fetch(`/api/audits/${run.id}/metadata`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${accessToken}`,
-        },
-        body: JSON.stringify({ team_member_id: nextId || null }),
-      });
-
-      const payload = (await response.json().catch(() => null)) as MetadataResponse | null;
-      if (!response.ok || !payload?.ok) {
-        throw new Error(payload?.error ?? "No se pudo asignar el colaborador.");
-      }
-
-      setSelectedMember(payload.run?.team_member_id ?? "");
-      setRun((prev) =>
-        prev
-          ? {
-              ...prev,
-              team_member_id: payload.run?.team_member_id ?? (nextId || null),
-            }
-          : prev,
-      );
-    } catch (memberError: unknown) {
-      setError(getErrorMessage(memberError, "No se pudo asignar el colaborador."));
-    } finally {
-      setSavingMember(false);
-    }
-  }
-
-  async function saveRoomNumber(nextValue: string) {
-    if (!run || submitted || !isHousekeeping) return;
-
-    const trimmedValue = nextValue.trim();
-    setSavingRoomNumber(true);
-    setError(null);
-
-    try {
-      const accessToken = await getAccessToken();
-      const response = await fetch(`/api/audits/${run.id}/metadata`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${accessToken}`,
-        },
-        body: JSON.stringify({ room_number: trimmedValue || null }),
-      });
-
-      const payload = (await response.json().catch(() => null)) as MetadataResponse | null;
-      if (!response.ok || !payload?.ok) {
-        throw new Error(payload?.error ?? "No se pudo guardar el numero de habitacion.");
-      }
-
-      const nextRoomNumber = payload.run?.room_number ?? (trimmedValue || null);
-      setRoomNumber(nextRoomNumber ?? "");
-      setRun((prev) => (prev ? { ...prev, room_number: nextRoomNumber } : prev));
-    } catch (roomError: unknown) {
-      setError(getErrorMessage(roomError, "No se pudo guardar el numero de habitacion."));
-    } finally {
-      setSavingRoomNumber(false);
-    }
-  }
-
-  async function uploadPhoto(questionId: string, file: File) {
-    if (!runId || submitted) return;
-
-    const current = answersByQ[questionId];
-    if (!current) {
-      setError("No existe respuesta para esta pregunta.");
-      return;
-    }
-
-    const question = questions.find((entry) => entry.id === questionId);
-    const selectedValue = ((current.answer ?? current.result) ?? "PASS") as AnswerValue;
-    const allowPhoto = question?.photo_requirement === "always" || selectedValue === "FAIL";
-    if (!allowPhoto) {
-      setError("Para subir foto, marca FAIL o usa una pregunta con foto obligatoria.");
-      return;
-    }
-
-    setUploading(true);
-    setError(null);
-
-    try {
-      const timestamp = Date.now();
-      const extension = file.name.split(".").pop() || "jpg";
-      const fileName = `${runId}_${questionId}_${timestamp}.${extension}`;
-
-      const { error: uploadError } = await supabase.storage.from("audit-photos").upload(fileName, file, {
-        cacheControl: "3600",
-        upsert: false,
-      });
-
-      if (uploadError) throw uploadError;
-
-      const { data: urlData } = supabase.storage.from("audit-photos").getPublicUrl(fileName);
-      const nextDraft = {
-        ...makeDraftAnswer(runId, questionId, current),
-        photo_path: urlData.publicUrl,
-      };
-
-      setAnswersByQ((prev) => ({
-        ...prev,
-        [questionId]: nextDraft,
-      }));
-
-      await persistAnswerDraft(questionId, nextDraft);
-    } catch (photoError: unknown) {
-      setError(getErrorMessage(photoError, "No se pudo subir la foto."));
-    } finally {
-      setUploading(false);
-    }
-  }
-
-  async function deletePhoto(questionId: string) {
-    if (!runId || submitted) return;
-
-    const current = answersByQ[questionId];
-    if (!current?.photo_path) return;
-
-    setError(null);
-    try {
-      const fileName = current.photo_path.split("/").pop() ?? "";
-      if (fileName) {
-        const { error: storageError } = await supabase.storage.from("audit-photos").remove([fileName]);
-        if (storageError) {
-          console.warn("Error eliminando de Storage:", storageError);
-        }
-      }
-
-      const nextDraft = {
-        ...makeDraftAnswer(runId, questionId, current),
-        photo_path: null,
-      };
-
-      setAnswersByQ((prev) => ({
-        ...prev,
-        [questionId]: nextDraft,
-      }));
-
-      await persistAnswerDraft(questionId, nextDraft);
-    } catch (photoError: unknown) {
-      setError(getErrorMessage(photoError, "No se pudo eliminar la foto."));
-    }
-  }
 
   async function submitRun() {
-    if (!run || !area || submitted) return;
+    if (!run || !loaderState.area || submitted) return;
+
+    if (requiresAuditedEmployee && !selectedMember.trim()) {
+      setError("Debes seleccionar el colaborador auditado antes de enviar esta auditoría.");
+      return;
+    }
+
+    if (requiresRoomNumber && !roomNumber.trim()) {
+      setError("Debes capturar el número de habitación antes de enviar esta auditoría.");
+      return;
+    }
 
     for (const question of questions) {
       const answer = answersByQ[question.id];
@@ -397,11 +125,51 @@ export function useAuditSession(runId: string | undefined) {
     }
 
     setSubmitting(true);
+    submittingRef.current = true;
     setError(null);
 
     try {
-      await flushAll();
+      try {
+        await flushAll();
+      } catch (flushError: unknown) {
+        setError(getErrorMessage(flushError, "Error guardando respuestas pendientes. Intenta de nuevo."));
+        submittingRef.current = false;
+        setSubmitting(false);
+        return;
+      }
       const accessToken = await getAccessToken();
+
+      const submitAnswersPayload = questions.map((question) => {
+        const current = answersByQ[question.id];
+        const draft = {
+          ...makeDraftAnswer(run.id, question.id, current),
+          answer: ((current?.answer ?? current?.result) ?? "PASS") as AnswerValue,
+          result: ((current?.result ?? current?.answer) ?? "PASS") as AnswerValue,
+          comment: current?.comment ?? null,
+          photo_path: current?.photo_path ?? null,
+        };
+        return {
+          question_id: question.id,
+          answer: draft.answer,
+          result: draft.result,
+          comment: draft.comment,
+          photo_path: draft.photo_path,
+        };
+      });
+
+      const draftResponse = await fetch(`/api/audits/${run.id}/draft`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({ answers: submitAnswersPayload }),
+      });
+
+      const draftPayload = (await draftResponse.json().catch(() => null)) as DraftSaveResponse | null;
+      if (!draftResponse.ok || !draftPayload?.ok) {
+        throw new Error(draftPayload?.error ?? "No se pudo persistir el estado actual antes de enviar.");
+      }
 
       const response = await fetch("/api/audits/submit", {
         method: "POST",
@@ -431,12 +199,13 @@ export function useAuditSession(runId: string | undefined) {
     } catch (submitError: unknown) {
       setError(getErrorMessage(submitError, "No se pudo enviar la auditoría."));
     } finally {
+      submittingRef.current = false;
       setSubmitting(false);
     }
   }
 
   return {
-    loading,
+    loading: loaderState.loading,
     saving,
     uploading,
     submitting,
@@ -444,18 +213,21 @@ export function useAuditSession(runId: string | undefined) {
     error,
     submitted,
     run,
-    template,
-    area,
-    sections,
+    template: loaderState.template,
+    area: loaderState.area,
+    sections: loaderState.sections,
     questions,
-    groupedQuestions,
+    groupedQuestions: loaderState.groupedQuestions,
     answersByQ,
-    teamMembers,
+    teamMembers: loaderState.teamMembers,
     selectedMember,
     roomNumber,
     savingRoomNumber,
-    isHousekeeping,
-    totals,
+    isHousekeeping: loaderState.isHousekeeping,
+    requiresRoomNumber,
+    requiresAuditedEmployee,
+    showRoomNumberField,
+    totals: loaderState.totals,
     setAnswer,
     setComment,
     uploadPhoto,

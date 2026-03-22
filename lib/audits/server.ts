@@ -73,7 +73,8 @@ export async function authorizeAuditRunAccess(
     .maybeSingle();
 
   if (runError) {
-    return { ok: false, status: 500, error: runError.message };
+    console.error("[authorizeAuditRunAccess] DB error:", runError.message);
+    return { ok: false, status: 500, error: "Error interno al verificar la auditoría." };
   }
 
   if (!run?.id) {
@@ -105,11 +106,11 @@ export async function authorizeAuditRunAccess(
     };
   }
 
-  if (options?.requireDraft && String(run.status ?? "") === "submitted") {
+  if (options?.requireDraft && String(run.status ?? "") !== "draft") {
     return {
       ok: false,
       status: 409,
-      error: "La auditoría ya fue enviada y no admite cambios.",
+      error: "La auditoría no está en estado borrador y no admite cambios.",
     };
   }
 

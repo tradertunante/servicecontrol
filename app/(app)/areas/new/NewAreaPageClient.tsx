@@ -48,32 +48,32 @@ export default function NewAreaPageClient({
   };
 
   return (
-    <main style={{ padding: 24, fontFamily: "system-ui" }}>
-      <h1 style={{ fontSize: 22, fontWeight: 800, marginBottom: 18 }}>Nueva área</h1>
+    <main className="p-6 font-[system-ui]">
+      <h1 className="text-[22px] font-[800] mb-[18px]">Nueva área</h1>
 
       {error ? (
-        <div style={{ padding: 12, border: "1px solid #f00", borderRadius: 8, marginBottom: 14 }}>
+        <div className="p-3 border border-red-600 rounded-lg mb-[14px]">
           <b>Error:</b> {error}
         </div>
       ) : null}
 
-      <div style={{ display: "grid", gap: 12 }}>
-        <label style={{ display: "grid", gap: 6 }}>
-          <span style={{ fontSize: 13, opacity: 0.8 }}>Nombre</span>
+      <div className="grid gap-3">
+        <label className="grid gap-1.5">
+          <span className="text-[13px] opacity-80">Nombre</span>
           <input
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="Ej. Housekeeping"
-            style={{ padding: 10, borderRadius: 8, border: "1px solid #ddd" }}
+            className="p-2.5 rounded-lg border border-[#ddd]"
           />
         </label>
 
-        <label style={{ display: "grid", gap: 6 }}>
-          <span style={{ fontSize: 13, opacity: 0.8 }}>Tipo</span>
+        <label className="grid gap-1.5">
+          <span className="text-[13px] opacity-80">Tipo</span>
           <select
             value={type}
             onChange={(e) => setType(e.target.value)}
-            style={{ padding: 10, borderRadius: 8, border: "1px solid #ddd" }}
+            className="p-2.5 rounded-lg border border-[#ddd]"
           >
             <option value="HK">HK - Housekeeping</option>
             <option value="FO">FO - Front Office</option>
@@ -85,41 +85,26 @@ export default function NewAreaPageClient({
           </select>
         </label>
 
-        <div style={{ display: "flex", gap: 10, marginTop: 6 }}>
+        <div className="flex gap-2.5 mt-1.5">
           <button
             onClick={() => router.push("/areas")}
-            style={{
-              padding: "10px 14px",
-              borderRadius: 8,
-              border: "1px solid #ddd",
-              background: "#fff",
-              cursor: "pointer",
-              fontWeight: 600,
-            }}
+            className="px-[14px] py-2.5 rounded-lg border border-[#ddd] bg-white cursor-pointer font-semibold"
           >
             Cancelar
           </button>
           <button
             onClick={onCreate}
             disabled={saving}
-            style={{
-              padding: "10px 14px",
-              borderRadius: 8,
-              border: "1px solid #000",
-              background: "#000",
-              color: "#fff",
-              cursor: "pointer",
-              fontWeight: 700,
-              opacity: saving ? 0.6 : 1,
-            }}
+            className="px-[14px] py-2.5 rounded-lg border border-black bg-black text-white cursor-pointer font-bold"
+            style={{ opacity: saving ? 0.6 : 1 }}
           >
             {saving ? "Creando..." : "Crear área"}
           </button>
         </div>
       </div>
 
-      <p style={{ marginTop: 18, fontSize: 12, opacity: 0.7 }}>
-        Hotel: <span style={{ fontFamily: "monospace" }}>{hotelId}</span> · Rol:{" "}
+      <p className="mt-[18px] text-xs opacity-70">
+        Hotel: <span className="font-mono">{hotelId}</span> · Rol:{" "}
         <b>{profile.role}</b>
       </p>
     </main>

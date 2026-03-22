@@ -1,3 +1,6 @@
+import type { ResponsibleDepartment } from "./responsibleDepartment";
+export type { ResponsibleDepartment };
+
 export type AuditRunRow = {
   id: string;
   status: string | null;
@@ -23,6 +26,8 @@ export type AuditRunRow = {
 export type TemplateRow = {
   id: string;
   name: string;
+  require_room_number: boolean;
+  require_audited_employee: boolean;
 };
 
 export type AreaRow = {
@@ -47,8 +52,6 @@ export type SectionRow = {
 
 export type RequirementType = "never" | "if_fail" | "always";
 export type CorrectiveFlow = "training_only" | "non_operational" | "mixed";
-export type ResponsibleDepartment = "engineering" | "systems" | null;
-
 export type QuestionRow = {
   id: string;
   audit_section_id: string;

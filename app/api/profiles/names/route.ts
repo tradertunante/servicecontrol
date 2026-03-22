@@ -6,10 +6,7 @@ import {
   resolveRouteHotelScope,
 } from "@/lib/auth/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
-
-function jsonError(message: string, status = 400) {
-  return NextResponse.json({ ok: false, error: message }, { status });
-}
+import { jsonError, jsonDbError } from "@/lib/api/response";
 
 export async function POST(request: NextRequest) {
   try {
@@ -44,7 +41,7 @@ export async function POST(request: NextRequest) {
       .eq("hotel_id", hotelResult.hotelId)
       .in("id", ids);
 
-    if (error) return jsonError(error.message, 500);
+    if (error) return jsonDbError(error);
 
     return NextResponse.json({
       ok: true,

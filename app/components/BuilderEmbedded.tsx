@@ -3,6 +3,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useToast } from "@/app/providers/ToastProvider";
 import { supabase } from "@/lib/supabaseClient";
 
 type Area = {
@@ -42,6 +43,7 @@ export default function BuilderEmbedded({
   rightActions?: React.ReactNode;
 }) {
   const router = useRouter();
+  const toast = useToast();
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -136,10 +138,10 @@ export default function BuilderEmbedded({
 
       if (error) throw error;
 
-      alert("Auditoría borrada correctamente.");
+      toast.success("Auditoría borrada correctamente.");
       await load();
     } catch (e: any) {
-      alert(e?.message ?? "No se pudo borrar la auditoría.");
+      toast.error(e?.message ?? "No se pudo borrar la auditoría.");
     } finally {
       setBusyTemplateId(null);
     }
@@ -160,10 +162,10 @@ export default function BuilderEmbedded({
 
       if (error) throw error;
 
-      alert("Área borrada correctamente.");
+      toast.success("Área borrada correctamente.");
       await load();
     } catch (e: any) {
-      alert(e?.message ?? "No se pudo borrar el área.");
+      toast.error(e?.message ?? "No se pudo borrar el área.");
     } finally {
       setBusyAreaId(null);
     }
@@ -172,7 +174,7 @@ export default function BuilderEmbedded({
   // ✅ Borrar TODAS las auditorías de un área (sección)
   async function deleteAllAuditsInArea(areaId: string, areaName: string, count: number) {
     if (count === 0) {
-      alert("No hay auditorías que borrar en esta área.");
+      toast.warn("No hay auditorías que borrar en esta área.");
       return;
     }
 
@@ -193,10 +195,10 @@ export default function BuilderEmbedded({
 
       if (error) throw error;
 
-      alert("Se borraron todas las auditorías del área.");
+      toast.success("Se borraron todas las auditorías del área.");
       await load();
     } catch (e: any) {
-      alert(e?.message ?? "No se pudieron borrar todas las auditorías del área.");
+      toast.error(e?.message ?? "No se pudieron borrar todas las auditorías del área.");
     } finally {
       setBusyBulkAreaId(null);
     }

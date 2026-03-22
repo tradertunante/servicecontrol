@@ -1,12 +1,9 @@
-import type { ReactNode } from "react";
+import { requirePageAccess } from "@/lib/auth/server";
 
-import { requireRole } from "@/lib/auth/server";
-
-export default async function TaskLayout({ children }: { children: ReactNode }) {
-  await requireRole(["superadmin", "admin", "manager", "quality", "auditor"], {
-    nextPath: "/task",
-    redirectTo: "/dashboard",
+export default async function TaskLayout({ children }: { children: React.ReactNode }) {
+  await requirePageAccess({
+    roles: ["superadmin", "admin", "manager", "quality", "auditor"],
+    requireHotel: true,
   });
-
   return <>{children}</>;
 }

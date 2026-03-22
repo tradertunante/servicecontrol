@@ -6,7 +6,9 @@ import type {
   AreaPeriodAuditRow,
   AreaPeriodSectionRow,
   AreaPeriodTopFailureRow,
+  AreaPeriodReportData,
 } from "@/lib/reports/areaPeriodReportTypes";
+import { exportAreaPeriodReportToExcel } from "@/lib/reports/exportExcel";
 
 type Tone = "good" | "warning" | "critical";
 
@@ -362,6 +364,9 @@ export default function AreaPeriodReportPage({
             <button onClick={() => window.print()} style={btnStyle(true)}>
               Imprimir / PDF
             </button>
+            <button onClick={() => exportAreaPeriodReportToExcel(report as AreaPeriodReportData)} style={btnStyle(false)}>
+              Exportar Excel
+            </button>
             <button onClick={() => router.push(`/areas/${report.area.id}`)} style={btnStyle(false)}>
               Ver área
             </button>
@@ -609,7 +614,7 @@ export default function AreaPeriodReportPage({
                           className="report-badge"
                           style={{ ...badgeStyle("OK"), padding: "5px 10px", borderRadius: 999, fontWeight: 900 }}
                         >
-                          OK: {section.ok}
+                          Pass: {section.ok}
                         </span>
                         <span
                           className="report-badge"

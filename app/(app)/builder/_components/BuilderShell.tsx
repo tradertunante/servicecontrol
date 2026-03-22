@@ -6,6 +6,9 @@ import { useRouter } from "next/navigation";
 import BuilderEmbedded from "@/app/components/BuilderEmbedded";
 import type { Profile } from "@/lib/types";
 
+const btnClasses =
+  "py-[10px] px-[14px] rounded-[12px] border border-[rgba(0,0,0,0.2)] bg-white text-black font-black cursor-pointer text-[14px] whitespace-nowrap";
+
 export default function BuilderShell({
   profile,
   hotelIdInUse,
@@ -18,6 +21,7 @@ export default function BuilderShell({
   showBackToDashboard?: boolean;
 }) {
   const router = useRouter();
+  // Dynamic: depends on embedded prop
   const containerStyle: React.CSSProperties = embedded ? { width: "100%" } : { padding: 24, paddingTop: 96 };
 
   return (
@@ -27,12 +31,12 @@ export default function BuilderShell({
         greetingName={profile.full_name ?? null}
         showStandardsCard={true}
         rightActions={
-          <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
-            <button style={btnStyle} onClick={() => router.push("/areas/order")}>
+          <div className="flex gap-[10px] items-center flex-wrap">
+            <button className={btnClasses} onClick={() => router.push("/areas/order")}>
               Ordenar areas
             </button>
             {showBackToDashboard && !embedded ? (
-              <button style={btnStyle} onClick={() => router.push("/dashboard")}>
+              <button className={btnClasses} onClick={() => router.push("/dashboard")}>
                 ← Atras
               </button>
             ) : null}
@@ -42,15 +46,3 @@ export default function BuilderShell({
     </div>
   );
 }
-
-const btnStyle: React.CSSProperties = {
-  padding: "10px 14px",
-  borderRadius: 12,
-  border: "1px solid rgba(0,0,0,0.2)",
-  background: "#fff",
-  color: "#000",
-  fontWeight: 900,
-  cursor: "pointer",
-  fontSize: 14,
-  whiteSpace: "nowrap",
-};

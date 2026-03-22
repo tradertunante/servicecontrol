@@ -1,7 +1,7 @@
 // FILE: app/(app)/team/_hooks/useReauditsData.ts
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import type { Profile } from "@/lib/types";
 
@@ -51,6 +51,7 @@ export function useReauditsData({
   >({});
 
   const activeHotelId = hotelId || profile?.hotel_id || null;
+  const aliveRef = useRef(true);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -68,6 +69,12 @@ export function useReauditsData({
         return;
       }
 
+      if (profile && profile.role !== "superadmin" && profile.hotel_id && profile.hotel_id !== activeHotelId) {
+        setError("Hotel ID no coincide con tu perfil.");
+        setLoading(false);
+        return;
+      }
+
       const { data, error: runsErr } = await supabase
         .from("audit_runs")
         .select(
@@ -78,7 +85,8 @@ export function useReauditsData({
         .or(
           "status.eq.pending_training,status.eq.blocked_by_non_operational,and(status.eq.draft,ready_for_reaudit.eq.true)"
         )
-        .order("scheduled_for", { ascending: true, nullsFirst: false });
+        .order("scheduled_for", { ascending: true, nullsFirst: false })
+        .limit(200);
 
       if (runsErr) throw runsErr;
 
@@ -378,6 +386,7 @@ export function useReauditsData({
         );
       }
 
+      if (!aliveRef.current) return;
       setRows(enriched);
       setAuditorOptions(options);
       setAuditorOptionsByAreaId(nextAuditorOptionsByAreaId);
@@ -385,14 +394,19 @@ export function useReauditsData({
       setLatestAssignmentLogByRunId(assignmentMap);
       setTimelineByRunId(nextTimelineByRunId);
       setLoading(false);
-    } catch (e: any) {
-      setError(e?.message || "Error cargando re-auditorías.");
+    } catch (e: unknown) {
+      if (!aliveRef.current) return;
+      setError(e instanceof Error ? e.message : "Error cargando re-auditorías.");
       setLoading(false);
     }
   }, [activeHotelId]);
 
   useEffect(() => {
+    aliveRef.current = true;
     loadData();
+    return () => {
+      aliveRef.current = false;
+    };
   }, [loadData]);
 
   const stats = useMemo<ReauditStats>(() => {

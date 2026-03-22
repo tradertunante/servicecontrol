@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { authorizeAuditRunAccess } from "@/lib/audits/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { jsonError } from "@/lib/api/response";
 
 type AnswerValue = "PASS" | "FAIL" | "NA";
 
@@ -12,10 +13,6 @@ type DraftAnswerInput = {
   comment?: unknown;
   photo_path?: unknown;
 };
-
-function jsonError(message: string, status = 400) {
-  return NextResponse.json({ ok: false, error: message }, { status });
-}
 
 function normalizeAnswerValue(value: unknown): AnswerValue | null {
   if (value === "PASS" || value === "FAIL" || value === "NA") {
@@ -91,7 +88,10 @@ export async function POST(
     .select("id, audit_section_id")
     .in("id", questionIds);
 
-  if (questionError) return jsonError(questionError.message, 500);
+  if (questionError) {
+    console.error("[draft] question lookup error:", questionError.message);
+    return jsonError("Error interno al verificar preguntas.", 500);
+  }
   if ((questions ?? []).length !== questionIds.length) {
     return jsonError("Hay preguntas inválidas o inexistentes.", 400);
   }
@@ -105,7 +105,10 @@ export async function POST(
     .select("id, audit_template_id")
     .in("id", sectionIds);
 
-  if (sectionError) return jsonError(sectionError.message, 500);
+  if (sectionError) {
+    console.error("[draft] section lookup error:", sectionError.message);
+    return jsonError("Error interno al verificar secciones.", 500);
+  }
 
   const sectionTemplateIds = new Map(
     (sections ?? []).map((section) => [String(section.id), String(section.audit_template_id ?? "")]),
@@ -127,7 +130,10 @@ export async function POST(
     .upsert(payload, { onConflict: "audit_run_id,question_id" })
     .select("id,audit_run_id,question_id,answer,result,comment,photo_path");
 
-  if (error) return jsonError(error.message, 500);
+  if (error) {
+    console.error("[draft] upsert error:", error.message);
+    return jsonError("Error interno al guardar respuestas.", 500);
+  }
 
   return NextResponse.json({
     ok: true,

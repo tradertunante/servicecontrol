@@ -89,13 +89,13 @@ export default function PendingTeamsCard({
           font-weight: 950;
           letter-spacing: 0.15px;
           line-height: 1.15;
-          margin-bottom: 14px;
+          margin-bottom: 12px;
         }
 
         .pendingTeamsList {
           display: grid;
           grid-template-columns: 1fr;
-          gap: 10px;
+          gap: 8px;
         }
 
         .pendingTeamRow {
@@ -103,7 +103,7 @@ export default function PendingTeamsCard({
           grid-template-columns: minmax(0, 1fr) minmax(148px, auto);
           align-items: center;
           gap: 14px;
-          padding: 13px 16px;
+          padding: 10px 16px;
           border-radius: 16px;
           box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3), 0 8px 20px rgba(15, 23, 42, 0.04);
         }
@@ -132,7 +132,7 @@ export default function PendingTeamsCard({
           flex-direction: column;
           align-items: flex-end;
           justify-content: center;
-          gap: 5px;
+          gap: 3px;
           text-align: right;
         }
 
