@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { useAuditAutosave } from "./useAuditAutosave";
@@ -35,9 +35,19 @@ export type {
 
 export function useAuditSession(runId: string | undefined) {
   const router = useRouter();
-  const { pendingCount, scheduleSave, flushAll } = useAuditAutosave();
+  const { pendingCount, scheduleSave: rawScheduleSave, flushAll } = useAuditAutosave();
 
   const [submitting, setSubmitting] = useState(false);
+  const submittingRef = useRef(false);
+
+  // Block new saves while submit is in progress to prevent race condition
+  const scheduleSave: typeof rawScheduleSave = useCallback(
+    (key, action) => {
+      if (submittingRef.current) return;
+      rawScheduleSave(key, action);
+    },
+    [rawScheduleSave],
+  );
 
   const loaderState = useAuditLoader(runId);
 
@@ -115,6 +125,7 @@ export function useAuditSession(runId: string | undefined) {
     }
 
     setSubmitting(true);
+    submittingRef.current = true;
     setError(null);
 
     try {
@@ -122,6 +133,7 @@ export function useAuditSession(runId: string | undefined) {
         await flushAll();
       } catch (flushError: unknown) {
         setError(getErrorMessage(flushError, "Error guardando respuestas pendientes. Intenta de nuevo."));
+        submittingRef.current = false;
         setSubmitting(false);
         return;
       }
@@ -187,6 +199,7 @@ export function useAuditSession(runId: string | undefined) {
     } catch (submitError: unknown) {
       setError(getErrorMessage(submitError, "No se pudo enviar la auditoría."));
     } finally {
+      submittingRef.current = false;
       setSubmitting(false);
     }
   }
