@@ -124,6 +124,13 @@ export default function HotelHeader() {
         return;
       }
 
+      // Roles with full area access go straight to the templates selector
+      const fullAccessRoles = ["admin", "general_manager", "superadmin", "quality"];
+      if (fullAccessRoles.includes(profile?.role ?? "")) {
+        router.push("/team/templates");
+        return;
+      }
+
       const target = await resolveAuditTarget(activeHotelId);
       if (!target) {
         toast.warn("No tienes ningún área asignada para auditar.");
@@ -139,7 +146,7 @@ export default function HotelHeader() {
   return (
     <div
       ref={headerRef}
-      className="fixed top-0 left-0 right-0 flex justify-between items-center px-3.5 py-2.5 max-[720px]:px-2.5 max-[720px]:py-2 bg-white/[0.92] border-b border-black/[0.08] shadow-sm z-[1000] backdrop-blur-md gap-2.5 max-[720px]:gap-2"
+      className="fixed top-0 left-0 right-0 flex justify-between items-center px-3.5 py-2.5 max-[720px]:px-2.5 max-[720px]:py-2 bg-white/95 border-b border-black/[0.08] shadow-sm z-[1000] backdrop-blur-md gap-2.5 max-[720px]:gap-2"
     >
       {/* Left */}
       <div className="flex items-center gap-2.5 max-[720px]:gap-2 min-w-0 flex-1">

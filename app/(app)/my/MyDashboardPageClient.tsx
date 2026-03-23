@@ -67,6 +67,13 @@ export default function MyDashboardPageClient({
         return;
       }
 
+      // Roles with full area access go straight to the templates selector
+      const fullAccessRoles = ["admin", "general_manager", "superadmin", "quality"];
+      if (fullAccessRoles.includes(profile?.role ?? "")) {
+        router.push("/team/templates");
+        return;
+      }
+
       const {
         data: { user },
         error: userError,
