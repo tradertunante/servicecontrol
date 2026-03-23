@@ -85,6 +85,13 @@ export function useAuditAutosave(delayMs = 450) {
   );
 
   const flushAll = useCallback(async () => {
+    // 1. Clear ALL pending timers and promote them to immediate actions
+    for (const [key, timer] of timersRef.current.entries()) {
+      clearTimeout(timer);
+    }
+    timersRef.current.clear();
+
+    // 2. Run all queued actions (includes the just-cleared timers' actions)
     const keys = Array.from(
       new Set([...actionsRef.current.keys(), ...runningRef.current.keys()]),
     );
@@ -92,6 +99,7 @@ export function useAuditAutosave(delayMs = 450) {
       await runAction(key);
     }
 
+    // 3. Wait for any still-running promises
     const running = Array.from(new Set(runningRef.current.values()));
     if (running.length > 0) {
       await Promise.all(running);
