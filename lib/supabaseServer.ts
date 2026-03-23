@@ -2,6 +2,7 @@
 // Helper server-side para crear clientes Supabase sin depender de lib/config.ts
 import "server-only";
 import { createClient } from "@supabase/supabase-js";
+import type { Database } from "@/lib/types/database";
 
 function getEnv() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -14,7 +15,7 @@ function getEnv() {
 /** Cliente con el token del usuario — para validar identidad y respetar RLS */
 export function supabaseWithToken(token: string) {
   const { url, anonKey } = getEnv();
-  return createClient(url, anonKey, {
+  return createClient<Database>(url, anonKey, {
     global: { headers: { Authorization: `Bearer ${token}` } },
     auth: { persistSession: false },
   });

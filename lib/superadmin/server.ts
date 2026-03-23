@@ -151,12 +151,14 @@ export async function normalizeTemplateQuestionOrder(templateId: string) {
     return { updated: 0 };
   }
 
-  const { error: updateError } = await admin
-    .from("audit_questions")
-    .upsert(updates, { onConflict: "id" });
-
-  if (updateError) {
-    throw new Error(updateError.message);
+  for (const { id, order } of updates) {
+    const { error: updateError } = await admin
+      .from("audit_questions")
+      .update({ order })
+      .eq("id", id);
+    if (updateError) {
+      throw new Error(updateError.message);
+    }
   }
 
   return { updated: updates.length };
