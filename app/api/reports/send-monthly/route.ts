@@ -88,6 +88,18 @@ export async function POST(request: NextRequest) {
       .gte("executed_at", monthStart.toISOString())
       .lte("executed_at", monthEnd.toISOString());
 
+    // Get runs from two months ago (for trend comparison)
+    const prevMonthStart = new Date(now.getFullYear(), now.getMonth() - 2, 1);
+    const prevMonthEnd = new Date(now.getFullYear(), now.getMonth() - 1, 0, 23, 59, 59, 999);
+    const { data: prevRuns } = await admin
+      .from("audit_runs")
+      .select("area_id,score,audit_channel")
+      .eq("hotel_id", hotelId)
+      .eq("status", "submitted")
+      .is("archived_at", null)
+      .gte("executed_at", prevMonthStart.toISOString())
+      .lte("executed_at", prevMonthEnd.toISOString());
+
     for (const sub of subs) {
       // Filter by channel
       const filteredRuns = (runs ?? []).filter((run) => {
@@ -121,18 +133,47 @@ export async function POST(request: NextRequest) {
         }
       }
 
-      const areaData = Array.from(areaMap.values())
-        .filter((a) => a.count > 0)
-        .map((a) => ({
-          name: a.name,
-          score: a.scores.reduce((s, v) => s + v, 0) / a.scores.length,
-          auditsCount: a.count,
-        }));
+      // Build previous month scores per area (same filters)
+      const prevFiltered = (prevRuns ?? []).filter((run) => {
+        const ch = run.audit_channel ?? "internal";
+        if (sub.channel !== "all" && sub.channel !== ch) return false;
+        if (sub.scope === "specific_areas" && Array.isArray(sub.area_ids)) {
+          return sub.area_ids.includes(run.area_id);
+        }
+        return true;
+      });
+      const prevAreaScores = new Map<string, number[]>();
+      const prevAllScores: number[] = [];
+      for (const run of prevFiltered) {
+        if (run.score == null) continue;
+        prevAllScores.push(run.score);
+        if (!prevAreaScores.has(run.area_id)) prevAreaScores.set(run.area_id, []);
+        prevAreaScores.get(run.area_id)!.push(run.score);
+      }
+
+      const areaData = Array.from(areaMap.entries())
+        .filter(([, a]) => a.count > 0)
+        .map(([id, a]) => {
+          const prevScores = prevAreaScores.get(id);
+          return {
+            name: a.name,
+            score: a.scores.reduce((s, v) => s + v, 0) / a.scores.length,
+            auditsCount: a.count,
+            prevScore: prevScores && prevScores.length > 0
+              ? prevScores.reduce((s, v) => s + v, 0) / prevScores.length
+              : null,
+          };
+        });
 
       const overallScore =
         allScores.length > 0
           ? allScores.reduce((s, v) => s + v, 0) / allScores.length
           : 0;
+
+      const prevOverallScore =
+        prevAllScores.length > 0
+          ? prevAllScores.reduce((s, v) => s + v, 0) / prevAllScores.length
+          : null;
 
       try {
         await sendMonthlyReportEmail({
@@ -141,6 +182,7 @@ export async function POST(request: NextRequest) {
           monthLabel,
           areas: areaData,
           overallScore,
+          prevOverallScore,
           totalAudits: allScores.length,
         });
         hotelResult.sent++;

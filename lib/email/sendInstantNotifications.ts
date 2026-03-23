@@ -14,34 +14,69 @@ export async function sendInstantNotifications(runId: string) {
     // Get the submitted run with related data
     const { data: run } = await admin
       .from("audit_runs")
-      .select("id,hotel_id,area_id,audit_template_id,score,executed_at,executed_by,audit_channel")
+      .select("id,hotel_id,area_id,audit_template_id,score,executed_at,executed_by,audit_channel,room_number,team_member_id")
       .eq("id", runId)
       .single();
 
     if (!run?.hotel_id) return;
 
-    // Get area, template, auditor names
-    const [{ data: area }, { data: template }, { data: auditor }] = await Promise.all([
+    // Get area, template, auditor, team member names in parallel
+    const [{ data: area }, { data: template }, { data: auditor }, teamMember, hotel] = await Promise.all([
       admin.from("areas").select("name").eq("id", run.area_id).single(),
       admin.from("audit_templates").select("name").eq("id", run.audit_template_id).single(),
       admin.from("profiles").select("full_name").eq("id", run.executed_by).single(),
+      run.team_member_id
+        ? admin.from("team_members").select("full_name").eq("id", run.team_member_id).single().then((r) => r.data)
+        : Promise.resolve(null),
+      admin.from("hotels").select("name").eq("id", run.hotel_id).single().then((r) => r.data),
     ]);
 
-    // Get answer counts
+    // Get answers with section info via questions join
     const { data: answers } = await admin
       .from("audit_answers")
-      .select("result")
+      .select("result, question_id")
       .eq("audit_run_id", runId);
 
-    const totalCount = answers?.length ?? 0;
-    const failCount = (answers ?? []).filter((a) => a.result === "FAIL").length;
+    // Get sections and questions for this template to compute section scores
+    const { data: sections } = await admin
+      .from("audit_sections")
+      .select("id, name, sort_order")
+      .eq("audit_template_id", run.audit_template_id)
+      .eq("active", true)
+      .order("sort_order", { ascending: true });
 
-    // Get hotel name
-    const { data: hotel } = await admin
-      .from("hotels")
-      .select("name")
-      .eq("id", run.hotel_id)
-      .single();
+    const { data: questions } = await admin
+      .from("audit_questions")
+      .select("id, audit_section_id")
+      .eq("active", true)
+      .in("audit_section_id", (sections ?? []).map((s) => s.id));
+
+    // Build section scores
+    const answerMap = new Map((answers ?? []).map((a) => [a.question_id, a.result]));
+    const sectionScores: { name: string; score: number; failCount: number; totalCount: number }[] = [];
+
+    for (const section of sections ?? []) {
+      const sectionQuestions = (questions ?? []).filter((q) => q.audit_section_id === section.id);
+      let fails = 0;
+      let naCount = 0;
+      for (const q of sectionQuestions) {
+        const result = (answerMap.get(q.id) ?? "").toString().toUpperCase();
+        if (result === "FAIL") fails++;
+        if (result === "NA") naCount++;
+      }
+      const denominator = Math.max(0, sectionQuestions.length - naCount);
+      const passCount = Math.max(0, denominator - fails);
+      const score = denominator > 0 ? Math.round((passCount / denominator) * 1000) / 10 : 100;
+      sectionScores.push({
+        name: section.name,
+        score,
+        failCount: fails,
+        totalCount: sectionQuestions.length,
+      });
+    }
+
+    const totalCount = answers?.length ?? 0;
+    const failCount = (answers ?? []).filter((a) => (a.result ?? "").toString().toUpperCase() === "FAIL").length;
 
     // Find instant subscribers for this hotel
     const { data: subs } = await admin
@@ -63,7 +98,6 @@ export async function sendInstantNotifications(runId: string) {
       if (sub.scope === "specific_areas" && Array.isArray(sub.area_ids)) {
         if (!sub.area_ids.includes(run.area_id)) continue;
       }
-      // 'all_areas' and 'my_areas' pass through (my_areas would need user context, treat as all for instant)
 
       try {
         await sendInstantAuditEmail({
@@ -78,6 +112,9 @@ export async function sendInstantNotifications(runId: string) {
           channel: auditChannel,
           failCount,
           totalCount,
+          teamMemberName: teamMember?.full_name ?? null,
+          roomNumber: run.room_number ?? null,
+          sectionScores,
         });
       } catch (emailErr) {
         console.error("[instant-email] Failed to send to", sub.email, emailErr);
