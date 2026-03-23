@@ -100,7 +100,8 @@ export default function CorrectiveActionsPanel({
           "id,hotel_id,area_id,audit_run_id,reaudit_run_id,question_id,team_member_id,assigned_department,status,title,description,evidence_note,evidence_photo_path,opened_at,resolved_at,resolved_by,blocks_reaudit"
         )
         .eq("hotel_id", activeHotelId)
-        .order("opened_at", { ascending: false });
+        .order("opened_at", { ascending: false })
+        .limit(500);
 
       if (forcedDepartment) {
         actionsQuery = actionsQuery.eq("assigned_department", forcedDepartment);

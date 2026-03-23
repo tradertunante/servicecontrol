@@ -198,7 +198,8 @@ export async function GET(request: NextRequest) {
     )
     .eq("hotel_id", hotelResult.hotelId)
     .eq("owner_department", department)
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: false })
+    .limit(500);
 
   if (routeScope === "area") {
     itemsQuery = itemsQuery.in("area_id", allowedAreaIds);
@@ -333,7 +334,8 @@ export async function GET(request: NextRequest) {
     .from("audit_answers")
     .select("audit_run_id, question_id, answer, result")
     .in("question_id", questionIds)
-    .or("answer.eq.FAIL,result.eq.FAIL");
+    .or("answer.eq.FAIL,result.eq.FAIL")
+    .limit(1000);
 
   if (answerError) return jsonDbError(answerError);
 
