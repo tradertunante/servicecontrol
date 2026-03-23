@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
+import type { Database } from "@/lib/types/database";
 import BackButton from "@/app/components/BackButton";
 
 type QuestionRow = {
@@ -115,7 +116,7 @@ export default function SectionQuestionsPage() {
     setSaving(true);
     setError(null);
 
-    const { error } = await supabase.from("audit_questions").update(patch).eq("id", id);
+    const { error } = await supabase.from("audit_questions").update(patch as Database["public"]["Tables"]["audit_questions"]["Update"]).eq("id", id);
 
     if (error) setError(error.message);
     else {

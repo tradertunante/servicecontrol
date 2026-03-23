@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
       .from("profiles")
       .select("id, full_name")
       .eq("hotel_id", hotelResult.hotelId)
-      .in("id", ids);
+      .in("id", ids as string[]);
 
     if (error) return jsonDbError(error);
 

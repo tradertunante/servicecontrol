@@ -92,7 +92,7 @@ export async function POST(request: NextRequest) {
       p_actor_user_id: caller.profile.id,
       p_note_block: noteBlock,
       p_explanation: explanation,
-      p_next_auditor_id: null,
+      p_next_auditor_id: undefined,
     });
 
     if (error) return jsonDbError(error);
@@ -174,7 +174,7 @@ export async function POST(request: NextRequest) {
     p_run_id: runId,
     p_actor_user_id: caller.profile.id,
     p_note_block: noteBlock,
-    p_explanation: note || null,
+    p_explanation: note || undefined,
     p_next_auditor_id: nextAuditorId,
   });
 

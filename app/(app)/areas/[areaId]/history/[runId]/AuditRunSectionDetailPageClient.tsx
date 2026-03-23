@@ -13,7 +13,6 @@ type AuditRun = {
   score: number | null;
   room_number?: string | null;
   executed_at: string | null;
-  created_at?: string | null;
 };
 
 type Area = { id: string; name: string; type: string | null };
@@ -167,7 +166,7 @@ export default function AuditRunSectionDetailPageClient({
       try {
         const { data: runData, error: runErr } = await supabase
           .from("audit_runs")
-          .select("id,area_id,audit_template_id,status,score,room_number,executed_at,created_at")
+          .select("id,area_id,audit_template_id,status,score,room_number,executed_at")
           .eq("id", runId)
           .single();
 

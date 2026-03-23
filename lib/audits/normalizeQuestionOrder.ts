@@ -73,13 +73,14 @@ export async function normalizeQuestionOrderForTemplate(templateId: string) {
 
   if (updates.length === 0) return { updated: 0 };
 
-  // 5) Guardar en BD (upsert por id)
-  // Nota: esto no crea filas nuevas porque los ids ya existen; solo actualiza order.
-  const { error: upErr } = await supabase
-    .from("audit_questions")
-    .upsert(updates, { onConflict: "id" });
-
-  if (upErr) throw upErr;
+  // 5) Guardar en BD — update order por id
+  for (const { id, order } of updates) {
+    const { error: upErr } = await supabase
+      .from("audit_questions")
+      .update({ order })
+      .eq("id", id);
+    if (upErr) throw upErr;
+  }
 
   return { updated: updates.length };
 }

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
+import type { Database } from "@/lib/types/database";
 
 type AreaRow = {
   id: string;
@@ -202,7 +203,7 @@ export default function DepartmentsModule({ hotelId }: { hotelId: string }) {
         if (supportsSortOrder) payload.sort_order = so;
         if (supportsActive) payload.active = true;
 
-        const { error: err } = await supabase.from("areas").insert(payload);
+        const { error: err } = await supabase.from("areas").insert(payload as Database["public"]["Tables"]["areas"]["Insert"]);
         if (err) throw err;
 
         setMessage("Departamento creado.");

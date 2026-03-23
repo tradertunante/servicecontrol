@@ -26,5 +26,5 @@ export async function POST(request: NextRequest) {
 
   if (error) return jsonDbError(error);
 
-  return NextResponse.json({ ok: true, ...data });
+  return NextResponse.json({ ok: true, ...(data as Record<string, unknown>) });
 }

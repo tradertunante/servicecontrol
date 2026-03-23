@@ -17,10 +17,6 @@ import type {
   TemplateRow,
 } from "./useAuditSession.types";
 
-type LinkedTeamMemberRow = {
-  team_member_id: string | null;
-};
-
 type RawQuestionRow = {
   id: string;
   audit_section_id: string;
@@ -153,154 +149,36 @@ async function seedMissingAnswers(
 }
 
 export async function loadAuditSession(runId: string): Promise<LoadedAuditSession> {
-  const { data: runData, error: runError } = await supabase
-    .from("audit_runs")
-    .select(
-      "id,status,score,notes,room_number,executed_at,executed_by,audit_template_id,area_id,team_member_id,assigned_auditor_id,is_reaudit,parent_audit_run_id,origin_type,scheduled_for,requires_training,training_confirmed,ready_for_reaudit,blocking_issue_count",
-    )
-    .eq("id", runId)
-    .single();
+  const accessToken = await getAccessToken();
 
-  if (runError || !runData) {
-    throw runError ?? new Error("Auditoría no encontrada.");
+  // Single RPC call replaces the previous 8-query waterfall
+  const response = await fetch(`/api/audits/${runId}/full`, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+
+  if (!response.ok) {
+    const body = await response.json().catch(() => null);
+    throw new Error(body?.error ?? `Error al cargar auditoría (${response.status}).`);
   }
 
-  const run = runData as LoadedAuditSession["run"];
-
-  const [{ data: areaData, error: areaError }, templateResult] =
-    await Promise.all([
-      supabase.from("areas").select("id,name,type,hotel_id").eq("id", run.area_id).single(),
-      (async () => {
-        const primary = await supabase
-          .from("audit_templates")
-          .select("id,name,require_room_number,require_audited_employee")
-          .eq("id", run.audit_template_id)
-          .single();
-
-        if (!primary.error || !primary.error.message) return primary;
-
-        const message = String(primary.error.message ?? "");
-        if (
-          !message.includes("require_room_number") &&
-          !message.includes("require_audited_employee")
-        ) {
-          return primary;
-        }
-
-        const fallback = await supabase
-          .from("audit_templates")
-          .select("id,name")
-          .eq("id", run.audit_template_id)
-          .single();
-
-        if (fallback.error || !fallback.data) return fallback;
-
-        return {
-          data: {
-            ...(fallback.data as RawTemplateRow),
-            require_room_number: false,
-            require_audited_employee: false,
-          },
-          error: null,
-        };
-      })(),
-    ]);
-
-  const templateData = templateResult.data as RawTemplateRow | null;
-  const templateError = templateResult.error;
-
-  if (templateError || !templateData) throw templateError ?? new Error("Plantilla no encontrada.");
-  if (areaError || !areaData) throw areaError ?? new Error("Área no encontrada.");
-
-  const { data: linkData, error: linkError } = await supabase
-    .from("team_member_areas")
-    .select("team_member_id")
-    .eq("area_id", run.area_id);
-
-  if (linkError) throw linkError;
-
-  const linkedTeamMemberIds = Array.from(
-    new Set(
-      ((linkData ?? []) as LinkedTeamMemberRow[])
-        .map((entry) => entry.team_member_id)
-        .filter((value): value is string => Boolean(value)),
-    ),
-  );
-
-  let teamMembers: TeamMemberLite[] = [];
-  if (linkedTeamMemberIds.length > 0) {
-    let query = supabase
-      .from("team_members")
-      .select("id,full_name")
-      .eq("active", true)
-      .in("id", linkedTeamMemberIds)
-      .order("full_name", { ascending: true });
-
-    const hotelId = (areaData as AreaRow).hotel_id;
-    if (hotelId) {
-      query = query.eq("hotel_id", hotelId);
-    }
-
-    const { data: teamData, error: teamError } = await query;
-    if (teamError) throw teamError;
-    teamMembers = (teamData ?? []) as TeamMemberLite[];
+  const payload = await response.json();
+  if (!payload?.ok || !payload?.data) {
+    throw new Error(payload?.message ?? "Error desconocido al cargar auditoría.");
   }
 
-  if (run.team_member_id && !teamMembers.some((member) => member.id === run.team_member_id)) {
-    const { data: fallbackMember, error: fallbackError } = await supabase
-      .from("team_members")
-      .select("id,full_name")
-      .eq("id", run.team_member_id)
-      .maybeSingle();
+  const { run, area, template, sections, questions: rawQuestions, answers: rawAnswers, teamMembers } = payload.data;
 
-    if (!fallbackError && fallbackMember) {
-      teamMembers = [{ ...(fallbackMember as TeamMemberLite), _outOfArea: true }, ...teamMembers];
-    }
-  }
+  // Normalize questions (enum coercion happens in the RPC now, but keep safety layer)
+  const questions: QuestionRow[] = (rawQuestions ?? []).map((q: RawQuestionRow) => normalizeQuestion(q));
 
-  const { data: sectionData, error: sectionError } = await supabase
-    .from("audit_sections")
-    .select("id,name,active,created_at")
-    .eq("audit_template_id", run.audit_template_id)
-    .eq("active", true)
-    .order("created_at", { ascending: true })
-    .order("id", { ascending: true });
-
-  if (sectionError) throw sectionError;
-  const sections = (sectionData ?? []) as SectionRow[];
-
-  const sectionIds = sections.map((section) => section.id);
-  let questions: QuestionRow[] = [];
-  if (sectionIds.length > 0) {
-    const { data: questionData, error: questionError } = await supabase
-      .from("audit_questions")
-      .select(
-        "id,audit_section_id,text,weight,photo_requirement,comment_requirement,signature_requirement,active,order,created_at,tag,classification,corrective_flow,responsible_department,blocks_reaudit_until_resolved",
-      )
-      .in("audit_section_id", sectionIds)
-      .eq("active", true)
-      .order("audit_section_id", { ascending: true })
-      .order("order", { ascending: true })
-      .order("created_at", { ascending: true })
-      .order("id", { ascending: true });
-
-    if (questionError) throw questionError;
-    questions = ((questionData ?? []) as RawQuestionRow[]).map(normalizeQuestion);
-  }
-
-  const { data: answerData, error: answerError } = await supabase
-    .from("audit_answers")
-    .select("id,audit_run_id,question_id,answer,result,comment,photo_path")
-    .eq("audit_run_id", runId);
-
-  if (answerError) throw answerError;
-
-  const answersByQ = ((answerData ?? []) as AnswerRow[]).reduce<Record<string, AnswerRow>>((acc, row) => {
+  // Build answers-by-question map
+  const answersByQ = ((rawAnswers ?? []) as AnswerRow[]).reduce<Record<string, AnswerRow>>((acc, row) => {
     const normalized = normalizeAnswer(row);
     if (normalized) acc[normalized.question_id] = normalized;
     return acc;
   }, {});
 
+  // Seed missing answers (still via separate endpoint — requires insert)
   const seedPayload = questions
     .filter((question) => !answersByQ[question.id] || !answersByQ[question.id]?.answer || !answersByQ[question.id]?.result)
     .map((question) => ({
@@ -317,12 +195,12 @@ export async function loadAuditSession(runId: string): Promise<LoadedAuditSessio
   }
 
   return {
-    run,
-    template: normalizeTemplate(templateData),
-    area: areaData as AreaRow,
-    sections,
+    run: run as LoadedAuditSession["run"],
+    template: normalizeTemplate(template as RawTemplateRow),
+    area: area as AreaRow,
+    sections: (sections ?? []) as SectionRow[],
     questions,
     answersByQ,
-    teamMembers,
+    teamMembers: (teamMembers ?? []) as TeamMemberLite[],
   };
 }

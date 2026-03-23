@@ -4,6 +4,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
+import type { Database } from "@/lib/types/database";
 import {
   AreaRow,
   buildResponsibleDepartmentOptions,
@@ -297,7 +298,7 @@ export default function BuilderTemplatePage() {
     try {
       const { error: upErr } = await supabase
         .from("audit_questions")
-        .update(patch)
+        .update(patch as Database["public"]["Tables"]["audit_questions"]["Update"])
         .eq("id", questionId);
       if (upErr) throw upErr;
 

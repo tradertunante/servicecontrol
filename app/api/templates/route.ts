@@ -36,6 +36,7 @@ export async function POST(request: NextRequest) {
       area_id: areaId,
       hotel_id: hotelResult.hotelId,
       active: true,
+      scope: "hotel",
     })
     .select("id")
     .single();

@@ -234,11 +234,11 @@ export default function HistoryPanel({
           id: string;
           classification: string | null;
           audit_section_id: string | null;
-          audit_sections: { name: string }[] | null;
+          audit_sections: { name: string } | null;
         };
         const clsByQ: Record<string, string> = {};
         for (const row of (qData ?? []) as QuestionClassRow[]) {
-          const sectionName = String(row.audit_sections?.[0]?.name ?? "Sin sección");
+          const sectionName = String(row.audit_sections?.name ?? "Sin sección");
           clsByQ[row.id] = String(row.classification ?? "").trim() || sectionName;
         }
 
