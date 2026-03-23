@@ -249,7 +249,8 @@ export function useDashboardData({
           .not("executed_at", "is", null)
           .not("score", "is", null)
           .gte("executed_at", cutoffDate)
-          .order("executed_at", { ascending: false });
+          .order("executed_at", { ascending: false })
+          .limit(5000);
 
         const backlogItPromise = fetch(`/api/departments/backlog?department=it&hotel_id=${activeHotelId}`, {
           method: "GET",

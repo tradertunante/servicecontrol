@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
+import { checkRateLimit } from "@/lib/api/rateLimit";
+
 const AUTH_TOKEN_COOKIE = "sc-access-token";
 
 const PUBLIC_API_PREFIXES = [
@@ -10,6 +12,21 @@ const PUBLIC_API_PREFIXES = [
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+
+  // Rate limit API routes (100 req/min per IP)
+  if (pathname.startsWith("/api/")) {
+    const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+    const { allowed, retryAfterMs } = checkRateLimit(ip);
+    if (!allowed) {
+      return NextResponse.json(
+        { ok: false, error: "Demasiadas solicitudes. Intenta de nuevo en un momento." },
+        {
+          status: 429,
+          headers: { "Retry-After": String(Math.ceil((retryAfterMs ?? 60000) / 1000)) },
+        },
+      );
+    }
+  }
 
   if (PUBLIC_API_PREFIXES.some((p) => pathname.startsWith(p))) {
     return NextResponse.next();
