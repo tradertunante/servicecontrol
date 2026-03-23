@@ -8,6 +8,7 @@ import {
   getErrorMessage,
   makeDraftAnswer,
 } from "./useAuditSession.lib";
+import { resizeImage } from "@/lib/image/resizeImage";
 import type {
   AnswerRow,
   AnswerValue,
@@ -158,11 +159,12 @@ export function useAuditAnswers({
     setError(null);
 
     try {
+      const resized = await resizeImage(file);
       const timestamp = Date.now();
-      const extension = file.name.split(".").pop() || "jpg";
+      const extension = resized.name.split(".").pop() || "jpg";
       const fileName = `${runId}_${questionId}_${timestamp}.${extension}`;
 
-      const { error: uploadError } = await supabase.storage.from("audit-photos").upload(fileName, file, {
+      const { error: uploadError } = await supabase.storage.from("audit-photos").upload(fileName, resized, {
         cacheControl: "3600",
         upsert: false,
       });
