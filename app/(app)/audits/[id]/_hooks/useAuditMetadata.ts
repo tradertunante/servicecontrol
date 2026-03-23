@@ -58,14 +58,10 @@ export function useAuditMetadata({
         throw new Error(payload?.error ?? "No se pudo asignar el colaborador.");
       }
 
-      setSelectedMember(payload.run?.team_member_id ?? "");
+      const confirmedId = payload.run?.team_member_id ?? null;
+      setSelectedMember(confirmedId ?? "");
       setRun((prev) =>
-        prev
-          ? {
-              ...prev,
-              team_member_id: payload.run?.team_member_id ?? (nextId || null),
-            }
-          : prev,
+        prev ? { ...prev, team_member_id: confirmedId } : prev,
       );
     } catch (memberError: unknown) {
       setSelectedMember(prevMember); // restaurar
@@ -99,9 +95,9 @@ export function useAuditMetadata({
         throw new Error(payload?.error ?? "No se pudo guardar el numero de habitacion.");
       }
 
-      const nextRoomNumber = payload.run?.room_number ?? (trimmedValue || null);
-      setRoomNumber(nextRoomNumber ?? "");
-      setRun((prev) => (prev ? { ...prev, room_number: nextRoomNumber } : prev));
+      const confirmedRoom = payload.run?.room_number ?? null;
+      setRoomNumber(confirmedRoom ?? "");
+      setRun((prev) => (prev ? { ...prev, room_number: confirmedRoom } : prev));
     } catch (roomError: unknown) {
       setRoomNumber(prevRoomNumber); // rollback
       setError(getErrorMessage(roomError, "No se pudo guardar el numero de habitacion."));
