@@ -233,6 +233,13 @@ export function useDashboardData({
           .or(`hotel_id.eq.${activeHotelId},hotel_id.is.null`)
           .order("name");
 
+        // Only fetch runs within the time window the dashboard actually needs:
+        // - YEAR mode: selected year + previous year (for YoY comparisons)
+        // - ROLLING_12M mode: last 13 months
+        const cutoffDate = heatMode === "YEAR"
+          ? `${selectedYear - 1}-01-01`
+          : new Date(Date.now() - 13 * 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+
         const runsPromise = supabase
           .from("audit_runs")
           .select("id,area_id,audit_template_id,executed_at,score,audit_channel")
@@ -240,7 +247,9 @@ export function useDashboardData({
           .is("archived_at", null)
           .eq("status", "submitted")
           .not("executed_at", "is", null)
-          .not("score", "is", null);
+          .not("score", "is", null)
+          .gte("executed_at", cutoffDate)
+          .order("executed_at", { ascending: false });
 
         const backlogItPromise = fetch(`/api/departments/backlog?department=it&hotel_id=${activeHotelId}`, {
           method: "GET",
@@ -315,7 +324,7 @@ export function useDashboardData({
     })();
 
     return () => { alive = false; };
-  }, [profile, activeHotelId, canChooseHotel]);
+  }, [profile, activeHotelId, canChooseHotel, heatMode, selectedYear]);
 
   const availableYears = useMemo(() => {
     const ys = new Set<number>();

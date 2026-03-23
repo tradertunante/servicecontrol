@@ -114,10 +114,10 @@ export async function POST(request: NextRequest) {
       : Promise.resolve({ data: [], error: null }),
   ]);
 
-  if (templatesRes.error) return jsonError(templatesRes.error.message, 500);
-  if (usersRes.error) return jsonError(usersRes.error.message, 500);
-  if (areaAccessRes.error) return jsonError(areaAccessRes.error.message, 500);
-  if (existingRes.error) return jsonError(existingRes.error.message, 500);
+  if (templatesRes.error) return jsonDbError(templatesRes.error);
+  if (usersRes.error) return jsonDbError(usersRes.error);
+  if (areaAccessRes.error) return jsonDbError(areaAccessRes.error);
+  if (existingRes.error) return jsonDbError(existingRes.error);
 
   const allowedTemplateIds = new Set(
     (templatesRes.data ?? []).map((row) => String(row.audit_template_id ?? "")).filter(Boolean)
@@ -195,7 +195,7 @@ export async function POST(request: NextRequest) {
       .select("id")
       .maybeSingle();
 
-    if (upsertResult.error) return jsonError(upsertResult.error.message, 500);
+    if (upsertResult.error) return jsonDbError(upsertResult.error);
 
     if (duplicateIds.length > 0) {
       const { error: deactivateErr } = await admin

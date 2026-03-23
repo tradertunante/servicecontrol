@@ -22,6 +22,13 @@ export async function signOutAndRedirect(router: AppRouterInstance) {
   try {
     await supabase.auth.signOut();
   } finally {
+    // Clear httpOnly auth cookie server-side
+    fetch("/api/auth/sync-session", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token: null }),
+    }).catch(() => {});
+
     router.replace("/login");
     router.refresh();
   }

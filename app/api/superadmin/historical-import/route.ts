@@ -141,7 +141,7 @@ export async function GET(request: NextRequest) {
   try {
     templates = await loadHistoricalImportHotelTemplates(hotel.hotel.id);
   } catch (error) {
-    return jsonError(error instanceof Error ? error.message : "No se pudieron cargar los templates.", 500);
+    return jsonDbError(error instanceof Error ? { message: error.message } : null, "No se pudieron cargar los templates.");
   }
 
   payload.selected_hotel = hotel.hotel;
@@ -158,7 +158,7 @@ export async function GET(request: NextRequest) {
   try {
     questions = await loadOrderedActiveTemplateQuestions(template.template.id);
   } catch (error) {
-    return jsonError(error instanceof Error ? error.message : "No se pudieron cargar las preguntas.", 500);
+    return jsonDbError(error instanceof Error ? { message: error.message } : null, "No se pudieron cargar las preguntas.");
   }
 
   payload.selected_template = {

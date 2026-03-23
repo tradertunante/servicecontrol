@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { authorizeRouteRequest } from "@/lib/auth/server";
 import { resolveManagedUserAccess } from "@/lib/auth/userManagement";
-import { jsonError } from "@/lib/api/response";
+import { jsonError , jsonDbError } from "@/lib/api/response";
 
 export async function POST(req: NextRequest) {
   const reqId = Math.random().toString(16).slice(2, 8);
@@ -31,7 +31,7 @@ export async function POST(req: NextRequest) {
 
     if (rowsErr) {
       console.error(`[uaa-get:${reqId}]`, rowsErr.message);
-      return jsonError(rowsErr.message, 400);
+      return jsonDbError(rowsErr);
     }
 
     return NextResponse.json({
@@ -40,6 +40,6 @@ export async function POST(req: NextRequest) {
     });
   } catch (e: any) {
     console.error(`[uaa-get:${reqId}] Unexpected`, e?.message);
-    return jsonError(e?.message ?? "Error inesperado.", 500);
+    return jsonDbError(e, "Error inesperado.");
   }
 }

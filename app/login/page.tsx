@@ -41,6 +41,16 @@ export default function LoginPage() {
       const session = data.session ?? (await waitForSession());
       if (!session) throw new Error("No se pudo establecer la sesión. Intenta de nuevo.");
 
+      // Sync httpOnly cookie before navigating (middleware needs it)
+      await fetch("/api/auth/sync-session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          token: session.access_token,
+          expires_at: session.expires_at ?? null,
+        }),
+      });
+
       const { data: userData, error: userError } = await supabase.auth.getUser();
       if (userError) throw userError;
       if (!userData?.user) throw new Error("No se pudo obtener el usuario autenticado.");

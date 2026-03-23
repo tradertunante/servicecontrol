@@ -170,7 +170,7 @@ export async function GET(request: NextRequest) {
       })),
     });
   } catch (error) {
-    return jsonError(error instanceof Error ? error.message : "Error inesperado.", 500);
+    return jsonDbError(error instanceof Error ? { message: error.message } : null, "Error inesperado.");
   }
 }
 
@@ -237,7 +237,7 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (error || !data) {
-      return jsonError(error?.message ?? "No se pudo crear el tema.", 500);
+      return jsonDbError(error, "No se pudo crear el tema.");
     }
 
     return jsonNoStore(
@@ -252,6 +252,6 @@ export async function POST(request: NextRequest) {
       201
     );
   } catch (error) {
-    return jsonError(error instanceof Error ? error.message : "Error inesperado.", 500);
+    return jsonDbError(error instanceof Error ? { message: error.message } : null, "Error inesperado.");
   }
 }
