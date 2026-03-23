@@ -68,7 +68,7 @@ export async function POST(request: NextRequest) {
     .select("id")
     .maybeSingle();
 
-  if (result.error) return jsonError(result.error.message, 500);
+  if (result.error) return jsonDbError(result.error);
   return NextResponse.json({ ok: true, id: result.data?.id ?? editId });
 }
 

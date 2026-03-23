@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { waitUntil } from "@vercel/functions";
 import { canSubmitAudit } from "@/lib/auth/permissions";
 import {
   authorizeRouteRequest,
@@ -266,9 +267,12 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Fire-and-forget: send instant email notifications to subscribers
-    sendInstantNotifications(runId).catch((err) =>
-      console.error("[instant-email] fire-and-forget error:", err)
+    // Send emails in the background — waitUntil keeps the function alive
+    // after the response is sent so Vercel doesn't kill the process early.
+    waitUntil(
+      sendInstantNotifications(runId).catch((err) =>
+        console.error("[instant-email] background error:", err)
+      )
     );
 
     return NextResponse.json(data);

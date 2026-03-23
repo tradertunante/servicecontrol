@@ -183,6 +183,6 @@ export async function GET(request: NextRequest) {
       })),
     });
   } catch (error) {
-    return jsonError(error instanceof Error ? error.message : "Error inesperado.", 500);
+    return jsonDbError(error instanceof Error ? { message: error.message } : null, "Error inesperado.");
   }
 }

@@ -133,7 +133,7 @@ export async function PATCH(
     .single();
 
   if (updateError || !updated) {
-    return jsonError(updateError?.message ?? "No se pudo actualizar el hallazgo.", 500);
+    return jsonDbError(updateError, "No se pudo actualizar el hallazgo.");
   }
 
   return NextResponse.json({ ok: true, item: updated });

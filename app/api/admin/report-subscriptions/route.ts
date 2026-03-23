@@ -61,6 +61,23 @@ export async function POST(request: NextRequest) {
   }
 
   const admin = supabaseAdmin();
+
+  // Validate that all area_ids belong to the hotel
+  if (subScope === "specific_areas" && areaIds && areaIds.length > 0) {
+    const { data: validAreas, error: areaErr } = await admin
+      .from("areas")
+      .select("id")
+      .eq("hotel_id", scope.hotelId)
+      .in("id", areaIds);
+
+    if (areaErr) return jsonDbError(areaErr);
+
+    const validIds = new Set((validAreas ?? []).map((a) => a.id));
+    const invalid = areaIds.filter((id: string) => !validIds.has(id));
+    if (invalid.length > 0) {
+      return jsonError("Una o más áreas no pertenecen a este hotel.", 400);
+    }
+  }
   const { data, error } = await admin
     .from("report_subscriptions")
     .insert({

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { authorizeRouteRequest } from "@/lib/auth/server";
 import { createManagedUser, listManagedUsers } from "@/lib/auth/userManagement";
-import { jsonError } from "@/lib/api/response";
+import { jsonError , jsonDbError } from "@/lib/api/response";
 
 export async function GET(request: NextRequest) {
   try {
@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
       users: result.users,
     });
   } catch (error) {
-    return jsonError(error instanceof Error ? error.message : "Error inesperado.", 500);
+    return jsonDbError(error instanceof Error ? { message: error.message } : null, "Error inesperado.");
   }
 }
 
@@ -40,6 +40,6 @@ export async function POST(request: NextRequest) {
       user_id: result.userId,
     });
   } catch (error) {
-    return jsonError(error instanceof Error ? error.message : "Error inesperado.", 500);
+    return jsonDbError(error instanceof Error ? { message: error.message } : null, "Error inesperado.");
   }
 }

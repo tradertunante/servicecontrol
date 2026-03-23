@@ -61,7 +61,7 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error) {
-    return jsonError(error instanceof Error ? error.message : "Error inesperado.", 500);
+    return jsonDbError(error instanceof Error ? { message: error.message } : null, "Error inesperado.");
   }
 }
 
@@ -126,7 +126,7 @@ export async function POST(request: NextRequest) {
       if (memberError?.code === "23505") {
         return jsonError("El numero de colaborador ya existe en este hotel.", 409);
       }
-      return jsonError(memberError?.message ?? "No se pudo crear el miembro.", 500);
+      return jsonDbError(memberError, "No se pudo crear el miembro.");
     }
 
     const linkRows = requestedAreaIds.map((areaId) => ({
@@ -142,6 +142,6 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ ok: true, member_id: member.id });
   } catch (error) {
-    return jsonError(error instanceof Error ? error.message : "Error inesperado.", 500);
+    return jsonDbError(error instanceof Error ? { message: error.message } : null, "Error inesperado.");
   }
 }
