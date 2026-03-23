@@ -1,14 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
-import { sendWeeklyReportEmail } from "@/lib/email/weeklyReportEmail";
+import { sendMonthlyReportEmail } from "@/lib/email/monthlyReportEmail";
 import { jsonError, jsonDbError } from "@/lib/api/response";
 
 /**
- * POST /api/reports/send-weekly
- * Sends weekly report emails to subscribers with frequency='weekly'.
+ * POST /api/reports/send-monthly
+ * Sends monthly report emails to subscribers with frequency='monthly'.
  * Respects scope (all_areas / specific_areas) and channel filters.
- * Called by Vercel cron (Monday 8am UTC) or manually by admin.
+ * Called by Vercel cron (1st of month 8am UTC) or manually by admin.
  */
 export async function POST(request: NextRequest) {
   const cronSecret = request.headers.get("x-cron-secret");
@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
     const { data: subs, error } = await admin
       .from("report_subscriptions")
       .select("hotel_id")
-      .eq("frequency", "weekly")
+      .eq("frequency", "monthly")
       .eq("active", true);
 
     if (error) return jsonDbError(error);
@@ -52,12 +52,12 @@ export async function POST(request: NextRequest) {
 
     const hotelName = hotel?.name || "Hotel";
 
-    // Get weekly subscribers for this hotel
+    // Get monthly subscribers
     const { data: subs } = await admin
       .from("report_subscriptions")
       .select("email,scope,area_ids,channel")
       .eq("hotel_id", hotelId)
-      .eq("frequency", "weekly")
+      .eq("frequency", "monthly")
       .eq("active", true);
 
     if (!subs || subs.length === 0) {
@@ -66,11 +66,11 @@ export async function POST(request: NextRequest) {
       continue;
     }
 
-    // Week range (last 7 days)
+    // Month range (previous calendar month)
     const now = new Date();
-    const weekStart = new Date(now);
-    weekStart.setDate(weekStart.getDate() - 7);
-    const weekLabel = `${weekStart.toLocaleDateString("es-ES", { day: "2-digit", month: "short" })} - ${now.toLocaleDateString("es-ES", { day: "2-digit", month: "short", year: "numeric" })}`;
+    const monthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const monthEnd = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999);
+    const monthLabel = monthStart.toLocaleDateString("es-ES", { month: "long", year: "numeric" });
 
     // Get areas
     const { data: areas } = await admin
@@ -78,23 +78,21 @@ export async function POST(request: NextRequest) {
       .select("id,name")
       .eq("hotel_id", hotelId);
 
-    // Get runs from last week
+    // Get runs from previous month
     const { data: runs } = await admin
       .from("audit_runs")
       .select("area_id,score,audit_channel")
       .eq("hotel_id", hotelId)
       .eq("status", "submitted")
       .is("archived_at", null)
-      .gte("executed_at", weekStart.toISOString())
-      .lte("executed_at", now.toISOString());
+      .gte("executed_at", monthStart.toISOString())
+      .lte("executed_at", monthEnd.toISOString());
 
-    // Send to each subscriber with their specific filters
     for (const sub of subs) {
-      // Filter runs by subscriber's channel preference
+      // Filter by channel
       const filteredRuns = (runs ?? []).filter((run) => {
         const ch = run.audit_channel ?? "internal";
-        if (sub.channel !== "all" && sub.channel !== ch) return false;
-        return true;
+        return sub.channel === "all" || sub.channel === ch;
       });
 
       // Filter by area scope
@@ -102,13 +100,11 @@ export async function POST(request: NextRequest) {
         if (sub.scope === "specific_areas" && Array.isArray(sub.area_ids)) {
           return sub.area_ids.includes(run.area_id);
         }
-        // all_areas and my_areas (treated as all for cron)
         return true;
       });
 
       if (scopedRuns.length === 0) continue;
 
-      // Build area stats for this subscriber's filtered data
       const areaMap = new Map<string, { name: string; scores: number[]; count: number }>();
       for (const area of areas ?? []) {
         areaMap.set(area.id, { name: area.name, scores: [], count: 0 });
@@ -139,10 +135,10 @@ export async function POST(request: NextRequest) {
           : 0;
 
       try {
-        await sendWeeklyReportEmail({
+        await sendMonthlyReportEmail({
           to: sub.email,
           hotelName,
-          weekLabel,
+          monthLabel,
           areas: areaData,
           overallScore,
           totalAudits: allScores.length,

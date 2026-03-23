@@ -6,6 +6,7 @@ import {
   resolveRouteHotelScope,
 } from "@/lib/auth/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { sendInstantNotifications } from "@/lib/email/sendInstantNotifications";
 
 type SubmitAuditBody = {
   run_id?: unknown;
@@ -264,6 +265,11 @@ export async function POST(request: NextRequest) {
         },
       });
     }
+
+    // Fire-and-forget: send instant email notifications to subscribers
+    sendInstantNotifications(runId).catch((err) =>
+      console.error("[instant-email] fire-and-forget error:", err)
+    );
 
     return NextResponse.json(data);
   } catch (error) {

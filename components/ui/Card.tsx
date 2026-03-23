@@ -27,7 +27,7 @@ export default function Card({
         background: "var(--card-bg)",
         borderRadius: radius,
         padding,
-        boxShadow: shadow === "sm" ? "var(--shadow-sm)" : "none",
+        boxShadow: shadow === "sm" ? "var(--shadow-sm)" : "var(--shadow-card)",
         ...style,
       }}
     >

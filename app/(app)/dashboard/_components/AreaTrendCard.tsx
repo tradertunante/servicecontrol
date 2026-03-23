@@ -47,6 +47,7 @@ export default function AreaTrendCard({
   areas: Area[];
 }) {
   const [months] = useState(6);
+  const [hover, setHover] = useState<{ x: number; y: number; score: number; area: string } | null>(null);
 
   const series = useMemo(() => {
     const now = new Date();
@@ -139,13 +140,29 @@ export default function AreaTrendCard({
     return padL + (idx / (allMonths.length - 1)) * innerW;
   };
 
-  // Y range: 0–100
+  // Y range: dinámico según datos con margen
+  const allScores = series.flatMap((s) => s.points.map((p) => p.score));
+  const dataMin = Math.min(...allScores);
+  const dataMax = Math.max(...allScores);
+  // Redondear hacia abajo/arriba al múltiplo de 10 más cercano, con margen
+  const yMin = Math.max(0, Math.floor((dataMin - 5) / 10) * 10);
+  const yMax = Math.min(100, Math.ceil((dataMax + 5) / 10) * 10);
+  // Si el rango es muy estrecho, expandir un poco
+  const yRange = yMax - yMin < 20 ? 20 : yMax - yMin;
+  const yBottom = yMin;
+  const yTop = yMin + yRange;
+
   const yFor = (score: number) => {
-    const t = clamp(score, 0, 100) / 100;
+    const t = (clamp(score, yBottom, yTop) - yBottom) / yRange;
     return padT + (1 - t) * innerH;
   };
 
-  const gridLines = [0, 25, 50, 75, 100];
+  // Grid lines: ~4-5 líneas espaciadas dentro del rango
+  const gridStep = yRange <= 20 ? 5 : 10;
+  const gridLines: number[] = [];
+  for (let v = yBottom; v <= yTop; v += gridStep) {
+    gridLines.push(v);
+  }
 
   return (
     <div className="rounded-2xl border bg-white p-5">
@@ -223,14 +240,49 @@ export default function AreaTrendCard({
                 />
               )}
               {coords.map((c, ci) => (
-                <g key={ci}>
+                <g
+                  key={ci}
+                  onMouseEnter={() => setHover({ x: c.x, y: c.y, score: c.score, area: s.areaName })}
+                  onMouseLeave={() => setHover(null)}
+                  style={{ cursor: "pointer" }}
+                >
+                  {/* Zona invisible más grande para facilitar hover */}
+                  <circle cx={c.x} cy={c.y} r={14} fill="transparent" />
                   <circle cx={c.x} cy={c.y} r={5} fill="white" stroke={color} strokeWidth="2.5" />
-                  <title>{`${s.areaName} · ${c.label} · ${c.score}%`}</title>
                 </g>
               ))}
             </g>
           );
         })}
+        {/* Tooltip */}
+        {hover && (() => {
+          const label = `${hover.score}% ${hover.area}`;
+          const charW = 8.5;
+          const tw = label.length * charW + 20;
+          const th = 30;
+          // Evitar que se salga por la derecha
+          const tx = hover.x + tw / 2 > width - padR
+            ? hover.x - tw / 2
+            : hover.x - tw / 2 < padL
+              ? padL
+              : hover.x - tw / 2;
+          const ty = hover.y - th - 10;
+          return (
+            <g style={{ pointerEvents: "none" }}>
+              <rect x={tx} y={ty} width={tw} height={th} rx={8} fill="#0f172a" opacity={0.92} />
+              <text
+                x={tx + tw / 2}
+                y={ty + th / 2 + 5}
+                textAnchor="middle"
+                fontSize="13"
+                fontWeight="800"
+                fill="white"
+              >
+                {label}
+              </text>
+            </g>
+          );
+        })()}
       </svg>
 
       {/* Legend */}

@@ -5,7 +5,9 @@ import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { jsonError, jsonDbError } from "@/lib/api/response";
 
 async function getAdminScope(request: NextRequest) {
-  const caller = await authorizeRouteRequest(request, { roles: ["admin", "superadmin"] });
+  const caller = await authorizeRouteRequest(request, {
+    roles: ["admin", "superadmin", "general_manager", "quality"],
+  });
   if (!caller) return { ok: false as const, error: "No autorizado.", status: 401 };
 
   const hotelResult = resolveRouteHotelScope(caller.profile, null);
@@ -21,8 +23,9 @@ export async function GET(request: NextRequest) {
   const admin = supabaseAdmin();
   const { data, error } = await admin
     .from("report_subscriptions")
-    .select("id,user_id,report_type,email,active,created_at")
+    .select("id,email,frequency,scope,area_ids,channel,active,created_at")
     .eq("hotel_id", scope.hotelId)
+    .eq("active", true)
     .order("created_at", { ascending: false });
 
   if (error) return jsonDbError(error);
@@ -36,37 +39,41 @@ export async function POST(request: NextRequest) {
 
   const body = await request.json().catch(() => null);
   const email = typeof body?.email === "string" ? body.email.trim() : "";
-  const reportType = body?.report_type === "monthly" ? "monthly" : "weekly";
+  const frequency = ["instant", "weekly", "monthly"].includes(body?.frequency)
+    ? body.frequency
+    : "weekly";
+  const subScope = ["all_areas", "my_areas", "specific_areas"].includes(body?.scope)
+    ? body.scope
+    : "all_areas";
+  const channel = ["all", "quality", "internal"].includes(body?.channel)
+    ? body.channel
+    : "all";
+  const areaIds = Array.isArray(body?.area_ids)
+    ? body.area_ids.filter((id: unknown) => typeof id === "string")
+    : null;
 
   if (!email || !email.includes("@")) {
     return jsonError("Email inválido.", 400);
   }
 
+  if (subScope === "specific_areas" && (!areaIds || areaIds.length === 0)) {
+    return jsonError("Debes seleccionar al menos un área.", 400);
+  }
+
   const admin = supabaseAdmin();
-
-  // Find user by email (optional — allow external emails too)
-  const { data: profile } = await admin
-    .from("profiles")
-    .select("id")
-    .eq("email", email)
-    .eq("hotel_id", scope.hotelId)
-    .maybeSingle();
-
-  const userId = profile?.id ?? scope.caller.profile.id;
-
   const { data, error } = await admin
     .from("report_subscriptions")
-    .upsert(
-      {
-        hotel_id: scope.hotelId,
-        user_id: userId,
-        report_type: reportType,
-        email,
-        active: true,
-      },
-      { onConflict: "hotel_id,user_id,report_type" }
-    )
-    .select("id,user_id,report_type,email,active,created_at")
+    .insert({
+      hotel_id: scope.hotelId,
+      email,
+      frequency,
+      scope: subScope,
+      area_ids: subScope === "specific_areas" ? areaIds : null,
+      channel,
+      active: true,
+      created_by: scope.caller.profile.id,
+    })
+    .select("id,email,frequency,scope,area_ids,channel,active,created_at")
     .single();
 
   if (error) return jsonDbError(error);

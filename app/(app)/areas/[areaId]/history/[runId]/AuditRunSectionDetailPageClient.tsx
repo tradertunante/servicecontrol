@@ -117,22 +117,22 @@ function statCardStyle(): CSSProperties {
 function badgeStyle(status: "FAIL" | "NA" | "OK"): CSSProperties {
   if (status === "FAIL") {
     return {
-      background: "rgba(220, 38, 38, 0.12)",
+      background: "var(--danger-bg)",
       color: "#b91c1c",
-      border: "1px solid rgba(220, 38, 38, 0.20)",
+      border: "1px solid var(--danger-border)",
     };
   }
   if (status === "NA") {
     return {
-      background: "rgba(55, 65, 81, 0.10)",
+      background: "var(--neutral-bg)",
       color: "#374151",
-      border: "1px solid rgba(55, 65, 81, 0.18)",
+      border: "1px solid var(--neutral-border)",
     };
   }
   return {
-    background: "rgba(22, 163, 74, 0.12)",
+    background: "var(--ok-bg)",
     color: "#15803d",
-    border: "1px solid rgba(22, 163, 74, 0.20)",
+    border: "1px solid var(--ok-border)",
   };
 }
 
