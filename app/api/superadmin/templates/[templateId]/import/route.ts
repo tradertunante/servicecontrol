@@ -100,7 +100,7 @@ export async function POST(
       .single();
 
     if (insertSectionError || !insertedSection?.id) {
-      return jsonError(insertSectionError?.message ?? "No se pudo crear una seccion.", 500);
+      return jsonDbError(insertSectionError, "No se pudo crear una seccion.");
     }
 
     sectionMap.set(normKey(insertedSection.name), {
@@ -143,7 +143,7 @@ export async function POST(
   try {
     await normalizeTemplateQuestionOrder(template.templateId);
   } catch (error) {
-    return jsonError(error instanceof Error ? error.message : "No se pudo normalizar el orden.", 500);
+    return jsonDbError(error instanceof Error ? { message: error.message } : null, "No se pudo normalizar el orden.");
   }
 
   return jsonOk({

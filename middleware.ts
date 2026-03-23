@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 const AUTH_TOKEN_COOKIE = "sc-access-token";
 
 const PUBLIC_API_PREFIXES = [
+  "/api/auth/sync-session",
   "/api/trainings/sessions",
   "/api/trainings/attendances",
 ];

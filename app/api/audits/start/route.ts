@@ -82,7 +82,7 @@ export async function POST(request: NextRequest) {
   });
 
   if (error) {
-    return jsonError(error.message ?? "No se pudo crear la auditoría.", 500);
+    return jsonDbError(error, "No se pudo crear la auditoría.");
   }
 
   const payload = (data ?? null) as StartAuditRpcResponse | null;

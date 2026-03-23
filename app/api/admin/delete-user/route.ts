@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { authorizeRouteRequest } from "@/lib/auth/server";
 import { deleteManagedUser } from "@/lib/auth/userManagement";
-import { jsonError } from "@/lib/api/response";
+import { jsonError , jsonDbError } from "@/lib/api/response";
 
 export async function POST(request: NextRequest) {
   try {
@@ -17,6 +17,6 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ ok: true });
   } catch (error) {
-    return jsonError(error instanceof Error ? error.message : "Error inesperado.", 500);
+    return jsonDbError(error instanceof Error ? { message: error.message } : null, "Error inesperado.");
   }
 }

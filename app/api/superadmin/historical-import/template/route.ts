@@ -66,6 +66,6 @@ async function handleTemplateRequest(hotelId: string, templateId: string, reques
       },
     });
   } catch (loadError) {
-    return jsonError(loadError instanceof Error ? loadError.message : "No se pudo generar la plantilla.", 500);
+    return jsonDbError(loadError instanceof Error ? { message: loadError.message } : null, "No se pudo generar la plantilla.");
   }
 }

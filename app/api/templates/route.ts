@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
     .single();
 
   if (error || !data?.id) {
-    return jsonError(error?.message ?? "No se pudo crear la plantilla.", 500);
+    return jsonDbError(error, "No se pudo crear la plantilla.");
   }
 
   return NextResponse.json({ ok: true, template_id: String(data.id) });

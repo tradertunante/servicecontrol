@@ -93,7 +93,7 @@ export async function GET(request: NextRequest) {
       sessions: serializedSessions,
     });
   } catch (error) {
-    return jsonError(error instanceof Error ? error.message : "Error inesperado.", 500);
+    return jsonDbError(error instanceof Error ? { message: error.message } : null, "Error inesperado.");
   }
 }
 
@@ -162,7 +162,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ ok: true, session_id: data?.id ?? null });
   } catch (error) {
-    return jsonError(error instanceof Error ? error.message : "Error inesperado.", 500);
+    return jsonDbError(error instanceof Error ? { message: error.message } : null, "Error inesperado.");
   }
 }
 
@@ -217,7 +217,7 @@ export async function PATCH(request: NextRequest) {
     if (error) return jsonDbError(error);
     return NextResponse.json({ ok: true });
   } catch (error) {
-    return jsonError(error instanceof Error ? error.message : "Error inesperado.", 500);
+    return jsonDbError(error instanceof Error ? { message: error.message } : null, "Error inesperado.");
   }
 }
 
@@ -286,6 +286,6 @@ export async function DELETE(request: NextRequest) {
 
     return NextResponse.json({ ok: true });
   } catch (error) {
-    return jsonError(error instanceof Error ? error.message : "Error inesperado.", 500);
+    return jsonDbError(error instanceof Error ? { message: error.message } : null, "Error inesperado.");
   }
 }
