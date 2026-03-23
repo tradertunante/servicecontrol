@@ -1,3 +1,4 @@
+import { jsonDbError } from "@/lib/api/response";
 import { NextRequest } from "next/server";
 
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
@@ -28,7 +29,7 @@ export async function POST(request: NextRequest) {
     .single();
 
   if (error || !data?.id) {
-    return jsonError(error?.message ?? "No se pudo crear el pack.", 500);
+    return jsonDbError(error, "No se pudo crear el pack.");
   }
 
   return jsonOk({

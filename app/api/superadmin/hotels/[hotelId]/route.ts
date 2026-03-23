@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { jsonDbError } from "@/lib/api/response";
 import { jsonError, jsonOk, requireSuperadminRoute } from "@/lib/superadmin/server";
 
 export async function PATCH(
@@ -39,7 +40,8 @@ export async function PATCH(
     .single();
 
   if (error || !data?.id) {
-    return jsonError(error?.message ?? "No se pudo actualizar el hotel.", error ? 500 : 404);
+    if (error) return jsonDbError(error, "No se pudo actualizar el hotel.");
+    return jsonError("No se pudo actualizar el hotel.", 404);
   }
 
   return jsonOk({

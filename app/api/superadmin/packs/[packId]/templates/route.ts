@@ -59,7 +59,7 @@ export async function POST(
       .single();
 
     if (error || !data?.id) {
-      return jsonError(error?.message ?? "No se pudo crear la plantilla global.", 500);
+      return jsonDbError(error, "No se pudo crear la plantilla global.");
     }
 
     effectiveTemplateId = String(data.id);
@@ -87,7 +87,7 @@ export async function POST(
   try {
     position = await getNextPackPosition(pack.packId);
   } catch (error) {
-    return jsonError(error instanceof Error ? error.message : "No se pudo calcular la posicion.", 500);
+    return jsonDbError(error instanceof Error ? { message: error.message } : null, "No se pudo calcular la posicion.");
   }
 
   const { error: insertLinkError } = await admin

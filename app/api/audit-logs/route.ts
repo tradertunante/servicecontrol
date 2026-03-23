@@ -7,7 +7,7 @@ import {
 } from "@/lib/auth/server";
 import { readAuditLogs, writeAuditLogs } from "@/lib/auditLogs";
 import type { AuditLogEntryInput } from "@/lib/auditLogTypes";
-import { jsonError } from "@/lib/api/response";
+import { jsonError , jsonDbError } from "@/lib/api/response";
 
 function jsonNoStore(body: unknown) {
   return NextResponse.json(body, {
@@ -81,7 +81,7 @@ export async function GET(request: NextRequest) {
 
     return jsonNoStore({ ok: true, logs });
   } catch (error: any) {
-    return jsonError(error?.message ?? "No se pudo cargar el historial.", 500);
+    return jsonDbError(error, "No se pudo cargar el historial.");
   }
 }
 
@@ -124,6 +124,6 @@ export async function POST(request: NextRequest) {
 
     return jsonNoStore({ ok: true, count: sanitized.length });
   } catch (error: any) {
-    return jsonError(error?.message ?? "No se pudo registrar el historial.", 500);
+    return jsonDbError(error, "No se pudo registrar el historial.");
   }
 }

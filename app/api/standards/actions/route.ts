@@ -90,6 +90,6 @@ export async function POST(request: NextRequest) {
 
     return jsonError("Accion no soportada.", 400);
   } catch (error) {
-    return jsonError(error instanceof Error ? error.message : "Error inesperado.", 500);
+    return jsonDbError(error instanceof Error ? { message: error.message } : null, "Error inesperado.");
   }
 }

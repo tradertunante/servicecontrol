@@ -11,7 +11,7 @@ import {
   resolveMembersHotelId,
   uniqueStrings,
 } from "@/lib/members/server";
-import { jsonError } from "@/lib/api/response";
+import { jsonError , jsonDbError } from "@/lib/api/response";
 
 export async function POST(request: NextRequest) {
   try {
@@ -253,6 +253,6 @@ export async function POST(request: NextRequest) {
       row_results: rowResults,
     });
   } catch (error) {
-    return jsonError(error instanceof Error ? error.message : "Error inesperado.", 500);
+    return jsonDbError(error instanceof Error ? { message: error.message } : null, "Error inesperado.");
   }
 }
