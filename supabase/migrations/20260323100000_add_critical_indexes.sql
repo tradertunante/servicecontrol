@@ -8,7 +8,7 @@ CREATE INDEX IF NOT EXISTS idx_audit_runs_hotel_status
 
 -- Dashboard & area history: hotel + area + time ordering
 CREATE INDEX IF NOT EXISTS idx_audit_runs_hotel_area_created
-  ON public.audit_runs (hotel_id, area_id, created_at DESC);
+  ON public.audit_runs (hotel_id, area_id, executed_at DESC);
 
 -- Audit loader: every answer lookup is by run_id
 CREATE INDEX IF NOT EXISTS idx_audit_answers_run_id
