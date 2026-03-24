@@ -121,7 +121,7 @@ export default function AreasPageClient({
           <div className="topActions">
             <button type="button" onClick={() => router.back()} className="btn">← Atrás</button>
             {canManage && (
-              <button type="button" onClick={() => router.push("/admin/areas")} className="btn" title="Gestionar áreas">
+              <button type="button" onClick={() => router.push("/admin?tab=areas")} className="btn" title="Gestionar áreas">
                 Gestionar
               </button>
             )}

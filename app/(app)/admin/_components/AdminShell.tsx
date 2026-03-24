@@ -84,9 +84,15 @@ function buildPillStyle(): CSSProperties {
   };
 }
 
-export default function AdminShell({ initialHotelId }: { initialHotelId: string }) {
+export default function AdminShell({
+  initialHotelId,
+  initialViewMode = "hotel-info",
+}: {
+  initialHotelId: string;
+  initialViewMode?: ViewMode;
+}) {
   const [activeHotelId] = useState<string | null>(initialHotelId);
-  const [viewMode, setViewMode] = useState<ViewMode>("hotel-info");
+  const [viewMode, setViewMode] = useState<ViewMode>(initialViewMode);
   const [isNarrow, setIsNarrow] = useState(false);
 
   useEffect(() => {
