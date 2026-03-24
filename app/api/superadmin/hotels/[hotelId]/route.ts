@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { jsonDbError } from "@/lib/api/response";
+import { parseUUID, isErrorResponse } from "@/lib/api/validate";
 import { jsonError, jsonOk, requireSuperadminRoute } from "@/lib/superadmin/server";
 
 export async function PATCH(
@@ -11,8 +12,8 @@ export async function PATCH(
   const caller = await requireSuperadminRoute(request);
   if (!caller) return jsonError("No autorizado.", 401);
 
-  const hotelId = String(params.hotelId ?? "").trim();
-  if (!hotelId) return jsonError("hotelId es obligatorio.");
+  const hotelId = parseUUID(params.hotelId, "hotelId");
+  if (isErrorResponse(hotelId)) return hotelId;
 
   const body = await request.json().catch(() => null);
   const updates: Record<string, unknown> = {};

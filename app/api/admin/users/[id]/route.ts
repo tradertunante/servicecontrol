@@ -10,6 +10,7 @@ import {
   resolveManagedHotelId,
 } from "@/lib/auth/userManagement";
 import { jsonError, jsonDbError } from "@/lib/api/response";
+import { parseUUID, isErrorResponse } from "@/lib/api/validate";
 
 export async function GET(
   request: NextRequest,
@@ -22,7 +23,10 @@ export async function GET(
     const hotelResult = resolveManagedHotelId(caller.profile);
     if (!hotelResult.ok) return jsonError(hotelResult.error, hotelResult.status);
 
-    const user = await loadManagedUser(String(params.id ?? "").trim(), hotelResult.hotelId);
+    const userId = parseUUID(params.id, "user_id");
+    if (isErrorResponse(userId)) return userId;
+
+    const user = await loadManagedUser(userId, hotelResult.hotelId);
     if (!user) return jsonError("Usuario no encontrado.", 404);
 
     if (!canManageExistingUser(caller.profile.role, user.role)) {
@@ -47,8 +51,8 @@ export async function PATCH(
     const hotelResult = resolveManagedHotelId(caller.profile);
     if (!hotelResult.ok) return jsonError(hotelResult.error, hotelResult.status);
 
-    const userId = String(params.id ?? "").trim();
-    if (!userId) return jsonError("user_id es obligatorio.", 400);
+    const userId = parseUUID(params.id, "user_id");
+    if (isErrorResponse(userId)) return userId;
 
     const target = await loadManagedUser(userId, hotelResult.hotelId);
     if (!target) return jsonError("Usuario no encontrado.", 404);
@@ -99,7 +103,10 @@ export async function DELETE(
     const caller = await authorizeRouteRequest(request, { roles: ["admin", "superadmin"] });
     if (!caller) return jsonError("No autorizado.", 401);
 
-    const result = await deleteManagedUser(caller.profile, String(params.id ?? "").trim());
+    const userId = parseUUID(params.id, "user_id");
+    if (isErrorResponse(userId)) return userId;
+
+    const result = await deleteManagedUser(caller.profile, userId);
     if (!result.ok) return jsonError(result.error, result.status);
 
     return NextResponse.json({ ok: true });

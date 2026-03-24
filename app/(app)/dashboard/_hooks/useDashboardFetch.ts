@@ -1,0 +1,173 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { supabase } from "@/lib/supabaseClient";
+
+import type { Profile, AuditRunRow } from "../_lib/dashboardTypes";
+import type { HeatMode } from "../_lib/dashboardUtils";
+
+type HotelRow = { id: string; name: string; active: boolean | null; status: string | null };
+type AreaRow = { id: string; name: string; type: string | null; hotel_id: string | null; active?: boolean | null };
+type TemplateRow = { id: string; name: string; hotel_id: string | null };
+type DepartmentBacklogResponse = { rows?: unknown[] };
+
+export type PendingTeamItem = {
+  teamKey: "it" | "maintenance";
+  teamLabel: string;
+  pendingCount: number;
+};
+
+const DEFAULT_PENDING: PendingTeamItem[] = [
+  { teamKey: "it", teamLabel: "IT", pendingCount: 0 },
+  { teamKey: "maintenance", teamLabel: "Mantenimiento", pendingCount: 0 },
+];
+
+export function useDashboardFetch({
+  profile,
+  activeHotelId,
+  setActiveHotelId,
+  heatMode,
+  selectedYear,
+}: {
+  profile: Profile | null;
+  activeHotelId: string | null;
+  setActiveHotelId: (s: string | null) => void;
+  heatMode: HeatMode;
+  selectedYear: number;
+}) {
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const [hotels, setHotels] = useState<HotelRow[]>([]);
+  const [areas, setAreas] = useState<AreaRow[]>([]);
+  const [templates, setTemplates] = useState<TemplateRow[]>([]);
+  const [runs, setRuns] = useState<AuditRunRow[]>([]);
+  const [pendingByTeam, setPendingByTeam] = useState<PendingTeamItem[]>(DEFAULT_PENDING);
+  const [selectedHotelName, setSelectedHotelName] = useState("");
+
+  const canChooseHotel = profile?.role === "superadmin";
+
+  const resetForHotelChange = () => {
+    setActiveHotelId(null);
+    setAreas([]);
+    setTemplates([]);
+    setRuns([]);
+    setPendingByTeam(DEFAULT_PENDING);
+  };
+
+  useEffect(() => {
+    let alive = true;
+
+    (async () => {
+      if (!profile) return;
+      if (!activeHotelId) { setLoading(false); return; }
+
+      setLoading(true);
+      setError(null);
+
+      try {
+        const hotelsPromise = canChooseHotel
+          ? supabase.from("hotels").select("id,name,active,status").order("name")
+          : Promise.resolve({ data: null, error: null });
+
+        const selectedHotelPromise = canChooseHotel
+          ? Promise.resolve({ data: null, error: null })
+          : supabase.from("hotels").select("id,name").eq("id", activeHotelId).single();
+
+        const areasPromise = supabase
+          .from("areas")
+          .select("id,name,type,hotel_id,active")
+          .eq("hotel_id", activeHotelId)
+          .eq("active", true)
+          .order("name");
+
+        const templatesPromise = supabase
+          .from("audit_templates")
+          .select("id,name,hotel_id")
+          .or(`hotel_id.eq.${activeHotelId},hotel_id.is.null`)
+          .order("name");
+
+        const cutoffDate = heatMode === "YEAR"
+          ? `${selectedYear - 1}-01-01`
+          : new Date(Date.now() - 13 * 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+
+        const runsPromise = supabase
+          .from("audit_runs")
+          .select("id,area_id,audit_template_id,executed_at,score,audit_channel")
+          .eq("hotel_id", activeHotelId)
+          .is("archived_at", null)
+          .eq("status", "submitted")
+          .not("executed_at", "is", null)
+          .not("score", "is", null)
+          .gte("executed_at", cutoffDate)
+          .order("executed_at", { ascending: false })
+          .limit(5000);
+
+        const backlogItPromise = fetch(`/api/departments/backlog?department=it&hotel_id=${activeHotelId}`, {
+          method: "GET", credentials: "include", cache: "no-store",
+        }).then(async (response) => {
+          const payload = (await response.json().catch(() => null)) as DepartmentBacklogResponse | null;
+          if (!response.ok || !payload) throw new Error("No se pudo cargar backlog IT.");
+          return payload;
+        });
+
+        const backlogEngineeringPromise = fetch(
+          `/api/departments/backlog?department=engineering&hotel_id=${activeHotelId}`,
+          { method: "GET", credentials: "include", cache: "no-store" }
+        ).then(async (response) => {
+          const payload = (await response.json().catch(() => null)) as DepartmentBacklogResponse | null;
+          if (!response.ok || !payload) throw new Error("No se pudo cargar backlog de Mantenimiento.");
+          return payload;
+        });
+
+        const [hotelsRes, selectedHotelRes, areasRes, templatesRes, runsRes, backlogItRes, backlogEngineeringRes] = await Promise.all([
+          hotelsPromise, selectedHotelPromise, areasPromise, templatesPromise, runsPromise, backlogItPromise, backlogEngineeringPromise,
+        ]);
+
+        if (hotelsRes.error) throw hotelsRes.error;
+        if (selectedHotelRes.error) throw selectedHotelRes.error;
+        if (areasRes.error) throw areasRes.error;
+        if (templatesRes.error) throw templatesRes.error;
+        if (runsRes.error) throw runsRes.error;
+        if (!alive) return;
+
+        const hotelsData = (hotelsRes.data ?? []) as HotelRow[];
+        const selectedHotelData = selectedHotelRes.data as { id: string; name: string } | null;
+
+        setHotels(hotelsData);
+        setSelectedHotelName(
+          canChooseHotel
+            ? hotelsData.find((hotel) => hotel.id === activeHotelId)?.name ?? ""
+            : selectedHotelData?.name ?? ""
+        );
+        setAreas((areasRes.data ?? []) as AreaRow[]);
+        setTemplates((templatesRes.data ?? []) as TemplateRow[]);
+        setRuns((runsRes.data ?? []) as AuditRunRow[]);
+        setPendingByTeam([
+          {
+            teamKey: "it",
+            teamLabel: "IT",
+            pendingCount: Array.isArray(backlogItRes.rows) ? backlogItRes.rows.length : 0,
+          },
+          {
+            teamKey: "maintenance",
+            teamLabel: "Mantenimiento",
+            pendingCount: Array.isArray(backlogEngineeringRes.rows) ? backlogEngineeringRes.rows.length : 0,
+          },
+        ]);
+      } catch (e: unknown) {
+        if (!alive) return;
+        setError(e instanceof Error ? e.message : "No se pudo cargar el dashboard.");
+      } finally {
+        if (alive) setLoading(false);
+      }
+    })();
+
+    return () => { alive = false; };
+  }, [profile, activeHotelId, canChooseHotel, heatMode, selectedYear]);
+
+  return {
+    loading, error, hotels, areas, templates, runs,
+    pendingByTeam, selectedHotelName, canChooseHotel, resetForHotelChange,
+  };
+}

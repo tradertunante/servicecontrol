@@ -7,6 +7,7 @@ import {
 } from "@/lib/auth/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { jsonError, jsonDbError } from "@/lib/api/response";
+import { parseUUID, isErrorResponse } from "@/lib/api/validate";
 
 function mapDeleteAuditRunRpcError(message: string) {
   const normalized = String(message ?? "").toUpperCase();
@@ -42,8 +43,8 @@ export async function DELETE(
   if (!hotelResult.ok) return jsonError(hotelResult.error, hotelResult.status);
 
   const params = await context.params;
-  const runId = String(params?.id ?? "").trim();
-  if (!runId) return jsonError("runId es obligatorio.");
+  const runId = parseUUID(params?.id, "id");
+  if (isErrorResponse(runId)) return runId;
 
   const admin = supabaseAdmin();
   const { data: run, error: runErr } = await admin

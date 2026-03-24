@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import { jsonDbError } from "@/lib/api/response";
+import { parseUUID, isErrorResponse } from "@/lib/api/validate";
 
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { jsonError, jsonOk, loadGlobalPack, requireSuperadminRoute } from "@/lib/superadmin/server";
@@ -11,8 +12,8 @@ export async function PATCH(
   const caller = await requireSuperadminRoute(request);
   if (!caller) return jsonError("No autorizado.", 401);
 
-  const packId = String(params.packId ?? "").trim();
-  if (!packId) return jsonError("packId es obligatorio.");
+  const packId = parseUUID(params.packId, "packId");
+  if (isErrorResponse(packId)) return packId;
 
   const pack = await loadGlobalPack(packId);
   if (!pack.ok) return jsonError(pack.error, pack.status);

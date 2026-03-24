@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { authorizeRouteRequest } from "@/lib/auth/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { jsonError, jsonDbError } from "@/lib/api/response";
+import { parseUUID, isErrorResponse } from "@/lib/api/validate";
 
 /**
  * GET /api/audits/[id]/full
@@ -15,8 +16,8 @@ export async function GET(
   context: { params: Promise<{ id: string }> },
 ) {
   const params = await context.params;
-  const runId = String(params?.id ?? "").trim();
-  if (!runId) return jsonError("runId es obligatorio.", 400);
+  const runId = parseUUID(params?.id, "id");
+  if (isErrorResponse(runId)) return runId;
 
   const caller = await authorizeRouteRequest(request, {
     roles: ["superadmin", "admin", "general_manager", "manager", "auditor", "quality"],
