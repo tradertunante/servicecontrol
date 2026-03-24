@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { authorizeAuditRunAccess } from "@/lib/audits/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { jsonError } from "@/lib/api/response";
+import { parseUUID, isErrorResponse } from "@/lib/api/validate";
 
 type AnswerValue = "PASS" | "FAIL" | "NA";
 
@@ -32,8 +33,8 @@ export async function POST(
   context: { params: Promise<{ id: string }> },
 ) {
   const params = await context.params;
-  const runId = String(params?.id ?? "").trim();
-  if (!runId) return jsonError("runId es obligatorio.");
+  const runId = parseUUID(params?.id, "id");
+  if (isErrorResponse(runId)) return runId;
 
   const access = await authorizeAuditRunAccess(request, runId, { requireDraft: true });
   if (!access.ok) {

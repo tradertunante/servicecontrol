@@ -10,6 +10,7 @@ import {
   uniqueStrings,
 } from "@/lib/members/server";
 import { jsonError, jsonDbError } from "@/lib/api/response";
+import { parseUUID, isErrorResponse } from "@/lib/api/validate";
 
 export async function PATCH(
   request: NextRequest,
@@ -23,15 +24,13 @@ export async function PATCH(
     const hotelResult = resolveMembersHotelId(callerResult.caller);
     if (!hotelResult.ok) return jsonError(hotelResult.error, hotelResult.status);
 
-    const memberId = String(params.id ?? "").trim();
+    const memberId = parseUUID(params.id, "id");
+    if (isErrorResponse(memberId)) return memberId;
+
     const fullName = String(body?.full_name ?? "").trim();
     const employeeNumber = String(body?.employee_number ?? "").trim();
     const active = body?.active !== false;
     const requestedAreaIds = uniqueStrings(Array.isArray(body?.area_ids) ? body.area_ids : []);
-
-    if (!memberId) {
-      return jsonError("member_id es obligatorio.");
-    }
 
     if (!fullName) {
       return jsonError("full_name es obligatorio.");
@@ -222,11 +221,8 @@ export async function DELETE(
     const hotelResult = resolveMembersHotelId(callerResult.caller);
     if (!hotelResult.ok) return jsonError(hotelResult.error, hotelResult.status);
 
-    const memberId = String(params.id ?? "").trim();
-
-    if (!memberId) {
-      return jsonError("member_id es obligatorio.");
-    }
+    const memberId = parseUUID(params.id, "id");
+    if (isErrorResponse(memberId)) return memberId;
 
     const admin = supabaseAdmin();
     const { data: member, error: memberError } = await admin

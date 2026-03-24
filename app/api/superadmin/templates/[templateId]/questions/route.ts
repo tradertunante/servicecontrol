@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import { jsonDbError } from "@/lib/api/response";
+import { parseUUID, isErrorResponse } from "@/lib/api/validate";
 
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import {
@@ -27,8 +28,8 @@ export async function PATCH(
   const caller = await requireSuperadminRoute(request);
   if (!caller) return jsonError("No autorizado.", 401);
 
-  const templateId = String(params.templateId ?? "").trim();
-  if (!templateId) return jsonError("templateId es obligatorio.");
+  const templateId = parseUUID(params.templateId, "templateId");
+  if (isErrorResponse(templateId)) return templateId;
 
   const template = await loadGlobalTemplate(templateId);
   if (!template.ok) return jsonError(template.error, template.status);

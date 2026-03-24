@@ -11,6 +11,7 @@ import {
 } from "@/lib/auth/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { jsonError, jsonDbError } from "@/lib/api/response";
+import { parseUUID, isErrorResponse } from "@/lib/api/validate";
 
 type BacklogItemRow = {
   id: string;
@@ -40,8 +41,8 @@ export async function PATCH(
   if (!hotelResult.ok) return jsonError(hotelResult.error, hotelResult.status);
 
   const params = await context.params;
-  const itemId = String(params?.id ?? "").trim();
-  if (!itemId) return jsonError("id es obligatorio.");
+  const itemId = parseUUID(params.id, "id");
+  if (isErrorResponse(itemId)) return itemId;
 
   const body = await request.json().catch(() => null);
   const nextStatus = String(body?.status ?? "").trim();
