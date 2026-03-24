@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextFetchEvent, NextRequest, NextResponse } from "next/server";
 
 import { checkRateLimit } from "@/lib/api/rateLimit";
 import { logger } from "@/lib/logger";
@@ -11,7 +11,7 @@ const PUBLIC_API_PREFIXES = [
   "/api/trainings/attendances",
 ];
 
-export function middleware(request: NextRequest) {
+export function middleware(request: NextRequest, event: NextFetchEvent) {
   const { pathname } = request.nextUrl;
 
   // Rate limit API routes (100 req/min per IP)
@@ -19,7 +19,9 @@ export function middleware(request: NextRequest) {
     const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
     const { allowed, retryAfterMs } = checkRateLimit(ip);
     if (!allowed) {
-      logger.warn("rate_limit_exceeded", { ip, pathname });
+      event.waitUntil(
+        logger.warn("rate_limit_exceeded", { ip, pathname }, { edgeContext: event })
+      );
       return NextResponse.json(
         { ok: false, error: "Demasiadas solicitudes. Intenta de nuevo en un momento." },
         {

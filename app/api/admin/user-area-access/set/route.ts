@@ -35,7 +35,7 @@ export async function POST(req: NextRequest) {
     });
 
     if (error) {
-      logger.error("uaa_set_rpc_error", { reqId, error: error.message });
+      await logger.error("uaa_set_rpc_error", { reqId, error: error.message });
       return jsonDbError(error);
     }
 
@@ -53,7 +53,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ ok: true, count: Number(payload.data?.count ?? 0) });
   } catch (e: any) {
-    logger.error("uaa_set_unexpected_error", { reqId, error: e?.message });
+    await logger.error("uaa_set_unexpected_error", { reqId, error: e?.message });
     return jsonDbError(e, "Error inesperado.");
   }
 }

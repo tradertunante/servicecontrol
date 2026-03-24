@@ -8,13 +8,19 @@ type LogPayload = {
   [key: string]: unknown;
 };
 
-const logtail = process.env.LOGTAIL_SOURCE_TOKEN
-  ? new Logtail(process.env.LOGTAIL_SOURCE_TOKEN)
-  : null;
+type EdgeExecutionContext = {
+  waitUntil: (promise: Promise<unknown>) => void;
+};
 
-function emit(payload: LogPayload) {
-  const { level, ...rest } = payload;
-  const line = JSON.stringify({ ts: new Date().toISOString(), level, ...rest });
+type LoggerOptions = {
+  edgeContext?: EdgeExecutionContext;
+};
+
+const sourceToken = process.env.LOGTAIL_SOURCE_TOKEN?.trim() || "";
+const logtail = sourceToken ? new Logtail(sourceToken) : null;
+
+function writeConsole(level: LogLevel, payload: Omit<LogPayload, "level">) {
+  const line = JSON.stringify({ ts: new Date().toISOString(), level, ...payload });
 
   switch (level) {
     case "error":
@@ -26,20 +32,61 @@ function emit(payload: LogPayload) {
     default:
       console.log(line);
   }
+}
 
-  if (logtail) {
-    logtail[level](payload.event, rest);
+async function emit(payload: LogPayload, options?: LoggerOptions) {
+  const { level, ...rest } = payload;
+  writeConsole(level, rest);
+
+  if (!logtail) {
+    return { configured: false, sent: false as const };
+  }
+
+  try {
+    const sendPromise = options?.edgeContext
+      ? logtail[level](payload.event, rest, options.edgeContext as never)
+      : logtail[level](payload.event, rest);
+
+    if (options?.edgeContext) {
+      options.edgeContext.waitUntil(sendPromise);
+      return { configured: true, sent: true as const };
+    }
+
+    await sendPromise;
+    await logtail.flush();
+    return { configured: true, sent: true as const };
+  } catch (error) {
+    console.error(
+      JSON.stringify({
+        ts: new Date().toISOString(),
+        level: "error",
+        event: "better_stack_emit_failed",
+        original_event: payload.event,
+        error: error instanceof Error ? error.message : String(error),
+      })
+    );
+
+    return {
+      configured: true,
+      sent: false as const,
+      error: error instanceof Error ? error.message : String(error),
+    };
   }
 }
 
 export const logger = {
-  info(event: string, data?: Record<string, unknown>) {
-    emit({ level: "info", event, ...data });
+  configured: Boolean(logtail),
+  info(event: string, data?: Record<string, unknown>, options?: LoggerOptions) {
+    return emit({ level: "info", event, ...data }, options);
   },
-  warn(event: string, data?: Record<string, unknown>) {
-    emit({ level: "warn", event, ...data });
+  warn(event: string, data?: Record<string, unknown>, options?: LoggerOptions) {
+    return emit({ level: "warn", event, ...data }, options);
   },
-  error(event: string, data?: Record<string, unknown>) {
-    emit({ level: "error", event, ...data });
+  error(event: string, data?: Record<string, unknown>, options?: LoggerOptions) {
+    return emit({ level: "error", event, ...data }, options);
+  },
+  async flush() {
+    if (!logtail) return;
+    await logtail.flush();
   },
 };

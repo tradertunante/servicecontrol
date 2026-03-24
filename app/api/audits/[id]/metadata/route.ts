@@ -53,7 +53,7 @@ export async function PATCH(
       .maybeSingle();
 
     if (teamMemberError) {
-      logger.error("metadata_team_member_lookup_error", { error: teamMemberError.message });
+      await logger.error("metadata_team_member_lookup_error", { error: teamMemberError.message });
       return jsonError("Error interno al verificar el colaborador.", 500);
     }
     if (!teamMember?.id || String(teamMember.hotel_id ?? "") !== access.hotelId) {
@@ -72,7 +72,7 @@ export async function PATCH(
     .single();
 
   if (error || !data) {
-    logger.error("metadata_update_error", { error: error?.message });
+    await logger.error("metadata_update_error", { error: error?.message });
     return jsonError("No se pudo actualizar la auditoría.", 500);
   }
 

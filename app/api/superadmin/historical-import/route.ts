@@ -318,7 +318,7 @@ export async function POST(request: NextRequest) {
 
   for (const row of validatedRows) {
     try {
-      logger.info("historical_import_row", {
+      await logger.info("historical_import_row", {
         executed_at: row.executed_at,
         auditor_email: row.auditor_email,
         employee_number: row.team_member_employee_number,
