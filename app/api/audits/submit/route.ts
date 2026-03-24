@@ -248,7 +248,7 @@ export async function POST(request: NextRequest) {
     });
 
     if (error) {
-      logger.error("submit_audit_run_rpc_error", { message: error.message, details: error.details, hint: error.hint, code: error.code });
+      await logger.error("submit_audit_run_rpc_error", { message: error.message, details: error.details, hint: error.hint, code: error.code });
       return rpcErrorResponse({
         code: "RPC_EXECUTION_FAILED",
         message: "Error interno al procesar la auditoría.",

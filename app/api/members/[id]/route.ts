@@ -53,7 +53,7 @@ export async function PATCH(
       .maybeSingle();
 
     if (memberError) {
-      logger.error("members_member_lookup_error", { error: memberError.message });
+      await logger.error("members_member_lookup_error", { error: memberError.message });
       return jsonError("Error interno al buscar miembro.", 500);
     }
 
@@ -82,7 +82,7 @@ export async function PATCH(
         .in("area_id", hotelAreaIds);
 
       if (currentLinksError) {
-        logger.error("members_current_links_error", { error: currentLinksError.message });
+        await logger.error("members_current_links_error", { error: currentLinksError.message });
         return jsonError("Error interno al verificar áreas.", 500);
       }
 
@@ -109,7 +109,7 @@ export async function PATCH(
         .in("area_id", hotelAreaIds);
 
       if (duplicateLinksError) {
-        logger.error("members_duplicate_links_error", { error: duplicateLinksError.message });
+        await logger.error("members_duplicate_links_error", { error: duplicateLinksError.message });
         return jsonError("Error interno al verificar duplicados.", 500);
       }
 
@@ -168,7 +168,7 @@ export async function PATCH(
       if (updateError.code === "23505") {
         return jsonError("El numero de colaborador ya existe en este hotel.", 409);
       }
-      logger.error("members_update_error", { error: updateError.message });
+      await logger.error("members_update_error", { error: updateError.message });
       return jsonError("Error interno al actualizar miembro.", 500);
     }
 
@@ -183,7 +183,7 @@ export async function PATCH(
       .upsert(linkRows, { onConflict: "team_member_id,area_id", ignoreDuplicates: true });
 
     if (insertLinksError) {
-      logger.error("members_insert_links_error", { error: insertLinksError.message });
+      await logger.error("members_insert_links_error", { error: insertLinksError.message });
       return jsonError("Error interno al asignar áreas.", 500);
     }
 
@@ -199,7 +199,7 @@ export async function PATCH(
         .in("area_id", staleAreaIds);
 
       if (deleteLinksError) {
-        logger.error("members_delete_stale_links_error", { error: deleteLinksError.message });
+        await logger.error("members_delete_stale_links_error", { error: deleteLinksError.message });
         return jsonError("Error interno al limpiar áreas anteriores.", 500);
       }
     }

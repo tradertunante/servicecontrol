@@ -31,7 +31,7 @@ export async function POST(req: NextRequest) {
       .eq("user_id", user_id);
 
     if (rowsErr) {
-      logger.error("uaa_get_query_error", { reqId, error: rowsErr.message });
+      await logger.error("uaa_get_query_error", { reqId, error: rowsErr.message });
       return jsonDbError(rowsErr);
     }
 
@@ -40,7 +40,7 @@ export async function POST(req: NextRequest) {
       area_ids: (rows ?? []).map((r: any) => r.area_id).filter(Boolean),
     });
   } catch (e: any) {
-    logger.error("uaa_get_unexpected_error", { reqId, error: e?.message });
+    await logger.error("uaa_get_unexpected_error", { reqId, error: e?.message });
     return jsonDbError(e, "Error inesperado.");
   }
 }

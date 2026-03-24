@@ -91,7 +91,7 @@ export async function POST(
     .in("id", questionIds);
 
   if (questionError) {
-    logger.error("draft_question_lookup_failed", { runId, error: questionError.message });
+    await logger.error("draft_question_lookup_failed", { runId, error: questionError.message });
     return jsonError("Error interno al verificar preguntas.", 500);
   }
   if ((questions ?? []).length !== questionIds.length) {
@@ -108,7 +108,7 @@ export async function POST(
     .in("id", sectionIds);
 
   if (sectionError) {
-    logger.error("draft_section_lookup_failed", { runId, error: sectionError.message });
+    await logger.error("draft_section_lookup_failed", { runId, error: sectionError.message });
     return jsonError("Error interno al verificar secciones.", 500);
   }
 
@@ -133,7 +133,7 @@ export async function POST(
     .select("id,audit_run_id,question_id,answer,result,comment,photo_path");
 
   if (error) {
-    logger.error("draft_upsert_failed", { runId, error: error.message });
+    await logger.error("draft_upsert_failed", { runId, error: error.message });
     return jsonError("Error interno al guardar respuestas.", 500);
   }
 

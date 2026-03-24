@@ -82,7 +82,7 @@ export async function DELETE(
     const mapped = mapDeleteAuditRunRpcError(deleteRunErr.message);
     if (mapped) return jsonError(mapped.message, mapped.status);
 
-    logger.error("delete_audit_run_safe_failed", {
+    await logger.error("delete_audit_run_safe_failed", {
       runId,
       hotelId: hotelResult.hotelId,
       error: deleteRunErr.message,
