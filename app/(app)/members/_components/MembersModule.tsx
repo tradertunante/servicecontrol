@@ -95,7 +95,7 @@ export default function MembersModule({
   const [pagination, setPagination] = useState<MembersPagination | null>(null);
 
   useEffect(() => {
-    let cancelled = false;
+    const controller = new AbortController();
 
     async function bootstrap() {
       try {
@@ -106,7 +106,8 @@ export default function MembersModule({
           throw new Error("No se pudo resolver el hotel activo.");
         }
       } catch (err) {
-        if (cancelled) return;
+        if (err instanceof DOMException && (err as DOMException).name === "AbortError") return;
+        if (controller.signal.aborted) return;
         setError(normalizeError(err instanceof Error ? err.message : null, "No se pudo resolver el hotel activo."));
         setLoading(false);
       }
@@ -115,7 +116,7 @@ export default function MembersModule({
     void bootstrap();
 
     return () => {
-      cancelled = true;
+      controller.abort();
     };
   }, [initialHotelId]);
 

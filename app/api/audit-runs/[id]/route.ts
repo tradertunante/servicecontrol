@@ -8,6 +8,7 @@ import {
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { jsonError, jsonDbError } from "@/lib/api/response";
 import { parseUUID, isErrorResponse } from "@/lib/api/validate";
+import { logger } from "@/lib/logger";
 
 function mapDeleteAuditRunRpcError(message: string) {
   const normalized = String(message ?? "").toUpperCase();
@@ -81,7 +82,7 @@ export async function DELETE(
     const mapped = mapDeleteAuditRunRpcError(deleteRunErr.message);
     if (mapped) return jsonError(mapped.message, mapped.status);
 
-    console.error("delete_audit_run_safe failed", {
+    logger.error("delete_audit_run_safe_failed", {
       runId,
       hotelId: hotelResult.hotelId,
       error: deleteRunErr.message,

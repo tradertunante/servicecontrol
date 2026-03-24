@@ -56,7 +56,7 @@ export function useDashboardFetch({
   };
 
   useEffect(() => {
-    let alive = true;
+    const controller = new AbortController();
 
     (async () => {
       if (!profile) return;
@@ -104,7 +104,7 @@ export function useDashboardFetch({
           .limit(5000);
 
         const backlogItPromise = fetch(`/api/departments/backlog?department=it&hotel_id=${activeHotelId}`, {
-          method: "GET", credentials: "include", cache: "no-store",
+          method: "GET", credentials: "include", cache: "no-store", signal: controller.signal,
         }).then(async (response) => {
           const payload = (await response.json().catch(() => null)) as DepartmentBacklogResponse | null;
           if (!response.ok || !payload) throw new Error("No se pudo cargar backlog IT.");
@@ -113,7 +113,7 @@ export function useDashboardFetch({
 
         const backlogEngineeringPromise = fetch(
           `/api/departments/backlog?department=engineering&hotel_id=${activeHotelId}`,
-          { method: "GET", credentials: "include", cache: "no-store" }
+          { method: "GET", credentials: "include", cache: "no-store", signal: controller.signal }
         ).then(async (response) => {
           const payload = (await response.json().catch(() => null)) as DepartmentBacklogResponse | null;
           if (!response.ok || !payload) throw new Error("No se pudo cargar backlog de Mantenimiento.");
@@ -129,7 +129,7 @@ export function useDashboardFetch({
         if (areasRes.error) throw areasRes.error;
         if (templatesRes.error) throw templatesRes.error;
         if (runsRes.error) throw runsRes.error;
-        if (!alive) return;
+        if (controller.signal.aborted) return;
 
         const hotelsData = (hotelsRes.data ?? []) as HotelRow[];
         const selectedHotelData = selectedHotelRes.data as { id: string; name: string } | null;
@@ -156,14 +156,15 @@ export function useDashboardFetch({
           },
         ]);
       } catch (e: unknown) {
-        if (!alive) return;
+        if (e instanceof DOMException && e.name === "AbortError") return;
+        if (controller.signal.aborted) return;
         setError(e instanceof Error ? e.message : "No se pudo cargar el dashboard.");
       } finally {
-        if (alive) setLoading(false);
+        if (!controller.signal.aborted) setLoading(false);
       }
     })();
 
-    return () => { alive = false; };
+    return () => { controller.abort(); };
   }, [profile, activeHotelId, canChooseHotel, heatMode, selectedYear]);
 
   return {

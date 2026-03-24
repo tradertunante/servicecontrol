@@ -8,6 +8,7 @@ import {
 } from "@/lib/auth/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { sendInstantNotifications } from "@/lib/email/sendInstantNotifications";
+import { logger } from "@/lib/logger";
 
 type SubmitAuditBody = {
   run_id?: unknown;
@@ -247,7 +248,7 @@ export async function POST(request: NextRequest) {
     });
 
     if (error) {
-      console.error("[submit_audit_run] RPC error:", { message: error.message, details: error.details, hint: error.hint, code: error.code });
+      logger.error("submit_audit_run_rpc_error", { message: error.message, details: error.details, hint: error.hint, code: error.code });
       return rpcErrorResponse({
         code: "RPC_EXECUTION_FAILED",
         message: "Error interno al procesar la auditoría.",
@@ -271,7 +272,7 @@ export async function POST(request: NextRequest) {
     // after the response is sent so Vercel doesn't kill the process early.
     waitUntil(
       sendInstantNotifications(runId).catch((err) =>
-        console.error("[instant-email] background error:", err)
+        logger.error("instant_email_background_error", { error: err instanceof Error ? err.message : String(err) })
       )
     );
 
