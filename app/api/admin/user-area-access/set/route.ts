@@ -4,6 +4,7 @@ import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { authorizeRouteRequest } from "@/lib/auth/server";
 import { resolveManagedUserAccess } from "@/lib/auth/userManagement";
 import { jsonError , jsonDbError } from "@/lib/api/response";
+import { logger } from "@/lib/logger";
 
 export async function POST(req: NextRequest) {
   const reqId = Math.random().toString(16).slice(2, 8);
@@ -34,7 +35,7 @@ export async function POST(req: NextRequest) {
     });
 
     if (error) {
-      console.error(`[uaa-set:${reqId}] rpc`, error.message);
+      logger.error("uaa_set_rpc_error", { reqId, error: error.message });
       return jsonDbError(error);
     }
 
@@ -52,7 +53,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ ok: true, count: Number(payload.data?.count ?? 0) });
   } catch (e: any) {
-    console.error(`[uaa-set:${reqId}] Unexpected`, e?.message);
+    logger.error("uaa_set_unexpected_error", { reqId, error: e?.message });
     return jsonDbError(e, "Error inesperado.");
   }
 }

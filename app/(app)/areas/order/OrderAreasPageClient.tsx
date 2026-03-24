@@ -71,14 +71,14 @@ export default function OrderAreasPageClient({
   };
 
   useEffect(() => {
-    let alive = true;
+    const controller = new AbortController();
     (async () => {
       setLoading(true); setError(null);
       try {
         if (profile.role === "superadmin") {
           const { data: hData, error: hErr } = await supabase.from("hotels").select("id,name,created_at").order("created_at", { ascending: false });
           if (hErr) throw hErr;
-          if (!alive) return;
+          if (controller.signal.aborted) return;
           setHotels((hData ?? []) as HotelRow[]);
           if (initialActiveHotelId) await loadAreas(initialActiveHotelId);
           setLoading(false);
@@ -89,11 +89,13 @@ export default function OrderAreasPageClient({
         await loadAreas(initialActiveHotelId);
         setLoading(false);
       } catch (e: any) {
+        if (e instanceof DOMException && e.name === "AbortError") return;
+        if (controller.signal.aborted) return;
         setError(e?.message ?? "No se pudo cargar el orden de áreas.");
         setLoading(false);
       }
     })();
-    return () => { alive = false; };
+    return () => { controller.abort(); };
   }, [initialActiveHotelId, profile.role]);
 
   const move = (index: number, dir: -1 | 1) => {

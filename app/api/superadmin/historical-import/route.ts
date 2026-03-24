@@ -10,6 +10,7 @@ import { createHistoricalRun } from "@/lib/superadmin/createHistoricalRun";
 import { buildHistoricalQuestionReferences, parseHistoricalImportRows } from "@/lib/superadmin/historicalImportExcel";
 import { jsonError, requireSuperadminRoute } from "@/lib/superadmin/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { logger } from "@/lib/logger";
 
 type ValidatedImportRow = {
   row_number: number;
@@ -317,7 +318,7 @@ export async function POST(request: NextRequest) {
 
   for (const row of validatedRows) {
     try {
-      console.log("IMPORT ROW:", {
+      logger.info("historical_import_row", {
         executed_at: row.executed_at,
         auditor_email: row.auditor_email,
         employee_number: row.team_member_employee_number,

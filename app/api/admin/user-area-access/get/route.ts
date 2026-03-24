@@ -4,6 +4,7 @@ import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { authorizeRouteRequest } from "@/lib/auth/server";
 import { resolveManagedUserAccess } from "@/lib/auth/userManagement";
 import { jsonError , jsonDbError } from "@/lib/api/response";
+import { logger } from "@/lib/logger";
 
 export async function POST(req: NextRequest) {
   const reqId = Math.random().toString(16).slice(2, 8);
@@ -30,7 +31,7 @@ export async function POST(req: NextRequest) {
       .eq("user_id", user_id);
 
     if (rowsErr) {
-      console.error(`[uaa-get:${reqId}]`, rowsErr.message);
+      logger.error("uaa_get_query_error", { reqId, error: rowsErr.message });
       return jsonDbError(rowsErr);
     }
 
@@ -39,7 +40,7 @@ export async function POST(req: NextRequest) {
       area_ids: (rows ?? []).map((r: any) => r.area_id).filter(Boolean),
     });
   } catch (e: any) {
-    console.error(`[uaa-get:${reqId}] Unexpected`, e?.message);
+    logger.error("uaa_get_unexpected_error", { reqId, error: e?.message });
     return jsonDbError(e, "Error inesperado.");
   }
 }

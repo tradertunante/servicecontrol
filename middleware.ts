@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { checkRateLimit } from "@/lib/api/rateLimit";
+import { logger } from "@/lib/logger";
 
 const AUTH_TOKEN_COOKIE = "sc-access-token";
 
@@ -18,6 +19,7 @@ export function middleware(request: NextRequest) {
     const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
     const { allowed, retryAfterMs } = checkRateLimit(ip);
     if (!allowed) {
+      logger.warn("rate_limit_exceeded", { ip, pathname });
       return NextResponse.json(
         { ok: false, error: "Demasiadas solicitudes. Intenta de nuevo en un momento." },
         {

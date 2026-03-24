@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { logger } from "@/lib/logger";
 
 export function jsonError(message: string, status = 400) {
   return NextResponse.json({ ok: false, error: message }, { status });
@@ -13,7 +14,7 @@ export function jsonDbError(
   fallback = "Error interno del servidor.",
   status = 500,
 ) {
-  console.error("[DB Error]", {
+  logger.error("db_error", {
     message: error?.message,
     code: error?.code,
     details: error?.details,

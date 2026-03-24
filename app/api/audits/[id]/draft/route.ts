@@ -4,6 +4,7 @@ import { authorizeAuditRunAccess } from "@/lib/audits/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { jsonError } from "@/lib/api/response";
 import { parseUUID, isErrorResponse } from "@/lib/api/validate";
+import { logger } from "@/lib/logger";
 
 type AnswerValue = "PASS" | "FAIL" | "NA";
 
@@ -90,7 +91,7 @@ export async function POST(
     .in("id", questionIds);
 
   if (questionError) {
-    console.error("[draft] question lookup error:", questionError.message);
+    logger.error("draft_question_lookup_failed", { runId, error: questionError.message });
     return jsonError("Error interno al verificar preguntas.", 500);
   }
   if ((questions ?? []).length !== questionIds.length) {
@@ -107,7 +108,7 @@ export async function POST(
     .in("id", sectionIds);
 
   if (sectionError) {
-    console.error("[draft] section lookup error:", sectionError.message);
+    logger.error("draft_section_lookup_failed", { runId, error: sectionError.message });
     return jsonError("Error interno al verificar secciones.", 500);
   }
 
@@ -132,7 +133,7 @@ export async function POST(
     .select("id,audit_run_id,question_id,answer,result,comment,photo_path");
 
   if (error) {
-    console.error("[draft] upsert error:", error.message);
+    logger.error("draft_upsert_failed", { runId, error: error.message });
     return jsonError("Error interno al guardar respuestas.", 500);
   }
 

@@ -53,7 +53,7 @@ export default function NewAuditPageClient({
   const [roomNumber, setRoomNumber] = useState("");
 
   useEffect(() => {
-    let alive = true;
+    const controller = new AbortController();
 
     async function init() {
       try {
@@ -112,12 +112,13 @@ export default function NewAuditPageClient({
         if (tErr || !tData) throw tErr ?? new Error("Template no encontrado.");
         if (aErr || !aData) throw aErr ?? new Error("Área no encontrada.");
 
-        if (!alive) return;
+        if (controller.signal.aborted) return;
         setTemplate(tData as TemplateRow);
         setArea(aData as AreaRow);
         setLoading(false);
       } catch (e: any) {
-        if (!alive) return;
+        if (e instanceof DOMException && e.name === "AbortError") return;
+        if (controller.signal.aborted) return;
         setError(e?.message ?? "No se pudo preparar la auditoría.");
         setLoading(false);
       }
@@ -126,7 +127,7 @@ export default function NewAuditPageClient({
     void init();
 
     return () => {
-      alive = false;
+      controller.abort();
     };
   }, [initialHotelId, profile.id, templateId]);
 

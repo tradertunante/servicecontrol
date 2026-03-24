@@ -24,7 +24,7 @@ export function useManagerAreaTemplates({
   useEffect(() => {
     if (!areaId) return;
 
-    let cancelled = false;
+    const controller = new AbortController();
 
     (async () => {
       setLoading(true);
@@ -45,7 +45,7 @@ export function useManagerAreaTemplates({
         }
         if (templatesRes.error) throw templatesRes.error;
 
-        if (cancelled) return;
+        if (controller.signal.aborted) return;
 
         setAreaHotelId(areaRes.data.hotel_id ?? null);
         setTemplates(
@@ -53,14 +53,15 @@ export function useManagerAreaTemplates({
         );
         setLoading(false);
       } catch (e: unknown) {
-        if (cancelled) return;
+        if (e instanceof DOMException && e.name === "AbortError") return;
+        if (controller.signal.aborted) return;
         setLoading(false);
         setError(e instanceof Error ? e.message : "No se pudieron cargar las auditorías del área.");
       }
     })();
 
     return () => {
-      cancelled = true;
+      controller.abort();
     };
   }, [areaId]);
 
