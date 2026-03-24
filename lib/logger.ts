@@ -1,3 +1,5 @@
+import { Logtail } from "@logtail/edge";
+
 type LogLevel = "info" | "warn" | "error";
 
 type LogPayload = {
@@ -5,6 +7,10 @@ type LogPayload = {
   event: string;
   [key: string]: unknown;
 };
+
+const logtail = process.env.LOGTAIL_SOURCE_TOKEN
+  ? new Logtail(process.env.LOGTAIL_SOURCE_TOKEN)
+  : null;
 
 function emit(payload: LogPayload) {
   const { level, ...rest } = payload;
@@ -19,6 +25,10 @@ function emit(payload: LogPayload) {
       break;
     default:
       console.log(line);
+  }
+
+  if (logtail) {
+    logtail[level](payload.event, rest);
   }
 }
 
