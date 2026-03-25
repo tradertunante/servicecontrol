@@ -240,13 +240,44 @@ export async function POST(request: NextRequest) {
       return jsonDbError(error, "No se pudo crear el tema.");
     }
 
+    const { data: session, error: sessionError } = await admin
+      .from("training_sessions")
+      .insert({
+        hotel_id: callerResult.caller.hotelId,
+        topic_id: data.id,
+        status: "open",
+        opened_by_profile_id: callerResult.caller.profile.id,
+        supervisor_name_snapshot: callerResult.caller.profile.full_name ?? null,
+        session_label: null,
+      })
+      .select("id, topic_id, hotel_id, status, opened_at, closed_at, supervisor_name_snapshot, session_label")
+      .single();
+
+    if (sessionError || !session) {
+      await admin.from("training_topics").delete().eq("id", data.id).eq("hotel_id", callerResult.caller.hotelId);
+      return jsonDbError(sessionError, "No se pudo abrir la sesion inicial del tema.");
+    }
+
     return jsonNoStore(
       {
         ok: true,
         topic: {
           ...data,
           area_name: area.name ?? null,
-          sessions: [],
+          sessions: [
+            {
+              id: session.id,
+              topic_id: session.topic_id,
+              hotel_id: session.hotel_id,
+              status: session.status,
+              opened_at: session.opened_at,
+              closed_at: session.closed_at,
+              supervisor_name_snapshot: session.supervisor_name_snapshot ?? null,
+              session_label: session.session_label ?? null,
+              attendance_count: 0,
+              attendances: [],
+            },
+          ],
         },
       },
       201

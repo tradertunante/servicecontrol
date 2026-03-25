@@ -616,7 +616,7 @@ export default function TrainingsModule() {
     ));
   }
 
-  const topicsWithActiveSessions = useMemo(
+  const activeTopics = useMemo(
     () =>
       topics
         .map((topic) => ({
@@ -676,18 +676,18 @@ export default function TrainingsModule() {
       </div>
 
       <div style={panelStyle()}>
-        <div style={{ fontSize: 22, fontWeight: 800 }}>Temas creados</div>
+        <div style={{ fontSize: 22, fontWeight: 800 }}>Temas activos</div>
         <div style={{ marginTop: 6, color: "#4b5563", lineHeight: 1.5 }}>
-          Solo se muestran temas que actualmente tienen al menos una sesion activa.
+          Al crear un tema se abre una sesion inicial automaticamente. Al cerrarla, la sesion pasa al historico.
         </div>
 
         <div style={{ marginTop: 14, display: "grid", gap: 12 }}>
           {loading ? (
             <div style={{ color: "#6b7280" }}>Cargando temas...</div>
-          ) : topicsWithActiveSessions.length === 0 ? (
+          ) : activeTopics.length === 0 ? (
             <div style={{ color: "#6b7280" }}>No hay temas con sesiones activas.</div>
           ) : (
-            topicsWithActiveSessions.map((topic) => {
+            activeTopics.map((topic) => {
               const openSessions = topic.sessions;
               const publicLink = origin ? `${origin}/formaciones/registro/${topic.qr_token}` : `/formaciones/registro/${topic.qr_token}`;
 
@@ -767,75 +767,79 @@ export default function TrainingsModule() {
 
                   <div style={{ marginTop: 16, display: "grid", gap: 10 }}>
                     <div style={{ fontWeight: 800, fontSize: 16 }}>Sesiones activas</div>
-                    {openSessions.map((session) => (
-                      <div
-                        key={session.id}
-                        style={{
-                          border: "1px solid #e5e7eb",
-                          borderRadius: 10,
-                          padding: 12,
-                          background: "#ecfdf5",
-                        }}
-                      >
-                        <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
-                          <div style={{ display: "grid", gap: 4 }}>
-                            <div style={{ fontWeight: 700 }}>
-                              {session.session_label?.trim() || "Sesion sin label"} · Abierta
+                    {openSessions.length === 0 ? (
+                      <div style={{ color: "#6b7280" }}>No hay sesiones activas para este tema.</div>
+                    ) : (
+                      openSessions.map((session) => (
+                        <div
+                          key={session.id}
+                          style={{
+                            border: "1px solid #e5e7eb",
+                            borderRadius: 10,
+                            padding: 12,
+                            background: "#ecfdf5",
+                          }}
+                        >
+                          <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+                            <div style={{ display: "grid", gap: 4 }}>
+                              <div style={{ fontWeight: 700 }}>
+                                {session.session_label?.trim() || "Sesion sin label"} · Abierta
+                              </div>
+                              <div style={{ fontSize: 14, color: "#4b5563" }}>
+                                Supervisor: {session.supervisor_name_snapshot || "Sin nombre"}
+                              </div>
+                              <div style={{ fontSize: 13, color: "#6b7280" }}>
+                                Inicio: {formatDateTime(session.opened_at)}
+                              </div>
                             </div>
-                            <div style={{ fontSize: 14, color: "#4b5563" }}>
-                              Supervisor: {session.supervisor_name_snapshot || "Sin nombre"}
-                            </div>
-                            <div style={{ fontSize: 13, color: "#6b7280" }}>
-                              Inicio: {formatDateTime(session.opened_at)}
+
+                            <div style={{ display: "grid", gap: 8, justifyItems: "end" }}>
+                              <div
+                                style={{
+                                  border: "1px solid #d1d5db",
+                                  borderRadius: 999,
+                                  padding: "6px 10px",
+                                  fontSize: 13,
+                                  background: "#fff",
+                                }}
+                              >
+                                Asistencias: <b>{session.attendance_count}</b>
+                              </div>
+                              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
+                                <button
+                                  type="button"
+                                  onClick={() => toggleActiveSessionDetail(session.id)}
+                                  style={secondaryButtonStyle(false)}
+                                >
+                                  {expandedActiveSessionIds[session.id] ? "Ocultar asistentes" : "Ver asistentes"}
+                                </button>
+                                <button
+                                  onClick={() => void handleCloseSession(session.id)}
+                                  disabled={sessionBusyKey === `close:${session.id}`}
+                                  style={secondaryButtonStyle(sessionBusyKey === `close:${session.id}`)}
+                                >
+                                  {sessionBusyKey === `close:${session.id}` ? "Cerrando..." : "Cerrar sesion"}
+                                </button>
+                              </div>
                             </div>
                           </div>
 
-                          <div style={{ display: "grid", gap: 8, justifyItems: "end" }}>
+                          {expandedActiveSessionIds[session.id] ? (
                             <div
                               style={{
-                                border: "1px solid #d1d5db",
-                                borderRadius: 999,
-                                padding: "6px 10px",
-                                fontSize: 13,
-                                background: "#fff",
+                                marginTop: 12,
+                                borderTop: "1px solid #d1fae5",
+                                paddingTop: 12,
+                                display: "grid",
+                                gap: 8,
                               }}
                             >
-                              Asistencias: <b>{session.attendance_count}</b>
+                              {renderAttendanceList(session.attendances ?? [])}
                             </div>
-                            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
-                              <button
-                                type="button"
-                                onClick={() => toggleActiveSessionDetail(session.id)}
-                                style={secondaryButtonStyle(false)}
-                              >
-                                {expandedActiveSessionIds[session.id] ? "Ocultar asistentes" : "Ver asistentes"}
-                              </button>
-                              <button
-                                onClick={() => void handleCloseSession(session.id)}
-                                disabled={sessionBusyKey === `close:${session.id}`}
-                                style={secondaryButtonStyle(sessionBusyKey === `close:${session.id}`)}
-                              >
-                                {sessionBusyKey === `close:${session.id}` ? "Cerrando..." : "Cerrar sesion"}
-                              </button>
-                            </div>
-                          </div>
+                          ) : null}
                         </div>
-
-                        {expandedActiveSessionIds[session.id] ? (
-                          <div
-                            style={{
-                              marginTop: 12,
-                              borderTop: "1px solid #d1fae5",
-                              paddingTop: 12,
-                              display: "grid",
-                              gap: 8,
-                            }}
-                          >
-                            {renderAttendanceList(session.attendances ?? [])}
-                          </div>
-                        ) : null}
-                      </div>
-                    ))}
+                      ))
+                    )}
                   </div>
 
                 </div>
