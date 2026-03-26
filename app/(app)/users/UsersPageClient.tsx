@@ -103,7 +103,7 @@ export default function UsersPageClient({
   if (loading) {
     return (
       <main className="p-6">
-        <BackButton fallback="/" />
+        <BackButton fallback="/home" />
         <h1 className="text-[56px] mb-1.5">Usuarios</h1>
         <div className="opacity-80">Cargando...</div>
       </main>
@@ -113,7 +113,7 @@ export default function UsersPageClient({
   if (error) {
     return (
       <main className="p-6">
-        <BackButton fallback="/" />
+        <BackButton fallback="/home" />
         <h1 className="text-[56px] mb-1.5">Usuarios</h1>
         <div className="text-[crimson] font-[950]">{error}</div>
       </main>
@@ -122,7 +122,7 @@ export default function UsersPageClient({
 
   return (
     <main className="p-6">
-      <BackButton fallback="/" />
+      <BackButton fallback="/home" />
       <div className="flex justify-between gap-3 flex-wrap">
         <div>
           <h1 className="text-[56px] mb-1.5">Usuarios</h1>
@@ -139,7 +139,7 @@ export default function UsersPageClient({
           </button>
           <button
             className="px-4 py-3 rounded-xl border border-black/20 bg-white text-black font-[950] cursor-pointer h-11"
-            onClick={() => router.push("/")}
+            onClick={() => router.push("/home")}
           >
             Volver
           </button>
