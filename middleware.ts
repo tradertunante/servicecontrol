@@ -9,6 +9,7 @@ const PUBLIC_API_PREFIXES = [
   "/api/auth/sync-session",
   "/api/trainings/sessions",
   "/api/trainings/attendances",
+  "/api/billing/webhook",
 ];
 
 export function middleware(request: NextRequest, event: NextFetchEvent) {
@@ -59,6 +60,7 @@ export const config = {
     "/analytics/:path*",
     "/areas/:path*",
     "/audits/:path*",
+    "/billing/:path*",
     "/builder/:path*",
     "/dashboard/:path*",
     "/engineering/:path*",

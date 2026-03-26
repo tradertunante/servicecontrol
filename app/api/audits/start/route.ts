@@ -8,6 +8,7 @@ import {
 } from "@/lib/auth/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { jsonError, jsonDbError } from "@/lib/api/response";
+import { canCreateAudit } from "@/lib/billing/enforcement";
 
 type StartAuditRpcResponse = {
   ok?: boolean;
@@ -30,6 +31,12 @@ export async function POST(request: NextRequest) {
 
   const hotelResult = resolveRouteHotelScope(caller.profile, null);
   if (!hotelResult.ok) return jsonError(hotelResult.error, hotelResult.status);
+
+  // Plan enforcement: check audit limit
+  const auditCheck = await canCreateAudit(caller.profile.id, hotelResult.hotelId);
+  if (!auditCheck.allowed) {
+    return jsonError(auditCheck.reason, 403);
+  }
 
   const body = await request.json().catch(() => null);
   const areaId = String(body?.area_id ?? "").trim();

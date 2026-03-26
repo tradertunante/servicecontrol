@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { authorizeRouteRequest } from "@/lib/auth/server";
+import { authorizeRouteRequest, resolveRouteHotelScope } from "@/lib/auth/server";
 import { createManagedUser, listManagedUsers } from "@/lib/auth/userManagement";
 import { jsonError , jsonDbError } from "@/lib/api/response";
+import { canAddUser } from "@/lib/billing/enforcement";
 
 export async function GET(request: NextRequest) {
   try {
@@ -28,6 +29,15 @@ export async function POST(request: NextRequest) {
   try {
     const caller = await authorizeRouteRequest(request, { roles: ["admin", "superadmin"] });
     if (!caller) return jsonError("No autorizado.", 401);
+
+    // Plan enforcement: check user limit
+    const hotelResult = resolveRouteHotelScope(caller.profile, null);
+    if (hotelResult.ok) {
+      const userCheck = await canAddUser(caller.profile.id, hotelResult.hotelId);
+      if (!userCheck.allowed) {
+        return jsonError(userCheck.reason, 403);
+      }
+    }
 
     const body = await request.json().catch(() => null);
     const result = await createManagedUser(caller.profile, body ?? {});
