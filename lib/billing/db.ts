@@ -54,7 +54,9 @@ export type PlanEntitlementRow = {
  * All billing queries go through this to avoid type errors
  * until the generated types include the billing tables.
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function billingAdmin(): any {
-  return supabaseAdmin();
+// Returns untyped client — billing tables aren't in generated types yet.
+// Remove after running `supabase gen types` with billing migration.
+type UntypedClient = { from(table: string): UntypedClient } & Record<string, CallableFunction>;
+export function billingAdmin(): UntypedClient {
+  return supabaseAdmin() as unknown as UntypedClient;
 }
