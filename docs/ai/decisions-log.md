@@ -219,6 +219,32 @@ Añadir `require_room_number` y `require_audited_employee` en `audit_templates`,
 
 ---
 
+## Decisión 13
+
+### Fecha
+2026-03-26
+
+### Decisión
+Separar la experiencia de marketing de la experiencia autenticada del producto dentro del mismo repo.
+
+### Contexto
+La home raíz estaba usada como redirect interno de sesión. Eso mezcla la entrada comercial con la navegación de producto y dificulta una futura separación de dominios entre `servicecontrol.com` y `app.servicecontrol.com`.
+
+### Alternativas consideradas
+- mantener `/` como redirect y meter marketing dentro de la app autenticada
+- crear una landing aislada en otro repo desde ahora
+- separar marketing en un route group público dentro del App Router actual
+
+### Decisión final
+Crear `app/(marketing)` para las rutas públicas (`/`, `/pricing`, `/demo`) y dejar la experiencia interna bajo `app/(app)`, ajustando referencias internas que dependían de `/` como home autenticada.
+
+### Impacto esperado
+- marketing y producto quedan desacoplados conceptualmente sin romper el repo actual
+- la futura migración a dominios separados se vuelve incremental
+- la landing puede evolucionar sin contaminar layouts, header ni navegación interna
+
+---
+
 ## Decisión 3
 
 ### Fecha

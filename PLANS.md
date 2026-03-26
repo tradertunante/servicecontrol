@@ -150,6 +150,12 @@ pendiente
 - `/it` y `/engineering` dejan de depender conceptualmente de `audit_corrective_actions` para el seguimiento operativo general; su backlog se redefine sobre FAILs submitidos en `audit_answers` filtrados por `audit_questions.owner_department`
 - `audit_templates` ahora soporta flags de submit por template (`require_room_number`, `require_audited_employee`) para exigir metadatos de cabecera sin volverlos obligatorios globales
 
+### Hecho el 2026-03-26
+
+- separación explícita entre experiencia comercial y experiencia de producto mediante nuevo grupo público `app/(marketing)`
+- la ruta raíz `/` deja de ser un redirect interno y pasa a ser landing comercial, preservando la app autenticada bajo `app/(app)` y el acceso por `login` / `home`
+- nuevas rutas públicas `/pricing` y `/demo` quedan preparadas para desacoplar marketing del producto cuando la landing migre a dominio separado
+
 ### Hecho
 
 - análisis de arquitectura del repo

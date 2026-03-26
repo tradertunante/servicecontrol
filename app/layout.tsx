@@ -7,13 +7,16 @@ import ToastProvider from "./providers/ToastProvider";
 
 export const metadata: Metadata = {
   title: "ServiceControl",
-  description: "Sistema de auditorías para hoteles",
+  description: "Control operativo y calidad hotelera en una sola plataforma.",
+  metadataBase: new URL("https://servicecontrol.com"),
   openGraph: {
-    images: [{ url: "https://bolt.new/static/og_default.png" }],
+    title: "ServiceControl",
+    description: "Control operativo y calidad hotelera en una sola plataforma.",
   },
   twitter: {
     card: "summary_large_image",
-    images: [{ url: "https://bolt.new/static/og_default.png" }],
+    title: "ServiceControl",
+    description: "Control operativo y calidad hotelera en una sola plataforma.",
   },
 };
 
