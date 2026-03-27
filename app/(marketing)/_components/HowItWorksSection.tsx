@@ -16,15 +16,23 @@ export default function HowItWorksSection() {
           {steps.map((item) => (
             <div
               key={item.step}
-              className="rounded-[30px] border border-black/8 bg-white/75 p-8 shadow-[0_16px_40px_rgba(15,23,42,0.06)]"
+              className="rounded-[18px] p-8"
+              style={{
+                background: "var(--card-bg)",
+                border: "1px solid var(--border)",
+                boxShadow: "var(--shadow-sm)",
+              }}
             >
-              <div className="text-sm font-extrabold uppercase tracking-[0.3em] text-[#9f7a49]">
+              <div
+                className="inline-flex rounded-full px-3 py-1 text-sm font-extrabold uppercase tracking-[0.18em] text-[var(--text-secondary)]"
+                style={{ background: "var(--row-bg)", border: "1px solid var(--border)" }}
+              >
                 {item.step}
               </div>
-              <h3 className="mt-5 text-[1.75rem] font-bold tracking-tight text-slate-950">
+              <h3 className="mt-5 text-[1.75rem] font-bold tracking-tight text-[var(--text)]">
                 {item.title}
               </h3>
-              <p className="mt-4 text-lg leading-8 text-slate-600">{item.description}</p>
+              <p className="mt-4 text-lg leading-8 text-[var(--text-secondary)]">{item.description}</p>
             </div>
           ))}
         </div>

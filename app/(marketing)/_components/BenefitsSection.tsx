@@ -14,12 +14,17 @@ export default function BenefitsSection() {
           {benefits.map((benefit) => (
             <div
               key={benefit}
-              className="rounded-[28px] border border-black/8 bg-[rgba(255,255,255,0.82)] p-7 shadow-[0_16px_40px_rgba(15,23,42,0.06)]"
+              className="rounded-[18px] p-7"
+              style={{
+                background: "var(--card-bg)",
+                border: "1px solid var(--border)",
+                boxShadow: "var(--shadow-sm)",
+              }}
             >
-              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-slate-950 text-sm font-extrabold text-white">
+              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-black text-sm font-extrabold text-white">
                 +
               </div>
-              <p className="mt-5 text-xl leading-8 text-slate-700">{benefit}</p>
+              <p className="mt-5 text-xl leading-8 text-[var(--text-secondary)]">{benefit}</p>
             </div>
           ))}
         </div>
