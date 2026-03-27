@@ -14,12 +14,11 @@ export const metadata: Metadata = {
 export default function MarketingLayout({ children }: { children: React.ReactNode }) {
   return (
     <div
-      className="min-h-screen bg-[#f5f1ea] text-slate-900 antialiased [font-family:'Avenir_Next',Avenir,Montserrat,'Segoe_UI',sans-serif]"
+      className="min-h-screen bg-[var(--bg)] text-[var(--text)] antialiased [font-family:'Avenir_Next',Avenir,Montserrat,'Segoe_UI',sans-serif]"
     >
       <div className="relative overflow-hidden">
-        <div className="absolute inset-x-0 top-0 h-[720px] bg-[radial-gradient(circle_at_top,rgba(15,23,42,0.18),transparent_58%)]" />
-        <div className="absolute left-[-12%] top-24 h-[420px] w-[420px] rounded-full bg-[rgba(172,143,95,0.14)] blur-3xl" />
-        <div className="absolute right-[-10%] top-20 h-[380px] w-[380px] rounded-full bg-[rgba(15,23,42,0.12)] blur-3xl" />
+        <div className="absolute inset-x-0 top-0 h-[520px] bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.72),transparent_72%)]" />
+        <div className="absolute inset-x-0 top-0 h-[160px] border-b border-black/[0.04] bg-white/[0.28]" />
         <MarketingHeader />
         {children}
         <MarketingFooter />

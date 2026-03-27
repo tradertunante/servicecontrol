@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ProductOperationsMock } from "../_components/MarketingShowcase";
 import SectionIntro from "../_components/SectionIntro";
 
 export default function DemoPage() {
@@ -12,37 +13,56 @@ export default function DemoPage() {
         />
 
         <div className="mt-12 grid gap-6 xl:grid-cols-[1.12fr_0.88fr]">
-          <section className="rounded-[34px] border border-black/8 bg-white/82 p-8 shadow-[0_18px_50px_rgba(15,23,42,0.06)] lg:p-10">
+          <section
+            className="rounded-[28px] p-8 lg:p-10"
+            style={{
+              background: "var(--card-bg)",
+              border: "1px solid var(--border)",
+              boxShadow: "var(--shadow-lg)",
+            }}
+          >
             <div className="grid gap-5 lg:grid-cols-2">
-              <div className="rounded-[28px] border border-black/8 bg-slate-950 p-6 text-white">
-                <div className="text-xs font-extrabold uppercase tracking-[0.28em] text-[#d9c19c]">
+              <div
+                className="rounded-[20px] p-6 text-white"
+                style={{
+                  background: "rgba(15,23,42,0.96)",
+                  border: "1px solid var(--dark-border-subtle)",
+                }}
+              >
+                <div className="text-xs font-extrabold uppercase tracking-[0.2em] text-white/60">
                   Recorrido
                 </div>
                 <div className="mt-4 text-2xl font-bold tracking-tight">
                   De la auditoria al cierre de la desviacion
                 </div>
-                <div className="mt-6 space-y-4 text-base leading-7 text-slate-300">
+                <div className="mt-6 space-y-4 text-base leading-7 text-[var(--dark-text-muted)]">
                   <p>1. Configuracion de estandares y checklists por area.</p>
                   <p>2. Ejecucion movil con evidencia y scoring inmediato.</p>
                   <p>3. Accion correctiva, reauditoria y formacion conectadas.</p>
                 </div>
               </div>
 
-              <div className="rounded-[28px] border border-black/8 bg-[#f2ebe1] p-6">
-                <div className="text-xs font-extrabold uppercase tracking-[0.28em] text-[#9f7a49]">
+              <div
+                className="rounded-[20px] p-6"
+                style={{ background: "var(--row-bg)", border: "1px solid var(--border)" }}
+              >
+                <div className="text-xs font-extrabold uppercase tracking-[0.2em] text-[var(--text-secondary)]">
                   Enfoque
                 </div>
-                <div className="mt-4 text-2xl font-bold tracking-tight text-slate-950">
+                <div className="mt-4 text-2xl font-bold tracking-tight text-[var(--text)]">
                   Operaciones, calidad y management en la misma conversacion
                 </div>
-                <p className="mt-4 text-base leading-7 text-slate-700">
+                <p className="mt-4 text-base leading-7 text-[var(--text-secondary)]">
                   La demo se adapta al tipo de hotel, areas criticas y flujo de seguimiento que hoy utilizas.
                 </p>
               </div>
             </div>
 
-            <div className="mt-6 rounded-[30px] border border-black/8 bg-slate-50 p-6">
-              <div className="text-sm font-extrabold uppercase tracking-[0.26em] text-slate-400">
+            <div
+              className="mt-6 rounded-[20px] p-6"
+              style={{ background: "var(--row-bg)", border: "1px solid var(--border)" }}
+            >
+              <div className="text-sm font-extrabold uppercase tracking-[0.18em] text-[var(--text-secondary)]">
                 Lo que vas a ver
               </div>
               <div className="mt-5 grid gap-4 sm:grid-cols-2">
@@ -52,29 +72,47 @@ export default function DemoPage() {
                   "Seguimiento de acciones correctivas y reauditorias",
                   "Registro de formacion vinculado a desviaciones reales",
                 ].map((item) => (
-                  <div key={item} className="rounded-[22px] border border-black/8 bg-white px-4 py-4 text-base leading-7 text-slate-700">
+                  <div
+                    key={item}
+                    className="rounded-[16px] bg-white px-4 py-4 text-base leading-7 text-[var(--text-secondary)]"
+                    style={{ border: "1px solid var(--border)" }}
+                  >
                     {item}
                   </div>
                 ))}
               </div>
             </div>
+
+            <div className="mt-6">
+              <ProductOperationsMock />
+            </div>
           </section>
 
-          <aside className="rounded-[34px] border border-black/8 bg-slate-950 p-8 text-white shadow-[0_22px_70px_rgba(15,23,42,0.16)] lg:p-10">
-            <div className="text-xs font-extrabold uppercase tracking-[0.28em] text-[#d9c19c]">
+          <aside
+            className="rounded-[28px] p-8 text-white lg:p-10"
+            style={{
+              background: "rgba(15,23,42,0.96)",
+              border: "1px solid var(--dark-border-subtle)",
+              boxShadow: "var(--dark-shadow)",
+            }}
+          >
+            <div className="text-xs font-extrabold uppercase tracking-[0.2em] text-white/60">
               Solicita una demo
             </div>
             <h2 className="mt-4 text-3xl font-extrabold tracking-tight">
               Muestra guiada para direccion, operaciones o calidad.
             </h2>
-            <p className="mt-5 text-lg leading-8 text-slate-300">
+            <p className="mt-5 text-lg leading-8 text-[var(--dark-text-muted)]">
               De momento dejamos esta ruta preparada como punto comercial. Si despues decides conectar un formulario o calendario, la estructura ya queda separada del producto.
             </p>
 
-            <div className="mt-8 rounded-[28px] border border-white/10 bg-white/[0.05] p-5">
-              <div className="text-sm font-bold text-slate-300">CTA sugerido</div>
+            <div
+              className="mt-8 rounded-[20px] p-5"
+              style={{ background: "var(--dark-card-bg)", border: "1px solid var(--dark-border-subtle)" }}
+            >
+              <div className="text-sm font-bold text-[var(--dark-text-muted)]">CTA sugerido</div>
               <div className="mt-3 text-xl font-bold">Solicitar demo comercial</div>
-              <div className="mt-2 text-sm leading-6 text-slate-400">
+              <div className="mt-2 text-sm leading-6 text-white/60">
                 Puedes reemplazar este bloque por formulario, email o calendar booking cuando lo definas.
               </div>
             </div>
@@ -82,13 +120,13 @@ export default function DemoPage() {
             <div className="mt-8 flex flex-wrap gap-4">
               <Link
                 href="/pricing"
-                className="rounded-full bg-white px-6 py-3 text-sm font-extrabold text-slate-950 transition hover:bg-slate-100"
+                className="rounded-xl border border-white/12 bg-white px-6 py-3 text-sm font-black text-black transition hover:bg-white/90"
               >
                 Ver pricing
               </Link>
               <Link
                 href="/login"
-                className="rounded-full border border-white/14 px-6 py-3 text-sm font-bold text-white transition hover:bg-white/8"
+                className="rounded-xl border border-white/14 px-6 py-3 text-sm font-black text-white transition hover:bg-white/8"
               >
                 Acceder
               </Link>

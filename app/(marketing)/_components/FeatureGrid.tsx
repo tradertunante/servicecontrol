@@ -27,15 +27,20 @@ export default function FeatureGrid() {
             return (
               <div
                 key={module.title}
-                className={`rounded-[30px] border border-black/8 bg-white/80 p-7 shadow-[0_16px_45px_rgba(15,23,42,0.06)] ${span}`}
+                className={`rounded-[18px] p-7 ${span}`}
+                style={{
+                  background: "var(--card-bg)",
+                  border: "1px solid var(--border)",
+                  boxShadow: "var(--shadow-sm)",
+                }}
               >
-                <div className="text-sm font-extrabold uppercase tracking-[0.26em] text-slate-400">
+                <div className="text-sm font-extrabold uppercase tracking-[0.18em] text-[var(--text-secondary)]">
                   {String(index + 1).padStart(2, "0")}
                 </div>
-                <h3 className="mt-5 text-[1.9rem] font-bold tracking-tight text-slate-950">
+                <h3 className="mt-5 text-[1.9rem] font-bold tracking-tight text-[var(--text)]">
                   {module.title}
                 </h3>
-                <p className="mt-4 max-w-[34rem] text-lg leading-8 text-slate-600">
+                <p className="mt-4 max-w-[34rem] text-lg leading-8 text-[var(--text-secondary)]">
                   {module.description}
                 </p>
               </div>

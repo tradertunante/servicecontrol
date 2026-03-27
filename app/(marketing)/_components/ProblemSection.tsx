@@ -15,12 +15,17 @@ export default function ProblemSection() {
           {problemPoints.map((point, index) => (
             <div
               key={point}
-              className="rounded-[28px] border border-black/8 bg-white/72 p-7 shadow-[0_16px_45px_rgba(15,23,42,0.06)]"
+              className="rounded-[18px] p-7"
+              style={{
+                background: "var(--card-bg)",
+                border: "1px solid var(--border)",
+                boxShadow: "var(--shadow-sm)",
+              }}
             >
-              <div className="text-sm font-extrabold tracking-[0.24em] text-slate-400">
+              <div className="text-sm font-extrabold tracking-[0.18em] text-[var(--text-secondary)]">
                 0{index + 1}
               </div>
-              <p className="mt-4 text-lg leading-8 text-slate-700">{point}</p>
+              <p className="mt-4 text-lg leading-8 text-[var(--text-secondary)]">{point}</p>
             </div>
           ))}
         </div>
