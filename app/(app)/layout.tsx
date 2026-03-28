@@ -7,7 +7,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   return (
     <div className="min-h-screen bg-[var(--bg)]">
       <HotelHeader />
-      <main className="pt-16 px-6">{children}</main>
+      <main className="pt-16 px-6 max-w-[1400px] mx-auto">{children}</main>
     </div>
   );
 }

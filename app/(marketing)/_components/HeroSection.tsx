@@ -4,7 +4,7 @@ import { ProductDashboardMock } from "./MarketingShowcase";
 export default function HeroSection() {
   return (
     <section className="px-5 pb-20 pt-8 sm:px-8 lg:px-10 lg:pb-24 lg:pt-10">
-      <div className="mx-auto grid w-full max-w-[1480px] gap-10 lg:grid-cols-[minmax(0,1.1fr)_minmax(560px,0.9fr)] lg:items-center">
+      <div className="mx-auto grid w-full max-w-[1480px] gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:items-start">
         <div className="max-w-[820px]">
           <div
             className="inline-flex rounded-full px-4 py-2 text-sm font-black text-[var(--text-secondary)]"
@@ -17,7 +17,7 @@ export default function HeroSection() {
             Plataforma SaaS para operacion y calidad hotelera
           </div>
 
-          <h1 className="mt-7 max-w-[14ch] text-[clamp(3.6rem,9vw,6.8rem)] font-extrabold leading-[0.94] tracking-[-0.05em] text-[var(--text)]">
+          <h1 className="mt-7 text-[clamp(2.8rem,7vw,5.5rem)] font-extrabold leading-[0.94] tracking-[-0.05em] text-[#0f172a]">
             Controla la calidad de tu hotel en tiempo real.
           </h1>
 
