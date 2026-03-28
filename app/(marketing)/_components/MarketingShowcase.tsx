@@ -295,52 +295,7 @@ export function ProductDashboardMock() {
             </thead>
             <tbody>
               <tr>
-                <td className="pr-2 py-1 text-[10px] font-black text-[var(--text)] whitespace-nowrap">Front Office</td>
-                <HeatCell value="81%" count={27} tone="warn" />
-                <HeatCell value="76%" count={4} tone="danger" />
-                <HeatCell value="84%" count={13} tone="warn" />
-                <HeatCell value="85%" count={10} tone="ok" />
-                <HeatCell value="87%" count={8} tone="ok" />
-                <HeatCell value="88%" count={11} tone="ok" />
-              </tr>
-              <tr>
-                <td className="pr-2 py-1 text-[10px] font-black text-[var(--text)] whitespace-nowrap">Housekeeping</td>
-                <HeatCell value="72%" count={5} tone="warn" />
-                <HeatCell value="81%" count={4} tone="warn" />
-                <HeatCell value="84%" count={31} tone="warn" />
-                <HeatCell value="86%" count={9} tone="ok" />
-                <HeatCell value="85%" count={7} tone="ok" />
-                <HeatCell value="87%" count={12} tone="ok" />
-              </tr>
-              <tr>
-                <td className="pr-2 py-1 text-[10px] font-black text-[var(--text)] whitespace-nowrap">IRD</td>
-                <HeatCell value="89%" count={2} tone="ok" />
-                <HeatCell value="89%" count={1} tone="ok" />
-                <HeatCell value="91%" count={3} tone="ok" />
-                <HeatCell value="88%" count={2} tone="ok" />
-                <HeatCell value="92%" count={4} tone="ok" />
-                <HeatCell value="90%" count={3} tone="ok" />
-              </tr>
-              <tr>
-                <td className="pr-2 py-1 text-[10px] font-black text-[var(--text)] whitespace-nowrap">Restaurante</td>
-                <HeatCell value="82%" count={3} tone="warn" />
-                <HeatCell value="88%" count={2} tone="ok" />
-                <HeatCell value="87%" count={3} tone="ok" />
-                <HeatCell value="90%" count={5} tone="ok" />
-                <HeatCell value="93%" count={4} tone="ok" />
-                <HeatCell value="94%" count={6} tone="ok" />
-              </tr>
-              <tr>
-                <td className="pr-2 py-1 text-[10px] font-black text-[var(--text)] whitespace-nowrap">Spa</td>
-                <HeatCell value="91%" count={3} tone="ok" />
-                <HeatCell value="93%" count={2} tone="ok" />
-                <HeatCell value="90%" count={4} tone="ok" />
-                <HeatCell value="94%" count={3} tone="ok" />
-                <HeatCell value="95%" count={5} tone="ok" />
-                <HeatCell value="96%" count={4} tone="ok" />
-              </tr>
-              <tr>
-                <td className="pr-2 py-1 text-[10px] font-black text-[var(--text)] whitespace-nowrap">Reservas</td>
+                <td className="pr-2 py-1 text-[10px] font-black text-[var(--text)] whitespace-nowrap"><span className="text-[7px] opacity-50 mr-0.5">&#9654;</span> Reservas</td>
                 <HeatCell value="78%" count={4} tone="warn" />
                 <HeatCell value="80%" count={3} tone="warn" />
                 <HeatCell value="83%" count={5} tone="warn" />
@@ -349,13 +304,76 @@ export function ProductDashboardMock() {
                 <HeatCell value="86%" count={5} tone="ok" />
               </tr>
               <tr>
-                <td className="pr-2 py-1 text-[10px] font-black text-[var(--text)] whitespace-nowrap">Pool</td>
+                <td className="pr-2 py-1 text-[10px] font-black text-[var(--text)] whitespace-nowrap"><span className="text-[7px] opacity-50 mr-0.5">&#9660;</span> Front Office</td>
+                <HeatCell value="81%" count={27} tone="warn" />
+                <HeatCell value="76%" count={4} tone="danger" />
+                <HeatCell value="84%" count={13} tone="warn" />
+                <HeatCell value="85%" count={10} tone="ok" />
+                <HeatCell value="87%" count={8} tone="ok" />
+                <HeatCell value="88%" count={11} tone="ok" />
+              </tr>
+              <tr>
+                <td className="pr-2 py-1 pl-4 text-[10px] font-bold text-[var(--text-secondary)] whitespace-nowrap">Check In</td>
+                <HeatCell value="83%" count={14} tone="warn" />
+                <HeatCell value="74%" count={2} tone="danger" />
+                <HeatCell value="86%" count={7} tone="ok" />
+                <HeatCell value="87%" count={5} tone="ok" />
+                <HeatCell value="89%" count={4} tone="ok" />
+                <HeatCell value="90%" count={6} tone="ok" />
+              </tr>
+              <tr>
+                <td className="pr-2 py-1 pl-4 text-[10px] font-bold text-[var(--text-secondary)] whitespace-nowrap">Check Out</td>
+                <HeatCell value="79%" count={13} tone="warn" />
+                <HeatCell value="78%" count={2} tone="warn" />
+                <HeatCell value="82%" count={6} tone="warn" />
+                <HeatCell value="83%" count={5} tone="warn" />
+                <HeatCell value="85%" count={4} tone="ok" />
+                <HeatCell value="86%" count={5} tone="ok" />
+              </tr>
+              <tr>
+                <td className="pr-2 py-1 text-[10px] font-black text-[var(--text)] whitespace-nowrap"><span className="text-[7px] opacity-50 mr-0.5">&#9654;</span> Housekeeping</td>
+                <HeatCell value="72%" count={5} tone="warn" />
+                <HeatCell value="81%" count={4} tone="warn" />
+                <HeatCell value="84%" count={31} tone="warn" />
+                <HeatCell value="86%" count={9} tone="ok" />
+                <HeatCell value="85%" count={7} tone="ok" />
+                <HeatCell value="87%" count={12} tone="ok" />
+              </tr>
+              <tr>
+                <td className="pr-2 py-1 text-[10px] font-black text-[var(--text)] whitespace-nowrap"><span className="text-[7px] opacity-50 mr-0.5">&#9654;</span> Pool</td>
                 <HeatCell value="85%" count={2} tone="ok" />
                 <HeatCell value="82%" count={3} tone="warn" />
                 <HeatCell value="86%" count={4} tone="ok" />
                 <HeatCell value="88%" count={5} tone="ok" />
                 <HeatCell value="90%" count={6} tone="ok" />
                 <HeatCell value="91%" count={7} tone="ok" />
+              </tr>
+              <tr>
+                <td className="pr-2 py-1 text-[10px] font-black text-[var(--text)] whitespace-nowrap"><span className="text-[7px] opacity-50 mr-0.5">&#9654;</span> IRD</td>
+                <HeatCell value="89%" count={2} tone="ok" />
+                <HeatCell value="89%" count={1} tone="ok" />
+                <HeatCell value="91%" count={3} tone="ok" />
+                <HeatCell value="88%" count={2} tone="ok" />
+                <HeatCell value="92%" count={4} tone="ok" />
+                <HeatCell value="90%" count={3} tone="ok" />
+              </tr>
+              <tr>
+                <td className="pr-2 py-1 text-[10px] font-black text-[var(--text)] whitespace-nowrap"><span className="text-[7px] opacity-50 mr-0.5">&#9654;</span> Restaurante</td>
+                <HeatCell value="82%" count={3} tone="warn" />
+                <HeatCell value="88%" count={2} tone="ok" />
+                <HeatCell value="87%" count={3} tone="ok" />
+                <HeatCell value="90%" count={5} tone="ok" />
+                <HeatCell value="93%" count={4} tone="ok" />
+                <HeatCell value="94%" count={6} tone="ok" />
+              </tr>
+              <tr>
+                <td className="pr-2 py-1 text-[10px] font-black text-[var(--text)] whitespace-nowrap"><span className="text-[7px] opacity-50 mr-0.5">&#9654;</span> Spa</td>
+                <HeatCell value="91%" count={3} tone="ok" />
+                <HeatCell value="93%" count={2} tone="ok" />
+                <HeatCell value="90%" count={4} tone="ok" />
+                <HeatCell value="94%" count={3} tone="ok" />
+                <HeatCell value="95%" count={5} tone="ok" />
+                <HeatCell value="96%" count={4} tone="ok" />
               </tr>
             </tbody>
           </table>
