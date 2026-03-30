@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { supabase } from "@/lib/supabaseClient";
 import { normalizeRole } from "@/lib/auth/permissions";
 
@@ -184,6 +185,21 @@ export default function LoginPage() {
           >
             {loading ? "Entrando…" : "Iniciar sesión"}
           </button>
+
+          <Link
+            href="/forgot-password"
+            style={{
+              display: "block",
+              marginTop: 14,
+              textAlign: "center",
+              fontWeight: 700,
+              fontSize: 13,
+              color: "#555",
+              textDecoration: "underline",
+            }}
+          >
+            ¿Olvidaste tu contraseña?
+          </Link>
         </form>
 
         <style jsx global>{`
