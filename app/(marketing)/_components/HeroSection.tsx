@@ -17,14 +17,19 @@ export default function HeroSection() {
             Plataforma SaaS para operacion y calidad hotelera
           </div>
 
-          <h1 className="mt-7 text-[clamp(2.8rem,7vw,5.5rem)] font-extrabold leading-[0.94] tracking-[-0.05em] text-[#0f172a]">
-            Controla la calidad de tu hotel en tiempo real.
+          <h1 className="mt-7 text-[clamp(2.8rem,7vw,5.5rem)] font-extrabold leading-[0.94] tracking-[-0.05em] text-[var(--text)]">
+            La calidad de tu hotel no falla por falta de estandares.
+            <span
+              className="mt-2 block"
+              style={{ color: "var(--text-secondary)" }}
+            >
+              Falla por falta de control.
+            </span>
           </h1>
 
-          <p className="mt-7 max-w-[720px] text-[clamp(1.125rem,2vw,1.45rem)] leading-8 text-[var(--text-secondary)]">
-            Detecta fallos, ejecuta auditorias y mejora la operacion sin caos ni Excel.
-            ServiceControl centraliza auditorias, reauditorias, formacion y seguimiento
-            del equipo en una sola plataforma.
+          <p className="mt-7 max-w-[680px] text-[clamp(1.125rem,2vw,1.35rem)] leading-8 text-[var(--text-secondary)]">
+            ServiceControl convierte auditorias, desviaciones y seguimiento en un sistema
+            operativo real para tu hotel. Sin Excel. Sin WhatsApp. Sin improvisacion.
           </p>
 
           <div className="mt-10 flex flex-wrap items-center gap-4">
@@ -35,47 +40,43 @@ export default function HeroSection() {
               Solicitar demo
             </Link>
             <Link
-              href="/login"
+              href="/demo"
               className="rounded-xl border border-black/15 bg-white px-7 py-4 text-base font-black text-black transition hover:bg-black hover:text-white"
             >
-              Acceder a la app
+              Ver como funciona
             </Link>
           </div>
 
           <div className="mt-10 grid gap-4 text-sm text-[var(--text-secondary)] sm:grid-cols-3">
-            <div
-              className="rounded-[18px] p-5"
-              style={{ background: "var(--card-bg)", border: "1px solid var(--border)", boxShadow: "var(--shadow-sm)" }}
-            >
-              <div className="text-xs font-extrabold uppercase tracking-[0.18em] text-[var(--text-secondary)]">
-                Visibilidad real
+            {[
+              {
+                eyebrow: "Detecta",
+                text: "Score por area, alertas activas y focos rojos visibles antes de que escalen.",
+              },
+              {
+                eyebrow: "Corrige",
+                text: "Cada hallazgo genera una accion con responsable, prioridad y seguimiento.",
+              },
+              {
+                eyebrow: "Verifica",
+                text: "Reauditorias que confirman que la correccion se sostuvo en el tiempo.",
+              },
+            ].map((item) => (
+              <div
+                key={item.eyebrow}
+                className="rounded-[18px] p-5"
+                style={{
+                  background: "var(--card-bg)",
+                  border: "1px solid var(--border)",
+                  boxShadow: "var(--shadow-sm)",
+                }}
+              >
+                <div className="text-xs font-extrabold uppercase tracking-[0.18em] text-[var(--text-secondary)]">
+                  {item.eyebrow}
+                </div>
+                <p className="mt-3 text-base leading-7">{item.text}</p>
               </div>
-              <p className="mt-3 text-base leading-7">
-                Score por area, backlog correctivo y focos rojos visibles para operaciones.
-              </p>
-            </div>
-            <div
-              className="rounded-[18px] p-5"
-              style={{ background: "var(--card-bg)", border: "1px solid var(--border)", boxShadow: "var(--shadow-sm)" }}
-            >
-              <div className="text-xs font-extrabold uppercase tracking-[0.18em] text-[var(--text-secondary)]">
-                Ejecucion diaria
-              </div>
-              <p className="mt-3 text-base leading-7">
-                Auditorias desde movil con evidencia y seguimiento sin depender de memoria.
-              </p>
-            </div>
-            <div
-              className="rounded-[18px] p-5"
-              style={{ background: "var(--card-bg)", border: "1px solid var(--border)", boxShadow: "var(--shadow-sm)" }}
-            >
-              <div className="text-xs font-extrabold uppercase tracking-[0.18em] text-[var(--text-secondary)]">
-                Sistema unico
-              </div>
-              <p className="mt-3 text-base leading-7">
-                Calidad, reauditorias y formacion conectadas en un solo flujo.
-              </p>
-            </div>
+            ))}
           </div>
         </div>
 

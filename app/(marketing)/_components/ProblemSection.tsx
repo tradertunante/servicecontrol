@@ -5,11 +5,27 @@ export default function ProblemSection() {
   return (
     <section id="problema" className="px-5 py-20 sm:px-8 lg:px-10 lg:py-24">
       <div className="mx-auto grid w-full max-w-[1480px] gap-10 lg:grid-cols-[0.95fr_1.05fr]">
-        <SectionIntro
-          eyebrow="El problema"
-          title="La calidad se rompe cuando depende de memoria, improvisacion o seguimiento manual."
-          description="En muchos hoteles, la operacion se sostiene con hojas, capturas, mensajes y reportes tardios. El resultado no es solo desorden: es perdida de control."
-        />
+        <div>
+          <SectionIntro
+            eyebrow="El problema"
+            title="La mayoria de los hoteles no tiene un problema de calidad. Tiene un problema de ejecucion."
+            description="Cuando el control depende de reportes manuales, WhatsApp y memoria, ya vas tarde. El caos no es visible hasta que el huesped lo nota."
+          />
+
+          {/* Tension statement */}
+          <div
+            className="mt-8 rounded-[18px] px-6 py-6"
+            style={{
+              background: "var(--danger-bg)",
+              border: "1px solid var(--danger-border)",
+            }}
+          >
+            <p className="text-lg font-bold leading-8" style={{ color: "var(--danger)" }}>
+              Cuando el control depende de seguimiento manual,
+              los fallos no desaparecen. Se normalizan.
+            </p>
+          </div>
+        </div>
 
         <div className="grid gap-4 sm:grid-cols-2">
           {problemPoints.map((point, index) => (
