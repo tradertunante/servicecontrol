@@ -18,13 +18,7 @@ export default function HeroSection() {
           </div>
 
           <h1 className="mt-7 text-[clamp(2.8rem,7vw,5.5rem)] font-extrabold leading-[0.94] tracking-[-0.05em] text-[var(--text)]">
-            La calidad de tu hotel no falla por falta de estandares.
-            <span
-              className="mt-2 block"
-              style={{ color: "var(--text-secondary)" }}
-            >
-              Falla por falta de control.
-            </span>
+            La calidad no falla por falta de estandares. Falla por falta de control.
           </h1>
 
           <p className="mt-7 max-w-[680px] text-[clamp(1.125rem,2vw,1.35rem)] leading-8 text-[var(--text-secondary)]">
