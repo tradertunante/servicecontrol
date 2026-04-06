@@ -14,16 +14,16 @@ export const problemPoints = [
 
 export const solutionPillars = [
   {
-    eyebrow: "Operacion conectada",
-    title: "Un sistema central para ejecutar, corregir y verificar.",
+    eyebrow: "Tu equipo ejecuta",
+    title: "El sistema hace el seguimiento.",
     description:
-      "ServiceControl conecta auditorias, scoring por area, acciones correctivas, reauditorias y formacion en el mismo flujo operativo.",
+      "ServiceControl conecta auditorias, scoring por area, acciones correctivas, reauditorias y formacion en el mismo flujo. Sin coordinacion manual ni mensajes dispersos.",
   },
   {
-    eyebrow: "Visibilidad ejecutiva",
-    title: "Cada desviacion queda registrada con contexto y seguimiento.",
+    eyebrow: "Direccion tiene la foto real",
+    title: "Sin esperar reportes ni perseguir a nadie.",
     description:
-      "Direccion y operaciones ven el estado real del hotel, las areas en riesgo y el avance del equipo sin perseguir reportes manuales.",
+      "El estado real del hotel, las areas en riesgo y el avance del equipo visibles en tiempo real. Antes de que la desviacion escale o el huesped lo note.",
   },
 ];
 
@@ -39,19 +39,19 @@ export const steps = [
     step: "01",
     title: "Configuras estandares y auditorias por area",
     description:
-      "Define checklists, criterios y responsables segun la operacion real de cada hotel.",
+      "Define checklists, criterios y responsables segun la operacion real de tu hotel. El sistema queda listo para ejecutarse desde el primer dia.",
   },
   {
     step: "02",
-    title: "El equipo ejecuta desde movil",
+    title: "El equipo ejecuta desde movil, con evidencia",
     description:
-      "Las auditorias se completan en campo con evidencia, contexto y trazabilidad inmediata.",
+      "Las auditorias se completan en campo con foto, contexto y scoring inmediato. Sin papel, sin retrasos, sin informacion que se pierde.",
   },
   {
     step: "03",
-    title: "El sistema detecta, asigna y da seguimiento",
+    title: "El sistema detecta, asigna y no suelta el hallazgo",
     description:
-      "Cada hallazgo dispara acciones, reauditorias o formacion para cerrar la desviacion.",
+      "Cada desviacion dispara una accion correctiva, una reauditoria o formacion. El sistema no lo da por cerrado hasta que se verifica.",
   },
 ];
 
@@ -59,27 +59,27 @@ export const modules = [
   {
     title: "Auditorias",
     description:
-      "Ejecucion digital por area, con scoring, evidencia y estatus operativo en tiempo real.",
+      "Ejecuta revisiones por area desde movil. Scoring automatico, evidencia fotografica y estatus visible para todo el equipo en tiempo real.",
   },
   {
     title: "Reauditorias",
     description:
-      "Seguimiento automatico o manual para verificar que la correccion realmente se sostuvo.",
+      "Verifica que la correccion se sostuvo. No asumas: comprueba.",
   },
   {
     title: "Acciones correctivas",
     description:
-      "Responsables, prioridad, trazabilidad y avance visible sin depender de mensajes dispersos.",
+      "Cada hallazgo tiene responsable, prioridad y fecha. Sin mensajes que se pierden, sin seguimiento manual.",
   },
   {
     title: "Formacion",
     description:
-      "Registra entrenamientos asociados a hallazgos para cerrar brechas de ejecucion del equipo.",
+      "Vincula entrenamientos a desviaciones reales. El equipo mejora en los puntos exactos donde falla.",
   },
   {
     title: "Dashboard ejecutivo",
     description:
-      "Visibilidad por area, tendencia, backlog operativo y focos rojos para actuar antes.",
+      "Score por area, focos rojos, tendencias y backlog operativo. El estado real del hotel en una sola vista, sin esperar el reporte del lunes.",
   },
 ];
 

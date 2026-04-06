@@ -103,24 +103,41 @@ export default function DemoPage() {
               Muestra guiada para direccion, operaciones o calidad.
             </h2>
             <p className="mt-5 text-lg leading-8 text-[var(--dark-text-muted)]">
-              De momento dejamos esta ruta preparada como punto comercial. Si despues decides conectar un formulario o calendario, la estructura ya queda separada del producto.
+              25 minutos para ver como ServiceControl se adapta a la operacion real de tu hotel:
+              areas criticas, flujo de seguimiento y visibilidad ejecutiva.
             </p>
 
             <div
-              className="mt-8 rounded-[20px] p-5"
+              className="mt-8 space-y-3 rounded-[20px] p-5"
               style={{ background: "var(--dark-card-bg)", border: "1px solid var(--dark-border-subtle)" }}
             >
-              <div className="text-sm font-bold text-[var(--dark-text-muted)]">CTA sugerido</div>
-              <div className="mt-3 text-xl font-bold">Solicitar demo comercial</div>
-              <div className="mt-2 text-sm leading-6 text-white/60">
-                Puedes reemplazar este bloque por formulario, email o calendar booking cuando lo definas.
+              <div className="text-xs font-extrabold uppercase tracking-[0.18em] text-white/50">
+                En la demo veras
               </div>
+              {[
+                "Dashboard por area con score y alertas activas",
+                "Ejecucion de auditoria desde movil con evidencia",
+                "Accion correctiva, reauditoria y formacion conectadas",
+                "Visibilidad ejecutiva sin depender de reportes",
+              ].map((item) => (
+                <div key={item} className="flex items-start gap-3 text-sm leading-6 text-white/70">
+                  <span className="mt-0.5 text-white/30">—</span>
+                  <span>{item}</span>
+                </div>
+              ))}
             </div>
 
-            <div className="mt-8 flex flex-wrap gap-4">
+            <a
+              href="mailto:demo@servicecontrol.io"
+              className="mt-8 block rounded-xl border border-white/12 bg-white px-6 py-4 text-center text-base font-black text-black transition hover:bg-white/90"
+            >
+              Solicitar demo guiada
+            </a>
+
+            <div className="mt-6 flex flex-wrap gap-4">
               <Link
                 href="/pricing"
-                className="rounded-xl border border-white/12 bg-white px-6 py-3 text-sm font-black text-black transition hover:bg-white/90"
+                className="rounded-xl border border-white/14 px-6 py-3 text-sm font-black text-white transition hover:bg-white/8"
               >
                 Ver pricing
               </Link>

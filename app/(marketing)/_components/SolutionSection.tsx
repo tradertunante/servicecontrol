@@ -13,9 +13,9 @@ export default function SolutionSection() {
         }}
       >
         <SectionIntro
-          eyebrow="La solucion"
-          title="ServiceControl convierte la calidad del hotel en un sistema operativo."
-          description="No se trata solo de auditar. Se trata de detectar, asignar, formar y verificar con una sola plataforma que da continuidad a cada desviacion."
+          eyebrow="La plataforma"
+          title="Un sistema que no para hasta que cada desviacion se cierra."
+          description="Auditorias, acciones correctivas, reauditorias y formacion conectadas en un solo flujo. Sin coordinacion manual. Sin perder el rastro."
           theme="dark"
         />
 

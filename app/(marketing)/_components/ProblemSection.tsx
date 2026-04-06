@@ -7,7 +7,7 @@ export default function ProblemSection() {
       <div className="mx-auto grid w-full max-w-[1480px] gap-10 lg:grid-cols-[0.95fr_1.05fr]">
         <div>
           <SectionIntro
-            eyebrow="El problema"
+            eyebrow="Por que falla la ejecucion operativa"
             title="La mayoria de los hoteles no tiene un problema de calidad. Tiene un problema de ejecucion."
             description="Cuando el control depende de reportes manuales, WhatsApp y memoria, ya vas tarde. El caos no es visible hasta que el huesped lo nota."
           />
@@ -23,6 +23,9 @@ export default function ProblemSection() {
             <p className="text-lg font-bold leading-8" style={{ color: "var(--danger)" }}>
               Cuando el control depende de seguimiento manual,
               los fallos no desaparecen. Se normalizan.
+              <span className="mt-2 block font-semibold opacity-80">
+                Y cuando el huesped lo nota, ya es tarde.
+              </span>
             </p>
           </div>
         </div>

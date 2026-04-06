@@ -22,8 +22,8 @@ export default function HeroSection() {
           </h1>
 
           <p className="mt-7 max-w-[680px] text-[clamp(1.125rem,2vw,1.35rem)] leading-8 text-[var(--text-secondary)]">
-            ServiceControl convierte auditorias, desviaciones y seguimiento en un sistema
-            operativo real para tu hotel. Sin Excel. Sin WhatsApp. Sin improvisacion.
+            Tu equipo ejecuta. El sistema hace el seguimiento. Direccion tiene la foto real.
+            Sin Excel, sin mensajes dispersos ni rastros perdidos.
           </p>
 
           <div className="mt-10 flex flex-wrap items-center gap-4">
@@ -31,10 +31,10 @@ export default function HeroSection() {
               href="/demo"
               className="rounded-xl border border-black/15 bg-black px-7 py-4 text-base font-black text-white transition hover:bg-[#111827]"
             >
-              Solicitar demo
+              Solicitar demo guiada
             </Link>
             <Link
-              href="/demo"
+              href="/#como-funciona"
               className="rounded-xl border border-black/15 bg-white px-7 py-4 text-base font-black text-black transition hover:bg-black hover:text-white"
             >
               Ver como funciona

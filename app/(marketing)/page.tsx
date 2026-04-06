@@ -1,4 +1,3 @@
-import BenefitsSection from "./_components/BenefitsSection";
 import DemoShowcase from "./_components/DemoShowcase";
 import FeatureGrid from "./_components/FeatureGrid";
 import FinalCTA from "./_components/FinalCTA";
@@ -12,11 +11,10 @@ export default function MarketingHomePage() {
     <main>
       <HeroSection />
       <ProblemSection />
-      <SolutionSection />
-      <BenefitsSection />
       <HowItWorksSection />
-      <FeatureGrid />
+      <SolutionSection />
       <DemoShowcase />
+      <FeatureGrid />
       <FinalCTA />
     </main>
   );

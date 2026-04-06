@@ -20,7 +20,14 @@ export default function MarketingFooter() {
             Demo
           </Link>
           <Link href="/login" className="transition hover:text-[var(--text)]">
-            Login
+            Acceder
+          </Link>
+          <span className="text-black/20">|</span>
+          <Link href="/privacidad" className="font-normal transition hover:text-[var(--text)]">
+            Privacidad
+          </Link>
+          <Link href="/aviso-legal" className="font-normal transition hover:text-[var(--text)]">
+            Aviso legal
           </Link>
         </div>
       </div>

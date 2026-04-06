@@ -6,7 +6,7 @@ export default function HowItWorksSection() {
     <section id="como-funciona" className="px-5 py-20 sm:px-8 lg:px-10 lg:py-24">
       <div className="mx-auto w-full max-w-[1480px]">
         <SectionIntro
-          eyebrow="Como funciona"
+          eyebrow="El sistema en 3 pasos"
           title="Un flujo cerrado desde el hallazgo hasta la verificacion."
           description="No se trata de registrar problemas. Se trata de asegurarse de que se resuelven."
         />

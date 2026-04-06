@@ -24,6 +24,10 @@ export default function FinalCTA() {
               Te mostramos como recuperar el control de tu operacion. Sin adaptar tu hotel
               a un software. Al reves.
             </p>
+            <p className="mt-4 text-base leading-7 text-white/40">
+              Cada semana sin sistema de seguimiento es una semana en la que los errores
+              se normalizan silenciosamente.
+            </p>
           </div>
 
           <div className="flex flex-col gap-4">

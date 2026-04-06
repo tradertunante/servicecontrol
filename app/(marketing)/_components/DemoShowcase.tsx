@@ -16,16 +16,16 @@ export default function DemoShowcase() {
         <div className="grid gap-10 lg:grid-cols-[0.82fr_1.18fr] lg:items-start">
           <div className="max-w-[680px]">
             <SectionIntro
-              eyebrow="Prueba visual"
-              title="Una vista de calidad diseñada para tomar decisiones rapidas."
-              description="La demo muestra la operacion por area, el estado de hallazgos, reauditorias y formacion en una composicion clara, sobria y ejecutiva."
+              eyebrow="Lo que ven tus directivos cada manana"
+              title="Asi ve un Director de Operaciones el estado real de su hotel."
+              description="Sin llamar a nadie. Sin esperar el reporte del lunes. Score por area, alertas activas y backlog operativo visible antes de que los problemas escalen."
             />
             <div className="mt-8 flex flex-wrap gap-4">
               <Link
                 href="/demo"
                 className="rounded-xl border border-black/15 bg-black px-7 py-4 text-base font-black text-white transition hover:bg-[#111827]"
               >
-                Ver demo
+                Solicitar demo guiada
               </Link>
               <Link
                 href="/pricing"
