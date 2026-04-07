@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { useToast } from "@/app/providers/ToastProvider";
 
 import { signOutAndRedirect } from "@/lib/auth";
-import { supabase } from "@/lib/supabaseClient";
 import type { Profile } from "@/lib/types";
 
 import { useMyDashboardData } from "./_hooks/useMyDashboardData";
@@ -78,21 +77,11 @@ export default function MyDashboardPageClient({
         return;
       }
 
-      const { data, error } = await supabase
-        .from("user_area_access")
-        .select("area_id")
-        .eq("user_id", initialProfile.id)
-        .eq("hotel_id", initialHotelId);
+      const res = await fetch("/api/my/area-access");
+      const payload = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(payload?.error ?? "Error de red.");
 
-      if (error) throw error;
-
-      const areaIds = Array.from(
-        new Set(
-          (data ?? [])
-            .map((row: { area_id: string | null }) => row.area_id)
-            .filter((areaId: string | null): areaId is string => !!areaId)
-        )
-      );
+      const areaIds: string[] = payload?.areaIds ?? [];
 
       if (areaIds.length === 0) {
         toast.warn("No tienes ningún área asignada. Pide al administrador que te asigne un área.");
@@ -101,7 +90,7 @@ export default function MyDashboardPageClient({
       }
 
       if (areaIds.length === 1) {
-        router.push(`/areas/${areaIds[0]}?tab=dashboard`);
+        router.push(`/areas/${areaIds[0]}?tab=templates`);
         return;
       }
 
