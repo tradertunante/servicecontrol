@@ -1,4 +1,5 @@
 import { requireHotelScope } from "@/lib/auth/server";
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
 import MyDashboardPageClient from "./MyDashboardPageClient";
 
@@ -7,5 +8,20 @@ export default async function MyDashboardPage() {
     nextPath: "/my",
   });
 
-  return <MyDashboardPageClient initialProfile={profile} initialHotelId={hotelId} />;
+  const admin = supabaseAdmin();
+  const { data: hotel } = await admin
+    .from("hotels")
+    .select("name")
+    .eq("id", hotelId)
+    .maybeSingle();
+
+  const hotelName = hotel?.name ?? null;
+
+  return (
+    <MyDashboardPageClient
+      initialProfile={profile}
+      initialHotelId={hotelId}
+      initialHotelName={hotelName}
+    />
+  );
 }
