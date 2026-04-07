@@ -1715,6 +1715,7 @@ export type Database = {
           active: boolean | null
           created_at: string | null
           deleted_at: string | null
+          enabled_packs: string[] | null
           id: string
           name: string
           status: string
@@ -1725,6 +1726,7 @@ export type Database = {
           active?: boolean | null
           created_at?: string | null
           deleted_at?: string | null
+          enabled_packs?: string[] | null
           id?: string
           name: string
           status?: string
@@ -1735,6 +1737,7 @@ export type Database = {
           active?: boolean | null
           created_at?: string | null
           deleted_at?: string | null
+          enabled_packs?: string[] | null
           id?: string
           name?: string
           status?: string

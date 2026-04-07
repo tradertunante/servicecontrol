@@ -2,7 +2,7 @@
 
 import Card from "@/components/ui/Card";
 import { useQueryClient } from "@tanstack/react-query";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { CSSProperties, ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -52,6 +52,23 @@ export default function TeamPageShell({
   const router = useRouter();
   const queryClient = useQueryClient();
   const btn = useMemo(() => buildBtnStyle(), []);
+
+  // Pack access — superadmin siempre tiene todo, resto se fetch del hotel activo
+  const [enabledPacks, setEnabledPacks] = useState<string[]>([
+    "base", "pack1", "pack2", "pack3",
+  ]);
+
+  useEffect(() => {
+    if (profile?.role === "superadmin") return; // superadmin ve todo
+    let alive = true;
+    fetch("/api/hotel/packs", { credentials: "include" })
+      .then((r) => r.json())
+      .then((data: { packs?: string[] }) => {
+        if (alive && Array.isArray(data.packs)) setEnabledPacks(data.packs);
+      })
+      .catch(() => {}); // falla silenciosamente, mantiene todos visibles
+    return () => { alive = false; };
+  }, [profile?.role]);
 
   useEffect(() => {
     router.prefetch("/it");
@@ -115,7 +132,7 @@ export default function TeamPageShell({
       label: "Recuperación",
       href: "/team/recuperacion",
       active: activeSection === "reaudits",
-      visible: showReauditsTab,
+      visible: showReauditsTab && enabledPacks.includes("pack1"),
     },
     {
       key: "history",
@@ -129,14 +146,14 @@ export default function TeamPageShell({
       label: "Formaciones",
       href: "/formaciones",
       active: activeSection === "actions",
-      visible: true,
+      visible: enabledPacks.includes("pack3"),
     },
     {
       key: "analytics",
       label: "Analisis",
       href: "/analytics",
       active: false,
-      visible: true,
+      visible: enabledPacks.includes("pack2"),
     },
     {
       key: "members",
@@ -150,14 +167,14 @@ export default function TeamPageShell({
       label: "IT",
       href: "/it",
       active: false,
-      visible: !!showDepartmentNav,
+      visible: !!showDepartmentNav && enabledPacks.includes("pack1"),
     },
     {
       key: "engineering",
       label: "Engineering",
       href: "/engineering",
       active: false,
-      visible: !!showDepartmentNav,
+      visible: !!showDepartmentNav && enabledPacks.includes("pack1"),
     },
   ];
 
