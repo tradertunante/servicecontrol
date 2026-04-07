@@ -3,6 +3,7 @@
 export type ActiveHotelPayload = {
   ok: boolean;
   hotel_id: string | null;
+  hotel_name: string | null;
   error?: string | null;
   role?: string | null;
   profile_hotel_id?: string | null;
