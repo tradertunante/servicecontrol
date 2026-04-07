@@ -84,7 +84,7 @@ export async function sendMonthlyReportEmail(data: MonthlyReportEmailData) {
     </div>
   `;
 
-  const fromAddress = process.env.RESEND_FROM_EMAIL || "reportes@servicecontrol.app";
+  const fromAddress = process.env.RESEND_FROM_EMAIL || "no-reply@servicecontrol.io";
 
   return resend.emails.send({
     from: `ServiceControl <${fromAddress}>`,
