@@ -10,6 +10,7 @@ import {
   type DepartmentCode,
 } from "@/app/(app)/_lib/departmentAccess";
 import { requireHotelScope } from "@/lib/auth/server";
+import { getHotelEnabledPacks } from "@/lib/auth/packs";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
 type DepartmentRoute = Exclude<DepartmentCode, null>;
@@ -80,6 +81,14 @@ export async function requireDepartmentRouteAccess(
 
   if (routeScope === "none") {
     redirect(getDepartmentRedirectTarget(auth.profile.role, assignedDepartmentCode));
+  }
+
+  // IT y Engineering requieren pack1
+  if (auth.profile.role !== "superadmin" && hotelId) {
+    const packs = await getHotelEnabledPacks(hotelId);
+    if (!packs.includes("pack1")) {
+      redirect(getDepartmentRedirectTarget(auth.profile.role, assignedDepartmentCode));
+    }
   }
 
   return {
