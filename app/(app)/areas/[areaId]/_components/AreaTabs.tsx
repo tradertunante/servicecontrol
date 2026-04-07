@@ -18,18 +18,26 @@ function tabBtn(active: boolean): React.CSSProperties {
 export default function AreaTabs({
   activeTab,
   onChangeTab,
+  role,
 }: {
   activeTab: TabKey;
   onChangeTab: (t: TabKey) => void;
+  role?: string | null;
 }) {
+  const isAuditor = role === "auditor";
+
   return (
     <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 18 }}>
-      <button style={tabBtn(activeTab === "dashboard")} onClick={() => onChangeTab("dashboard")}>
-        Dashboard
-      </button>
-      <button style={tabBtn(activeTab === "history")} onClick={() => onChangeTab("history")}>
-        Historial
-      </button>
+      {!isAuditor && (
+        <button style={tabBtn(activeTab === "dashboard")} onClick={() => onChangeTab("dashboard")}>
+          Dashboard
+        </button>
+      )}
+      {!isAuditor && (
+        <button style={tabBtn(activeTab === "history")} onClick={() => onChangeTab("history")}>
+          Historial
+        </button>
+      )}
       <button style={tabBtn(activeTab === "templates")} onClick={() => onChangeTab("templates")}>
         Auditorías disponibles
       </button>
