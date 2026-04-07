@@ -215,6 +215,29 @@ export async function createManagedUser(
 
   const userId = authUser.user.id;
 
+  // Explicit upsert as safety net in case the DB trigger is not deployed
+  // or fires before user_metadata is available.
+  const { error: profileErr } = await admin.from("profiles").upsert(
+    {
+      id: userId,
+      email,
+      full_name: fullName,
+      role: roleResult.role,
+      hotel_id: hotelResult.hotelId,
+      active: true,
+    },
+    { onConflict: "id" }
+  );
+
+  if (profileErr) {
+    await admin.auth.admin.deleteUser(userId).catch(() => null);
+    return {
+      ok: false as const,
+      error: `Error creando perfil: ${profileErr.message}`,
+      status: 500,
+    };
+  }
+
   return {
     ok: true as const,
     userId,
