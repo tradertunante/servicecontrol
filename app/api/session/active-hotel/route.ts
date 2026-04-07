@@ -20,9 +20,21 @@ export async function GET(request: NextRequest) {
 
   const activeHotel = await getActiveHotel(request, caller.profile);
 
+  let hotelName: string | null = null;
+  if (activeHotel.ok) {
+    const admin = supabaseAdmin();
+    const { data } = await admin
+      .from("hotels")
+      .select("name")
+      .eq("id", activeHotel.hotelId)
+      .maybeSingle();
+    hotelName = data?.name ?? null;
+  }
+
   return NextResponse.json({
     ok: activeHotel.ok,
     hotel_id: activeHotel.ok ? activeHotel.hotelId : null,
+    hotel_name: hotelName,
     error: activeHotel.ok ? null : activeHotel.error,
     role: caller.profile.role,
     profile_hotel_id: caller.profile.hotel_id ?? null,

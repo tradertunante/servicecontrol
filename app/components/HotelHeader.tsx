@@ -4,8 +4,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { useToast } from "@/app/providers/ToastProvider";
-import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/lib/supabaseClient";
 import { goBackOrFallback } from "@/lib/navigation/clientBack";
 import { useProfile } from "@/hooks/useProfile";
 import NotificationBell from "./NotificationBell";
@@ -41,34 +39,15 @@ function getBackTarget(pathname: string | null): string | null {
   return "/dashboard";
 }
 
-async function resolveAuditTarget(hotelId?: string | null) {
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser();
+async function resolveAuditTarget() {
+  const res = await fetch("/api/my/area-access");
+  const payload = await res.json().catch(() => null);
+  if (!res.ok) throw new Error(payload?.error ?? "Error de red.");
 
-  if (userError || !user) {
-    throw new Error("No se pudo identificar tu usuario para abrir el área de auditoría.");
-  }
-
-  const { data, error } = await supabase
-    .from("user_area_access")
-    .select("area_id")
-    .eq("user_id", user.id)
-    .eq("hotel_id", hotelId ?? "");
-
-  if (error) throw error;
-
-  const areaIds = Array.from(
-    new Set(
-      (data ?? [])
-        .map((row: { area_id: string | null }) => row.area_id)
-        .filter((areaId): areaId is string => !!areaId)
-    )
-  );
+  const areaIds: string[] = payload?.areaIds ?? [];
 
   if (areaIds.length === 0) return null;
-  if (areaIds.length === 1) return `/areas/${areaIds[0]}?tab=dashboard`;
+  if (areaIds.length === 1) return `/areas/${areaIds[0]}?tab=templates`;
   return "/areas";
 }
 
@@ -95,43 +74,38 @@ export default function HotelHeader() {
 
   const pageTitle = useMemo(() => getPageTitle(pathname), [pathname]);
 
-  const { data: profile, isLoading: profileLoading } = useProfile();
-  const { data: activeHotelId, isLoading: hotelIdLoading } = useHotelId();
+  // useHotelId resolves via httpOnly cookie — works regardless of client JWT state
+  const { data: sessionData, isLoading: sessionLoading } = useHotelId();
+  const role = sessionData?.role ?? null;
+  const hotelName = sessionData?.hotelName ?? null;
 
-  const { data: hotelName, isLoading: hotelNameLoading } = useQuery({
-    queryKey: ["hotel-name", activeHotelId],
-    queryFn: async () => {
-      const { data, error } = await supabase.from("hotels").select("name").eq("id", activeHotelId!).single();
-      if (error || !data) return null;
-      return data.name as string;
-    },
-    enabled: !!activeHotelId,
-    staleTime: 10 * 60 * 1000,
-  });
+  // useProfile is still used for features that need full profile (e.g. isAdmin flag)
+  // but we do NOT block the header on it
+  const { data: profile } = useProfile();
 
-  const loading = profileLoading || hotelIdLoading || hotelNameLoading;
+  const loading = sessionLoading;
 
-  const isAdmin = profile?.role === "admin" || profile?.role === "superadmin";
+  const isAdmin = (role === "admin" || role === "superadmin") ?? (profile?.role === "admin" || profile?.role === "superadmin");
   const displayHotel = hotelName ?? (loading ? "Cargando…" : "Selecciona hotel");
   const backTarget = getBackTarget(pathname);
   const showBack = Boolean(backTarget);
   const navTo = (path: string) => { router.push(path); };
-  const hotelHomeTarget = profile?.role === "manager" ? "/team/general" : "/home";
+  const hotelHomeTarget = role === "manager" ? "/team/general" : "/home";
   const openAuditArea = async () => {
     try {
-      if (profile?.role === "manager") {
+      if (role === "manager") {
         router.push("/team/templates");
         return;
       }
 
       // Roles with full area access go straight to the templates selector
       const fullAccessRoles = ["admin", "general_manager", "superadmin", "quality"];
-      if (fullAccessRoles.includes(profile?.role ?? "")) {
+      if (fullAccessRoles.includes(role ?? "")) {
         router.push("/team/templates");
         return;
       }
 
-      const target = await resolveAuditTarget(activeHotelId);
+      const target = await resolveAuditTarget();
       if (!target) {
         toast.warn("No tienes ningún área asignada para auditar.");
         return;
