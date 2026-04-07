@@ -65,14 +65,18 @@ export default function MyDashboardPageClient({
 
   async function handleAudit() {
     try {
-      if (profile?.role === "manager") {
+      // Always use initialProfile.role (server-side, always available)
+      // profile from the hook can be null when the client session is broken
+      const role = initialProfile.role;
+
+      if (role === "manager") {
         router.push("/team");
         return;
       }
 
       // Roles with full area access go straight to the templates selector
       const fullAccessRoles = ["admin", "general_manager", "superadmin", "quality"];
-      if (fullAccessRoles.includes(profile?.role ?? "")) {
+      if (fullAccessRoles.includes(role)) {
         router.push("/team/templates");
         return;
       }
