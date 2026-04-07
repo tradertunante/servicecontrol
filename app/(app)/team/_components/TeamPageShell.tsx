@@ -53,20 +53,23 @@ export default function TeamPageShell({
   const queryClient = useQueryClient();
   const btn = useMemo(() => buildBtnStyle(), []);
 
-  // Pack access — superadmin siempre tiene todo, resto se fetch del hotel activo
-  const [enabledPacks, setEnabledPacks] = useState<string[]>([
-    "base", "pack1", "pack2", "pack3",
-  ]);
+  // Pack access — superadmin resuelto síncronamente, otros esperan el fetch
+  const [enabledPacks, setEnabledPacks] = useState<string[] | null>(
+    profile?.role === "superadmin" ? ["base", "pack1", "pack2", "pack3"] : null
+  );
 
   useEffect(() => {
-    if (profile?.role === "superadmin") return; // superadmin ve todo
+    if (profile?.role === "superadmin") return;
     let alive = true;
     fetch("/api/hotel/packs", { credentials: "include" })
       .then((r) => r.json())
       .then((data: { packs?: string[] }) => {
         if (alive && Array.isArray(data.packs)) setEnabledPacks(data.packs);
       })
-      .catch(() => {}); // falla silenciosamente, mantiene todos visibles
+      .catch(() => {
+        // En caso de error mostramos solo base
+        if (alive) setEnabledPacks(["base"]);
+      });
     return () => { alive = false; };
   }, [profile?.role]);
 
@@ -132,7 +135,7 @@ export default function TeamPageShell({
       label: "Recuperación",
       href: "/team/recuperacion",
       active: activeSection === "reaudits",
-      visible: showReauditsTab && enabledPacks.includes("pack1"),
+      visible: showReauditsTab && enabledPacks?.includes("pack1") === true,
     },
     {
       key: "history",
@@ -146,14 +149,14 @@ export default function TeamPageShell({
       label: "Formaciones",
       href: "/formaciones",
       active: activeSection === "actions",
-      visible: enabledPacks.includes("pack3"),
+      visible: enabledPacks?.includes("pack3") === true,
     },
     {
       key: "analytics",
       label: "Analisis",
       href: "/analytics",
       active: false,
-      visible: enabledPacks.includes("pack2"),
+      visible: enabledPacks?.includes("pack2") === true,
     },
     {
       key: "members",
@@ -167,14 +170,14 @@ export default function TeamPageShell({
       label: "IT",
       href: "/it",
       active: false,
-      visible: !!showDepartmentNav && enabledPacks.includes("pack1"),
+      visible: !!showDepartmentNav && enabledPacks?.includes("pack1") === true,
     },
     {
       key: "engineering",
       label: "Engineering",
       href: "/engineering",
       active: false,
-      visible: !!showDepartmentNav && enabledPacks.includes("pack1"),
+      visible: !!showDepartmentNav && enabledPacks?.includes("pack1") === true,
     },
   ];
 
