@@ -20,9 +20,11 @@ import MyAccountView from "./_components/MyAccountView";
 export default function MyDashboardPageClient({
   initialProfile,
   initialHotelId,
+  initialHotelName,
 }: {
   initialProfile: Profile;
   initialHotelId: string;
+  initialHotelName: string | null;
 }) {
   const router = useRouter();
   const toast = useToast();
@@ -34,7 +36,7 @@ export default function MyDashboardPageClient({
     loading,
     error,
     profile,
-    hotelName,
+    hotelName: hotelNameFromClient,
     areaNames,
     myTargets,
     myRecentRuns,
@@ -52,6 +54,8 @@ export default function MyDashboardPageClient({
     initialHotelId,
     enabled: !isLoggingOut,
   });
+
+  const hotelName = hotelNameFromClient ?? initialHotelName;
 
   async function logout() {
     if (isLoggingOut) return;
@@ -74,20 +78,10 @@ export default function MyDashboardPageClient({
         return;
       }
 
-      const {
-        data: { user },
-        error: userError,
-      } = await supabase.auth.getUser();
-
-      if (userError || !user) {
-        toast.error("No se pudo identificar tu usuario para abrir el área de auditoría.");
-        return;
-      }
-
       const { data, error } = await supabase
         .from("user_area_access")
         .select("area_id")
-        .eq("user_id", user.id)
+        .eq("user_id", initialProfile.id)
         .eq("hotel_id", initialHotelId);
 
       if (error) throw error;
