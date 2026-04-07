@@ -250,7 +250,7 @@ export async function loadAreaOverviewData(
       if (error) throw error;
       return buildTemplateNameMap((data ?? []) as TemplateNameRow[]);
     })(),
-    fetchExecutorNames(areaId, executorIds),
+    fetchExecutorNames(areaId, executorIds).catch(() => ({} as Record<string, string>)),
   ]);
 
   const totalsByTemplate = await (async () => {
