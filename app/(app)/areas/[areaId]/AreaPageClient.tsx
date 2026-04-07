@@ -29,8 +29,10 @@ export default function AreaPageClient({
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  // ✅ default dashboard
-  const tab = (searchParams.get("tab") ?? "dashboard") as TabKey;
+  const isAuditor = initialProfile.role === "auditor";
+
+  // ✅ default: templates para auditores, dashboard para el resto
+  const tab = (searchParams.get("tab") ?? (isAuditor ? "templates" : "dashboard")) as TabKey;
 
   // ✅ deep-link filters
   const initialTemplate = searchParams.get("template") ?? "ALL";
@@ -51,13 +53,13 @@ export default function AreaPageClient({
     initialProfile,
   });
 
-  // ✅ si vienen sin tab, lo fijamos a dashboard
+  // ✅ si vienen sin tab, lo fijamos al tab por defecto según rol
   useEffect(() => {
     if (!areaId) return;
     const t = searchParams.get("tab");
     if (!t) {
       const qp = new URLSearchParams(searchParams.toString());
-      qp.set("tab", "dashboard");
+      qp.set("tab", isAuditor ? "templates" : "dashboard");
       router.replace(`/areas/${areaId}?${qp.toString()}`);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -168,6 +170,7 @@ export default function AreaPageClient({
 
       <AreaTabs
         activeTab={tab}
+        role={initialProfile.role}
         onChangeTab={(next) => {
           // al cambiar tab, limpiamos filtros de fail
           const qp = new URLSearchParams(searchParams.toString());
