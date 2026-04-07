@@ -117,7 +117,7 @@ export function useMyDashboardData({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const [profile, setProfile] = useState<MyProfile | null>(initialProfile);
+  const profile = initialProfile;
   const [hotelName, setHotelName] = useState<string | null>(null);
   const [areaNames, setAreaNames] = useState<string[]>([]);
   const [myTargets, setMyTargets] = useState<MyTargetRow[]>([]);
@@ -167,34 +167,7 @@ export function useMyDashboardData({
         setError(null);
 
         const hotelId = initialHotelId;
-        const sessionResp = await supabase.auth.getSession();
-        if (sessionResp.error) throw sessionResp.error;
-
-        const sessionUser = sessionResp.data.session?.user ?? null;
-        if (!sessionUser) {
-          if (!cancelled) {
-            setProfile(null);
-            setHotelName(null);
-            setAreaNames([]);
-            setMyTargets([]);
-            setMyRecentRuns([]);
-            setError(null);
-            setLoading(false);
-          }
-          return;
-        }
-
-        const uid = sessionUser.id;
-        if (!cancelled) {
-          setProfile((prev) =>
-            prev
-              ? {
-                  ...prev,
-                  email: sessionUser.email ?? prev.email ?? null,
-                }
-              : prev
-          );
-        }
+        const uid = initialProfile.id;
 
         const hotelResp = await supabase
           .from("hotels")
