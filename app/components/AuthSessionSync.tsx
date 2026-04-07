@@ -28,23 +28,24 @@ export default function AuthSessionSync() {
       const { data } = await supabase.auth.getSession();
       if (!mounted) return;
 
-      const token = data.session?.access_token ?? "";
-      if (!token) {
-        clearCookie();
-        return;
+      // Only sync when there IS a session — never clear the cookie here.
+      // The cookie has its own expiry and is cleared explicitly on logout.
+      if (data.session?.access_token) {
+        syncCookie(data.session.access_token, data.session.expires_at ?? null);
       }
-
-      syncCookie(token, data.session?.expires_at ?? null);
     };
 
     void syncSessionCookie();
 
-    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
       if (session?.access_token) {
+        // Refresh or sign-in: update the cookie with the new token
         syncCookie(session.access_token, session.expires_at ?? null);
-      } else {
+      } else if (event === "SIGNED_OUT") {
+        // Only clear the cookie on explicit sign-out
         clearCookie();
       }
+      // INITIAL_SESSION with null session: do nothing — leave existing cookie intact
     });
 
     return () => {
