@@ -13,8 +13,6 @@ import type {
   QuestionMeta,
   SectionTotal,
 } from "../_lib/areaTypes";
-import { supabase } from "@/lib/supabaseClient";
-
 export function useAreaData({
   areaId,
   templateFilter,
@@ -89,15 +87,10 @@ export function useAreaData({
     setError(null);
 
     try {
-      const { data: sessionData } = await supabase.auth.getSession();
-      const accessToken = sessionData?.session?.access_token;
-      if (!accessToken) throw new Error("Sesión inválida.");
       const response = await fetch("/api/audits/start", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${accessToken}`,
-        },
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({
           area_id: areaId,
           audit_template_id: templateId,
