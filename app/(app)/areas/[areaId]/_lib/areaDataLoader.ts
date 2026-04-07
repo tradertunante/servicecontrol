@@ -87,23 +87,13 @@ function getErrorMessage(error: unknown, fallback: string) {
   return fallback;
 }
 
-async function getAccessToken() {
-  const { data: sessionData } = await supabase.auth.getSession();
-  return sessionData?.session?.access_token ?? null;
-}
-
 async function fetchExecutorNames(areaId: string, executorIds: string[]) {
-  const accessToken = await getAccessToken();
-  if (!accessToken || executorIds.length === 0) {
-    return {};
-  }
+  if (executorIds.length === 0) return {};
 
   const response = await fetch("/api/profiles/names", {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${accessToken}`,
-    },
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
     body: JSON.stringify({ ids: executorIds, area_id: areaId }),
   });
 
