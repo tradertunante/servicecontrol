@@ -101,7 +101,8 @@ export default function MyDashboardPageClient({
       );
 
       if (areaIds.length === 0) {
-        toast.warn("No tienes ningún área asignada para auditar.");
+        toast.warn("No tienes ningún área asignada. Pide al administrador que te asigne un área.");
+        router.push("/areas");
         return;
       }
 
