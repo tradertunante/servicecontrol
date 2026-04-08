@@ -6,7 +6,6 @@ const TAB_TO_VIEW_MODE = {
   hotel: "hotel-info",
   areas: "departments",
   users: "users",
-  access: "access-by-area",
 } as const;
 
 type AdminPageProps = {
