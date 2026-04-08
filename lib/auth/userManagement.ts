@@ -3,6 +3,7 @@ import "server-only";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { canAssignRole, normalizeRole, type Role } from "@/lib/auth/permissions";
 import { resolveRouteHotelScope } from "@/lib/auth/server";
+import { sendWelcomeEmail } from "@/lib/email/sendWelcomeEmail";
 import type { Profile } from "@/lib/types";
 
 export type ManagedUserRow = {
@@ -237,6 +238,26 @@ export async function createManagedUser(
       status: 500,
     };
   }
+
+  // Fetch hotel name for the welcome email (fire-and-forget, never blocks creation)
+  void (async () => {
+    try {
+      const { data: hotel } = await admin
+        .from("hotels")
+        .select("name")
+        .eq("id", hotelResult.hotelId)
+        .single();
+
+      await sendWelcomeEmail({
+        to: email,
+        userName: fullName,
+        hotelName: hotel?.name ?? "Su hotel",
+        loginUrl: `${process.env.NEXT_PUBLIC_APP_URL ?? "https://app.servicecontrol.io"}/login`,
+      });
+    } catch (err) {
+      console.error("[welcome-email] Failed to send to", email, err);
+    }
+  })();
 
   return {
     ok: true as const,
