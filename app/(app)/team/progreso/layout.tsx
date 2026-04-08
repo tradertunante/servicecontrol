@@ -1,6 +1,8 @@
 import type { ReactNode } from "react";
 
 import { requirePageAccess } from "@/lib/auth/server";
+import ModuleOnboardingTour from "@/app/components/ModuleOnboardingTour";
+import { PROGRESS_STEPS } from "@/lib/onboarding/progressSteps";
 
 export default async function TeamProgressLayout({ children }: { children: ReactNode }) {
   await requirePageAccess({
@@ -9,5 +11,10 @@ export default async function TeamProgressLayout({ children }: { children: React
     nextPath: "/team/progreso",
     redirectTo: "/team",
   });
-  return <>{children}</>;
+  return (
+    <>
+      <ModuleOnboardingTour module="team-progreso" steps={PROGRESS_STEPS} />
+      {children}
+    </>
+  );
 }

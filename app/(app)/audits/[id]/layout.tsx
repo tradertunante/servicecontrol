@@ -1,6 +1,8 @@
 import type { ReactNode } from "react";
 
 import { requireAuditRunScope } from "@/lib/auth/server";
+import ModuleOnboardingTour from "@/app/components/ModuleOnboardingTour";
+import { AUDIT_SESSION_STEPS } from "@/lib/onboarding/auditarSteps";
 
 export default async function AuditRunLayout({
   children,
@@ -14,5 +16,10 @@ export default async function AuditRunLayout({
     redirectTo: "/areas",
   });
 
-  return <>{children}</>;
+  return (
+    <>
+      <ModuleOnboardingTour module="audit-session" steps={AUDIT_SESSION_STEPS} />
+      {children}
+    </>
+  );
 }

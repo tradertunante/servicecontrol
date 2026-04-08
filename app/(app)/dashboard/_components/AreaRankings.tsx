@@ -115,7 +115,7 @@ export default function AreaRankings({
   selectedYear: number;
 }) {
   return (
-    <div className="gridTwo">
+    <div className="gridTwo" data-onboarding="area-rankings">
       <div style={card} className="card">
         <div className="sectionTitle">Top 3 departamentos con mejor performance ({selectedYear})</div>
         <div className="list">

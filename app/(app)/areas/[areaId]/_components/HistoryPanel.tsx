@@ -361,7 +361,7 @@ export default function HistoryPanel({
 
   return (
     <div style={{ display: "grid", gap: 14 }}>
-      <Card>
+      <Card data-onboarding="historial-filters">
         <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
           <div style={{ fontSize: 20, fontWeight: 950 }}>Historial</div>
 
@@ -489,7 +489,7 @@ export default function HistoryPanel({
             )}
           </div>
         ) : (
-          <div style={{ display: "grid", gap: 12 }}>
+          <div data-onboarding="historial-list" style={{ display: "grid", gap: 12 }}>
             {histRuns.map((r) => (
               <div
                 key={r.id}

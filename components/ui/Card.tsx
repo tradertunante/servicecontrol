@@ -8,6 +8,7 @@ export default function Card({
   padding = 14,
   shadow = "sm",
   radius = 14,
+  "data-onboarding": dataOnboarding,
 }: {
   children: ReactNode;
   style?: CSSProperties;
@@ -16,12 +17,14 @@ export default function Card({
   padding?: number | string;
   shadow?: "sm" | "none";
   radius?: number | string;
+  "data-onboarding"?: string;
 }) {
   const Component = (as ?? "div") as ElementType;
 
   return (
     <Component
       className={className}
+      data-onboarding={dataOnboarding}
       style={{
         border: "1px solid var(--border)",
         background: "var(--card-bg)",

@@ -267,7 +267,7 @@ export default function DashboardPanel({
       </div>
 
       {/* Cards resumen */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 12 }}>
+      <div data-onboarding="team-general" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 12 }}>
         <Card>
           <div style={{ fontWeight: 950, marginBottom: 6 }}>Score promedio (últimas {lastN.length || 0})</div>
           <div style={{ fontSize: 34, fontWeight: 950, color: scoreColor(avgScore) }}>
@@ -366,7 +366,7 @@ export default function DashboardPanel({
       </div>
 
       {/* ✅ Ranking FAIL */}
-      <Card>
+      <Card data-onboarding="team-fail-ranking-card">
         <div
           style={{
             display: "flex",
@@ -376,7 +376,7 @@ export default function DashboardPanel({
             flexWrap: "wrap",
           }}
         >
-          <div style={{ fontWeight: 950, fontSize: 16 }}>Ranking de FAIL (según Vista + Periodo)</div>
+          <div data-onboarding="team-fail-ranking" style={{ fontWeight: 950, fontSize: 16 }}>Ranking de FAIL (según Vista + Periodo)</div>
           <div style={{ opacity: 0.75, fontSize: 12.5, fontWeight: 900 }}>
             Base: <strong>{base.length}</strong> auditorías
           </div>

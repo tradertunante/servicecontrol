@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import ReportSubscriptionsModule from "../report-subscriptions/ReportSubscriptionsModule";
 
 type Settings = {
   new_user_email_enabled: boolean;
@@ -81,6 +82,7 @@ export default function NotificationsModule({ hotelId }: { hotelId: string }) {
   }
 
   return (
+    <>
     <div className="rounded-2xl border border-black/10 bg-white p-5 shadow-sm">
       <h2 className="text-lg font-black mb-1">Notificaciones</h2>
       <p className="text-sm text-gray-500 mb-5">
@@ -150,5 +152,10 @@ export default function NotificationsModule({ hotelId }: { hotelId: string }) {
         </>
       )}
     </div>
+
+    <div className="mt-4">
+      <ReportSubscriptionsModule hotelId={hotelId} />
+    </div>
+    </>
   );
 }

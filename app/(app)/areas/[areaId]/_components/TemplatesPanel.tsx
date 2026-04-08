@@ -14,9 +14,9 @@ export default function TemplatesPanel({
 }) {
   return (
     <>
-      <h2 style={{ fontSize: 24, marginBottom: 12 }}>Auditorías disponibles</h2>
+      <h2 data-onboarding="templates-title" style={{ fontSize: 24, marginBottom: 12 }}>Auditorías disponibles</h2>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 16 }}>
+      <div data-onboarding="templates-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 16 }}>
         {templates.map((t) => (
           <div
             key={t.id}

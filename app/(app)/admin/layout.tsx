@@ -1,6 +1,8 @@
 import type { ReactNode } from "react";
 
 import { requirePageAccess } from "@/lib/auth/server";
+import ModuleOnboardingTour from "@/app/components/ModuleOnboardingTour";
+import { ADMIN_STEPS } from "@/lib/onboarding/adminSteps";
 
 export default async function AdminLayout({ children }: { children: ReactNode }) {
   await requirePageAccess({
@@ -9,5 +11,10 @@ export default async function AdminLayout({ children }: { children: ReactNode })
     nextPath: "/admin",
     redirectTo: "/dashboard",
   });
-  return <>{children}</>;
+  return (
+    <>
+      <ModuleOnboardingTour module="admin" steps={ADMIN_STEPS} />
+      {children}
+    </>
+  );
 }
