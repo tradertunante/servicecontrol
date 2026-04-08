@@ -1,11 +1,17 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import BackButton from "@/app/components/BackButton";
 import { getAssignableRoles } from "@/lib/auth/permissions";
 import { supabase } from "@/lib/supabaseClient";
 import type { Profile, Role } from "@/lib/types";
+
+type AreaRow = {
+  id: string;
+  name: string;
+  type: string | null;
+};
 
 export default function NewUserPageClient({
   initialProfile,
@@ -23,12 +29,30 @@ export default function NewUserPageClient({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [ok, setOk] = useState<string | null>(null);
+  const [areas, setAreas] = useState<AreaRow[]>([]);
+  const [selectedAreaIds, setSelectedAreaIds] = useState<string[]>([]);
+
+  useEffect(() => {
+    supabase
+      .from("areas")
+      .select("id,name,type")
+      .eq("hotel_id", hotelId)
+      .eq("active", true)
+      .order("name", { ascending: true })
+      .then(({ data }) => setAreas((data ?? []) as AreaRow[]));
+  }, [hotelId]);
+
+  function toggleArea(areaId: string) {
+    setSelectedAreaIds((prev) =>
+      prev.includes(areaId) ? prev.filter((value) => value !== areaId) : [...prev, areaId]
+    );
+  }
 
   const assignableRoles = useMemo(
     () => getAssignableRoles(initialProfile.role).filter((candidate) => candidate !== "superadmin"),
     [initialProfile.role]
   );
-  const effectiveRole = assignableRoles.includes(role) ? role : assignableRoles[0] ?? "auditor";
+  const effectiveRole = (assignableRoles as string[]).includes(role) ? role : assignableRoles[0] ?? "auditor";
   const passwordStrongEnough = password.length >= 8;
   const passwordsMatch = password.length > 0 && password === password2;
   const canSubmit = !busy && email.trim().length > 0 && passwordStrongEnough && passwordsMatch;
@@ -64,19 +88,36 @@ export default function NewUserPageClient({
         }),
       });
       const text = await res.text();
-      let payload: { error?: string } | null = null;
+      let payload: { ok?: boolean; user_id?: string; error?: string } | null = null;
       try {
-        payload = JSON.parse(text) as { error?: string };
+        payload = JSON.parse(text) as { ok?: boolean; user_id?: string; error?: string };
       } catch {
         payload = { error: text?.slice(0, 200) || "Respuesta no-JSON." };
       }
       if (!res.ok) throw new Error(payload?.error ?? "No se pudo crear el usuario.");
+
+      if (selectedAreaIds.length > 0 && payload?.user_id) {
+        const areaRes = await fetch("/api/admin/user-area-access/set", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${accessToken}`,
+          },
+          body: JSON.stringify({ user_id: payload.user_id, area_ids: selectedAreaIds }),
+        });
+        if (!areaRes.ok) {
+          const areaPayload = await areaRes.json().catch(() => ({})) as { error?: string };
+          throw new Error(areaPayload?.error ?? "Usuario creado, pero no se pudieron asignar las areas.");
+        }
+      }
+
       setOk("Usuario creado correctamente.");
       setFullName("");
       setEmail("");
       setPassword("");
       setPassword2("");
       setRole("auditor");
+      setSelectedAreaIds([]);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Error creando el usuario.");
     } finally {
@@ -107,6 +148,18 @@ export default function NewUserPageClient({
             </option>
           ))}
         </select>
+        {areas.length > 0 && (
+          <div className="grid gap-2">
+            <div className="font-[900]">Areas habilitadas</div>
+            {areas.map((area) => (
+              <label key={area.id} className="flex gap-2.5 items-center p-3 rounded-xl border border-[#ddd] cursor-pointer">
+                <input type="checkbox" checked={selectedAreaIds.includes(area.id)} onChange={() => toggleArea(area.id)} />
+                <span className="font-[800]">{area.name}</span>
+                {area.type ? <span className="opacity-60">{area.type}</span> : null}
+              </label>
+            ))}
+          </div>
+        )}
         <button
           onClick={handleCreate}
           disabled={!canSubmit}
