@@ -10,6 +10,7 @@ import HotelInfoModule from "../_modules/hotel/HotelInfoModule";
 import AuditTargetsModule from "../_modules/audit-targets/AuditTargetsModule";
 import BuilderModule from "../_modules/builder/BuilderModule";
 import ReportSubscriptionsModule from "../_modules/report-subscriptions/ReportSubscriptionsModule";
+import NotificationsModule from "../_modules/notifications/NotificationsModule";
 
 type ViewMode =
   | "hotel-info"
@@ -17,7 +18,8 @@ type ViewMode =
   | "users"
   | "audit-targets"
   | "builder"
-  | "report-emails";
+  | "report-emails"
+  | "notifications";
 
 function v(name: string, fallback: string) {
   return `var(${name}, ${fallback})`;
@@ -113,6 +115,7 @@ export default function AdminShell({
         { key: "users" as const, label: "Usuarios" },
         { key: "audit-targets" as const, label: "Objetivos" },
         { key: "report-emails" as const, label: "Reportes por email" },
+        { key: "notifications" as const, label: "Notificaciones" },
       ] as const,
     []
   );
@@ -185,8 +188,10 @@ export default function AdminShell({
             <BuilderModule hotelId={activeHotelId} />
           ) : viewMode === "audit-targets" ? (
             <AuditTargetsModule card={card} hotelId={activeHotelId} />
-          ) : (
+          ) : viewMode === "report-emails" ? (
             <ReportSubscriptionsModule hotelId={activeHotelId} />
+          ) : (
+            <NotificationsModule hotelId={activeHotelId} />
           )}
         </main>
       </div>

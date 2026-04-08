@@ -4,6 +4,7 @@ import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { canAssignRole, normalizeRole, type Role } from "@/lib/auth/permissions";
 import { resolveRouteHotelScope } from "@/lib/auth/server";
 import { sendWelcomeEmail } from "@/lib/email/sendWelcomeEmail";
+import { shouldSendNotification } from "@/lib/notifications/notificationSettings";
 import type { Profile } from "@/lib/types";
 
 export type ManagedUserRow = {
@@ -242,11 +243,12 @@ export async function createManagedUser(
   // Fetch hotel name for the welcome email (fire-and-forget, never blocks creation)
   void (async () => {
     try {
-      const { data: hotel } = await admin
-        .from("hotels")
-        .select("name")
-        .eq("id", hotelResult.hotelId)
-        .single();
+      const [{ data: hotel }, enabled] = await Promise.all([
+        admin.from("hotels").select("name").eq("id", hotelResult.hotelId).single(),
+        shouldSendNotification(hotelResult.hotelId, "new_user_email"),
+      ]);
+
+      if (!enabled) return;
 
       await sendWelcomeEmail({
         to: email,
