@@ -18,17 +18,19 @@ export function useDashboardData({
   setActiveHotelId,
   heatMode,
   selectedYear,
+  hasPack1,
 }: {
   profile: Profile | null;
   activeHotelId: string | null;
   setActiveHotelId: (s: string | null) => void;
   heatMode: HeatMode;
   selectedYear: number;
+  hasPack1: boolean;
 }) {
   const {
     loading, error, hotels, areas, templates, runs,
     pendingByTeam, selectedHotelName, canChooseHotel, resetForHotelChange,
-  } = useDashboardFetch({ profile, activeHotelId, setActiveHotelId, heatMode, selectedYear });
+  } = useDashboardFetch({ profile, activeHotelId, setActiveHotelId, heatMode, selectedYear, hasPack1 });
 
   const {
     monthScore, quarterScore, yearScore,

@@ -4,8 +4,9 @@ import { useEffect, useMemo, useState } from "react";
 import type { CSSProperties } from "react";
 import { useRouter } from "next/navigation";
 
-import { fetchActiveHotel, setActiveHotel } from "@/lib/auth/activeHotelClient";
+import { setActiveHotel } from "@/lib/auth/activeHotelClient";
 import type { Profile } from "@/lib/types";
+import type { PackCode } from "@/lib/auth/packs";
 
 import DashboardShell, {
   buildCardStyle,
@@ -27,9 +28,11 @@ import type { HeatMode } from "./_lib/dashboardUtils";
 export default function DashboardPageClient({
   initialProfile,
   initialHotelId,
+  enabledPacks,
 }: {
   initialProfile: Profile;
   initialHotelId: string | null;
+  enabledPacks: PackCode[];
 }) {
   const router = useRouter();
   const [profile] = useState<Profile>(initialProfile);
@@ -60,6 +63,9 @@ export default function DashboardPageClient({
     [fg, border, inputBg, shadowSm]
   );
 
+  const hasPack1 = enabledPacks.includes("pack1");
+  const hasPack2 = enabledPacks.includes("pack2");
+
   const {
     loading,
     error,
@@ -84,7 +90,7 @@ export default function DashboardPageClient({
     selectedHotelName,
     canChooseHotel,
     resetForHotelChange,
-  } = useDashboardData({ profile, activeHotelId, setActiveHotelId, heatMode, selectedYear });
+  } = useDashboardData({ profile, activeHotelId, setActiveHotelId, heatMode, selectedYear, hasPack1 });
 
   useEffect(() => {
     if (!availableYears.length) return;
@@ -205,23 +211,26 @@ export default function DashboardPageClient({
           onGoWorstAuditDetail={goWorstAuditDetail}
         />
 
-        <PendingTeamsCard
-          card={card}
-          rowBg={rowBg}
-          border={border}
-          fg={fg}
-          miniBtn={miniBtn}
-          pendingByTeam={pendingByTeam}
-          onGoDetail={goPendingTeamDetail}
-        />
+        {hasPack1 && (
+          <PendingTeamsCard
+            card={card}
+            rowBg={rowBg}
+            border={border}
+            fg={fg}
+            miniBtn={miniBtn}
+            pendingByTeam={pendingByTeam}
+            onGoDetail={goPendingTeamDetail}
+          />
+        )}
 
         <QuickLinks
           routerPush={(path) => router.push(path)}
-        inputBorder={inputBorder}
-        inputBg={inputBg}
-        fg={fg}
-        shadowSm={shadowSm}
-      />
+          inputBorder={inputBorder}
+          inputBg={inputBg}
+          fg={fg}
+          shadowSm={shadowSm}
+          showAnalytics={hasPack2}
+        />
     </DashboardShell>
   );
 }
