@@ -319,7 +319,7 @@ export default function MembersModule({
 
   return (
     <div className="grid gap-4 py-6">
-      <div className="border border-[#e5e7eb] bg-white p-4 rounded-xl">
+      <div data-onboarding="members-header" className="border border-[#e5e7eb] bg-white p-4 rounded-xl">
         <div className="text-2xl font-[800]">Members</div>
         <div className="mt-1.5 text-[#4b5563] leading-[1.5]">
           Gestiona miembros, su estado y las areas donde pueden operar dentro de tu alcance actual.
@@ -327,7 +327,7 @@ export default function MembersModule({
         {error ? <div className="mt-2.5 text-[#b91c1c] font-semibold">{error}</div> : null}
       </div>
 
-      <div className="border border-[#e5e7eb] bg-white p-4 rounded-xl grid gap-2.5">
+      <div data-onboarding="members-filters" className="border border-[#e5e7eb] bg-white p-4 rounded-xl grid gap-2.5">
         <div className="text-[18px] font-[800]">Filtros</div>
         <div className="grid gap-2.5 [grid-template-columns:repeat(auto-fit,minmax(180px,1fr))]">
           <input
@@ -394,19 +394,21 @@ export default function MembersModule({
         </div>
       ) : (
         <>
-          <MembersTable
-            members={filteredMembers}
-            busyMemberId={saving ? busyMemberId : null}
-            onEdit={beginEdit}
-            onDelete={(member) => void handleDelete(member)}
-          />
-          {pagination && (
-            <Pagination
-              page={pagination.page}
-              totalPages={pagination.total_pages}
-              onPageChange={(newPage) => setPage(newPage)}
+          <div data-onboarding="members-table">
+            <MembersTable
+              members={filteredMembers}
+              busyMemberId={saving ? busyMemberId : null}
+              onEdit={beginEdit}
+              onDelete={(member) => void handleDelete(member)}
             />
-          )}
+            {pagination && (
+              <Pagination
+                page={pagination.page}
+                totalPages={pagination.total_pages}
+                onPageChange={(newPage) => setPage(newPage)}
+              />
+            )}
+          </div>
         </>
       )}
     </div>

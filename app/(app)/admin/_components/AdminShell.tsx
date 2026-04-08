@@ -9,7 +9,6 @@ import UsersModule from "../_modules/users/UsersModule";
 import HotelInfoModule from "../_modules/hotel/HotelInfoModule";
 import AuditTargetsModule from "../_modules/audit-targets/AuditTargetsModule";
 import BuilderModule from "../_modules/builder/BuilderModule";
-import ReportSubscriptionsModule from "../_modules/report-subscriptions/ReportSubscriptionsModule";
 import NotificationsModule from "../_modules/notifications/NotificationsModule";
 
 type ViewMode =
@@ -18,7 +17,6 @@ type ViewMode =
   | "users"
   | "audit-targets"
   | "builder"
-  | "report-emails"
   | "notifications";
 
 function v(name: string, fallback: string) {
@@ -109,13 +107,12 @@ export default function AdminShell({
   const navItems = useMemo(
     () =>
       [
-        { key: "hotel-info" as const, label: "Hotel" },
-        { key: "departments" as const, label: "Departamentos" },
-        { key: "builder" as const, label: "Biblioteca de estándares" },
-        { key: "users" as const, label: "Usuarios" },
-        { key: "audit-targets" as const, label: "Objetivos" },
-        { key: "report-emails" as const, label: "Reportes por email" },
-        { key: "notifications" as const, label: "Notificaciones" },
+        { key: "hotel-info" as const, label: "Hotel", onboarding: "admin-hotel" },
+        { key: "departments" as const, label: "Departamentos", onboarding: "admin-departments" },
+        { key: "builder" as const, label: "Biblioteca de estándares", onboarding: "admin-builder" },
+        { key: "users" as const, label: "Usuarios", onboarding: "admin-users" },
+        { key: "audit-targets" as const, label: "Objetivos", onboarding: "admin-targets" },
+        { key: "notifications" as const, label: "Notificaciones", onboarding: "admin-notifications" },
       ] as const,
     []
   );
@@ -128,7 +125,7 @@ export default function AdminShell({
   return (
     <div className="w-full p-[18px]">
       <div style={layoutStyle}>
-        <aside style={sidebar}>
+        <aside style={sidebar} data-onboarding="admin-sidebar">
           <div className="flex items-center justify-between gap-3 flex-wrap mb-3">
             <div>
               <div className="text-[18px] font-black tracking-[0.2px]">Administración</div>
@@ -148,6 +145,7 @@ export default function AdminShell({
               return (
                 <button
                   key={it.key}
+                  data-onboarding={it.onboarding}
                   style={buildNavItemStyle(active)}
                   onClick={() => setViewMode(it.key)}
                   onMouseDown={(e) => {
@@ -188,8 +186,6 @@ export default function AdminShell({
             <BuilderModule hotelId={activeHotelId} />
           ) : viewMode === "audit-targets" ? (
             <AuditTargetsModule card={card} hotelId={activeHotelId} />
-          ) : viewMode === "report-emails" ? (
-            <ReportSubscriptionsModule hotelId={activeHotelId} />
           ) : (
             <NotificationsModule hotelId={activeHotelId} />
           )}

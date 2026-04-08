@@ -7,6 +7,7 @@ import { useToast } from "@/app/providers/ToastProvider";
 import { goBackOrFallback } from "@/lib/navigation/clientBack";
 import { useProfile } from "@/hooks/useProfile";
 import NotificationBell from "./NotificationBell";
+import SupportButton from "./SupportButton";
 import { useHotelId } from "@/hooks/useHotelId";
 
 function getPageTitle(pathname: string | null): string {
@@ -57,7 +58,6 @@ export default function HotelHeader() {
   const pathname = usePathname();
   const headerRef = useRef<HTMLDivElement | null>(null);
 
-  const [isHoveringHotel, setIsHoveringHotel] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   useEffect(() => {
@@ -74,168 +74,174 @@ export default function HotelHeader() {
 
   const pageTitle = useMemo(() => getPageTitle(pathname), [pathname]);
 
-  // useHotelId resolves via httpOnly cookie — works regardless of client JWT state
   const { data: sessionData, isLoading: sessionLoading } = useHotelId();
   const role = sessionData?.role ?? null;
   const hotelName = sessionData?.hotelName ?? null;
 
-  // useProfile is still used for features that need full profile (e.g. isAdmin flag)
-  // but we do NOT block the header on it
   const { data: profile } = useProfile();
 
   const loading = sessionLoading;
 
-  const isAdmin = (role === "admin" || role === "superadmin") ?? (profile?.role === "admin" || profile?.role === "superadmin");
+  const isAdmin = (role === "admin" || role === "superadmin") || (profile?.role === "admin" || profile?.role === "superadmin");
   const displayHotel = hotelName ?? (loading ? "Cargando…" : "Selecciona hotel");
   const backTarget = getBackTarget(pathname);
   const showBack = Boolean(backTarget);
   const navTo = (path: string) => { router.push(path); };
   const hotelHomeTarget = role === "manager" ? "/team/general" : "/home";
+
   const openAuditArea = async () => {
     try {
-      if (role === "manager") {
-        router.push("/team/templates");
-        return;
-      }
-
-      // Roles with full area access go straight to the templates selector
+      if (role === "manager") { router.push("/team/templates"); return; }
       const fullAccessRoles = ["admin", "general_manager", "superadmin", "quality"];
-      if (fullAccessRoles.includes(role ?? "")) {
-        router.push("/team/templates");
-        return;
-      }
-
+      if (fullAccessRoles.includes(role ?? "")) { router.push("/team/templates"); return; }
       const target = await resolveAuditTarget();
-      if (!target) {
-        toast.warn("No tienes ningún área asignada para auditar.");
-        return;
-      }
+      if (!target) { toast.warn("No tienes ningún área asignada para auditar."); return; }
       router.push(target);
-    } catch (error) {
-      console.error("Error resolving audit area access:", error);
+    } catch {
       toast.error("No se pudo abrir el área de auditoría.");
     }
   };
 
   return (
-    <div
+    <header
       ref={headerRef}
-      className="fixed top-0 left-0 right-0 bg-white/95 border-b border-black/[0.08] shadow-sm z-[1000] backdrop-blur-md py-2.5 max-[720px]:py-2 px-3.5 max-[720px]:px-2.5"
+      data-onboarding="header"
+      className="fixed top-0 left-0 right-0 z-[1000] bg-white border-b border-zinc-200"
+      style={{ height: 56 }}
     >
-      <div className="flex justify-between items-center gap-2.5 max-[720px]:gap-2 max-w-[1400px] mx-auto">
-      {/* Left */}
-      <div className="flex items-center gap-2.5 max-[720px]:gap-2 min-w-0 flex-1">
-        {showBack && (
-          <button
-            className="h-[38px] max-[720px]:h-[36px] min-w-[38px] max-[720px]:min-w-[36px] px-2.5 rounded-xl max-[720px]:rounded-[10px] border border-black/15 bg-white text-black font-black cursor-pointer text-[15px] inline-flex items-center justify-center transition-all hover:bg-black hover:text-white disabled:opacity-60"
-            onClick={() => goBackOrFallback(router, backTarget!)}
-            aria-label="Atrás"
-            title="Atrás"
-            disabled={loading}
-          >
-            ←
-          </button>
-        )}
-        <div className="flex flex-col min-w-0 gap-0.5">
-          <button
-            onClick={() => navTo(hotelHomeTarget)}
-            onMouseEnter={() => setIsHoveringHotel(true)}
-            onMouseLeave={() => setIsHoveringHotel(false)}
-            className="text-sm max-[720px]:text-[13px] font-black tracking-wide bg-transparent border-none cursor-pointer px-1 py-0.5 rounded-lg transition-all whitespace-nowrap overflow-hidden text-ellipsis min-w-0 max-w-[min(52vw,360px)] max-[720px]:max-w-[44vw]"
-            style={{
-              opacity: loading ? 0.6 : isHoveringHotel ? 1 : 0.85,
-              color: isHoveringHotel ? "#000" : "inherit",
-              textDecoration: isHoveringHotel ? "underline" : "none",
-            }}
-            title={displayHotel}
-            aria-label="Ir al inicio del hotel"
-            disabled={loading}
-          >
-            {displayHotel}
-          </button>
-          {pageTitle && (
-            <div className="text-[11px] max-[720px]:text-[10px] font-black opacity-60 whitespace-nowrap overflow-hidden text-ellipsis min-w-0 max-w-[min(52vw,360px)] max-[720px]:max-w-[44vw]">
-              {pageTitle}
-            </div>
-          )}
-        </div>
-      </div>
+      <div className="h-full flex items-center justify-between gap-4 max-w-[1400px] mx-auto px-5 max-[720px]:px-3">
 
-      {/* Right */}
-      <div className="flex items-center gap-2.5 flex-shrink-0 relative">
-        <NotificationBell />
-        {/* Desktop actions */}
-        <div className="hidden md:flex gap-2.5 items-center">
-          {isAdmin && (
+        {/* Left — logo · hotel · breadcrumb */}
+        <div className="flex items-center gap-3 min-w-0 flex-1">
+
+          {/* Back button */}
+          {showBack && (
             <button
-              className="px-3 py-[7px] rounded-[10px] border border-black/15 bg-white text-black font-black cursor-pointer text-[13px] whitespace-nowrap transition-all hover:bg-black hover:text-white disabled:opacity-60"
-              onClick={() => navTo("/admin")}
+              onClick={() => goBackOrFallback(router, backTarget!)}
               disabled={loading}
+              aria-label="Atrás"
+              className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-lg text-zinc-500 hover:text-zinc-900 hover:bg-zinc-100 transition-colors disabled:opacity-40"
             >
-              Admin
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M10 12L6 8l4-4" />
+              </svg>
             </button>
           )}
+
+          {/* Wordmark */}
           <button
-            className="px-3 py-[7px] rounded-[10px] border border-black/15 bg-white text-black font-black cursor-pointer text-[13px] whitespace-nowrap transition-all hover:bg-black hover:text-white disabled:opacity-60"
-            onClick={() => void openAuditArea()}
+            onClick={() => navTo(hotelHomeTarget)}
             disabled={loading}
+            aria-label="Ir al inicio"
+            className="flex-shrink-0 flex items-center justify-center w-7 h-7 rounded-md bg-zinc-900 text-white text-[11px] font-black tracking-tight leading-none"
           >
-            Auditar
+            SC
           </button>
-          <button
-            className="px-3 py-[7px] rounded-[10px] border border-black/15 bg-white text-black font-black cursor-pointer text-[13px] whitespace-nowrap transition-all hover:bg-black hover:text-white disabled:opacity-60"
-            onClick={() => navTo("/profile")}
-            disabled={loading}
-          >
-            Perfil
-          </button>
+
+          {/* Divider */}
+          <span className="flex-shrink-0 w-px h-4 bg-zinc-200" aria-hidden />
+
+          {/* Hotel name + page */}
+          <div className="flex items-baseline gap-2 min-w-0">
+            <button
+              onClick={() => navTo(hotelHomeTarget)}
+              disabled={loading}
+              title={displayHotel}
+              className="text-[13.5px] font-semibold text-zinc-800 hover:text-zinc-900 bg-transparent border-none cursor-pointer truncate max-w-[min(48vw,320px)] max-[720px]:max-w-[38vw] transition-colors disabled:opacity-50"
+            >
+              {displayHotel}
+            </button>
+            {pageTitle && (
+              <>
+                <span className="flex-shrink-0 text-zinc-300 text-[13px] select-none">/</span>
+                <span className="text-[13px] text-zinc-400 font-medium truncate max-w-[120px]">
+                  {pageTitle}
+                </span>
+              </>
+            )}
+          </div>
         </div>
 
-        {/* Mobile actions */}
-        <div className="md:hidden flex relative">
-          <button
-            className="h-[36px] min-w-[36px] px-2.5 rounded-[10px] border border-black/15 bg-white text-black font-black cursor-pointer text-[15px] inline-flex items-center justify-center transition-all hover:bg-black hover:text-white disabled:opacity-60"
-            onClick={() => setMobileMenuOpen((v) => !v)}
-            aria-label="Menú"
-            title="Menú"
-            disabled={loading}
-          >
-            ☰
-          </button>
-          {mobileMenuOpen && (
-            <div
-              className="absolute top-11 right-0 min-w-[170px] bg-white border border-black/[0.12] rounded-xl shadow-xl p-1.5 overflow-hidden z-[2000]"
-              role="menu"
-              aria-label="Menú de navegación"
+        {/* Right — actions */}
+        <div className="flex items-center gap-1.5 flex-shrink-0" data-onboarding="header-actions">
+          <SupportButton />
+          <NotificationBell />
+
+          {/* Desktop */}
+          <nav className="hidden md:flex items-center gap-1 ml-1">
+            {isAdmin && (
+              <button
+                onClick={() => navTo("/admin")}
+                disabled={loading}
+                className="px-3 h-8 rounded-lg text-[13px] font-medium text-zinc-600 hover:text-zinc-900 hover:bg-zinc-100 transition-colors disabled:opacity-40"
+              >
+                Admin
+              </button>
+            )}
+            <button
+              onClick={() => void openAuditArea()}
+              disabled={loading}
+              className="px-3 h-8 rounded-lg text-[13px] font-medium text-zinc-600 hover:text-zinc-900 hover:bg-zinc-100 transition-colors disabled:opacity-40"
             >
-              {isAdmin && (
+              Auditar
+            </button>
+            <button
+              onClick={() => navTo("/profile")}
+              disabled={loading}
+              className="ml-0.5 px-3 h-8 rounded-lg text-[13px] font-semibold text-white bg-zinc-900 hover:bg-zinc-700 transition-colors disabled:opacity-40"
+            >
+              Perfil
+            </button>
+          </nav>
+
+          {/* Mobile */}
+          <div className="md:hidden relative">
+            <button
+              onClick={() => setMobileMenuOpen((v) => !v)}
+              disabled={loading}
+              aria-label="Menú"
+              className="w-8 h-8 flex items-center justify-center rounded-lg text-zinc-500 hover:text-zinc-900 hover:bg-zinc-100 transition-colors disabled:opacity-40"
+            >
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round">
+                <path d="M2 4h12M2 8h12M2 12h12" />
+              </svg>
+            </button>
+
+            {mobileMenuOpen && (
+              <div
+                role="menu"
+                aria-label="Menú de navegación"
+                className="absolute top-10 right-0 min-w-[160px] bg-white border border-zinc-200 rounded-xl shadow-lg py-1 z-[2000]"
+              >
+                {isAdmin && (
+                  <button
+                    onClick={() => navTo("/admin")}
+                    disabled={loading}
+                    className="w-full text-left px-4 py-2.5 text-[13px] font-medium text-zinc-700 hover:bg-zinc-50 transition-colors disabled:opacity-40"
+                  >
+                    Admin
+                  </button>
+                )}
                 <button
-                  className="w-full text-left px-3 py-2.5 rounded-[10px] border-none bg-transparent cursor-pointer font-black text-[13px] text-black hover:bg-black/[0.06] disabled:opacity-60"
-                  onClick={() => navTo("/admin")}
+                  onClick={() => void openAuditArea()}
                   disabled={loading}
+                  className="w-full text-left px-4 py-2.5 text-[13px] font-medium text-zinc-700 hover:bg-zinc-50 transition-colors disabled:opacity-40"
                 >
-                  Admin
+                  Auditar
                 </button>
-              )}
-              <button
-                className="w-full text-left px-3 py-2.5 rounded-[10px] border-none bg-transparent cursor-pointer font-black text-[13px] text-black hover:bg-black/[0.06] disabled:opacity-60"
-                onClick={() => void openAuditArea()}
-                disabled={loading}
-              >
-                Auditar
-              </button>
-              <button
-                className="w-full text-left px-3 py-2.5 rounded-[10px] border-none bg-transparent cursor-pointer font-black text-[13px] text-black hover:bg-black/[0.06] disabled:opacity-60"
-                onClick={() => navTo("/profile")}
-                disabled={loading}
-              >
-                Perfil
-              </button>
-            </div>
-          )}
+                <button
+                  onClick={() => navTo("/profile")}
+                  disabled={loading}
+                  className="w-full text-left px-4 py-2.5 text-[13px] font-medium text-zinc-700 hover:bg-zinc-50 transition-colors disabled:opacity-40"
+                >
+                  Perfil
+                </button>
+              </div>
+            )}
+          </div>
         </div>
+
       </div>
-      </div>
-    </div>
+    </header>
   );
 }

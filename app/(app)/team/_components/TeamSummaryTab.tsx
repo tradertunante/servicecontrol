@@ -381,6 +381,7 @@ export default function TeamSummaryTab({
       )}
 
       <div
+        data-onboarding="progress-grid"
         style={{
           marginTop: 14,
           display: "grid",
@@ -388,7 +389,7 @@ export default function TeamSummaryTab({
           gap: 12,
         }}
       >
-        <Card>
+        <Card data-onboarding="progress-objectives">
           <div style={{ fontWeight: 700, fontSize: 16 }}>Objetivos por rubro</div>
           <div style={{ opacity: 0.8, marginTop: 6, fontSize: 13 }}>
             Producción del equipo frente al objetivo asignado agrupada por plantilla en {getPeriodLabel(selectedPeriod)}.
@@ -453,7 +454,7 @@ export default function TeamSummaryTab({
           </div>
         </Card>
 
-        <Card>
+        <Card data-onboarding="progress-leaderboard">
           <div style={{ fontWeight: 700, fontSize: 16 }}>
             Leaderboard auditores (
             {selectedPeriod === "daily"

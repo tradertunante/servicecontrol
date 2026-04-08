@@ -136,7 +136,7 @@ export default function HeatMapCard({
   const dataToShow = compareMode ? compareData : heatMapData;
 
   return (
-    <div style={{ ...card, marginTop: 16 }} className="card">
+    <div style={{ ...card, marginTop: 16 }} className="card" data-onboarding="heatmap">
       <div className="headerRow">
         <div>
           <div className="sectionTitle">{title}</div>

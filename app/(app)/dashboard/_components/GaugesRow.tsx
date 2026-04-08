@@ -61,7 +61,7 @@ export default function GaugesRow({
   ];
 
   return (
-    <div className="gridGauges">
+    <div className="gridGauges" data-onboarding="gauges">
       {items.map((a, idx) => {
         const avgNum = safeNumber(a.score?.avg);
         const label = formatPct(a.score?.avg);

@@ -1,6 +1,8 @@
 import type { ReactNode } from "react";
 
 import { requirePageAccess } from "@/lib/auth/server";
+import ModuleOnboardingTour from "@/app/components/ModuleOnboardingTour";
+import { HISTORIAL_STEPS } from "@/lib/onboarding/historialSteps";
 
 export default async function TeamHistoryLayout({ children }: { children: ReactNode }) {
   await requirePageAccess({
@@ -9,5 +11,10 @@ export default async function TeamHistoryLayout({ children }: { children: ReactN
     nextPath: "/team/historial",
     redirectTo: "/team/progreso",
   });
-  return <>{children}</>;
+  return (
+    <>
+      <ModuleOnboardingTour module="team-historial" steps={HISTORIAL_STEPS} />
+      {children}
+    </>
+  );
 }

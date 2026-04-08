@@ -165,7 +165,7 @@ export default function AreaTrendCard({
   }
 
   return (
-    <div className="rounded-2xl border bg-white p-5">
+    <div className="rounded-2xl border bg-white p-5" data-onboarding="area-trend">
       <h3 className="text-sm font-extrabold text-gray-900 mb-3">Tendencia por área</h3>
 
       <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-auto">

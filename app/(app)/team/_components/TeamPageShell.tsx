@@ -193,6 +193,7 @@ export default function TeamPageShell({
   return (
     <div style={{ padding: "12px 14px 18px", width: "100%" }}>
       <div
+        data-onboarding="team-header"
         style={{
           display: "flex",
           gap: 12,
@@ -225,6 +226,7 @@ export default function TeamPageShell({
       </div>
 
       <div
+        data-onboarding="team-nav"
         style={{
           marginTop: 12,
           display: "flex",

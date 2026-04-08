@@ -12,7 +12,7 @@ export default function AuditStickyFooter({
   onSave: () => void;
 }) {
   return (
-    <div className="sticky bottom-0 z-30 border-t border-slate-200 bg-white/95 px-3 py-[calc(10px+env(safe-area-inset-bottom))] backdrop-blur lg:px-4 lg:py-3">
+    <div data-onboarding="audit-submit" className="sticky bottom-0 z-30 border-t border-slate-200 bg-white/95 px-3 py-[calc(10px+env(safe-area-inset-bottom))] backdrop-blur lg:px-4 lg:py-3">
       <div>
         <button
           type="button"

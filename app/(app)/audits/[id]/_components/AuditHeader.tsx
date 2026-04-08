@@ -14,7 +14,7 @@ export default function AuditHeader({
   roomNumber?: string | null;
 }) {
   return (
-    <div className="flex flex-col gap-2 border-b border-slate-200 bg-white px-4 py-3 lg:px-6 lg:py-4">
+    <div data-onboarding="audit-header" className="flex flex-col gap-2 border-b border-slate-200 bg-white px-4 py-3 lg:px-6 lg:py-4">
       <div className="flex items-center gap-2.5">
         <BackButton fallback="/areas" />
         <div className="min-w-0 flex-1">

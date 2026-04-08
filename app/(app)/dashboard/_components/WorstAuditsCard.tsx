@@ -84,7 +84,7 @@ export default function WorstAuditsCard({
   onGoWorstAuditDetail: (areaId: string, templateId: string) => void;
 }) {
   return (
-    <div style={card} className="card">
+    <div style={card} className="card" data-onboarding="worst-audits">
       <div className="sectionTitle">Top 3 peores auditorías</div>
 
       <div className="list">

@@ -137,6 +137,7 @@ export default function AuditPageShell() {
         ) : null}
       </div>
 
+      <div data-onboarding="audit-questions">
       {sections.map((section) => {
         const questions = groupedQuestions[section.id] ?? [];
         if (!questions.length) return null;
@@ -191,6 +192,7 @@ export default function AuditPageShell() {
           No hay preguntas activas en esta auditoría.
         </div>
       ) : null}
+      </div>
     </div>
   );
 
