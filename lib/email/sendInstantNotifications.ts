@@ -3,6 +3,7 @@ import "server-only";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { buildAuditReportData } from "@/lib/reports/auditReport";
 import { sendInstantAuditEmail } from "./instantAuditEmail";
+import { shouldSendNotification } from "@/lib/notifications/notificationSettings";
 
 /**
  * Send instant email notifications to subscribers after an audit is submitted.
@@ -20,6 +21,12 @@ export async function sendInstantNotifications(runId: string) {
       .single();
 
     if (!run?.hotel_id) return;
+
+    // Gate on hotel notification settings (only quality audits have a toggle for now)
+    if (run.audit_channel === "quality") {
+      const enabled = await shouldSendNotification(run.hotel_id, "quality_audit_submitted_email");
+      if (!enabled) return;
+    }
 
     // Find instant subscribers for this hotel
     const { data: subs } = await admin
