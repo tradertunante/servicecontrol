@@ -7,8 +7,6 @@ import type { CSSProperties } from "react";
 import DepartmentsModule from "../_modules/departments/DepartmentsModule";
 import UsersModule from "../_modules/users/UsersModule";
 import HotelInfoModule from "../_modules/hotel/HotelInfoModule";
-import AccessByAreaModule from "../_modules/access-by-area/AccessByAreaModule";
-import AreaAuditsModule from "../_modules/area-audits/AreaAuditsModule";
 import AuditTargetsModule from "../_modules/audit-targets/AuditTargetsModule";
 import BuilderModule from "../_modules/builder/BuilderModule";
 import ReportSubscriptionsModule from "../_modules/report-subscriptions/ReportSubscriptionsModule";
@@ -17,8 +15,6 @@ type ViewMode =
   | "hotel-info"
   | "departments"
   | "users"
-  | "access-by-area"
-  | "area-audits"
   | "audit-targets"
   | "builder"
   | "report-emails";
@@ -115,8 +111,6 @@ export default function AdminShell({
         { key: "departments" as const, label: "Departamentos" },
         { key: "builder" as const, label: "Biblioteca de estándares" },
         { key: "users" as const, label: "Usuarios" },
-        { key: "access-by-area" as const, label: "Accesos por área" },
-        { key: "area-audits" as const, label: "Auditorías por área" },
         { key: "audit-targets" as const, label: "Objetivos" },
         { key: "report-emails" as const, label: "Reportes por email" },
       ] as const,
@@ -189,12 +183,6 @@ export default function AdminShell({
             <UsersModule />
           ) : viewMode === "builder" ? (
             <BuilderModule hotelId={activeHotelId} />
-          ) : viewMode === "access-by-area" ? (
-            <AccessByAreaModule />
-          ) : viewMode === "area-audits" ? (
-            <div style={card}>
-              <AreaAuditsModule hotelId={activeHotelId} areaId={null} areaName={null} />
-            </div>
           ) : viewMode === "audit-targets" ? (
             <AuditTargetsModule card={card} hotelId={activeHotelId} />
           ) : (
