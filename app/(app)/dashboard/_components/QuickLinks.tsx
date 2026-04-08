@@ -9,12 +9,14 @@ export default function QuickLinks({
   inputBg,
   fg,
   shadowSm,
+  showAnalytics,
 }: {
   routerPush: (path: string) => void;
   inputBorder: string;
   inputBg: string;
   fg: string;
   shadowSm: string;
+  showAnalytics: boolean;
 }) {
   const btn: CSSProperties = {
     textAlign: "left",
@@ -34,10 +36,12 @@ export default function QuickLinks({
         <div style={{ marginTop: 4, opacity: 0.7, fontSize: 13 }}>Explorar auditorías por departamento</div>
       </button>
 
-      <button onClick={() => routerPush("/analytics")} className="quickBtn w-full" style={btn}>
-        <div style={{ fontSize: 16, fontWeight: 900 }}>Analytics</div>
-        <div style={{ marginTop: 4, opacity: 0.7, fontSize: 13 }}>Ranking por colaboradores y fallos compartidos</div>
-      </button>
+      {showAnalytics && (
+        <button onClick={() => routerPush("/analytics")} className="quickBtn w-full" style={btn}>
+          <div style={{ fontSize: 16, fontWeight: 900 }}>Analytics</div>
+          <div style={{ marginTop: 4, opacity: 0.7, fontSize: 13 }}>Ranking por colaboradores y fallos compartidos</div>
+        </button>
+      )}
     </div>
   );
 }

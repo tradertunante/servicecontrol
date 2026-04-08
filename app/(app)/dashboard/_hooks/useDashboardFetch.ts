@@ -28,12 +28,14 @@ export function useDashboardFetch({
   setActiveHotelId,
   heatMode,
   selectedYear,
+  hasPack1 = true,
 }: {
   profile: Profile | null;
   activeHotelId: string | null;
   setActiveHotelId: (s: string | null) => void;
   heatMode: HeatMode;
   selectedYear: number;
+  hasPack1?: boolean;
 }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -103,22 +105,27 @@ export function useDashboardFetch({
           .order("executed_at", { ascending: false })
           .limit(5000);
 
-        const backlogItPromise = fetch(`/api/departments/backlog?department=it&hotel_id=${activeHotelId}`, {
-          method: "GET", credentials: "include", cache: "no-store", signal: controller.signal,
-        }).then(async (response) => {
-          const payload = (await response.json().catch(() => null)) as DepartmentBacklogResponse | null;
-          if (!response.ok || !payload) throw new Error("No se pudo cargar backlog IT.");
-          return payload;
-        });
+        const emptyBacklog: DepartmentBacklogResponse = { rows: [] };
 
-        const backlogEngineeringPromise = fetch(
-          `/api/departments/backlog?department=engineering&hotel_id=${activeHotelId}`,
-          { method: "GET", credentials: "include", cache: "no-store", signal: controller.signal }
-        ).then(async (response) => {
-          const payload = (await response.json().catch(() => null)) as DepartmentBacklogResponse | null;
-          if (!response.ok || !payload) throw new Error("No se pudo cargar backlog de Mantenimiento.");
-          return payload;
-        });
+        const backlogItPromise = hasPack1
+          ? fetch(`/api/departments/backlog?department=it&hotel_id=${activeHotelId}`, {
+              method: "GET", credentials: "include", cache: "no-store", signal: controller.signal,
+            }).then(async (response) => {
+              const payload = (await response.json().catch(() => null)) as DepartmentBacklogResponse | null;
+              if (!response.ok || !payload) throw new Error("No se pudo cargar backlog IT.");
+              return payload;
+            })
+          : Promise.resolve(emptyBacklog);
+
+        const backlogEngineeringPromise = hasPack1
+          ? fetch(`/api/departments/backlog?department=engineering&hotel_id=${activeHotelId}`, {
+              method: "GET", credentials: "include", cache: "no-store", signal: controller.signal,
+            }).then(async (response) => {
+              const payload = (await response.json().catch(() => null)) as DepartmentBacklogResponse | null;
+              if (!response.ok || !payload) throw new Error("No se pudo cargar backlog de Mantenimiento.");
+              return payload;
+            })
+          : Promise.resolve(emptyBacklog);
 
         const [hotelsRes, selectedHotelRes, areasRes, templatesRes, runsRes, backlogItRes, backlogEngineeringRes] = await Promise.all([
           hotelsPromise, selectedHotelPromise, areasPromise, templatesPromise, runsPromise, backlogItPromise, backlogEngineeringPromise,
