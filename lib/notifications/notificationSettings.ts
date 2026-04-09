@@ -22,9 +22,7 @@ export async function getHotelNotificationSettings(
 ): Promise<NotificationSettings> {
   const { data } = await supabaseAdmin()
     .from("hotel_notification_settings")
-    .select(
-      "new_user_email_enabled, quality_audit_submitted_email_enabled"
-    )
+    .select("new_user_email_enabled, quality_audit_submitted_email_enabled")
     .eq("hotel_id", hotelId)
     .maybeSingle();
 
@@ -45,10 +43,7 @@ export async function upsertHotelNotificationSettings(
 ): Promise<void> {
   const { error } = await supabaseAdmin()
     .from("hotel_notification_settings")
-    .upsert(
-      { hotel_id: hotelId, ...payload },
-      { onConflict: "hotel_id" }
-    );
+    .upsert({ hotel_id: hotelId, ...payload }, { onConflict: "hotel_id" });
 
   if (error) throw error;
 }
