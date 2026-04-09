@@ -1236,6 +1236,137 @@ export type Database = {
           },
         ]
       }
+      billing_accounts: {
+        Row: {
+          company_name: string | null
+          country: string | null
+          created_at: string
+          email: string
+          id: string
+          owner_user_id: string
+          provider: string
+          provider_customer_id: string | null
+          tax_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          company_name?: string | null
+          country?: string | null
+          created_at?: string
+          email: string
+          id?: string
+          owner_user_id: string
+          provider?: string
+          provider_customer_id?: string | null
+          tax_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          company_name?: string | null
+          country?: string | null
+          created_at?: string
+          email?: string
+          id?: string
+          owner_user_id?: string
+          provider?: string
+          provider_customer_id?: string | null
+          tax_id?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      billing_events: {
+        Row: {
+          id: string
+          payload: Json
+          processed_at: string | null
+          provider: string
+          provider_event_id: string
+          received_at: string
+          status: string
+          type: string
+        }
+        Insert: {
+          id?: string
+          payload?: Json
+          processed_at?: string | null
+          provider?: string
+          provider_event_id: string
+          received_at?: string
+          status?: string
+          type: string
+        }
+        Update: {
+          id?: string
+          payload?: Json
+          processed_at?: string | null
+          provider?: string
+          provider_event_id?: string
+          received_at?: string
+          status?: string
+          type?: string
+        }
+        Relationships: []
+      }
+      billing_subscriptions: {
+        Row: {
+          amount: number
+          billing_account_id: string
+          cancel_at_period_end: boolean
+          created_at: string
+          currency: string
+          current_period_end: string | null
+          current_period_start: string | null
+          id: string
+          interval: string
+          plan_code: string
+          provider_subscription_id: string
+          status: string
+          trial_end: string | null
+          updated_at: string
+        }
+        Insert: {
+          amount?: number
+          billing_account_id: string
+          cancel_at_period_end?: boolean
+          created_at?: string
+          currency?: string
+          current_period_end?: string | null
+          current_period_start?: string | null
+          id?: string
+          interval?: string
+          plan_code: string
+          provider_subscription_id: string
+          status?: string
+          trial_end?: string | null
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          billing_account_id?: string
+          cancel_at_period_end?: boolean
+          created_at?: string
+          currency?: string
+          current_period_end?: string | null
+          current_period_start?: string | null
+          id?: string
+          interval?: string
+          plan_code?: string
+          provider_subscription_id?: string
+          status?: string
+          trial_end?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "billing_subscriptions_billing_account_id_fkey"
+            columns: ["billing_account_id"]
+            isOneToOne: false
+            referencedRelation: "billing_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       department_backlog_items: {
         Row: {
           area_id: string
@@ -1613,6 +1744,41 @@ export type Database = {
           },
         ]
       }
+      hotel_notification_settings: {
+        Row: {
+          created_at: string
+          hotel_id: string
+          id: string
+          new_user_email_enabled: boolean
+          quality_audit_submitted_email_enabled: boolean
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          hotel_id: string
+          id?: string
+          new_user_email_enabled?: boolean
+          quality_audit_submitted_email_enabled?: boolean
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          hotel_id?: string
+          id?: string
+          new_user_email_enabled?: boolean
+          quality_audit_submitted_email_enabled?: boolean
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hotel_notification_settings_hotel_id_fkey"
+            columns: ["hotel_id"]
+            isOneToOne: true
+            referencedRelation: "hotels"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       hotel_quality_thresholds: {
         Row: {
           created_at: string
@@ -1713,9 +1879,9 @@ export type Database = {
       hotels: {
         Row: {
           active: boolean | null
+          billing_account_id: string | null
           created_at: string | null
           deleted_at: string | null
-          enabled_packs: string[] | null
           id: string
           name: string
           status: string
@@ -1724,9 +1890,9 @@ export type Database = {
         }
         Insert: {
           active?: boolean | null
+          billing_account_id?: string | null
           created_at?: string | null
           deleted_at?: string | null
-          enabled_packs?: string[] | null
           id?: string
           name: string
           status?: string
@@ -1735,16 +1901,24 @@ export type Database = {
         }
         Update: {
           active?: boolean | null
+          billing_account_id?: string | null
           created_at?: string | null
           deleted_at?: string | null
-          enabled_packs?: string[] | null
           id?: string
           name?: string
           status?: string
           timezone?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "hotels_billing_account_id_fkey"
+            columns: ["billing_account_id"]
+            isOneToOne: false
+            referencedRelation: "billing_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       notifications: {
         Row: {
@@ -1789,6 +1963,42 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      plan_entitlements: {
+        Row: {
+          analytics_enabled: boolean
+          created_at: string
+          max_audits_per_month: number
+          max_hotels: number
+          max_users_per_hotel: number
+          name: string
+          plan_code: string
+          reports_enabled: boolean
+          training_enabled: boolean
+        }
+        Insert: {
+          analytics_enabled?: boolean
+          created_at?: string
+          max_audits_per_month?: number
+          max_hotels?: number
+          max_users_per_hotel?: number
+          name: string
+          plan_code: string
+          reports_enabled?: boolean
+          training_enabled?: boolean
+        }
+        Update: {
+          analytics_enabled?: boolean
+          created_at?: string
+          max_audits_per_month?: number
+          max_hotels?: number
+          max_users_per_hotel?: number
+          name?: string
+          plan_code?: string
+          reports_enabled?: boolean
+          training_enabled?: boolean
+        }
+        Relationships: []
       }
       profiles: {
         Row: {
@@ -3399,6 +3609,10 @@ export type Database = {
       duplicate_audit_template_to_global: {
         Args: { p_pack_id: string; p_source_template_id: string }
         Returns: string
+      }
+      get_audit_run_full: {
+        Args: { p_actor_user_id: string; p_run_id: string }
+        Returns: Json
       }
       get_auditor_leaderboard: {
         Args: { p_day: string; p_hotel_id: string }

@@ -1613,6 +1613,41 @@ export type Database = {
           },
         ]
       }
+      hotel_notification_settings: {
+        Row: {
+          created_at: string
+          hotel_id: string
+          id: string
+          new_user_email_enabled: boolean
+          quality_audit_submitted_email_enabled: boolean
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          hotel_id: string
+          id?: string
+          new_user_email_enabled?: boolean
+          quality_audit_submitted_email_enabled?: boolean
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          hotel_id?: string
+          id?: string
+          new_user_email_enabled?: boolean
+          quality_audit_submitted_email_enabled?: boolean
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hotel_notification_settings_hotel_id_fkey"
+            columns: ["hotel_id"]
+            isOneToOne: true
+            referencedRelation: "hotels"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       hotel_quality_thresholds: {
         Row: {
           created_at: string
