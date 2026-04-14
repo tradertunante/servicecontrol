@@ -1,14 +1,19 @@
+import { useTranslations } from "next-intl";
 import SectionIntro from "./SectionIntro";
-import { modules } from "./marketingContent";
+
+type Module = { title: string; description: string };
 
 export default function FeatureGrid() {
+  const t = useTranslations("featureGrid");
+  const modules = t.raw("modules") as Module[];
+
   return (
     <section id="modulos" className="px-5 py-20 sm:px-8 lg:px-10 lg:py-24">
       <div className="mx-auto w-full max-w-[1480px]">
         <SectionIntro
-          eyebrow="Capacidades"
-          title="Modulos conectados para que la calidad no quede aislada del resto de la operacion."
-          description="Cada bloque esta pensado para cerrar el ciclo completo: detectar, corregir, verificar y consolidar aprendizaje dentro del equipo."
+          eyebrow={t("eyebrow")}
+          title={t("title")}
+          description={t("description")}
         />
 
         <div className="mt-12 grid gap-5 lg:grid-cols-12">

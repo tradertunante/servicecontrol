@@ -1,7 +1,18 @@
-import Link from "next/link";
-import { marketingNav } from "./marketingContent";
+import { useTranslations } from "next-intl";
+import { Link } from "@/i18n/navigation";
+import LanguageSwitcher from "./LanguageSwitcher";
 
 export default function MarketingHeader() {
+  const t = useTranslations("nav");
+  const tHeader = useTranslations("header");
+
+  const nav = [
+    { href: "/#solution", label: t("solution") },
+    { href: "/#modules", label: t("modules") },
+    { href: "/pricing", label: t("pricing") },
+    { href: "/demo", label: t("demo") },
+  ];
+
   return (
     <header className="sticky top-0 z-50 px-5 pt-4 sm:px-8 lg:px-10">
       <div
@@ -21,13 +32,13 @@ export default function MarketingHeader() {
               ServiceControl
             </div>
             <div className="hidden text-sm text-[var(--text-secondary)] sm:block">
-              Calidad y operacion hotelera
+              {tHeader("tagline")}
             </div>
           </div>
         </Link>
 
         <nav className="hidden items-center gap-3 lg:flex">
-          {marketingNav.map((item) => (
+          {nav.map((item) => (
             <Link
               key={item.href}
               href={item.href}
@@ -39,17 +50,18 @@ export default function MarketingHeader() {
         </nav>
 
         <div className="flex items-center gap-2 sm:gap-3">
+          <LanguageSwitcher />
           <Link
             href="/login"
             className="rounded-xl border border-black/15 bg-white px-4 py-2 text-sm font-black text-black transition hover:bg-black hover:text-white sm:px-5"
           >
-            Acceder
+            {t("login")}
           </Link>
           <Link
             href="/demo"
             className="rounded-xl border border-black/15 bg-black px-4 py-2 text-sm font-black text-white transition hover:bg-[#111827] sm:px-5"
           >
-            Solicitar demo
+            {t("requestDemo")}
           </Link>
         </div>
       </div>

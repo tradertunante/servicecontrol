@@ -1,0 +1,191 @@
+{
+  "nav": {
+    "solution": "Solution",
+    "modules": "Modules",
+    "pricing": "Pricing",
+    "demo": "Demo",
+    "login": "Log in",
+    "requestDemo": "Request demo"
+  },
+  "header": {
+    "tagline": "Hotel quality & operations"
+  },
+  "hero": {
+    "badge": "SaaS platform for hotel operations and quality",
+    "h1Part1": "Audit. Detect.",
+    "h1Highlight": "Nobody closes it.",
+    "h1Muted": "Start over.",
+    "subtitle": "Centralize everything that currently lives in Excel, paper and WhatsApp. Your team knows what to fix.",
+    "subtitleBold": "You know if it got done.",
+    "ctaPrimary": "Request demo",
+    "ctaSecondary": "See how it works",
+    "card1Title": "Real visibility",
+    "card1Body": "Score by area, corrective backlog and red flags visible to operations.",
+    "card2Title": "Daily execution",
+    "card2Body": "Mobile audits with evidence and follow-up without relying on memory.",
+    "card3Title": "One system",
+    "card3Body": "Quality, re-audits and training connected in a single workflow."
+  },
+  "problem": {
+    "eyebrow": "The problem",
+    "title": "Quality breaks down when it depends on memory, improvisation or manual follow-up.",
+    "description": "In many hotels, operations rely on spreadsheets, screenshots, messages and late reports. The result is not just chaos — it's loss of control.",
+    "points": [
+      "Paper audits, loose checklists or spreadsheets that nobody updates on time.",
+      "Recurring findings because there is no real follow-up or clear ownership.",
+      "Middle managers making decisions with partial information and no traceability.",
+      "Teams misaligned between operations, quality and training when a deviation appears."
+    ]
+  },
+  "solution": {
+    "eyebrow": "The solution",
+    "title": "ServiceControl turns hotel quality into an operating system.",
+    "description": "It's not just about auditing. It's about detecting, assigning, training and verifying with a single platform that gives continuity to every deviation.",
+    "pillar1Eyebrow": "Connected operations",
+    "pillar1Title": "One central system to execute, correct and verify.",
+    "pillar1Description": "ServiceControl connects audits, area scoring, corrective actions, re-audits and training in the same operational workflow.",
+    "pillar2Eyebrow": "Executive visibility",
+    "pillar2Title": "Every deviation is recorded with context and follow-up.",
+    "pillar2Description": "Management and operations see the real state of the hotel, at-risk areas and team progress without chasing manual reports.",
+    "features": [
+      "Digital audits with evidence and score by area",
+      "Re-audits to confirm the problem was actually fixed",
+      "Corrective actions with owners and visible progress tracking",
+      "Training linked to real team deviations"
+    ]
+  },
+  "benefits": {
+    "eyebrow": "Results",
+    "title": "Less operational chaos. More reaction capacity and control.",
+    "description": "The platform is designed so that management, operations and quality all work from the same picture of the hotel and can act before a deviation becomes the norm.",
+    "items": [
+      "Catch failures before they reach the guest or escalate to an incident.",
+      "Improve daily execution with clear standards and concrete follow-up.",
+      "Turn quality into a measurable system, not a one-off review.",
+      "Reduce the chaos of WhatsApp, paper and loose sheets to coordinate operations."
+    ]
+  },
+  "howItWorks": {
+    "eyebrow": "How it works",
+    "title": "Three steps from one-off review to continuous operational control.",
+    "description": "The experience is designed for hotels that need to standardize execution without adding more complexity to the team.",
+    "steps": [
+      {
+        "step": "01",
+        "title": "Set up standards and audits by area",
+        "description": "Define checklists, criteria and owners based on the real operation of each hotel."
+      },
+      {
+        "step": "02",
+        "title": "The team executes from mobile",
+        "description": "Audits are completed in the field with evidence, context and immediate traceability."
+      },
+      {
+        "step": "03",
+        "title": "The system detects, assigns and follows up",
+        "description": "Each finding triggers corrective actions, re-audits or training to close the deviation."
+      }
+    ]
+  },
+  "featureGrid": {
+    "eyebrow": "Capabilities",
+    "title": "Connected modules so quality is never isolated from the rest of operations.",
+    "description": "Each block is designed to close the full cycle: detect, correct, verify and consolidate learning within the team.",
+    "modules": [
+      {
+        "title": "Audits",
+        "description": "Digital execution by area with scoring, evidence and real-time operational status."
+      },
+      {
+        "title": "Re-audits",
+        "description": "Automatic or manual follow-up to verify the correction actually held."
+      },
+      {
+        "title": "Corrective actions",
+        "description": "Owners, priority, traceability and visible progress without relying on scattered messages."
+      },
+      {
+        "title": "Training",
+        "description": "Log training linked to findings to close execution gaps within the team."
+      },
+      {
+        "title": "Executive dashboard",
+        "description": "Visibility by area, trends, operational backlog and red flags to act on first."
+      }
+    ]
+  },
+  "demoShowcase": {
+    "eyebrow": "Visual preview",
+    "title": "A quality view designed for fast decision-making.",
+    "description": "The demo shows operations by area, findings status, re-audits and training in a clean, sober and executive layout.",
+    "ctaPrimary": "See demo",
+    "ctaSecondary": "See plans"
+  },
+  "finalCta": {
+    "eyebrow": "Request a demo",
+    "title": "Bring real control, follow-up and visibility to your hotel operations.",
+    "description": "We'll show you how to adapt ServiceControl to your areas, standards and operational workflow without mixing the commercial experience with the internal app.",
+    "ctaPrimary": "Request demo",
+    "ctaSecondary": "Log in"
+  },
+  "footer": {
+    "tagline": "Platform for operational control, quality, re-audits and team tracking in hotels."
+  },
+  "pricingPage": {
+    "eyebrow": "Pricing",
+    "title": "Plans designed for hotels that need real operational control.",
+    "description": "Pricing is defined based on the number of areas, operational complexity and implementation scope. We prioritize a clear proposal aligned with your operation.",
+    "planLabel": "Growth Hotel Plan",
+    "planTitle": "Guided implementation and annual license",
+    "modelLabel": "Commercial model",
+    "modelValue": "Custom quote",
+    "highlights": [
+      "Guided implementation based on the hotel's real operation",
+      "Configuration of areas, templates and quality workflows",
+      "Support for management, operations and quality teams"
+    ],
+    "licenseNote": "License for audits, re-audits, corrective actions, training and executive dashboard.",
+    "evaluationLabel": "What we assess",
+    "evaluationItems": [
+      "Number of hotels and operational areas",
+      "Audit volume and stakeholders involved",
+      "Desired level of implementation support",
+      "Reporting needs for management and leadership"
+    ],
+    "evaluationNote": "If you want to assess fit, we'll show you the platform and prepare a proposal tailored to your operation.",
+    "ctaPrimary": "Request demo",
+    "ctaSecondary": "Log in"
+  },
+  "demoPage": {
+    "eyebrow": "Demo",
+    "title": "A demonstration focused on operational control, not a feature list.",
+    "description": "The ServiceControl demo shows how an audit is captured, how it becomes actionable follow-up, and how management gains real visibility over operations.",
+    "journeyLabel": "Walk-through",
+    "journeyTitle": "From audit to closing the deviation",
+    "journeyStep1": "1. Standards and checklists configured by area.",
+    "journeyStep2": "2. Mobile execution with evidence and immediate scoring.",
+    "journeyStep3": "3. Corrective action, re-audit and training connected.",
+    "focusLabel": "Focus",
+    "focusTitle": "Operations, quality and management in the same conversation",
+    "focusDescription": "The demo adapts to your hotel type, critical areas and the follow-up workflow you use today.",
+    "whatYouSeeLabel": "What you will see",
+    "whatYouSee": [
+      "Area dashboard with score, alerts and operational backlog",
+      "Audit execution and evidence capture from mobile",
+      "Corrective action and re-audit tracking",
+      "Training log linked to real deviations"
+    ],
+    "ctaLabel": "Request a demo",
+    "ctaTitle": "Guided walkthrough for management, operations or quality.",
+    "ctaDescription": "This route is ready as a commercial entry point. If you later decide to connect a form or calendar booking, the structure is already separate from the product.",
+    "ctaSuggestedLabel": "Suggested CTA",
+    "ctaSuggestedTitle": "Request commercial demo",
+    "ctaSuggestedNote": "You can replace this block with a form, email or calendar booking when you define it.",
+    "ctaPrimary": "See pricing",
+    "ctaSecondary": "Log in"
+  },
+  "metadata": {
+    "title": "ServiceControl | Hotel quality in real time",
+    "description": "Platform to control hotel operational quality with audits, re-audits, corrective actions and team tracking."
+  }
+}

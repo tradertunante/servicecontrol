@@ -1,7 +1,9 @@
+import createIntlMiddleware from "next-intl/middleware";
 import { NextFetchEvent, NextRequest, NextResponse } from "next/server";
 
 import { checkRateLimit } from "@/lib/api/rateLimit";
 import { logger } from "@/lib/logger";
+import { routing } from "@/i18n/routing";
 
 const AUTH_TOKEN_COOKIE = "sc-access-token";
 
@@ -11,6 +13,11 @@ const PUBLIC_API_PREFIXES = [
   "/api/trainings/attendances",
   "/api/billing/webhook",
 ];
+
+// Marketing paths that need locale routing (without locale prefix)
+const MARKETING_PATHS = ["/", "/pricing", "/demo"];
+
+const intlMiddleware = createIntlMiddleware(routing);
 
 export function middleware(request: NextRequest, event: NextFetchEvent) {
   const { pathname } = request.nextUrl;
@@ -37,6 +44,20 @@ export function middleware(request: NextRequest, event: NextFetchEvent) {
     return NextResponse.next();
   }
 
+  // Handle locale routing for marketing pages
+  const isMarketingPath =
+    MARKETING_PATHS.includes(pathname) ||
+    routing.locales.some((locale) =>
+      pathname === `/${locale}` ||
+      pathname.startsWith(`/${locale}/pricing`) ||
+      pathname.startsWith(`/${locale}/demo`)
+    );
+
+  if (isMarketingPath) {
+    return intlMiddleware(request);
+  }
+
+  // Auth guard for protected app routes
   const token = request.cookies.get(AUTH_TOKEN_COOKIE)?.value;
 
   if (!token) {
@@ -56,6 +77,8 @@ export function middleware(request: NextRequest, event: NextFetchEvent) {
 
 export const config = {
   matcher: [
+    "/",
+    "/(en|es)/:path*",
     "/admin/:path*",
     "/analytics/:path*",
     "/areas/:path*",
