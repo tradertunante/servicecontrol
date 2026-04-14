@@ -3,29 +3,32 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useToast } from "@/app/providers/ToastProvider";
 import { goBackOrFallback } from "@/lib/navigation/clientBack";
 import { useProfile } from "@/hooks/useProfile";
 import NotificationBell from "./NotificationBell";
 import SupportButton from "./SupportButton";
+import AppLocaleSwitcher from "./AppLocaleSwitcher";
 import { useHotelId } from "@/hooks/useHotelId";
 
-function getPageTitle(pathname: string | null): string {
+function usePageTitle(pathname: string | null): string {
+  const t = useTranslations("app.header.pages");
   if (!pathname) return "";
-  if (pathname === "/dashboard") return "Dashboard";
-  if (pathname === "/admin") return "Admin";
-  if (pathname.startsWith("/admin/hotel")) return "Info del Hotel";
-  if (pathname === "/areas") return "Áreas";
-  if (pathname.startsWith("/areas/")) return "Área";
-  if (pathname === "/builder") return "Builder";
-  if (pathname.startsWith("/builder/")) return "Editor";
+  if (pathname === "/dashboard") return t("dashboard");
+  if (pathname === "/admin") return t("admin");
+  if (pathname.startsWith("/admin/hotel")) return t("hotelInfo");
+  if (pathname === "/areas") return t("areas");
+  if (pathname.startsWith("/areas/")) return t("area");
+  if (pathname === "/builder") return t("builder");
+  if (pathname.startsWith("/builder/")) return t("editor");
   if (pathname.startsWith("/audits/")) {
-    if (pathname.includes("/view")) return "Resultado";
-    return "Auditoría";
+    if (pathname.includes("/view")) return t("result");
+    return t("audit");
   }
-  if (pathname === "/users") return "Usuarios";
-  if (pathname === "/profile") return "Perfil";
-  if (pathname.startsWith("/superadmin/hotels")) return "Elegir hotel";
+  if (pathname === "/users") return t("users");
+  if (pathname === "/profile") return t("profile");
+  if (pathname.startsWith("/superadmin/hotels")) return t("selectHotel");
   return "";
 }
 
@@ -57,6 +60,7 @@ export default function HotelHeader() {
   const toast = useToast();
   const pathname = usePathname();
   const headerRef = useRef<HTMLDivElement | null>(null);
+  const t = useTranslations("app.header");
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -72,7 +76,7 @@ export default function HotelHeader() {
 
   useEffect(() => { setMobileMenuOpen(false); }, [pathname]);
 
-  const pageTitle = useMemo(() => getPageTitle(pathname), [pathname]);
+  const pageTitle = usePageTitle(pathname);
 
   const { data: sessionData, isLoading: sessionLoading } = useHotelId();
   const role = sessionData?.role ?? null;
@@ -83,7 +87,7 @@ export default function HotelHeader() {
   const loading = sessionLoading;
 
   const isAdmin = (role === "admin" || role === "superadmin") || (profile?.role === "admin" || profile?.role === "superadmin");
-  const displayHotel = hotelName ?? (loading ? "Cargando…" : "Selecciona hotel");
+  const displayHotel = hotelName ?? (loading ? t("loadingHotel") : t("selectHotel"));
   const backTarget = getBackTarget(pathname);
   const showBack = Boolean(backTarget);
   const navTo = (path: string) => { router.push(path); };
@@ -119,7 +123,7 @@ export default function HotelHeader() {
             <button
               onClick={() => goBackOrFallback(router, backTarget!)}
               disabled={loading}
-              aria-label="Atrás"
+              aria-label={t("back")}
               className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-lg text-zinc-500 hover:text-zinc-900 hover:bg-zinc-100 transition-colors disabled:opacity-40"
             >
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -132,7 +136,7 @@ export default function HotelHeader() {
           <button
             onClick={() => navTo(hotelHomeTarget)}
             disabled={loading}
-            aria-label="Ir al inicio"
+            aria-label={t("home")}
             className="flex-shrink-0 flex items-center justify-center w-7 h-7 rounded-md bg-zinc-900 text-white text-[11px] font-black tracking-tight leading-none"
           >
             SC
@@ -169,13 +173,14 @@ export default function HotelHeader() {
 
           {/* Desktop */}
           <nav className="hidden md:flex items-center gap-1 ml-1">
+            <AppLocaleSwitcher />
             {isAdmin && (
               <button
                 onClick={() => navTo("/admin")}
                 disabled={loading}
                 className="px-3 h-8 rounded-lg text-[13px] font-medium text-zinc-600 hover:text-zinc-900 hover:bg-zinc-100 transition-colors disabled:opacity-40"
               >
-                Admin
+                {t("pages.admin")}
               </button>
             )}
             <button
@@ -183,14 +188,14 @@ export default function HotelHeader() {
               disabled={loading}
               className="px-3 h-8 rounded-lg text-[13px] font-medium text-zinc-600 hover:text-zinc-900 hover:bg-zinc-100 transition-colors disabled:opacity-40"
             >
-              Auditar
+              {t("audit")}
             </button>
             <button
               onClick={() => navTo("/profile")}
               disabled={loading}
               className="ml-0.5 px-3 h-8 rounded-lg text-[13px] font-semibold text-white bg-zinc-900 hover:bg-zinc-700 transition-colors disabled:opacity-40"
             >
-              Perfil
+              {t("profile")}
             </button>
           </nav>
 
@@ -199,7 +204,7 @@ export default function HotelHeader() {
             <button
               onClick={() => setMobileMenuOpen((v) => !v)}
               disabled={loading}
-              aria-label="Menú"
+              aria-label={t("menu")}
               className="w-8 h-8 flex items-center justify-center rounded-lg text-zinc-500 hover:text-zinc-900 hover:bg-zinc-100 transition-colors disabled:opacity-40"
             >
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round">
@@ -210,16 +215,19 @@ export default function HotelHeader() {
             {mobileMenuOpen && (
               <div
                 role="menu"
-                aria-label="Menú de navegación"
+                aria-label={t("navMenu")}
                 className="absolute top-10 right-0 min-w-[160px] bg-white border border-zinc-200 rounded-xl shadow-lg py-1 z-[2000]"
               >
+                <div className="px-4 py-2">
+                  <AppLocaleSwitcher />
+                </div>
                 {isAdmin && (
                   <button
                     onClick={() => navTo("/admin")}
                     disabled={loading}
                     className="w-full text-left px-4 py-2.5 text-[13px] font-medium text-zinc-700 hover:bg-zinc-50 transition-colors disabled:opacity-40"
                   >
-                    Admin
+                    {t("pages.admin")}
                   </button>
                 )}
                 <button
@@ -227,14 +235,14 @@ export default function HotelHeader() {
                   disabled={loading}
                   className="w-full text-left px-4 py-2.5 text-[13px] font-medium text-zinc-700 hover:bg-zinc-50 transition-colors disabled:opacity-40"
                 >
-                  Auditar
+                  {t("audit")}
                 </button>
                 <button
                   onClick={() => navTo("/profile")}
                   disabled={loading}
                   className="w-full text-left px-4 py-2.5 text-[13px] font-medium text-zinc-700 hover:bg-zinc-50 transition-colors disabled:opacity-40"
                 >
-                  Perfil
+                  {t("profile")}
                 </button>
               </div>
             )}

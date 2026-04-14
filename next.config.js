@@ -7,6 +7,7 @@ const withNextIntl = createNextIntlPlugin("./i18n/request.ts");
 const nextConfig = {
   experimental: {
     instrumentationHook: true,
+    serverActions: true,
   },
   async headers() {
     return [

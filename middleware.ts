@@ -14,7 +14,6 @@ const PUBLIC_API_PREFIXES = [
   "/api/billing/webhook",
 ];
 
-// Marketing paths that need locale routing (without locale prefix)
 const MARKETING_PATHS = ["/", "/pricing", "/demo"];
 
 const intlMiddleware = createIntlMiddleware(routing);
@@ -22,7 +21,7 @@ const intlMiddleware = createIntlMiddleware(routing);
 export function middleware(request: NextRequest, event: NextFetchEvent) {
   const { pathname } = request.nextUrl;
 
-  // Rate limit API routes (100 req/min per IP)
+  // Rate limit API routes
   if (pathname.startsWith("/api/")) {
     const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
     const { allowed, retryAfterMs } = checkRateLimit(ip);
@@ -44,6 +43,18 @@ export function middleware(request: NextRequest, event: NextFetchEvent) {
     return NextResponse.next();
   }
 
+  // Redirect locale-prefixed auth routes to their canonical paths
+  const AUTH_ROUTES = ["/login", "/forgot-password", "/reset-password", "/register"];
+  for (const locale of routing.locales) {
+    for (const route of AUTH_ROUTES) {
+      if (pathname === `/${locale}${route}`) {
+        const url = request.nextUrl.clone();
+        url.pathname = route;
+        return NextResponse.redirect(url);
+      }
+    }
+  }
+
   // Handle locale routing for marketing pages
   const isMarketingPath =
     MARKETING_PATHS.includes(pathname) ||
@@ -54,7 +65,15 @@ export function middleware(request: NextRequest, event: NextFetchEvent) {
     );
 
   if (isMarketingPath) {
-    return intlMiddleware(request);
+    const response = intlMiddleware(request);
+    // Propagate locale to the app cookie so the authenticated app inherits the language
+    const detectedLocale = routing.locales.find((l) => pathname.startsWith(`/${l}`)) ?? routing.defaultLocale;
+    response.cookies.set("sc-locale", detectedLocale, {
+      path: "/",
+      maxAge: 60 * 60 * 24 * 365,
+      sameSite: "lax",
+    });
+    return response;
   }
 
   // Auth guard for protected app routes

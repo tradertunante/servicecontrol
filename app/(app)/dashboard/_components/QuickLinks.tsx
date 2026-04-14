@@ -2,6 +2,7 @@
 "use client";
 
 import type { CSSProperties } from "react";
+import { useTranslations } from "next-intl";
 
 export default function QuickLinks({
   routerPush,
@@ -18,6 +19,8 @@ export default function QuickLinks({
   shadowSm: string;
   showAnalytics: boolean;
 }) {
+  const t = useTranslations("app.dashboard");
+
   const btn: CSSProperties = {
     textAlign: "left",
     padding: 16,
@@ -32,14 +35,14 @@ export default function QuickLinks({
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full mt-6">
       <button onClick={() => routerPush("/areas")} className="quickBtn w-full" style={btn}>
-        <div style={{ fontSize: 16, fontWeight: 900 }}>Ver todos los departamentos</div>
-        <div style={{ marginTop: 4, opacity: 0.7, fontSize: 13 }}>Explorar auditorías por departamento</div>
+        <div style={{ fontSize: 16, fontWeight: 900 }}>{t("viewAllDepts")}</div>
+        <div style={{ marginTop: 4, opacity: 0.7, fontSize: 13 }}>{t("exploreAudits")}</div>
       </button>
 
       {showAnalytics && (
         <button onClick={() => routerPush("/analytics")} className="quickBtn w-full" style={btn}>
-          <div style={{ fontSize: 16, fontWeight: 900 }}>Analytics</div>
-          <div style={{ marginTop: 4, opacity: 0.7, fontSize: 13 }}>Ranking por colaboradores y fallos compartidos</div>
+          <div style={{ fontSize: 16, fontWeight: 900 }}>{t("analytics")}</div>
+          <div style={{ marginTop: 4, opacity: 0.7, fontSize: 13 }}>{t("collaboratorRanking")}</div>
         </button>
       )}
     </div>

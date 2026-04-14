@@ -2,6 +2,7 @@
 "use client";
 
 import type { CSSProperties } from "react";
+import { useTranslations } from "next-intl";
 import { setActiveHotel } from "@/lib/auth/activeHotelClient";
 import type { HotelRow } from "../_lib/dashboardTypes";
 
@@ -22,19 +23,21 @@ export default function HotelPicker({
   activeHotelId: string | null;
   setActiveHotelId: (v: string | null) => void;
 }) {
+  const t = useTranslations("app.dashboard");
+
   if (activeHotelId) return null;
 
   return (
     <main className="dash" style={{ background: bg, color: fg }}>
       <div style={{ ...card, margin: "0 auto" }}>
-        <div style={{ fontSize: 22, fontWeight: 950 }}>Elige un hotel</div>
+        <div style={{ fontSize: 22, fontWeight: 950 }}>{t("pickHotel")}</div>
         <div style={{ marginTop: 8, opacity: 0.7 }}>
-          Como superadmin, primero selecciona el hotel con el que quieres trabajar.
+          {t("pickHotelDesc")}
         </div>
 
         <div style={{ marginTop: 16, display: "grid", gap: 10 }}>
           {hotels.length === 0 ? (
-            <div style={{ opacity: 0.7 }}>No hay hoteles creados todavía.</div>
+            <div style={{ opacity: 0.7 }}>{t("noHotels")}</div>
           ) : (
             hotels.map((h) => (
               <button
@@ -55,7 +58,7 @@ export default function HotelPicker({
                 }}
               >
                 <div style={{ fontWeight: 950 }}>{h.name}</div>
-                <div style={{ opacity: 0.7, fontWeight: 900 }}>Entrar →</div>
+                <div style={{ opacity: 0.7, fontWeight: 900 }}>{t("enter")}</div>
               </button>
             ))
           )}

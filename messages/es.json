@@ -187,5 +187,87 @@
   "metadata": {
     "title": "ServiceControl | Calidad hotelera en tiempo real",
     "description": "Plataforma para controlar la calidad operativa del hotel con auditorías, reauditorías, acciones correctivas y seguimiento del equipo."
+  },
+  "app": {
+    "common": {
+      "loading": "Cargando…",
+      "noData": "No hay datos suficientes.",
+      "viewDetail": "Ver detalle",
+      "retry": "Reintentar",
+      "error": "Algo salió mal",
+      "errorDesc": "Ha ocurrido un error inesperado."
+    },
+    "header": {
+      "back": "Atrás",
+      "home": "Ir al inicio",
+      "audit": "Auditar",
+      "profile": "Perfil",
+      "menu": "Menú",
+      "navMenu": "Menú de navegación",
+      "loadingHotel": "Cargando…",
+      "selectHotel": "Selecciona hotel",
+      "pages": {
+        "dashboard": "Dashboard",
+        "admin": "Admin",
+        "hotelInfo": "Info del Hotel",
+        "areas": "Áreas",
+        "area": "Área",
+        "builder": "Builder",
+        "editor": "Editor",
+        "result": "Resultado",
+        "audit": "Auditoría",
+        "users": "Usuarios",
+        "profile": "Perfil",
+        "selectHotel": "Elegir hotel"
+      }
+    },
+    "dashboard": {
+      "greeting": "Hola",
+      "role": "Rol:",
+      "departments": "Departamentos:",
+      "selectedHotel": "Hotel seleccionado:",
+      "changeHotel": "Cambiar hotel",
+      "trend": "Tendencia por área",
+      "trendInsufficient": "Se necesitan al menos 2 meses de datos para mostrar tendencias.",
+      "noPreviousData": "Sin dato previo",
+      "trendYear": "Tendencia · Año",
+      "trendLast12": "Tendencia · Últimos 12 meses",
+      "internalVsQuality": "· Interno vs Quality",
+      "internalLegend": "🔵 Interno = equipo operativo · 🔍 Quality = depto. de calidad",
+      "clickAreaTip": "Tip: haz clic en un área (p. ej. Housekeeping) para ver el desglose por auditoría.",
+      "stopComparing": "✕ Comparando",
+      "compare": "⇄ Comparar",
+      "last12Months": "Últimos 12 meses",
+      "year": "Año",
+      "noData": "No hay datos suficientes.",
+      "trend3m": "Tendencia 3 meses:",
+      "score": "Score",
+      "auditsRegistered": "{count} auditorías registradas",
+      "topBest": "Top 3 departamentos con mejor performance ({year})",
+      "topWorst": "Top 3 departamentos con peor performance ({year})",
+      "worstAudits": "Top 3 peores auditorías",
+      "pending": "Pendientes",
+      "pendingByTeam": "Pendientes por equipo",
+      "pendingAudit": "{count, plural, one {# auditoría pendiente} other {# auditorías pendientes}}",
+      "viewAllDepts": "Ver todos los departamentos",
+      "exploreAudits": "Explorar auditorías por departamento",
+      "analytics": "Analytics",
+      "collaboratorRanking": "Ranking por colaboradores y fallos compartidos",
+      "pickHotel": "Elige un hotel",
+      "pickHotelDesc": "Como superadmin, primero selecciona el hotel con el que quieres trabajar.",
+      "noHotels": "No hay hoteles creados todavía.",
+      "enter": "Entrar →",
+      "auditCount": "{count, plural, one {(# auditoría)} other {(# auditorías)}}",
+      "auditCountPrev": "{count, plural, one {# auditoría} other {# auditorías}}"
+    },
+    "login": {
+      "subtitle": "Inicia sesión para continuar",
+      "emailLabel": "Email",
+      "emailPlaceholder": "tu@email.com",
+      "passwordLabel": "Contraseña",
+      "submitLoading": "Entrando…",
+      "submit": "Iniciar sesión",
+      "forgotPassword": "¿Olvidaste tu contraseña?"
+    }
   }
 }
