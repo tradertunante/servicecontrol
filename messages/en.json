@@ -187,5 +187,87 @@
   "metadata": {
     "title": "ServiceControl | Hotel quality in real time",
     "description": "Platform to control hotel operational quality with audits, re-audits, corrective actions and team tracking."
+  },
+  "app": {
+    "common": {
+      "loading": "Loading…",
+      "noData": "Not enough data.",
+      "viewDetail": "View detail",
+      "retry": "Retry",
+      "error": "Something went wrong",
+      "errorDesc": "An unexpected error occurred."
+    },
+    "header": {
+      "back": "Back",
+      "home": "Go home",
+      "audit": "Audit",
+      "profile": "Profile",
+      "menu": "Menu",
+      "navMenu": "Navigation menu",
+      "loadingHotel": "Loading…",
+      "selectHotel": "Select hotel",
+      "pages": {
+        "dashboard": "Dashboard",
+        "admin": "Admin",
+        "hotelInfo": "Hotel Info",
+        "areas": "Departments",
+        "area": "Department",
+        "builder": "Builder",
+        "editor": "Editor",
+        "result": "Result",
+        "audit": "Audit",
+        "users": "Users",
+        "profile": "Profile",
+        "selectHotel": "Select hotel"
+      }
+    },
+    "dashboard": {
+      "greeting": "Hello",
+      "role": "Role:",
+      "departments": "Departments:",
+      "selectedHotel": "Selected hotel:",
+      "changeHotel": "Switch hotel",
+      "trend": "Trend by area",
+      "trendInsufficient": "At least 2 months of data are needed to show trends.",
+      "noPreviousData": "No previous data",
+      "trendYear": "Trend · Year",
+      "trendLast12": "Trend · Last 12 months",
+      "internalVsQuality": "· Internal vs Quality",
+      "internalLegend": "🔵 Internal = operations team · 🔍 Quality = quality dept.",
+      "clickAreaTip": "Tip: click on an area (e.g. Housekeeping) to see the audit breakdown.",
+      "stopComparing": "✕ Comparing",
+      "compare": "⇄ Compare",
+      "last12Months": "Last 12 months",
+      "year": "Year",
+      "noData": "Not enough data.",
+      "trend3m": "3-month trend:",
+      "score": "Score",
+      "auditsRegistered": "{count} audits recorded",
+      "topBest": "Top 3 best-performing departments ({year})",
+      "topWorst": "Top 3 worst-performing departments ({year})",
+      "worstAudits": "Top 3 worst audits",
+      "pending": "Pending",
+      "pendingByTeam": "Pending by team",
+      "pendingAudit": "{count, plural, one {# pending audit} other {# pending audits}}",
+      "viewAllDepts": "View all departments",
+      "exploreAudits": "Explore audits by department",
+      "analytics": "Analytics",
+      "collaboratorRanking": "Ranking by collaborators and shared failures",
+      "pickHotel": "Select a hotel",
+      "pickHotelDesc": "As a superadmin, first select the hotel you want to work with.",
+      "noHotels": "No hotels created yet.",
+      "enter": "Enter →",
+      "auditCount": "{count, plural, one {(# audit)} other {(# audits)}}",
+      "auditCountPrev": "{count, plural, one {# audit} other {# audits}}"
+    },
+    "login": {
+      "subtitle": "Sign in to continue",
+      "emailLabel": "Email",
+      "emailPlaceholder": "you@email.com",
+      "passwordLabel": "Password",
+      "submitLoading": "Signing in…",
+      "submit": "Sign in",
+      "forgotPassword": "Forgot your password?"
+    }
   }
 }

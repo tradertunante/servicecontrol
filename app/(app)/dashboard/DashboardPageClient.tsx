@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { CSSProperties } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 
 import { setActiveHotel } from "@/lib/auth/activeHotelClient";
 import type { Profile } from "@/lib/types";
@@ -35,6 +36,7 @@ export default function DashboardPageClient({
   enabledPacks: PackCode[];
 }) {
   const router = useRouter();
+  const t = useTranslations("app.common");
   const [profile] = useState<Profile>(initialProfile);
   const [activeHotelId, setActiveHotelId] = useState<string | null>(initialHotelId);
   const [heatMode, setHeatMode] = useState<HeatMode>("YEAR");
@@ -50,66 +52,33 @@ export default function DashboardPageClient({
   const shadowSm = "var(--shadow-sm, 0 4px 16px rgba(0,0,0,0.06))";
   const rowBg = "var(--row-bg, rgba(0,0,0,0.04))";
 
-  const card = useMemo(
-    () => buildCardStyle({ fg, border, cardBg, shadowLg }),
-    [fg, border, cardBg, shadowLg]
-  );
-  const miniBtn: CSSProperties = useMemo(
-    () => buildMiniBtnStyle({ fg, border, inputBg }),
-    [fg, border, inputBg]
-  );
-  const ghostBtn: CSSProperties = useMemo(
-    () => buildGhostBtnStyle({ fg, border, inputBg, shadowSm }),
-    [fg, border, inputBg, shadowSm]
-  );
+  const card = useMemo(() => buildCardStyle({ fg, border, cardBg, shadowLg }), [fg, border, cardBg, shadowLg]);
+  const miniBtn: CSSProperties = useMemo(() => buildMiniBtnStyle({ fg, border, inputBg }), [fg, border, inputBg]);
+  const ghostBtn: CSSProperties = useMemo(() => buildGhostBtnStyle({ fg, border, inputBg, shadowSm }), [fg, border, inputBg, shadowSm]);
 
   const hasPack1 = enabledPacks.includes("pack1");
   const hasPack2 = enabledPacks.includes("pack2");
 
   const {
-    loading,
-    error,
-    hotels,
-    areas,
-    runs,
-    monthScore,
-    quarterScore,
-    yearScore,
-    prevMonthScore,
-    prevQuarterScore,
-    prevYearScore,
-    heatMapData,
-    heatMapDataInternal,
-    heatMapDataQuality,
-    monthLabels,
-    availableYears,
-    top3Areas,
-    worst3Areas,
-    worst3Audits,
-    pendingByTeam,
-    selectedHotelName,
-    canChooseHotel,
-    resetForHotelChange,
+    loading, error, hotels, areas, runs,
+    monthScore, quarterScore, yearScore,
+    prevMonthScore, prevQuarterScore, prevYearScore,
+    heatMapData, heatMapDataInternal, heatMapDataQuality,
+    monthLabels, availableYears,
+    top3Areas, worst3Areas, worst3Audits, pendingByTeam,
+    selectedHotelName, canChooseHotel, resetForHotelChange,
   } = useDashboardData({ profile, activeHotelId, setActiveHotelId, heatMode, selectedYear, hasPack1 });
 
   useEffect(() => {
     if (!availableYears.length) return;
-    if (!availableYears.includes(selectedYear)) {
-      setSelectedYear(availableYears[0]);
-    }
+    if (!availableYears.includes(selectedYear)) setSelectedYear(availableYears[0]);
   }, [availableYears, selectedYear]);
 
-  const goAreaDetail = (areaId: string) => {
-    router.push(`/team/general?area=${areaId}`);
-  };
-
-  const goWorstAuditDetail = (areaId: string, templateId: string) => {
+  const goAreaDetail = (areaId: string) => router.push(`/team/general?area=${areaId}`);
+  const goWorstAuditDetail = (areaId: string, templateId: string) =>
     router.push(`/team/historial?area=${areaId}&template=${templateId}&period=THIS_MONTH`);
-  };
-
-  const goPendingTeamDetail = (teamKey: "it" | "maintenance") => {
+  const goPendingTeamDetail = (teamKey: "it" | "maintenance") =>
     router.push(teamKey === "it" ? "/it" : "/engineering");
-  };
 
   const handleChangeHotel = () => {
     void (async () => {
@@ -139,7 +108,7 @@ export default function DashboardPageClient({
   if (loading) {
     return (
       <DashboardShell bg={bg} fg={fg} css={dashCss}>
-        <div style={{ opacity: 0.8 }}>Cargando…</div>
+        <div style={{ opacity: 0.8 }}>{t("loading")}</div>
       </DashboardShell>
     );
   }
@@ -201,63 +170,44 @@ export default function DashboardPageClient({
         selectedYear={selectedYear}
       />
 
-        <WorstAuditsCard
+      <WorstAuditsCard
+        card={card}
+        rowBg={rowBg}
+        border={border}
+        fg={fg}
+        miniBtn={miniBtn}
+        worst3Audits={worst3Audits}
+        onGoWorstAuditDetail={goWorstAuditDetail}
+      />
+
+      {hasPack1 && (
+        <PendingTeamsCard
           card={card}
           rowBg={rowBg}
           border={border}
-        fg={fg}
-        miniBtn={miniBtn}
-          worst3Audits={worst3Audits}
-          onGoWorstAuditDetail={goWorstAuditDetail}
-        />
-
-        {hasPack1 && (
-          <PendingTeamsCard
-            card={card}
-            rowBg={rowBg}
-            border={border}
-            fg={fg}
-            miniBtn={miniBtn}
-            pendingByTeam={pendingByTeam}
-            onGoDetail={goPendingTeamDetail}
-          />
-        )}
-
-        <QuickLinks
-          routerPush={(path) => router.push(path)}
-          inputBorder={inputBorder}
-          inputBg={inputBg}
           fg={fg}
-          shadowSm={shadowSm}
-          showAnalytics={hasPack2}
+          miniBtn={miniBtn}
+          pendingByTeam={pendingByTeam}
+          onGoDetail={goPendingTeamDetail}
         />
+      )}
+
+      <QuickLinks
+        routerPush={(path) => router.push(path)}
+        inputBorder={inputBorder}
+        inputBg={inputBg}
+        fg={fg}
+        shadowSm={shadowSm}
+        showAnalytics={hasPack2}
+      />
     </DashboardShell>
   );
 }
 
 const dashCss = `
-  .dash{
-    padding: 24px;
-    overflow-x: hidden;
-  }
-
-  .topBar{
-    display:flex; justify-content:space-between; align-items:center;
-    gap:12px; margin-bottom:18px;
-  }
-
-  .topText{ opacity:0.7; font-size:14px; line-height:1.25; }
-
-  .sectionTitle{
-    font-size:22px;
-    font-weight:950;
-    letter-spacing:0.4px;
-    margin-bottom:22px;
-  }
-
-  .gridGauges{
-    display:grid;
-    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-    gap:16px;
-  }
+  .dash { padding: 24px; overflow-x: hidden; }
+  .topBar { display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:18px; }
+  .topText { opacity:0.7; font-size:14px; line-height:1.25; }
+  .sectionTitle { font-size:22px; font-weight:950; letter-spacing:0.4px; margin-bottom:22px; }
+  .gridGauges { display:grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap:16px; }
 `;
