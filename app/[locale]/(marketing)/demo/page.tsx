@@ -1,10 +1,9 @@
 import { setRequestLocale } from "next-intl/server";
 import { useTranslations } from "next-intl";
-import { Link } from "@/i18n/navigation";
 import SectionIntro from "@/app/(marketing)/_components/SectionIntro";
-import { ProductOperationsMock } from "@/app/(marketing)/_components/MarketingShowcase";
+import CalEmbed from "@/app/(marketing)/_components/CalEmbed";
 
-function DemoPageContent() {
+function DemoPageContent({ locale }: { locale: string }) {
   const t = useTranslations("demoPage");
   const whatYouSee = t.raw("whatYouSee") as string[];
 
@@ -83,54 +82,17 @@ function DemoPageContent() {
               </div>
             </div>
 
-            <div className="mt-6">
-              <ProductOperationsMock />
-            </div>
           </section>
 
           <aside
-            className="rounded-[28px] p-8 text-white lg:p-10"
+            className="overflow-hidden rounded-[28px]"
             style={{
-              background: "rgba(15,23,42,0.96)",
-              border: "1px solid var(--dark-border-subtle)",
-              boxShadow: "var(--dark-shadow)",
+              border: "1px solid var(--border)",
+              boxShadow: "var(--shadow-lg)",
+              height: "100%",
             }}
           >
-            <div className="text-xs font-extrabold uppercase tracking-[0.2em] text-white/60">
-              {t("ctaLabel")}
-            </div>
-            <h2 className="mt-4 text-3xl font-extrabold tracking-tight">
-              {t("ctaTitle")}
-            </h2>
-            <p className="mt-5 text-lg leading-8 text-[var(--dark-text-muted)]">
-              {t("ctaDescription")}
-            </p>
-
-            <div
-              className="mt-8 rounded-[20px] p-5"
-              style={{ background: "var(--dark-card-bg)", border: "1px solid var(--dark-border-subtle)" }}
-            >
-              <div className="text-sm font-bold text-[var(--dark-text-muted)]">{t("ctaSuggestedLabel")}</div>
-              <div className="mt-3 text-xl font-bold">{t("ctaSuggestedTitle")}</div>
-              <div className="mt-2 text-sm leading-6 text-white/60">
-                {t("ctaSuggestedNote")}
-              </div>
-            </div>
-
-            <div className="mt-8 flex flex-wrap gap-4">
-              <Link
-                href="/pricing"
-                className="rounded-xl border border-white/12 bg-white px-6 py-3 text-sm font-black text-black transition hover:bg-white/90"
-              >
-                {t("ctaPrimary")}
-              </Link>
-              <Link
-                href="/login"
-                className="rounded-xl border border-white/14 px-6 py-3 text-sm font-black text-white transition hover:bg-white/8"
-              >
-                {t("ctaSecondary")}
-              </Link>
-            </div>
+            <CalEmbed locale={locale} />
           </aside>
         </div>
       </div>
@@ -140,5 +102,5 @@ function DemoPageContent() {
 
 export default function DemoPage({ params }: { params: { locale: string } }) {
   setRequestLocale(params.locale);
-  return <DemoPageContent />;
+  return <DemoPageContent locale={params.locale} />;
 }
