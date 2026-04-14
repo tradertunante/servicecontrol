@@ -4,6 +4,7 @@
 import Card from "@/components/ui/Card";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { supabase } from "@/lib/supabaseClient";
 
 import type { AuditRunRow, AuditTemplate, PeriodKey, Role } from "../_lib/areaTypes";
@@ -97,6 +98,7 @@ export default function HistoryPanel({
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const t = useTranslations("app.area.history");
   const now = new Date();
 
   // ✅ filtros "manuales" (mes/año) para el modo clásico
@@ -350,20 +352,21 @@ export default function HistoryPanel({
     const out: { label: string }[] = [];
     if (!isFailMode) return out;
 
-    out.push({ label: `Periodo: ${String(urlPeriod)}` });
-    out.push({ label: urlTemplate === "ALL" ? "Vista: General" : "Vista: Por tipo" });
+    out.push({ label: t("chipPeriod", { period: String(urlPeriod) }) });
+    out.push({ label: urlTemplate === "ALL" ? t("chipViewAll") : t("chipViewFiltered") });
 
-    if (urlFailQ) out.push({ label: "Estándar seleccionado" });
-    if (urlFailCls) out.push({ label: `Clasificación: ${urlFailCls}` });
+    if (urlFailQ) out.push({ label: t("chipStandard") });
+    if (urlFailCls) out.push({ label: t("chipClassification", { cls: urlFailCls }) });
 
     return out;
-  }, [isFailMode, urlPeriod, urlTemplate, urlFailQ, urlFailCls]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isFailMode, urlPeriod, urlTemplate, urlFailQ, urlFailCls, t]);
 
   return (
     <div style={{ display: "grid", gap: 14 }}>
       <Card data-onboarding="historial-filters">
         <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
-          <div style={{ fontSize: 20, fontWeight: 950 }}>Historial</div>
+          <div style={{ fontSize: 20, fontWeight: 950 }}>{t("title")}</div>
 
           {isFailMode ? (
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
@@ -379,7 +382,7 @@ export default function HistoryPanel({
         {/* ✅ MODO FILTRADO (desde dashboard) */}
         {isFailMode ? (
           <div style={{ marginTop: 10, opacity: 0.85, fontSize: 13, fontWeight: 900 }}>
-            Mostrando auditorías donde hubo <strong>FAIL</strong> según el filtro seleccionado.
+            {t.rich("failModeDesc", { b: (chunks) => <strong>{chunks}</strong> })}
           </div>
         ) : null}
 
@@ -395,19 +398,19 @@ export default function HistoryPanel({
             }}
           >
             <div>
-              <div style={{ fontSize: 12, fontWeight: 950, opacity: 0.75, marginBottom: 6 }}>Tipo de auditoría</div>
+              <div style={{ fontSize: 12, fontWeight: 950, opacity: 0.75, marginBottom: 6 }}>{t("templateLabel")}</div>
               <select value={histTemplateId} onChange={(e) => setHistTemplateId(e.target.value)} style={inputStyle}>
-                {templates.map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.name}
+                {templates.map((tpl) => (
+                  <option key={tpl.id} value={tpl.id}>
+                    {tpl.name}
                   </option>
                 ))}
-                {templates.length === 0 ? <option value="">No hay auditorías</option> : null}
+                {templates.length === 0 ? <option value="">{t("noTemplates")}</option> : null}
               </select>
             </div>
 
             <div>
-              <div style={{ fontSize: 12, fontWeight: 950, opacity: 0.75, marginBottom: 6 }}>Año</div>
+              <div style={{ fontSize: 12, fontWeight: 950, opacity: 0.75, marginBottom: 6 }}>{t("yearLabel")}</div>
               <select value={histYear} onChange={(e) => setHistYear(Number(e.target.value))} style={inputStyle}>
                 {Array.from({ length: 6 }, (_, i) => now.getFullYear() - i).map((y) => (
                   <option key={y} value={y}>
@@ -418,7 +421,7 @@ export default function HistoryPanel({
             </div>
 
             <div>
-              <div style={{ fontSize: 12, fontWeight: 950, opacity: 0.75, marginBottom: 6 }}>Mes</div>
+              <div style={{ fontSize: 12, fontWeight: 950, opacity: 0.75, marginBottom: 6 }}>{t("monthLabel")}</div>
               <select value={histMonth} onChange={(e) => setHistMonth(Number(e.target.value))} style={inputStyle}>
                 {Array.from({ length: 12 }, (_, m) => (
                   <option key={m} value={m}>
@@ -430,7 +433,7 @@ export default function HistoryPanel({
 
             <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
               <button onClick={handleSearchHistoryMonthMode} style={primaryBtn} disabled={!histTemplateId || histLoading}>
-                {histLoading ? "Buscando…" : "Buscar"}
+                {histLoading ? t("searching") : t("search")}
               </button>
               <button
                 onClick={() => {
@@ -440,14 +443,14 @@ export default function HistoryPanel({
                 style={ghostBtn}
                 disabled={histLoading}
               >
-                Limpiar
+                {t("clear")}
               </button>
             </div>
           </div>
         ) : (
           <div style={{ marginTop: 12, display: "flex", gap: 10, flexWrap: "wrap" }}>
             <button onClick={fetchRunsByPeriodAndViewAndFail} style={primaryBtn} disabled={histLoading}>
-              {histLoading ? "Cargando…" : "Actualizar"}
+              {histLoading ? t("loading") : t("refresh")}
             </button>
             <button
               onClick={() => {
@@ -458,7 +461,7 @@ export default function HistoryPanel({
               style={ghostBtn}
               disabled={histLoading}
             >
-              Limpiar
+              {t("clear")}
             </button>
           </div>
         )}
@@ -468,24 +471,20 @@ export default function HistoryPanel({
 
       <Card>
         <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", alignItems: "baseline" }}>
-          <div style={{ fontWeight: 950, marginBottom: 10 }}>Resultados</div>
+          <div style={{ fontWeight: 950, marginBottom: 10 }}>{t("results")}</div>
           {histLoading ? (
-            <div style={{ fontWeight: 900, opacity: 0.75 }}>Cargando…</div>
+            <div style={{ fontWeight: 900, opacity: 0.75 }}>{t("loading")}</div>
           ) : (
-            <div style={{ fontWeight: 900, opacity: 0.75 }}>{histRuns.length} auditorías</div>
+            <div style={{ fontWeight: 900, opacity: 0.75 }}>{t("auditCount", { count: histRuns.length })}</div>
           )}
         </div>
 
         {histRuns.length === 0 ? (
           <div style={{ opacity: 0.8 }}>
             {isFailMode ? (
-              <>
-                No hay auditorías con <strong>FAIL</strong> para ese filtro.
-              </>
+              <>{t.rich("noFailAudits", { b: (chunks) => <strong>{chunks}</strong> })}</>
             ) : (
-              <>
-                No hay auditorías para ese periodo. Selecciona filtros y pulsa <strong>Buscar</strong>.
-              </>
+              <>{t.rich("noAudits", { b: (chunks) => <strong>{chunks}</strong> })}</>
             )}
           </div>
         ) : (
@@ -517,13 +516,13 @@ export default function HistoryPanel({
 
                 <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
                   <button onClick={() => onViewRun(r.id)} style={primaryBtn}>
-                    Ver auditoría
+                    {t("viewAudit")}
                   </button>
                   <button
                     onClick={() => router.push(`/reports/audit/${r.id}`)}
                     style={ghostBtn}
                   >
-                    Ver reporte
+                    {t("viewReport")}
                   </button>
 
                   {showDelete ? (
@@ -531,9 +530,9 @@ export default function HistoryPanel({
                       onClick={() => handleDeleteAudit(r.id)}
                       style={dangerBtn}
                       disabled={deletingRunId === r.id}
-                      title="Borrar auditoría"
+                      title={t("deleteAudit")}
                     >
-                      {deletingRunId === r.id ? "Borrando…" : "Borrar"}
+                      {deletingRunId === r.id ? t("deleting") : t("delete")}
                     </button>
                   ) : null}
                 </div>

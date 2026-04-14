@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useTranslations } from "next-intl";
 import * as XLSX from "xlsx";
 
 import { supabase } from "@/lib/supabaseClient";
@@ -33,6 +34,7 @@ export default function MembersImportPanel({
   areaOptions: MemberAreaOption[];
   onImported: (createdCount: number) => Promise<void> | void;
 }) {
+  const t = useTranslations("app.members.import");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewRows, setPreviewRows] = useState<MemberImportPreviewRow[]>([]);
   const [loadingPreview, setLoadingPreview] = useState(false);
@@ -83,7 +85,7 @@ export default function MembersImportPanel({
 
       setPreviewRows(parsed.rows);
     } catch (err) {
-      setError(normalizeError(err instanceof Error ? err.message : null, "No se pudo leer el archivo Excel."));
+      setError(normalizeError(err instanceof Error ? err.message : null, t("errorRead")));
     } finally {
       setLoadingPreview(false);
     }
@@ -112,12 +114,12 @@ export default function MembersImportPanel({
       setResult(null);
 
       if (!selectedFile) {
-        throw new Error("Selecciona un archivo Excel antes de importar.");
+        throw new Error(t("errorNoFile"));
       }
 
       const token = await getAccessToken();
       if (!token) {
-        throw new Error("Sesion invalida.");
+        throw new Error(t("errorSession"));
       }
 
       const formData = new FormData();
@@ -133,7 +135,7 @@ export default function MembersImportPanel({
 
       const payload = (await res.json().catch(() => null)) as (MemberImportResponse & { error?: string }) | null;
       if (!res.ok || !payload?.ok) {
-        throw new Error(normalizeError(payload?.error, "No se pudo importar el archivo."));
+        throw new Error(normalizeError(payload?.error, t("errorImport")));
       }
 
       setResult(payload);
@@ -141,7 +143,7 @@ export default function MembersImportPanel({
         await onImported(payload.created_count);
       }
     } catch (err) {
-      setError(normalizeError(err instanceof Error ? err.message : null, "No se pudo importar el archivo."));
+      setError(normalizeError(err instanceof Error ? err.message : null, t("errorImport")));
     } finally {
       setImporting(false);
     }
@@ -151,10 +153,9 @@ export default function MembersImportPanel({
     <div className="border border-[#e5e7eb] bg-white p-4 rounded-xl grid gap-3">
       <div className="flex justify-between gap-3 flex-wrap items-start">
         <div className="grid gap-1.5">
-          <div className="text-lg font-extrabold">Importar Excel</div>
+          <div className="text-lg font-extrabold">{t("title")}</div>
           <div className="text-[#4b5563] leading-[1.5]">
-            Sube un archivo <b>.xlsx</b> o <b>.xls</b> con columnas <b>full_name</b>, <b>employee_number</b>, <b>active</b> y <b>areas</b>.
-            Las areas deben coincidir por nombre visible del hotel actual y pueden venir separadas por comas.
+            {t.rich("description", { b: (chunks) => <b>{chunks}</b> })}
           </div>
         </div>
         <button
@@ -162,17 +163,17 @@ export default function MembersImportPanel({
           onClick={downloadTemplate}
           className="border border-[#d1d5db] bg-white text-[#111827] px-3 py-2.5 rounded-[10px] font-bold cursor-pointer"
         >
-          Descargar plantilla
+          {t("downloadTemplate")}
         </button>
       </div>
 
       <div className="grid gap-2">
-        <div className="font-bold">Formato esperado</div>
+        <div className="font-bold">{t("formatTitle")}</div>
         <div className="text-[#4b5563] leading-[1.5]">
-          `full_name` y `employee_number` son obligatorios. `active` acepta `true/false`, `yes/no`, `si/no`, `1/0`. Si viene vacio, se toma como activo. `areas` es opcional.
+          {t("formatDesc")}
         </div>
         <div className="text-[#4b5563] leading-[1.5]">
-          Areas disponibles en tu alcance actual: {areaOptions.length ? areaOptions.map((area) => area.name).join(", ") : "Sin areas disponibles"}
+          {t("availableAreas", { areas: areaOptions.length ? areaOptions.map((area) => area.name).join(", ") : t("noAreas") })}
         </div>
       </div>
 
@@ -190,7 +191,7 @@ export default function MembersImportPanel({
           disabled={importing || loadingPreview || !selectedFile}
           className={`border border-[#d1d5db] px-3 py-2.5 rounded-[10px] font-bold ${importing || loadingPreview || !selectedFile ? "bg-[#f3f4f6] text-[#9ca3af] cursor-not-allowed" : "bg-[#111827] text-white cursor-pointer"}`}
         >
-          {importing ? "Procesando importacion..." : "Importar Excel"}
+          {importing ? t("processing") : t("importButton")}
         </button>
         <button
           type="button"
@@ -203,27 +204,27 @@ export default function MembersImportPanel({
           disabled={importing}
           className={`border border-[#d1d5db] bg-white px-3 py-2.5 rounded-[10px] font-bold ${importing ? "text-[#9ca3af] cursor-not-allowed" : "text-[#111827] cursor-pointer"}`}
         >
-          Limpiar
+          {t("clear")}
         </button>
       </div>
 
-      {loadingPreview ? <div className="text-[#4b5563]">Leyendo archivo y preparando vista previa...</div> : null}
+      {loadingPreview ? <div className="text-[#4b5563]">{t("loadingPreview")}</div> : null}
       {error ? <div className="text-[#b91c1c] font-semibold">{error}</div> : null}
 
       {previewRows.length > 0 ? (
         <div className="grid gap-2">
           <div className="text-base font-extrabold">
-            Vista previa: {previewSummary.rows} filas detectadas
+            {t("previewTitle", { count: previewSummary.rows })}
           </div>
           <div className="overflow-x-auto border border-[#e5e7eb] rounded-[10px]">
             <table className="w-full border-collapse">
               <thead className="bg-[#f9fafb]">
                 <tr>
-                  <th className="text-left p-2.5">Fila</th>
-                  <th className="text-left p-2.5">Nombre</th>
-                  <th className="text-left p-2.5">No. colaborador</th>
-                  <th className="text-left p-2.5">Activo</th>
-                  <th className="text-left p-2.5">Areas</th>
+                  <th className="text-left p-2.5">{t("previewColRow")}</th>
+                  <th className="text-left p-2.5">{t("previewColName")}</th>
+                  <th className="text-left p-2.5">{t("previewColNumber")}</th>
+                  <th className="text-left p-2.5">{t("previewColActive")}</th>
+                  <th className="text-left p-2.5">{t("previewColAreas")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -239,7 +240,7 @@ export default function MembersImportPanel({
                 {previewRows.length > 8 ? (
                   <tr className="border-t border-[#e5e7eb]">
                     <td colSpan={5} className="p-2.5 text-[#4b5563]">
-                      ... y {previewRows.length - 8} filas mas.
+                      {t("moreRows", { count: previewRows.length - 8 })}
                     </td>
                   </tr>
                 ) : null}
@@ -252,20 +253,20 @@ export default function MembersImportPanel({
       {result ? (
         <div className="grid gap-2.5">
           <div className="text-base font-extrabold">
-            Resultado: {result.created_count} creados, {result.skipped_count} omitidos, {result.error_count} con error
+            {t("resultTitle", { created: result.created_count, skipped: result.skipped_count, errors: result.error_count })}
           </div>
           <div className="text-[#4b5563]">
-            Total procesado: {result.total_rows}. La importacion es parcial: las filas validas se crean aunque otras fallen.
+            {t("resultDesc", { total: result.total_rows })}
           </div>
           <div className="overflow-x-auto border border-[#e5e7eb] rounded-[10px]">
             <table className="w-full border-collapse">
               <thead className="bg-[#f9fafb]">
                 <tr>
-                  <th className="text-left p-2.5">Fila</th>
-                  <th className="text-left p-2.5">Estado</th>
-                  <th className="text-left p-2.5">Nombre</th>
-                  <th className="text-left p-2.5">No. colaborador</th>
-                  <th className="text-left p-2.5">Mensaje</th>
+                  <th className="text-left p-2.5">{t("resultColRow")}</th>
+                  <th className="text-left p-2.5">{t("resultColStatus")}</th>
+                  <th className="text-left p-2.5">{t("resultColName")}</th>
+                  <th className="text-left p-2.5">{t("resultColNumber")}</th>
+                  <th className="text-left p-2.5">{t("resultColMessage")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -273,7 +274,7 @@ export default function MembersImportPanel({
                   <tr key={`${row.row_number}-${row.employee_number}-${row.status}`} className="border-t border-[#e5e7eb]">
                     <td className="p-2.5">{row.row_number}</td>
                     <td className="p-2.5 font-bold">
-                      {row.status === "created" ? "Creado" : row.status === "skipped" ? "Omitido" : "Error"}
+                      {row.status === "created" ? t("statusCreated") : row.status === "skipped" ? t("statusSkipped") : t("statusError")}
                     </td>
                     <td className="p-2.5">{row.full_name || "—"}</td>
                     <td className="p-2.5">{row.employee_number || "—"}</td>

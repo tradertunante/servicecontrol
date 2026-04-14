@@ -9,7 +9,7 @@ export function fmtDate(iso: string | null) {
   if (!iso) return "—";
 
   const d = new Date(iso);
-  return d.toLocaleString("es-ES", {
+  return d.toLocaleString(undefined, {
     year: "numeric",
     month: "short",
     day: "2-digit",

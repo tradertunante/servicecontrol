@@ -1,6 +1,7 @@
 // FILE: app/(app)/team/_components/reaudits/ReauditStats.tsx
 "use client";
 
+import { useTranslations } from "next-intl";
 import type { ReauditStats as ReauditStatsType } from "../../_lib/reauditTypes";
 
 export default function ReauditStats({
@@ -8,6 +9,7 @@ export default function ReauditStats({
 }: {
   stats: ReauditStatsType;
 }) {
+  const t = useTranslations("app.team.reaudits");
   return (
     <div
       style={{
@@ -17,10 +19,10 @@ export default function ReauditStats({
       }}
     >
       {[
-        { label: "Total", value: stats.total },
-        { label: "Formación pendiente", value: stats.pendingTraining },
-        { label: "Bloqueadas", value: stats.blocked },
-        { label: "Listas", value: stats.ready },
+        { label: t("statsTotal"), value: stats.total },
+        { label: t("statsPendingTraining"), value: stats.pendingTraining },
+        { label: t("statsBlocked"), value: stats.blocked },
+        { label: t("statsReady"), value: stats.ready },
       ].map((item) => (
         <div
           key={item.label}

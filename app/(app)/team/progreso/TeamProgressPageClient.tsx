@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 
 import type { Profile } from "@/lib/types";
 
@@ -46,6 +47,7 @@ export default function TeamProgressPageClient({
   initialHotelId: string;
 }) {
   const router = useRouter();
+  const t = useTranslations("app.team.progress");
 
   const { profile, profileError, hotelId, managerAreaOptions } = useTeamWorkspace({
     initialProfile,
@@ -62,10 +64,10 @@ export default function TeamProgressPageClient({
       : null;
   const reportLabel =
     selectedPeriod === "monthly"
-      ? "Abrir reporte mensual"
+      ? t("reportMonthly")
       : selectedPeriod === "weekly"
-      ? "Abrir reporte semanal"
-      : "Reporte no disponible";
+      ? t("reportWeekly")
+      : t("reportUnavailable");
 
   const periodControl = useMemo(
     () => (
@@ -75,9 +77,9 @@ export default function TeamProgressPageClient({
           value={selectedPeriod}
           onChange={(e) => setSelectedPeriod(e.target.value as TeamPeriodKey)}
         >
-          <option value="daily">Diario</option>
-          <option value="weekly">Semanal</option>
-          <option value="monthly">Mensual</option>
+          <option value="daily">{t("periodDaily")}</option>
+          <option value="weekly">{t("periodWeekly")}</option>
+          <option value="monthly">{t("periodMonthly")}</option>
         </select>
 
         <button
@@ -89,8 +91,8 @@ export default function TeamProgressPageClient({
           }}
           title={
             reportHref
-              ? "Abre el reporte printable del periodo seleccionado para tu primera área asignada."
-              : "No existe un reporte printable para el periodo diario."
+              ? t("reportTooltip")
+              : t("reportTooltipDaily")
           }
           style={reportHref ? reportBtnStyle : reportBtnDisabledStyle}
         >

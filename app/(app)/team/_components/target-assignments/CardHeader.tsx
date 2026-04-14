@@ -2,6 +2,7 @@
 "use client";
 
 import type { CSSProperties } from "react";
+import { useTranslations } from "next-intl";
 
 type Props = {
   btn: CSSProperties;
@@ -20,6 +21,7 @@ export default function CardHeader({
   onRefresh,
   onOpenHistory,
 }: Props) {
+  const t = useTranslations("app.team.targets");
   return (
     <div
       style={{
@@ -32,11 +34,10 @@ export default function CardHeader({
     >
       <div>
         <div style={{ fontSize: 18, fontWeight: 800 }}>
-          Reparto del objetivo por auditoría
+          {t("cardTitle")}
         </div>
         <div style={{ opacity: 0.8, marginTop: 6, fontSize: 13 }}>
-          Reparte el objetivo de cada template entre los auditores de tu equipo según
-          el periodo seleccionado.
+          {t("cardSubtitle")}
         </div>
       </div>
 
@@ -46,10 +47,10 @@ export default function CardHeader({
           onClick={onRefresh}
           disabled={loading || saving}
         >
-          Refrescar
+          {t("refresh")}
         </button>
         <button style={btn} onClick={onOpenHistory} disabled={!selectedAreaId}>
-          Historial
+          {t("history")}
         </button>
       </div>
     </div>

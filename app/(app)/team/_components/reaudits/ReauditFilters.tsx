@@ -1,6 +1,8 @@
 // FILE: app/(app)/team/_components/reaudits/ReauditFilters.tsx
 "use client";
 
+import { useTranslations } from "next-intl";
+
 export default function ReauditFilters({
   q,
   onQChange,
@@ -16,6 +18,7 @@ export default function ReauditFilters({
   ) => void;
   onReload: () => void | Promise<void>;
 }) {
+  const t = useTranslations("app.team.reaudits");
   const btn: React.CSSProperties = {
     padding: "9px 12px",
     borderRadius: 10,
@@ -41,7 +44,7 @@ export default function ReauditFilters({
       <input
         value={q}
         onChange={(e) => onQChange(e.target.value)}
-        placeholder="Buscar área, template, colaborador, auditor..."
+        placeholder={t("searchPlaceholder")}
         style={{
           flex: "1 1 220px",
           minWidth: 0,
@@ -57,14 +60,14 @@ export default function ReauditFilters({
         onChange={(e) => onStatusFilterChange(e.target.value as any)}
         style={btn}
       >
-        <option value="all">Todos los estados</option>
-        <option value="pending_training">Formación pendiente</option>
-        <option value="blocked_by_non_operational">Bloqueadas</option>
-        <option value="draft">Listas para ejecutar</option>
+        <option value="all">{t("allStatuses")}</option>
+        <option value="pending_training">{t("statusPendingTraining")}</option>
+        <option value="blocked_by_non_operational">{t("statusBlocked")}</option>
+        <option value="draft">{t("statusReady")}</option>
       </select>
 
       <button onClick={onReload} style={btn}>
-        Recargar
+        {t("reload")}
       </button>
     </div>
   );

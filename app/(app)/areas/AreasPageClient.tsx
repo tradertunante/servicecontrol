@@ -156,12 +156,6 @@ export default function AreasPageClient({
                     <div className="areaName">{a.name}</div>
                     <div className="chips">
                       <span className="chip">{a.type ?? "Sin tipo"}</span>
-                      <span className="metaSmall">ID: <span className="mono">{a.id}</span></span>
-                      {a.created_at ? (
-                        <span className="metaSmall">
-                          Creada: <span>{new Date(a.created_at).toLocaleDateString("es-ES", { day: "2-digit", month: "short", year: "numeric" })}</span>
-                        </span>
-                      ) : null}
                     </div>
                   </div>
                   <div className="itemActions">

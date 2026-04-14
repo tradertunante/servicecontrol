@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useTranslations } from "next-intl";
 import { supabase } from "@/lib/supabaseClient";
 import type { Profile, Role } from "@/lib/types";
 
@@ -43,7 +44,7 @@ function daysOpen(openedAt: string, resolvedAt?: string | null) {
 function fmtDate(iso: string | null) {
   if (!iso) return "—";
   const d = new Date(iso);
-  return d.toLocaleString("es-ES", {
+  return d.toLocaleString(undefined, {
     year: "numeric",
     month: "short",
     day: "2-digit",
@@ -59,6 +60,7 @@ export default function CorrectiveActionsPanel({
   profile: Profile | null;
   hotelId: string;
 }) {
+  const t = useTranslations("app.team.corrective");
   const [loading, setLoading] = useState(true);
   const [savingId, setSavingId] = useState<string | null>(null);
   const [error, setError] = useState<string>("");
@@ -248,10 +250,10 @@ export default function CorrectiveActionsPanel({
 
       setMessage(
         nextStatus === "resolved"
-          ? "Acción marcada como resuelta."
+          ? t("msgResolved")
           : nextStatus === "in_progress"
-            ? "Acción marcada en progreso."
-            : "Acción reabierta."
+            ? t("msgInProgress")
+            : t("msgReopened")
       );
 
       await loadData();
@@ -281,10 +283,10 @@ export default function CorrectiveActionsPanel({
         }}
       >
         {[
-          { label: "Open", value: stats.open },
-          { label: "In Progress", value: stats.inProgress },
-          { label: "Resolved", value: stats.resolved },
-          { label: "Blocking Re-audits", value: stats.blocking },
+          { label: t("statOpen"), value: stats.open },
+          { label: t("statInProgress"), value: stats.inProgress },
+          { label: t("statResolved"), value: stats.resolved },
+          { label: t("statBlocking"), value: stats.blocking },
         ].map((item) => (
           <div
             key={item.label}
@@ -319,7 +321,7 @@ export default function CorrectiveActionsPanel({
         <input
           value={q}
           onChange={(e) => setQ(e.target.value)}
-          placeholder="Buscar título, área, colaborador, nota..."
+          placeholder={t("searchPlaceholder")}
           style={{
             flex: 1,
             minWidth: 260,
@@ -336,7 +338,7 @@ export default function CorrectiveActionsPanel({
             onChange={(e) => setDeptFilter(e.target.value as "all" | "engineering" | "systems")}
             style={btnBase}
           >
-            <option value="all">Todos los departamentos</option>
+            <option value="all">{t("allDepartments")}</option>
             <option value="engineering">engineering</option>
             <option value="systems">systems</option>
           </select>
@@ -347,10 +349,10 @@ export default function CorrectiveActionsPanel({
           onChange={(e) => setStatusFilter(e.target.value as "all" | "open" | "in_progress" | "resolved")}
           style={btnBase}
         >
-          <option value="all">Todos los estados</option>
-          <option value="open">open</option>
-          <option value="in_progress">in_progress</option>
-          <option value="resolved">resolved</option>
+          <option value="all">{t("allStatuses")}</option>
+          <option value="open">{t("statusOpen")}</option>
+          <option value="in_progress">{t("statusInProgress")}</option>
+          <option value="resolved">{t("statusResolved")}</option>
         </select>
 
         <label
@@ -370,11 +372,11 @@ export default function CorrectiveActionsPanel({
             checked={blockingOnly}
             onChange={(e) => setBlockingOnly(e.target.checked)}
           />
-          Solo bloqueantes
+          {t("blockingOnly")}
         </label>
 
         <button onClick={loadData} style={btnBase}>
-          Recargar
+          {t("reload")}
         </button>
       </div>
 
@@ -410,7 +412,7 @@ export default function CorrectiveActionsPanel({
 
       <div style={{ display: "grid", gap: 12 }}>
         {loading ? (
-          <div style={{ fontWeight: 900 }}>Cargando corrective actions…</div>
+          <div style={{ fontWeight: 900 }}>{t("loading")}</div>
         ) : filtered.length === 0 ? (
           <div
             style={{
@@ -420,9 +422,9 @@ export default function CorrectiveActionsPanel({
               padding: 18,
             }}
           >
-            <div style={{ fontWeight: 900 }}>No hay acciones correctivas</div>
+            <div style={{ fontWeight: 900 }}>{t("empty")}</div>
             <div style={{ marginTop: 6, color: "var(--muted)" }}>
-              No hay registros para los filtros actuales.
+              {t("emptyDesc")}
             </div>
           </div>
         ) : (
@@ -504,13 +506,13 @@ export default function CorrectiveActionsPanel({
                           color: "crimson",
                         }}
                       >
-                        BLOCKS RE-AUDIT
+                        {t("blocksReaudit")}
                       </span>
                     ) : null}
                   </div>
 
                   <div style={{ fontSize: 12, color: "var(--muted)", fontWeight: 800 }}>
-                    Open {openDays} día{openDays === 1 ? "" : "s"}
+                    {t("openDays", { days: openDays })}
                   </div>
                 </div>
 
@@ -522,7 +524,7 @@ export default function CorrectiveActionsPanel({
                   {row.description ? (
                     <div>
                       <div style={{ fontSize: 12, color: "var(--muted)", fontWeight: 800 }}>
-                        Description
+                        {t("fieldDescription")}
                       </div>
                       <div>{row.description}</div>
                     </div>
@@ -531,7 +533,7 @@ export default function CorrectiveActionsPanel({
                   {row.evidence_note ? (
                     <div>
                       <div style={{ fontSize: 12, color: "var(--muted)", fontWeight: 800 }}>
-                        Evidence note
+                        {t("fieldEvidenceNote")}
                       </div>
                       <div>{row.evidence_note}</div>
                     </div>
@@ -546,28 +548,28 @@ export default function CorrectiveActionsPanel({
                   >
                     <div>
                       <div style={{ fontSize: 12, color: "var(--muted)", fontWeight: 800 }}>
-                        Colaborador
+                        {t("fieldCollaborator")}
                       </div>
                       <div>{row.team_member_name ?? "—"}</div>
                     </div>
 
                     <div>
                       <div style={{ fontSize: 12, color: "var(--muted)", fontWeight: 800 }}>
-                        Opened
+                        {t("fieldOpened")}
                       </div>
                       <div>{fmtDate(row.opened_at)}</div>
                     </div>
 
                     <div>
                       <div style={{ fontSize: 12, color: "var(--muted)", fontWeight: 800 }}>
-                        Resolved at
+                        {t("fieldResolvedAt")}
                       </div>
                       <div>{fmtDate(row.resolved_at)}</div>
                     </div>
 
                     <div>
                       <div style={{ fontSize: 12, color: "var(--muted)", fontWeight: 800 }}>
-                        Resolved by
+                        {t("fieldResolvedBy")}
                       </div>
                       <div>{row.resolved_by_name ?? "—"}</div>
                     </div>
@@ -581,7 +583,7 @@ export default function CorrectiveActionsPanel({
                       onClick={() => setActionStatus(row, "open")}
                       style={{ ...btnBase, opacity: busy ? 0.6 : 1 }}
                     >
-                      Reopen
+                      {t("reopen")}
                     </button>
                   ) : null}
 
@@ -591,7 +593,7 @@ export default function CorrectiveActionsPanel({
                       onClick={() => setActionStatus(row, "in_progress")}
                       style={{ ...btnBase, opacity: busy ? 0.6 : 1 }}
                     >
-                      Mark In Progress
+                      {t("markInProgress")}
                     </button>
                   ) : null}
 
@@ -606,7 +608,7 @@ export default function CorrectiveActionsPanel({
                         color: "white",
                       }}
                     >
-                      {busy ? "Guardando..." : "Mark Resolved"}
+                      {busy ? t("saving") : t("markResolved")}
                     </button>
                   ) : null}
                 </div>

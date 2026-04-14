@@ -2,6 +2,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import type {
   EnrichedReauditRow,
   ProfileLite,
@@ -53,12 +54,13 @@ export default function ReauditCard({
   isTrainingOpen: boolean;
 }) {
   const router = useRouter();
+  const t = useTranslations("app.team.reaudits");
 
   function getStatusLabel(status: string | null | undefined) {
-    if (status === "draft") return "Lista";
-    if (status === "pending_training") return "Formación pendiente";
-    if (status === "blocked_by_non_operational") return "Bloqueada";
-    if (status === "submitted") return "Cerrada";
+    if (status === "draft") return t("statusLabel.draft");
+    if (status === "pending_training") return t("statusLabel.pending_training");
+    if (status === "blocked_by_non_operational") return t("statusLabel.blocked_by_non_operational");
+    if (status === "submitted") return t("statusLabel.submitted");
     return status ?? "—";
   }
 
@@ -192,7 +194,7 @@ export default function ReauditCard({
                   color: "green",
                 }}
               >
-                LISTA
+                {t("badgeReady")}
               </span>
             ) : null}
 
@@ -208,13 +210,13 @@ export default function ReauditCard({
                   color: "crimson",
                 }}
               >
-                VENCIDA
+                {t("badgeOverdue")}
               </span>
             ) : null}
           </div>
 
           <div style={{ fontWeight: 900, fontSize: 15, lineHeight: 1.15 }}>
-            {row.template_name ?? "Re-auditoría"}
+            {row.template_name ?? t("defaultTemplateName")}
           </div>
 
           <div style={{ opacity: 0.9, overflowWrap: "anywhere" }}>
@@ -232,9 +234,9 @@ export default function ReauditCard({
             overflowWrap: "anywhere",
           }}
         >
-          Programada: {fmtDate(row.scheduled_for)}
+          {t("scheduled")} {fmtDate(row.scheduled_for)}
           {daysToDue !== null
-            ? ` · ${Math.abs(daysToDue)} ${daysToDue < 0 ? "días tarde" : "días"}`
+            ? ` · ${Math.abs(daysToDue)} ${daysToDue < 0 ? t("daysLate") : t("days")}`
             : ""}
         </div>
       </div>
@@ -247,28 +249,28 @@ export default function ReauditCard({
         }}
       >
         <div style={panelStyle}>
-          <div style={labelStyle}>Colaborador</div>
+          <div style={labelStyle}>{t("fieldCollaborator")}</div>
           <div style={valueStyle}>{row.team_member_name ?? "—"}</div>
         </div>
 
         <div style={panelStyle}>
-          <div style={labelStyle}>Auditor asignado</div>
+          <div style={labelStyle}>{t("fieldAuditorAssigned")}</div>
           <div style={valueStyle}>{row.assigned_auditor_name ?? "—"}</div>
         </div>
 
         <div style={panelStyle}>
-          <div style={labelStyle}>Formación</div>
+          <div style={labelStyle}>{t("fieldTraining")}</div>
           <div style={valueStyle}>
             {row.requires_training
               ? row.training_confirmed
-                ? "confirmado"
-                : "pendiente"
-              : "no requerido"}
+                ? t("trainingConfirmed")
+                : t("trainingPending")
+              : t("trainingNotRequired")}
           </div>
         </div>
 
         <div style={panelStyle}>
-          <div style={labelStyle}>Bloqueos</div>
+          <div style={labelStyle}>{t("fieldBlockers")}</div>
           <div style={valueStyle}>{row.blocking_issue_count ?? 0}</div>
         </div>
       </div>
@@ -285,14 +287,14 @@ export default function ReauditCard({
       >
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
           <div style={{ display: "flex", gap: 6, alignItems: "baseline" }}>
-            <span style={labelStyle}>Score original</span>
+            <span style={labelStyle}>{t("fieldOriginalScore")}</span>
             <span style={valueStyle}>{formatScore(row.original_audit_score)}</span>
           </div>
 
           <div style={{ display: "flex", gap: 6, alignItems: "baseline" }}>
-            <span style={labelStyle}>Reauditoría</span>
+            <span style={labelStyle}>{t("fieldReaudit")}</span>
             <span style={valueStyle}>
-              {hasReauditScore ? formatScore(row.score) : "Pendiente"}
+              {hasReauditScore ? formatScore(row.score) : t("scorePending")}
             </span>
           </div>
         </div>
@@ -305,7 +307,7 @@ export default function ReauditCard({
               whiteSpace: "normal",
             }}
           >
-            Mejora: {improvement > 0 ? "+" : ""}
+            {t("improvement")} {improvement > 0 ? "+" : ""}
             {improvement.toFixed(2)} pts
           </div>
         ) : null}
@@ -335,7 +337,7 @@ export default function ReauditCard({
           />
 
           <div style={panelStyle}>
-            <div style={labelStyle}>Auditoría origen</div>
+            <div style={labelStyle}>{t("fieldOriginAudit")}</div>
             <div style={valueStyle}>{row.parent_audit_run_id ?? "—"}</div>
           </div>
 
@@ -376,11 +378,11 @@ export default function ReauditCard({
               border: "1px solid rgba(0,200,0,0.2)",
             }}
           >
-            Lista para re-auditar
+            {t("readyLabel")}
           </div>
 
           <button onClick={() => router.push(`/audits/${row.id}`)} style={primaryBtn}>
-            Abrir re-auditoría
+            {t("openReaudit")}
           </button>
         </div>
       ) : null}

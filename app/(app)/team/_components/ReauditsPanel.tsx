@@ -2,6 +2,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useTranslations } from "next-intl";
 import type { Profile } from "@/lib/types";
 
 import ReauditStats from "./reaudits/ReauditStats";
@@ -29,6 +30,7 @@ export default function ReauditsPanel({
     timelineByRunId,
   } = useReauditsData({ profile, hotelId });
 
+  const t = useTranslations("app.team.reaudits");
   const [statusFilter, setStatusFilter] = useState<
     "all" | "pending_training" | "blocked_by_non_operational" | "draft"
   >("all");
@@ -138,7 +140,7 @@ export default function ReauditsPanel({
 
       <div style={{ display: "grid", gap: 12 }}>
         {loading ? (
-          <div style={{ fontWeight: 900 }}>Cargando re-auditorías…</div>
+          <div style={{ fontWeight: 900 }}>{t("loading")}</div>
         ) : filtered.length === 0 ? (
           <div
             style={{
@@ -148,9 +150,9 @@ export default function ReauditsPanel({
               padding: 14,
             }}
           >
-            <div style={{ fontWeight: 900 }}>No hay re-auditorías</div>
+            <div style={{ fontWeight: 900 }}>{t("empty")}</div>
             <div style={{ marginTop: 6, color: "var(--muted)" }}>
-              No hay registros para los filtros actuales.
+              {t("emptyDesc")}
             </div>
           </div>
         ) : (

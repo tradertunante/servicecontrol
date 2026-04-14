@@ -3,6 +3,7 @@
 
 import { useMemo } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import Card from "@/components/ui/Card";
 import type {
   AnswerRow,
@@ -12,7 +13,7 @@ import type {
   QuestionMeta,
   SectionTotal,
 } from "../_lib/areaTypes";
-import { clamp, fmtDate, getPeriodRange, periodLabel, scoreColor } from "../_lib/areaUtils";
+import { clamp, fmtDate, getPeriodRange, scoreColor } from "../_lib/areaUtils";
 import Sparkline from "./Sparkline";
 
 function pillStyle(): React.CSSProperties {
@@ -61,6 +62,7 @@ export default function DashboardPanel({
   onOpenFailRuns?: (payload: { questionId?: string; classification?: string }) => void;
 }) {
   const router = useRouter();
+  const t = useTranslations("app.area.dashboard");
   const WINDOW = 4;
   const { startMs, endMs } = getPeriodRange(new Date(), period);
   const currentMonth = useMemo(() => {
@@ -107,16 +109,16 @@ export default function DashboardPanel({
     const exceptions = exceptionsByRun[run.id] ?? {};
 
     for (const secId of Object.keys(totals)) {
-      const t = totals[secId];
+      const sec = totals[secId];
       const fail = exceptions[secId]?.fail ?? 0;
       const na = exceptions[secId]?.na ?? 0;
 
-      const totalQ = t?.total_questions ?? 0;
+      const totalQ = sec?.total_questions ?? 0;
       const denom = Math.max(0, totalQ - na);
       const pass = Math.max(0, denom - fail);
       const score = denom === 0 ? null : (pass / denom) * 100;
 
-      const sectionName = t?.section_name ?? "Sin sección";
+      const sectionName = sec?.section_name ?? t("noSectionLabel");
       if (!sectionStats[sectionName]) sectionStats[sectionName] = { name: sectionName, scores: [] };
       if (score !== null) sectionStats[sectionName].scores.push(score);
     }
@@ -141,8 +143,8 @@ export default function DashboardPanel({
 
   const filterLabel =
     templateFilter === "ALL"
-      ? "General (todas)"
-      : templateNameById[templateFilter] ?? templates.find((t) => t.id === templateFilter)?.name ?? "Plantilla";
+      ? t("viewAll")
+      : templateNameById[templateFilter] ?? templates.find((tpl) => tpl.id === templateFilter)?.name ?? t("defaultTemplate");
 
   // -------------------------
   // ✅ Ranking FAIL (sobre base = Vista+Periodo)
@@ -164,7 +166,7 @@ export default function DashboardPanel({
       failByQuestion[qId] = (failByQuestion[qId] ?? 0) + 1;
 
       const meta = questionMetaById[qId];
-      const cls = (meta?.classification ?? "").trim() || "Sin clasificación";
+      const cls = (meta?.classification ?? "").trim() || t("noClassificationLabel");
       failByClassification[cls] = (failByClassification[cls] ?? 0) + 1;
     }
   }
@@ -196,11 +198,11 @@ export default function DashboardPanel({
   return (
     <div style={{ display: "grid", gap: 14 }}>
       <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
-        <div style={{ fontSize: 22, fontWeight: 950 }}>Dashboard por área</div>
+        <div style={{ fontSize: 22, fontWeight: 950 }}>{t("title")}</div>
 
         <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <div style={{ fontWeight: 900, opacity: 0.9 }}>Periodo:</div>
+            <div style={{ fontWeight: 900, opacity: 0.9 }}>{t("period")}</div>
             <select
               value={period}
               onChange={(e) => setPeriod(e.target.value as PeriodKey)}
@@ -215,14 +217,14 @@ export default function DashboardPanel({
                 color: "inherit",
               }}
             >
-              <option value="THIS_MONTH">Este mes</option>
-              <option value="LAST_3_MONTHS">3 últimos meses</option>
-              <option value="THIS_YEAR">Año</option>
+              <option value="THIS_MONTH">{t("periodThisMonth")}</option>
+              <option value="LAST_3_MONTHS">{t("periodLast3")}</option>
+              <option value="THIS_YEAR">{t("periodYear")}</option>
             </select>
           </div>
 
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <div style={{ fontWeight: 900, opacity: 0.9 }}>Vista:</div>
+            <div style={{ fontWeight: 900, opacity: 0.9 }}>{t("view")}</div>
             <select
               value={templateFilter}
               onChange={(e) => setTemplateFilter(e.target.value)}
@@ -237,10 +239,10 @@ export default function DashboardPanel({
                 color: "inherit",
               }}
             >
-              <option value="ALL">General (todas)</option>
-              {templates.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.name}
+              <option value="ALL">{t("viewAll")}</option>
+              {templates.map((tpl) => (
+                <option key={tpl.id} value={tpl.id}>
+                  {tpl.name}
                 </option>
               ))}
             </select>
@@ -261,7 +263,7 @@ export default function DashboardPanel({
               whiteSpace: "nowrap",
             }}
           >
-            Reporte mensual
+            {t("monthlyReport")}
           </button>
         </div>
       </div>
@@ -269,29 +271,29 @@ export default function DashboardPanel({
       {/* Cards resumen */}
       <div data-onboarding="team-general" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 12 }}>
         <Card>
-          <div style={{ fontWeight: 950, marginBottom: 6 }}>Score promedio (últimas {lastN.length || 0})</div>
+          <div style={{ fontWeight: 950, marginBottom: 6 }}>{t("avgScore", { count: lastN.length || 0 })}</div>
           <div style={{ fontSize: 34, fontWeight: 950, color: scoreColor(avgScore) }}>
             {avgScore === null ? "—" : `${avgScore.toFixed(2)}%`}
           </div>
 
           <div style={{ marginTop: 10, opacity: 0.85, display: "flex", alignItems: "center", gap: 12 }}>
-            <span style={{ fontWeight: 900 }}>Tendencia</span>
+            <span style={{ fontWeight: 900 }}>{t("trend")}</span>
             <span style={{ color: scoreColor(avgScore), display: "inline-flex" }}>
               <Sparkline values={trendValues} />
             </span>
           </div>
 
           <div style={{ marginTop: 8, fontSize: 12.5, opacity: 0.75 }}>
-            Vista: <strong>{filterLabel}</strong> · Periodo: <strong>{periodLabel(period)}</strong>
+            {t("summaryView")} <strong>{filterLabel}</strong> · {t("summaryPeriod")} <strong>{period === "THIS_MONTH" ? t("periodThisMonth") : period === "LAST_3_MONTHS" ? t("periodLast3") : t("periodYear")}</strong>
           </div>
         </Card>
 
         <Card>
-          <div style={{ fontWeight: 950, marginBottom: 6 }}>Última auditoría</div>
+          <div style={{ fontWeight: 950, marginBottom: 6 }}>{t("lastAudit")}</div>
           {lastRun ? (
             <>
               <div style={{ fontWeight: 900 }}>
-                {templateNameById[lastRun.audit_template_id] ?? "Plantilla"}
+                {templateNameById[lastRun.audit_template_id] ?? t("defaultTemplate")}
               </div>
               <div style={{ opacity: 0.85, marginTop: 4 }}>
                 {fmtDate(lastRun.executed_at)} ·{" "}
@@ -314,16 +316,16 @@ export default function DashboardPanel({
                   whiteSpace: "nowrap",
                 }}
               >
-                Ver auditoría
+                {t("viewAudit")}
               </button>
             </>
           ) : (
-            <div style={{ opacity: 0.8 }}>No hay auditorías enviadas todavía.</div>
+            <div style={{ opacity: 0.8 }}>{t("noAudits")}</div>
           )}
         </Card>
 
         <Card>
-          <div style={{ fontWeight: 950, marginBottom: 6 }}>Sección más débil</div>
+          <div style={{ fontWeight: 950, marginBottom: 6 }}>{t("weakestSection")}</div>
           {worstSection?.avg_score !== null ? (
             <>
               <div style={{ fontWeight: 900 }}>{worstSection?.section_name}</div>
@@ -344,7 +346,7 @@ export default function DashboardPanel({
         </Card>
 
         <Card>
-          <div style={{ fontWeight: 950, marginBottom: 6 }}>Sección más fuerte</div>
+          <div style={{ fontWeight: 950, marginBottom: 6 }}>{t("strongestSection")}</div>
           {bestSection?.avg_score !== null ? (
             <>
               <div style={{ fontWeight: 900 }}>{bestSection?.section_name}</div>
@@ -376,16 +378,16 @@ export default function DashboardPanel({
             flexWrap: "wrap",
           }}
         >
-          <div data-onboarding="team-fail-ranking" style={{ fontWeight: 950, fontSize: 16 }}>Ranking de FAIL (según Vista + Periodo)</div>
+          <div data-onboarding="team-fail-ranking" style={{ fontWeight: 950, fontSize: 16 }}>{t("failRanking")}</div>
           <div style={{ opacity: 0.75, fontSize: 12.5, fontWeight: 900 }}>
-            Base: <strong>{base.length}</strong> auditorías
+            {t("failBase", { count: base.length })}
           </div>
         </div>
 
         <div style={{ marginTop: 12, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
           {/* Izquierda: estándares */}
           <div>
-            <div style={{ fontWeight: 950, marginBottom: 8 }}>Estándares con más FAIL</div>
+            <div style={{ fontWeight: 950, marginBottom: 8 }}>{t("standardsFail")}</div>
 
             {topStandards.length === 0 ? (
               <div style={{ opacity: 0.75, fontWeight: 800 }}>—</div>
@@ -412,7 +414,7 @@ export default function DashboardPanel({
                       if (!onOpenFailRuns) return;
                       if (e.key === "Enter" || e.key === " ") onOpenFailRuns({ questionId: s.questionId });
                     }}
-                    title={onOpenFailRuns ? "Ver auditorías donde falló este estándar" : undefined}
+                    title={onOpenFailRuns ? t("viewStandardTitle") : undefined}
                   >
                     <div style={{ minWidth: 0 }}>
                       <div
@@ -427,9 +429,9 @@ export default function DashboardPanel({
                       </div>
 
                       <div style={{ marginTop: 6, display: "flex", gap: 8, flexWrap: "wrap", opacity: 0.9 }}>
-                        {s.tag ? <span style={pillStyle()}>Tag: {s.tag}</span> : null}
+                        {s.tag ? <span style={pillStyle()}>{t("tagLabel", { tag: s.tag })}</span> : null}
                         {s.classification ? (
-                          <span style={pillStyle()}>Clasificación: {s.classification}</span>
+                          <span style={pillStyle()}>{t("classLabel", { cls: s.classification })}</span>
                         ) : null}
                       </div>
                     </div>
@@ -447,7 +449,7 @@ export default function DashboardPanel({
 
           {/* Derecha: clasificaciones */}
           <div>
-            <div style={{ fontWeight: 950, marginBottom: 8 }}>Clasificaciones con más FAIL</div>
+            <div style={{ fontWeight: 950, marginBottom: 8 }}>{t("classificationsFail")}</div>
 
             {topClassifications.length === 0 ? (
               <div style={{ opacity: 0.75, fontWeight: 800 }}>—</div>
@@ -474,7 +476,7 @@ export default function DashboardPanel({
                       if (!onOpenFailRuns) return;
                       if (e.key === "Enter" || e.key === " ") onOpenFailRuns({ classification: c.classification });
                     }}
-                    title={onOpenFailRuns ? "Ver auditorías donde falló esta clasificación" : undefined}
+                    title={onOpenFailRuns ? t("viewClassTitle") : undefined}
                   >
                     <div style={{ fontWeight: 950, fontSize: 13.5, minWidth: 0, wordBreak: "break-word" }}>
                       {c.classification}
@@ -493,14 +495,13 @@ export default function DashboardPanel({
 
         {onOpenFailRuns ? (
           <div style={{ marginTop: 10, fontSize: 12.5, fontWeight: 900, opacity: 0.65 }}>
-            Tip: haz click en un estándar o clasificación para ver las auditorías relacionadas (y revisar comentarios/fotos).
+            {t("failTip")}
           </div>
         ) : null}
       </Card>
 
       <div style={{ opacity: 0.75, fontSize: 13 }}>
-        Nota: el dashboard se calcula con auditorías <strong>submitted</strong> con score, filtrando por{" "}
-        <strong>periodo</strong> y opcionalmente por <strong>plantilla</strong>.
+        {t.rich("note", { b: (chunks) => <strong>{chunks}</strong> })}
       </div>
     </div>
   );
