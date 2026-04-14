@@ -1,14 +1,19 @@
+import { useTranslations } from "next-intl";
 import SectionIntro from "./SectionIntro";
-import { steps } from "./marketingContent";
+
+type Step = { step: string; title: string; description: string };
 
 export default function HowItWorksSection() {
+  const t = useTranslations("howItWorks");
+  const steps = t.raw("steps") as Step[];
+
   return (
     <section id="como-funciona" className="px-5 py-20 sm:px-8 lg:px-10 lg:py-24">
       <div className="mx-auto w-full max-w-[1480px]">
         <SectionIntro
-          eyebrow="Como funciona"
-          title="Tres pasos para pasar de revision puntual a control operativo continuo."
-          description="La experiencia esta diseñada para hoteles que necesitan estandarizar ejecucion sin introducir mas complejidad al equipo."
+          eyebrow={t("eyebrow")}
+          title={t("title")}
+          description={t("description")}
           align="center"
         />
 

@@ -1,15 +1,20 @@
-import Link from "next/link";
-import SectionIntro from "../_components/SectionIntro";
-import { pricingHighlights } from "../_components/marketingContent";
+import { setRequestLocale } from "next-intl/server";
+import { useTranslations } from "next-intl";
+import { Link } from "@/i18n/navigation";
+import SectionIntro from "@/app/(marketing)/_components/SectionIntro";
 
-export default function PricingPage() {
+function PricingPageContent() {
+  const t = useTranslations("pricingPage");
+  const highlights = t.raw("highlights") as string[];
+  const evaluationItems = t.raw("evaluationItems") as string[];
+
   return (
     <main className="px-5 pb-20 pt-10 sm:px-8 lg:px-10 lg:pb-28 lg:pt-14">
       <div className="mx-auto w-full max-w-[1480px]">
         <SectionIntro
-          eyebrow="Pricing"
-          title="Planes pensados para hoteles que necesitan control operativo real."
-          description="La contratacion se define segun numero de areas, complejidad operativa y alcance de implantacion. Priorizamos una propuesta clara y alineada con tu operacion."
+          eyebrow={t("eyebrow")}
+          title={t("title")}
+          description={t("description")}
         />
 
         <div className="mt-12 grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
@@ -24,10 +29,10 @@ export default function PricingPage() {
             <div className="flex flex-wrap items-start justify-between gap-6 border-b border-black/8 pb-8">
               <div>
                 <div className="text-xs font-extrabold uppercase tracking-[0.2em] text-[var(--text-secondary)]">
-                  Plan Growth Hotel
+                  {t("planLabel")}
                 </div>
                 <h1 className="mt-4 text-[clamp(2.5rem,5vw,4.4rem)] font-extrabold tracking-[-0.05em] text-[var(--text)]">
-                  Implementacion guiada y licencia anual
+                  {t("planTitle")}
                 </h1>
               </div>
               <div
@@ -35,16 +40,16 @@ export default function PricingPage() {
                 style={{ background: "var(--row-bg)", border: "1px solid var(--border)" }}
               >
                 <div className="text-sm font-bold uppercase tracking-[0.2em] text-[var(--text-secondary)]">
-                  Modelo comercial
+                  {t("modelLabel")}
                 </div>
                 <div className="mt-2 text-3xl font-extrabold tracking-tight text-[var(--text)]">
-                  Presupuesto a medida
+                  {t("modelValue")}
                 </div>
               </div>
             </div>
 
             <div className="mt-8 grid gap-5 sm:grid-cols-2">
-              {pricingHighlights.map((item) => (
+              {highlights.map((item) => (
                 <div
                   key={item}
                   className="rounded-[18px] px-5 py-5 text-lg leading-8 text-[var(--text-secondary)]"
@@ -60,7 +65,7 @@ export default function PricingPage() {
                   border: "1px solid var(--dark-border-subtle)",
                 }}
               >
-                Licencia para auditorias, reauditorias, acciones correctivas, formacion y dashboard ejecutivo.
+                {t("licenseNote")}
               </div>
             </div>
           </section>
@@ -74,15 +79,10 @@ export default function PricingPage() {
             }}
           >
             <div className="text-xs font-extrabold uppercase tracking-[0.2em] text-white/60">
-              Lo que evaluamos
+              {t("evaluationLabel")}
             </div>
             <div className="mt-6 space-y-4">
-              {[
-                "Numero de hoteles y areas operativas",
-                "Volumen de auditorias y responsables involucrados",
-                "Nivel de acompanamiento deseado en implantacion",
-                "Necesidades de reporting para direccion y management",
-              ].map((item) => (
+              {evaluationItems.map((item) => (
                 <div
                   key={item}
                   className="rounded-[18px] px-5 py-4 text-base text-[var(--dark-text-muted)]"
@@ -94,7 +94,7 @@ export default function PricingPage() {
             </div>
 
             <p className="mt-8 text-lg leading-8 text-[var(--dark-text-muted)]">
-              Si quieres evaluar encaje, te mostramos la plataforma y preparamos una propuesta ajustada a tu operacion.
+              {t("evaluationNote")}
             </p>
 
             <div className="mt-8 flex flex-wrap gap-4">
@@ -102,13 +102,13 @@ export default function PricingPage() {
                 href="/demo"
                 className="rounded-xl border border-white/12 bg-white px-6 py-3 text-sm font-black text-black transition hover:bg-white/90"
               >
-                Solicitar demo
+                {t("ctaPrimary")}
               </Link>
               <Link
                 href="/login"
                 className="rounded-xl border border-white/14 px-6 py-3 text-sm font-black text-white transition hover:bg-white/8"
               >
-                Acceder
+                {t("ctaSecondary")}
               </Link>
             </div>
           </aside>
@@ -116,4 +116,9 @@ export default function PricingPage() {
       </div>
     </main>
   );
+}
+
+export default function PricingPage({ params }: { params: { locale: string } }) {
+  setRequestLocale(params.locale);
+  return <PricingPageContent />;
 }

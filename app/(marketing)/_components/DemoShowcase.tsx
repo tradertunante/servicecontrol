@@ -1,8 +1,11 @@
-import Link from "next/link";
+import { useTranslations } from "next-intl";
+import { Link } from "@/i18n/navigation";
 import SectionIntro from "./SectionIntro";
 import { ProductOperationsMock } from "./MarketingShowcase";
 
 export default function DemoShowcase() {
+  const t = useTranslations("demoShowcase");
+
   return (
     <section id="demo" className="px-5 py-20 sm:px-8 lg:px-10 lg:py-24">
       <div
@@ -16,22 +19,22 @@ export default function DemoShowcase() {
         <div className="grid gap-10 lg:grid-cols-[0.82fr_1.18fr] lg:items-start">
           <div className="max-w-[680px]">
             <SectionIntro
-              eyebrow="Prueba visual"
-              title="Una vista de calidad diseñada para tomar decisiones rapidas."
-              description="La demo muestra la operacion por area, el estado de hallazgos, reauditorias y formacion en una composicion clara, sobria y ejecutiva."
+              eyebrow={t("eyebrow")}
+              title={t("title")}
+              description={t("description")}
             />
             <div className="mt-8 flex flex-wrap gap-4">
               <Link
                 href="/demo"
                 className="rounded-xl border border-black/15 bg-black px-7 py-4 text-base font-black text-white transition hover:bg-[#111827]"
               >
-                Ver demo
+                {t("ctaPrimary")}
               </Link>
               <Link
                 href="/pricing"
                 className="rounded-xl border border-black/15 bg-white px-7 py-4 text-base font-black text-black transition hover:bg-black hover:text-white"
               >
-                Ver planes
+                {t("ctaSecondary")}
               </Link>
             </div>
           </div>
