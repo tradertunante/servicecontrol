@@ -3,6 +3,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import type { CSSProperties } from "react";
+import { useTranslations } from "next-intl";
 import AuditLogModal from "@/components/audit/AuditLogModal";
 import { postAuditLogEntries } from "@/lib/auditLogsClient";
 import type { AuditLogEntryInput } from "@/lib/auditLogTypes";
@@ -44,6 +45,7 @@ export default function TeamTargetAssignmentsCard({
   card: CSSProperties;
   hotelId: string;
 }) {
+  const t = useTranslations("app.team.targets");
   const btn = useMemo(() => buildBtn(), []);
   const input = useMemo(() => buildInput(), []);
   const select = useMemo(() => buildSelect(), []);
@@ -91,7 +93,7 @@ export default function TeamTargetAssignmentsCard({
     setManagerId(uid);
 
     if (!uid) {
-      setError("No hay usuario autenticado.");
+      setError(t("noAuthUser"));
       setLoading(false);
       return;
     }
@@ -116,7 +118,7 @@ export default function TeamTargetAssignmentsCard({
     );
 
     if (!canConfigure) {
-      setError("No tienes permisos para configurar objetivos del equipo.");
+      setError(t("noPermissionConfigure"));
       setLoading(false);
       return;
     }
@@ -415,7 +417,7 @@ export default function TeamTargetAssignmentsCard({
     if (teamUsers.length === 0) {
       setTemplateHints((prev) => ({
         ...prev,
-        [templateId]: "No hay miembros elegibles para repartir este objetivo.",
+        [templateId]: t("noEligibleMembers"),
       }));
       return;
     }
@@ -431,7 +433,7 @@ export default function TeamTargetAssignmentsCard({
     if (!hasChanges) {
       setTemplateHints((prev) => ({
         ...prev,
-        [templateId]: "El reparto ya coincide con la distribucion sugerida.",
+        [templateId]: t("alreadyDistributed"),
       }));
       return;
     }
@@ -458,7 +460,7 @@ export default function TeamTargetAssignmentsCard({
 
     setTemplateHints((prev) => ({
       ...prev,
-      [templateId]: "Reparto automático aplicado. Revisa y guarda los cambios.",
+      [templateId]: t("autoApplied"),
     }));
   }
 
@@ -466,7 +468,7 @@ export default function TeamTargetAssignmentsCard({
     if (teamUsers.length === 0) {
       setTemplateHints((prev) => ({
         ...prev,
-        [templateId]: "No hay miembros elegibles para repartir este objetivo.",
+        [templateId]: t("noEligibleMembers"),
       }));
       return;
     }
@@ -490,7 +492,7 @@ export default function TeamTargetAssignmentsCard({
     if (!hasChanges) {
       setTemplateHints((prev) => ({
         ...prev,
-        [templateId]: "El reparto ya coincide con la distribucion sugerida por carga.",
+        [templateId]: t("alreadyDistributedByLoad"),
       }));
       return;
     }
@@ -517,7 +519,7 @@ export default function TeamTargetAssignmentsCard({
 
     setTemplateHints((prev) => ({
       ...prev,
-      [templateId]: "Reparto por carga aplicado. Revisa y guarda los cambios.",
+      [templateId]: t("loadApplied"),
     }));
   }
 
@@ -595,17 +597,17 @@ export default function TeamTargetAssignmentsCard({
 
   async function saveAssignments(templateId?: string) {
     if (!selectedAreaId) {
-      setError("Selecciona un área.");
+      setError(t("selectAreaError"));
       return;
     }
 
     if (templateTargets.length === 0) {
-      setError("Esta área no tiene objetivos por auditoría para este periodo.");
+      setError(t("noTargetsError"));
       return;
     }
 
     if (!viewerProfile || !["manager", "quality", "admin", "superadmin"].includes(viewerProfile.role ?? "")) {
-      setError("No tienes permisos para guardar esta configuración.");
+      setError(t("noPermissionSave"));
       return;
     }
 
@@ -618,7 +620,7 @@ export default function TeamTargetAssignmentsCard({
     const { data: sessionData } = await supabase.auth.getSession();
     const accessToken = sessionData?.session?.access_token;
     if (!accessToken) {
-      setError("Sesión inválida.");
+      setError(t("invalidSession"));
       setSaving(false);
       return;
     }
@@ -633,7 +635,7 @@ export default function TeamTargetAssignmentsCard({
     );
 
     if (changedRows.length === 0) {
-      setFeedback({ type: "info", text: "No hay cambios por guardar." });
+      setFeedback({ type: "info", text: t("noChangesToSave") });
       setSaving(false);
       return;
     }
@@ -720,8 +722,8 @@ export default function TeamTargetAssignmentsCard({
       type: "success",
       text:
         changedRows.length === 1
-          ? "Se guardó 1 asignación."
-          : `Se guardaron ${changedRows.length} asignaciones.`,
+          ? t("savedOne")
+          : t("savedMany", { count: changedRows.length }),
     });
     setSaving(false);
   }
@@ -752,21 +754,20 @@ export default function TeamTargetAssignmentsCard({
 
       <div style={{ marginTop: 14 }}>
         <div style={{ fontWeight: 800, marginBottom: 10 }}>
-          Templates del área · periodo {selectedPeriod === "daily" ? "diario" : selectedPeriod === "weekly" ? "semanal" : "mensual"}
+          {t("periodLabel", { period: selectedPeriod === "daily" ? t("periodLabelDaily") : selectedPeriod === "weekly" ? t("periodLabelWeekly") : t("periodLabelMonthly") })}
         </div>
 
         {loading ? (
-          <div style={{ padding: 12, opacity: 0.85 }}>Cargando…</div>
+          <div style={{ padding: 12, opacity: 0.85 }}>{t("loading")}</div>
         ) : !selectedAreaId ? (
-          <div style={{ padding: 12, opacity: 0.85 }}>Selecciona un área.</div>
+          <div style={{ padding: 12, opacity: 0.85 }}>{t("selectAreaPrompt")}</div>
         ) : templateTargets.length === 0 ? (
           <div style={{ padding: 12, opacity: 0.85 }}>
-            Esta área aún no tiene objetivos por template para este periodo. Ve primero a
-            Admin → Objetivos de área por auditoría.
+            {t("noTemplates")}
           </div>
         ) : teamUsers.length === 0 ? (
           <div style={{ padding: 12, opacity: 0.85 }}>
-            No hay auditores asignados a esta área.
+            {t("noAuditors")}
           </div>
         ) : (
           <div style={{ display: "grid", gap: 12 }}>
@@ -801,10 +802,10 @@ export default function TeamTargetAssignmentsCard({
           disabled={saving || loading || !selectedAreaId || templateTargets.length === 0}
         >
           {saving
-            ? "Guardando…"
+            ? t("saving")
             : totalChangedAssignments > 0
-              ? `Guardar ${totalChangedAssignments} cambio${totalChangedAssignments === 1 ? "" : "s"}`
-              : "Guardar cambios"}
+              ? t("saveCount", { count: totalChangedAssignments })
+              : t("saveAll")}
         </button>
       </div>
 

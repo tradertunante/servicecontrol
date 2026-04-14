@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import type { MemberRecord } from "../_lib/memberTypes";
 
 function secondaryButtonClasses(disabled = false) {
@@ -25,12 +26,14 @@ export default function MembersTable({
   onEdit: (member: MemberRecord) => void;
   onDelete: (member: MemberRecord) => void;
 }) {
+  const t = useTranslations("app.members.table");
+
   return (
     <div className="border border-[#e5e7eb] bg-white p-4 rounded-[12px]">
-      <div className="text-[18px] font-extrabold">Miembros</div>
+      <div className="text-[18px] font-extrabold">{t("title")}</div>
       <div className="mt-3 grid gap-[10px]">
         {members.length === 0 ? (
-          <div className="text-[#6b7280]">No hay miembros visibles para tu alcance actual.</div>
+          <div className="text-[#6b7280]">{t("empty")}</div>
         ) : (
           members.map((member) => (
             <div
@@ -44,13 +47,13 @@ export default function MembersTable({
                 <div className="grid gap-1">
                   <div className="font-extrabold">{member.full_name}</div>
                   <div className="text-[13px] text-[#4b5563]">
-                    No. colaborador: <b>{member.employee_number || "—"}</b>
+                    {t("employeeNumber")} <b>{member.employee_number || "—"}</b>
                   </div>
                   <div className="text-[13px] text-[#4b5563]">
-                    Estado: <b>{member.active ? "Activo" : "Inactivo"}</b>
+                    {t("status")} <b>{member.active ? t("active") : t("inactive")}</b>
                   </div>
                   <div className="text-[13px] text-[#4b5563]">
-                    Areas: {member.area_names.length ? member.area_names.join(", ") : "Sin areas"}
+                    {t("areas")} {member.area_names.length ? member.area_names.join(", ") : t("noAreas")}
                   </div>
                 </div>
 
@@ -60,14 +63,14 @@ export default function MembersTable({
                     disabled={busyMemberId === member.id}
                     className={secondaryButtonClasses(busyMemberId === member.id)}
                   >
-                    Editar
+                    {t("edit")}
                   </button>
                   <button
                     onClick={() => onDelete(member)}
                     disabled={busyMemberId === member.id}
                     className={secondaryButtonClasses(busyMemberId === member.id)}
                   >
-                    Eliminar
+                    {t("delete")}
                   </button>
                 </div>
               </div>

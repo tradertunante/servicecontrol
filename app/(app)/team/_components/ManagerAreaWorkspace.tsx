@@ -3,6 +3,7 @@
 import Card from "@/components/ui/Card";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import DashboardPanel from "@/app/(app)/areas/[areaId]/_components/DashboardPanel";
 import HistoryPanel from "@/app/(app)/areas/[areaId]/_components/HistoryPanel";
 import TemplatesPanel from "@/app/(app)/areas/[areaId]/_components/TemplatesPanel";
@@ -46,6 +47,7 @@ export default function ManagerAreaWorkspace({
   historyFilters: ManagerAreaHistoryFilters;
   onOpenHistory: (filters: Exclude<ManagerAreaHistoryFilters, null>) => void;
 }) {
+  const t = useTranslations("app.team.workspace");
   const [templateFilter, setTemplateFilter] = useState("ALL");
   const [period, setPeriod] = useState<PeriodKey>("THIS_MONTH");
 
@@ -57,7 +59,7 @@ export default function ManagerAreaWorkspace({
   if (areasLoading) {
     return (
       <Card style={{ fontWeight: 900 }}>
-        Cargando área asignada…
+        {t("loadingArea")}
       </Card>
     );
   }
@@ -80,9 +82,9 @@ export default function ManagerAreaWorkspace({
   if (areaOptions.length === 0) {
     return (
       <Card padding={16}>
-        <div style={{ fontWeight: 900 }}>No tienes áreas asignadas.</div>
+        <div style={{ fontWeight: 900 }}>{t("noAreas")}</div>
         <div style={{ marginTop: 6, opacity: 0.8 }}>
-          Pide a un administrador que te asigne al menos un área para usar este espacio.
+          {t("noAreasDesc")}
         </div>
       </Card>
     );
@@ -91,7 +93,7 @@ export default function ManagerAreaWorkspace({
   if (!selectedAreaId) {
     return (
       <Card padding={16}>
-        <div style={{ fontWeight: 900 }}>Selecciona un área.</div>
+        <div style={{ fontWeight: 900 }}>{t("selectArea")}</div>
       </Card>
     );
   }
@@ -101,7 +103,7 @@ export default function ManagerAreaWorkspace({
       {areaOptions.length > 1 ? (
         <Card>
           <div style={{ fontSize: 12, fontWeight: 900, opacity: 0.8, marginBottom: 6 }}>
-            Área activa
+            {t("activeArea")}
           </div>
           <select
             value={selectedAreaId}
@@ -173,6 +175,7 @@ function ManagerAreaDashboardMode({
   onOpenHistory: (filters: Exclude<ManagerAreaHistoryFilters, null>) => void;
 }) {
   const router = useRouter();
+  const t = useTranslations("app.team.workspace");
   const data = useAreaData({
     areaId,
     templateFilter,
@@ -180,7 +183,7 @@ function ManagerAreaDashboardMode({
   });
 
   if (data.loading) {
-    return <div style={{ fontWeight: 900 }}>Cargando información del área…</div>;
+    return <div style={{ fontWeight: 900 }}>{t("loadingAreaData")}</div>;
   }
 
   if (data.error) {
@@ -237,10 +240,11 @@ function ManagerAreaHistoryMode({
   historyFilters: ManagerAreaHistoryFilters;
 }) {
   const router = useRouter();
+  const t = useTranslations("app.team.workspace");
   const templatesData = useManagerAreaTemplates({ areaId, profileRole, initialHotelId: hotelId });
 
   if (templatesData.loading) {
-    return <div style={{ fontWeight: 900 }}>Cargando información del área…</div>;
+    return <div style={{ fontWeight: 900 }}>{t("loadingAreaData")}</div>;
   }
 
   if (templatesData.error) {
@@ -283,10 +287,11 @@ function ManagerAreaTemplatesMode({
   profileRole: string | null | undefined;
   hotelId: string;
 }) {
+  const t = useTranslations("app.team.workspace");
   const templatesData = useManagerAreaTemplates({ areaId, profileRole, initialHotelId: hotelId });
 
   if (templatesData.loading) {
-    return <div style={{ fontWeight: 900 }}>Cargando información del área…</div>;
+    return <div style={{ fontWeight: 900 }}>{t("loadingAreaData")}</div>;
   }
 
   if (templatesData.error) {

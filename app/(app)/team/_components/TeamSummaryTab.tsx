@@ -2,15 +2,10 @@
 
 import { useMemo, useState } from "react";
 import Card from "@/components/ui/Card";
+import { useTranslations } from "next-intl";
 import type { Profile } from "@/lib/types";
 import TeamTargetAssignmentsCard from "./TeamTargetAssignmentsCard";
 import { useTeamData, type TeamPeriodKey } from "../_hooks/useTeamData";
-
-function getPeriodLabel(period: TeamPeriodKey) {
-  if (period === "daily") return "hoy";
-  if (period === "weekly") return "esta semana";
-  return "este mes";
-}
 
 function formatPct(n: number | null | undefined) {
   if (n === null || n === undefined) return "—";
@@ -28,6 +23,7 @@ export default function TeamSummaryTab({
   hotelId: string;
   initialProfile: Profile;
 }) {
+  const t = useTranslations("app.team.summary");
   const [showAssignmentsConfig, setShowAssignmentsConfig] = useState(false);
   const { loading, error, leaderboard, teamTargets, teamRecentRuns, teamTemplateProgress, summary } =
     useTeamData({ selectedPeriod, initialHotelId: hotelId, initialProfile });
@@ -259,8 +255,8 @@ export default function TeamSummaryTab({
     if (overviewSummary.totalTargets > 0 && overviewSummary.totalAuditsDone === 0) {
       list.push({
         type: "warning",
-        title: "Atención",
-        text: "El equipo aún no ha iniciado el objetivo del periodo.",
+        title: t("insightWarningAttention"),
+        text: t("insightNotStarted"),
       });
     } else if (overviewSummary.totalTargets > 0) {
       const ratio = overviewSummary.totalRemaining / overviewSummary.totalTargets;
@@ -268,8 +264,8 @@ export default function TeamSummaryTab({
       if (ratio > 0.7) {
         list.push({
           type: "warning",
-          title: "Retraso en objetivos",
-          text: "Queda más del 70% del objetivo asignado del periodo por cubrir.",
+          title: t("insightDelayTitle"),
+          text: t("insightDelay"),
         });
       }
     }
@@ -283,17 +279,17 @@ export default function TeamSummaryTab({
       if (top.remainingSum > 0) {
         list.push({
           type: "info",
-          title: "Reparto de carga",
+          title: t("insightLoadTitle"),
           text:
             topPendingCount > 1
-              ? `${top.auditor} está entre las mayores cargas pendientes asignadas (${top.remainingSum} auditorías).`
-              : `${top.auditor} concentra la mayor carga pendiente asignada (${top.remainingSum} auditorías).`,
+              ? t("insightLoadAmong", { name: top.auditor, count: top.remainingSum })
+              : t("insightLoadTop", { name: top.auditor, count: top.remainingSum }),
         });
       }
     }
 
     return list.slice(0, 3);
-  }, [overviewSummary, groupedTargetsByAuditor]);
+  }, [overviewSummary, groupedTargetsByAuditor, t]);
 
   const progressTrackStyle: React.CSSProperties = {
     marginTop: 10,
@@ -333,7 +329,7 @@ export default function TeamSummaryTab({
 
       {insights.length > 0 && (
         <Card style={{ marginTop: 14 }}>
-          <div style={{ fontWeight: 700, fontSize: 16 }}>Insights del sistema</div>
+          <div style={{ fontWeight: 700, fontSize: 16 }}>{t("insightsTitle")}</div>
 
           <div
             style={{
@@ -390,16 +386,18 @@ export default function TeamSummaryTab({
         }}
       >
         <Card data-onboarding="progress-objectives">
-          <div style={{ fontWeight: 700, fontSize: 16 }}>Objetivos por rubro</div>
+          <div style={{ fontWeight: 700, fontSize: 16 }}>{t("objectivesTitle")}</div>
           <div style={{ opacity: 0.8, marginTop: 6, fontSize: 13 }}>
-            Producción del equipo frente al objetivo asignado agrupada por plantilla en {getPeriodLabel(selectedPeriod)}.
+            {t("objectivesSubtitle", {
+              period: selectedPeriod === "daily" ? t("periodToday") : selectedPeriod === "weekly" ? t("periodThisWeek") : t("periodThisMonth"),
+            })}
           </div>
 
           <div style={panelBodyStyle}>
             {loading ? (
-              <div>Cargando…</div>
+              <div>{t("loading")}</div>
             ) : rubricGoalProgress.length === 0 ? (
-              <div style={{ opacity: 0.85 }}>No hay objetivos para este periodo.</div>
+              <div style={{ opacity: 0.85 }}>{t("noObjectives")}</div>
             ) : (
               rubricGoalProgress.map((group) => (
                 <Card key={group.template} padding={12}>
@@ -424,7 +422,7 @@ export default function TeamSummaryTab({
                         {group.template}
                       </div>
                       <div style={{ opacity: 0.8, fontSize: 12, marginTop: 4 }}>
-                        faltan <b>{group.remaining}</b>
+                        {t("remaining", { count: group.remaining })}
                       </div>
                     </div>
 
@@ -456,23 +454,23 @@ export default function TeamSummaryTab({
 
         <Card data-onboarding="progress-leaderboard">
           <div style={{ fontWeight: 700, fontSize: 16 }}>
-            Leaderboard auditores (
-            {selectedPeriod === "daily"
-              ? "hoy"
-              : selectedPeriod === "weekly"
-                ? "semana"
-                : "mes"}
-            )
+            {t("leaderboardTitle", {
+              period: selectedPeriod === "daily"
+                ? t("leaderboardPeriodDay")
+                : selectedPeriod === "weekly"
+                  ? t("leaderboardPeriodWeek")
+                  : t("leaderboardPeriodMonth"),
+            })}
           </div>
           <div style={{ opacity: 0.8, marginTop: 6, fontSize: 13 }}>
-            Producción por persona frente a su objetivo asignado.
+            {t("leaderboardSubtitle")}
           </div>
 
           <div style={panelBodyStyle}>
             {loading ? (
-              <div>Cargando…</div>
+              <div>{t("loading")}</div>
             ) : leaderboard.length === 0 ? (
-              <div style={{ opacity: 0.85 }}>No hay datos para este periodo.</div>
+              <div style={{ opacity: 0.85 }}>{t("noLeaderboard")}</div>
             ) : (
               leaderboard.map((row, idx) => (
                 <Card key={row.auditor_user_id} padding={12}>
@@ -497,7 +495,7 @@ export default function TeamSummaryTab({
                         #{idx + 1} · {row.auditor_name}
                       </div>
                       <div style={{ opacity: 0.8, fontSize: 13, marginTop: 4 }}>
-                        Producción: <b>{row.audits_done}</b> auditorías · Media:{" "}
+                        {t("production")} <b>{row.audits_done}</b> {t("audits")} · {t("average")}{" "}
                         <b>
                           {row.avg_score !== null
                             ? `${Number(row.avg_score).toFixed(1)}%`
@@ -505,12 +503,12 @@ export default function TeamSummaryTab({
                         </b>
                       </div>
                       <div style={{ opacity: 0.8, fontSize: 13, marginTop: 4 }}>
-                        Producción / objetivo: <b>{row.targets_completed}</b> / {row.targets_total}
+                        {t("productionTarget")} <b>{row.targets_completed}</b> / {row.targets_total}
                       </div>
 
                       <div style={{ marginTop: 10, display: "grid", gap: 4 }}>
                         {(rubricTargetsByAuditor[row.auditor_user_id] ?? []).length === 0 ? (
-                          <div style={{ opacity: 0.7, fontSize: 12.5 }}>Sin objetivos por rubro</div>
+                          <div style={{ opacity: 0.7, fontSize: 12.5 }}>{t("noRubricTargets")}</div>
                         ) : (
                           rubricTargetsByAuditor[row.auditor_user_id].map((rubric) => (
                             <div
@@ -569,17 +567,19 @@ export default function TeamSummaryTab({
         </Card>
 
         <Card>
-          <div style={{ fontWeight: 700, fontSize: 16 }}>Actividad reciente del equipo</div>
+          <div style={{ fontWeight: 700, fontSize: 16 }}>{t("recentTitle")}</div>
           <div style={{ opacity: 0.8, marginTop: 6, fontSize: 13 }}>
-            Últimas auditorías ejecutadas en {getPeriodLabel(selectedPeriod)} por tu equipo.
+            {t("recentSubtitle", {
+              period: selectedPeriod === "daily" ? t("periodToday") : selectedPeriod === "weekly" ? t("periodThisWeek") : t("periodThisMonth"),
+            })}
           </div>
 
           <div style={panelBodyStyle}>
             {loading ? (
-              <div>Cargando…</div>
+              <div>{t("loading")}</div>
             ) : teamRecentRuns.length === 0 ? (
               <div style={{ opacity: 0.85 }}>
-                Aún no hay auditorías recientes del equipo.
+                {t("noRecent")}
               </div>
             ) : (
               teamRecentRuns.map((run) => (
@@ -648,11 +648,10 @@ export default function TeamSummaryTab({
         >
           <div>
             <div style={{ fontWeight: 700, fontSize: 16 }}>
-              Configuración de objetivos
+              {t("configTitle")}
             </div>
             <div style={{ opacity: 0.8, marginTop: 6, fontSize: 13 }}>
-              Ajusta el reparto por auditoría solo cuando necesites revisar o modificar la
-              asignación.
+              {t("configSubtitle")}
             </div>
           </div>
 
@@ -660,7 +659,7 @@ export default function TeamSummaryTab({
             style={btn}
             onClick={() => setShowAssignmentsConfig((prev) => !prev)}
           >
-            {showAssignmentsConfig ? "Ocultar configuración" : "Mostrar configuración"}
+            {showAssignmentsConfig ? t("hideConfig") : t("showConfig")}
           </button>
         </div>
 

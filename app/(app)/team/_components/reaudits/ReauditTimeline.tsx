@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import type { ReauditTimelineItem } from "../../_lib/reauditTypes";
 import { fmtDate } from "../../_lib/reauditUtils";
 
@@ -8,6 +9,7 @@ export default function ReauditTimeline({
 }: {
   items: ReauditTimelineItem[];
 }) {
+  const t = useTranslations("app.team.reaudits");
   if (!items.length) return null;
 
   return (
@@ -22,7 +24,7 @@ export default function ReauditTimeline({
       }}
     >
       <div style={{ fontSize: 12, color: "var(--muted)", fontWeight: 800 }}>
-        Historial de la re-auditoría
+        {t("timelineTitle")}
       </div>
 
       <div style={{ display: "grid", gap: 10 }}>
@@ -56,7 +58,7 @@ export default function ReauditTimeline({
 
             {item.actorName ? (
               <div style={{ fontSize: 12, color: "var(--muted)" }}>
-                Por: {item.actorName}
+                {t("timelineBy")} {item.actorName}
               </div>
             ) : null}
 

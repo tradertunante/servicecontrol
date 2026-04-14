@@ -1,6 +1,7 @@
 // FILE: app/(app)/team/_components/reaudits/ReauditAssignmentSection.tsx
 "use client";
 
+import { useTranslations } from "next-intl";
 import type { ProfileLite } from "../../_lib/reauditTypes";
 
 export default function ReauditAssignmentSection({
@@ -28,6 +29,7 @@ export default function ReauditAssignmentSection({
   onSave: () => void | Promise<void>;
   onReset: () => void;
 }) {
+  const t = useTranslations("app.team.reaudits");
   const currentAuditorId = assignedAuditorId ?? "";
   const hasPendingChange =
     !!selectedAuditorId && selectedAuditorId !== currentAuditorId;
@@ -71,7 +73,7 @@ export default function ReauditAssignmentSection({
           flexWrap: "wrap",
         }}
       >
-        <div style={labelStyle}>Auditor asignado</div>
+        <div style={labelStyle}>{t("auditorAssigned")}</div>
         <div
           style={{
             fontWeight: 800,
@@ -104,7 +106,7 @@ export default function ReauditAssignmentSection({
               width: "100%",
             }}
           >
-            <option value="">Selecciona auditor</option>
+            <option value="">{t("selectAuditor")}</option>
             {auditorOptions.map((opt) => (
               <option key={opt.id} value={opt.id}>
                 {opt.full_name ?? opt.id}
@@ -116,7 +118,7 @@ export default function ReauditAssignmentSection({
             <input
               value={selectedNote}
               onChange={(e) => onNoteChange(e.target.value)}
-              placeholder="Nota opcional..."
+              placeholder={t("noteOptional")}
               style={{
                 width: "100%",
                 padding: "9px 11px",
@@ -146,12 +148,12 @@ export default function ReauditAssignmentSection({
                 opacity: busy || !hasPendingChange ? 0.5 : 1,
               }}
             >
-              {busy ? "Guardando..." : "Guardar auditor"}
+              {busy ? t("saving") : t("saveAuditor")}
             </button>
 
             {hasPendingChange ? (
               <button disabled={busy} onClick={onReset} style={btn}>
-                Reset
+                {t("reset")}
               </button>
             ) : null}
           </div>
@@ -167,7 +169,7 @@ export default function ReauditAssignmentSection({
             color: "var(--muted)",
           }}
         >
-          No tienes permiso para reasignar el auditor o la re-auditoría ya fue cerrada.
+          {t("noPermissionReassign")}
         </div>
       )}
     </div>

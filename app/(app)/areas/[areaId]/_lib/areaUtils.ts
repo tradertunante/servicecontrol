@@ -35,7 +35,7 @@ export function clamp(n: number, a: number, b: number) {
 
 export function monthLabel(monthIndex: number) {
   const d = new Date(2020, monthIndex, 1);
-  const s = d.toLocaleDateString("es-ES", { month: "long" }).replace(".", "");
+  const s = d.toLocaleDateString(undefined, { month: "long" }).replace(".", "");
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
 

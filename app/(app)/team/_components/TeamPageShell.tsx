@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { CSSProperties, ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import type { Profile } from "@/lib/types";
 import {
   fetchDepartmentCorrectiveActions,
@@ -51,6 +52,7 @@ export default function TeamPageShell({
 }) {
   const router = useRouter();
   const queryClient = useQueryClient();
+  const t = useTranslations("app.team.shell");
   const btn = useMemo(() => buildBtnStyle(), []);
 
   // Pack access — superadmin resuelto síncronamente, otros esperan el fetch
@@ -118,63 +120,63 @@ export default function TeamPageShell({
   const navItems: TeamNavItem[] = [
     {
       key: "general",
-      label: "General",
+      label: t("nav.general"),
       href: "/team/general",
       active: activeSection === "general",
       visible: canSeeAreaWorkspace,
     },
     {
       key: "progress",
-      label: "Progreso",
+      label: t("nav.progress"),
       href: "/team/progreso",
       active: activeSection === "progress",
       visible: showSummaryTab,
     },
     {
       key: "reaudits",
-      label: "Recuperación",
+      label: t("nav.reaudits"),
       href: "/team/recuperacion",
       active: activeSection === "reaudits",
       visible: showReauditsTab && enabledPacks?.includes("pack1") === true,
     },
     {
       key: "history",
-      label: "Historial",
+      label: t("nav.history"),
       href: "/team/historial",
       active: activeSection === "history",
       visible: canSeeAreaWorkspace,
     },
     {
       key: "actions",
-      label: "Formaciones",
+      label: t("nav.actions"),
       href: "/formaciones",
       active: activeSection === "actions",
       visible: enabledPacks?.includes("pack3") === true,
     },
     {
       key: "analytics",
-      label: "Analisis",
+      label: t("nav.analytics"),
       href: "/analytics",
       active: false,
       visible: enabledPacks?.includes("pack2") === true,
     },
     {
       key: "members",
-      label: "Members",
+      label: t("nav.members"),
       href: "/members",
       active: false,
       visible: !!showMembersLink,
     },
     {
       key: "it",
-      label: "IT",
+      label: t("nav.it"),
       href: "/it",
       active: false,
       visible: !!showDepartmentNav && enabledPacks?.includes("pack1") === true,
     },
     {
       key: "engineering",
-      label: "Engineering",
+      label: t("nav.engineering"),
       href: "/engineering",
       active: false,
       visible: !!showDepartmentNav && enabledPacks?.includes("pack1") === true,
@@ -203,9 +205,9 @@ export default function TeamPageShell({
         }}
       >
         <div>
-          <div style={{ fontSize: 18, fontWeight: 800, lineHeight: 1.1 }}>Equipo</div>
+          <div style={{ fontSize: 18, fontWeight: 800, lineHeight: 1.1 }}>{t("title")}</div>
           <div style={{ opacity: 0.85, marginTop: 4 }}>
-            Hola, <b>{profile?.full_name ?? "—"}</b> · Rol: <b>{profile?.role ?? "—"}</b>
+            {t("hello")} <b>{profile?.full_name ?? "—"}</b> · {t("role")} <b>{profile?.role ?? "—"}</b>
           </div>
           {areaLabel ? (
             <div style={{ opacity: 0.78, marginTop: 4, fontSize: 13, fontWeight: 700 }}>
@@ -213,13 +215,13 @@ export default function TeamPageShell({
             </div>
           ) : null}
           <div style={{ opacity: 0.65, marginTop: 4, fontSize: 12 }}>
-            Panel operativo del equipo, acciones correctivas y seguimiento de objetivos.
+            {t("subtitle")}
           </div>
         </div>
 
         {periodControl ? (
           <div style={{ minWidth: 180, flex: "1 1 180px", maxWidth: 240 }}>
-            <div style={{ opacity: 0.8, fontSize: 12, marginBottom: 6 }}>Periodo global</div>
+            <div style={{ opacity: 0.8, fontSize: 12, marginBottom: 6 }}>{t("globalPeriod")}</div>
             {periodControl}
           </div>
         ) : null}

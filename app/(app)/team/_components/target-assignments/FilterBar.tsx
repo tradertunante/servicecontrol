@@ -2,6 +2,7 @@
 "use client";
 
 import type { CSSProperties } from "react";
+import { useTranslations } from "next-intl";
 import type { AreaRow, OverallSummary, PeriodKey } from "./types";
 
 type Props = {
@@ -25,6 +26,7 @@ export default function FilterBar({
   onAreaChange,
   onPeriodChange,
 }: Props) {
+  const t = useTranslations("app.team.targets");
   return (
     <div
       style={{
@@ -43,14 +45,14 @@ export default function FilterBar({
         }}
       >
         <div>
-          <div style={{ opacity: 0.8, fontSize: 12, marginBottom: 6 }}>Área</div>
+          <div style={{ opacity: 0.8, fontSize: 12, marginBottom: 6 }}>{t("fieldArea")}</div>
           <select
             style={select}
             value={selectedAreaId}
             onChange={(e) => onAreaChange(e.target.value)}
           >
             <option value="">
-              {areas.length ? "Selecciona un área…" : "No tienes áreas asignadas"}
+              {areas.length ? t("selectArea") : t("noAreas")}
             </option>
             {areas.map((a) => (
               <option key={a.id} value={a.id}>
@@ -61,35 +63,35 @@ export default function FilterBar({
         </div>
 
         <div>
-          <div style={{ opacity: 0.8, fontSize: 12, marginBottom: 6 }}>Periodo</div>
+          <div style={{ opacity: 0.8, fontSize: 12, marginBottom: 6 }}>{t("fieldPeriod")}</div>
           <select
             style={select}
             value={selectedPeriod}
             onChange={(e) => onPeriodChange(e.target.value as PeriodKey)}
           >
-            <option value="daily">Diario</option>
-            <option value="weekly">Semanal</option>
-            <option value="monthly">Mensual</option>
+            <option value="daily">{t("periodDaily")}</option>
+            <option value="weekly">{t("periodWeekly")}</option>
+            <option value="monthly">{t("periodMonthly")}</option>
           </select>
         </div>
 
         <div>
-          <div style={{ opacity: 0.8, fontSize: 12, marginBottom: 6 }}>Objetivo total</div>
+          <div style={{ opacity: 0.8, fontSize: 12, marginBottom: 6 }}>{t("fieldTotalTarget")}</div>
           <div style={input}>{selectedAreaId ? overallSummary.totalTarget : "—"}</div>
         </div>
 
         <div>
-          <div style={{ opacity: 0.8, fontSize: 12, marginBottom: 6 }}>Asignado</div>
+          <div style={{ opacity: 0.8, fontSize: 12, marginBottom: 6 }}>{t("fieldAssigned")}</div>
           <div style={input}>{selectedAreaId ? overallSummary.totalAssigned : "—"}</div>
         </div>
 
         <div>
-          <div style={{ opacity: 0.8, fontSize: 12, marginBottom: 6 }}>Pendiente</div>
+          <div style={{ opacity: 0.8, fontSize: 12, marginBottom: 6 }}>{t("fieldPending")}</div>
           <div style={input}>{selectedAreaId ? overallSummary.remaining : "—"}</div>
         </div>
 
         <div>
-          <div style={{ opacity: 0.8, fontSize: 12, marginBottom: 6 }}>Estado</div>
+          <div style={{ opacity: 0.8, fontSize: 12, marginBottom: 6 }}>{t("fieldStatus")}</div>
           <div style={input}>{selectedAreaId ? overallSummary.status : "—"}</div>
         </div>
       </div>

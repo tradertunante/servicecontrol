@@ -1,6 +1,7 @@
 // FILE: app/(app)/team/_components/reaudits/ReauditTrainingSection.tsx
 "use client";
 
+import { useTranslations } from "next-intl";
 import { fmtDate } from "../../_lib/reauditUtils";
 import type { TrainingInfo } from "../../_lib/reauditTypes";
 
@@ -25,6 +26,7 @@ export default function ReauditTrainingSection({
   onSave: () => void | Promise<void>;
   trainingInfo: TrainingInfo | null;
 }) {
+  const t = useTranslations("app.team.reaudits");
   const btn: React.CSSProperties = {
     padding: "9px 12px",
     borderRadius: 10,
@@ -52,7 +54,7 @@ export default function ReauditTrainingSection({
           }}
         >
           <div style={{ fontSize: 12, color: "var(--muted)", fontWeight: 800 }}>
-            Formación documentada
+            {t("trainingDocumented")}
           </div>
 
           <div style={{ marginTop: 6, whiteSpace: "pre-wrap" }}>
@@ -60,9 +62,9 @@ export default function ReauditTrainingSection({
           </div>
 
           <div style={{ marginTop: 6, fontSize: 12, color: "var(--muted)", overflowWrap: "anywhere" }}>
-            {trainingInfo.confirmedBy ? `Por: ${trainingInfo.confirmedBy}` : ""}
+            {trainingInfo.confirmedBy ? `${t("trainingBy")} ${trainingInfo.confirmedBy}` : ""}
             {trainingInfo.confirmedBy && trainingInfo.confirmedAt ? " · " : ""}
-            {trainingInfo.confirmedAt ? `Fecha: ${fmtDate(trainingInfo.confirmedAt)}` : ""}
+            {trainingInfo.confirmedAt ? `${t("trainingDate")} ${fmtDate(trainingInfo.confirmedAt)}` : ""}
           </div>
         </div>
       ) : null}
@@ -70,7 +72,7 @@ export default function ReauditTrainingSection({
       {canConfirmTraining && !isOpen ? (
         <div>
           <button disabled={busy} onClick={onOpen} style={primaryBtn}>
-            Documentar formación
+            {t("documentTraining")}
           </button>
         </div>
       ) : null}
@@ -87,13 +89,13 @@ export default function ReauditTrainingSection({
           }}
         >
           <div style={{ fontWeight: 900, lineHeight: 1.25 }}>
-            Explica qué se hizo para dejar apto al colaborador para re-auditoría
+            {t("trainingFormTitle")}
           </div>
 
           <textarea
             value={value}
             onChange={(e) => onChange(e.target.value)}
-            placeholder="Ejemplo: coaching 1:1 sobre estándar, shadowing con supervisor, repaso práctico del SOP, checklist reforzado y validación final del proceso..."
+            placeholder={t("trainingFormPlaceholder")}
             rows={5}
             style={{
               width: "100%",
@@ -106,7 +108,7 @@ export default function ReauditTrainingSection({
           />
 
           <div style={{ fontSize: 12, color: "var(--muted)" }}>
-            Este texto quedará guardado para trazabilidad y análisis futuro de medidas de formación.
+            {t("trainingFormHint")}
           </div>
 
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
@@ -118,11 +120,11 @@ export default function ReauditTrainingSection({
                 opacity: busy ? 0.6 : 1,
               }}
             >
-              {busy ? "Guardando..." : "Guardar y confirmar formación"}
+              {busy ? t("saving") : t("saveAndConfirmTraining")}
             </button>
 
             <button disabled={busy} onClick={onCancel} style={btn}>
-              Cancelar
+              {t("cancel")}
             </button>
           </div>
         </div>

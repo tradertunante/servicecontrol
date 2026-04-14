@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import type { MemberAreaOption } from "../_lib/memberTypes";
 
 type MemberFormValues = {
@@ -45,6 +46,8 @@ export default function MemberForm({
   onSubmit: () => void;
   onCancel?: () => void;
 }) {
+  const t = useTranslations("app.members.form");
+
   return (
     <div className="border border-[#e5e7eb] bg-white p-4 rounded-[12px] grid gap-3">
       <div className="text-[18px] font-extrabold">{title}</div>
@@ -52,14 +55,14 @@ export default function MemberForm({
       <input
         value={values.full_name}
         onChange={(event) => onChange({ ...values, full_name: event.target.value })}
-        placeholder="Nombre del miembro"
+        placeholder={t("namePlaceholder")}
         className={inputClasses}
       />
 
       <input
         value={values.employee_number}
         onChange={(event) => onChange({ ...values, employee_number: event.target.value })}
-        placeholder="Numero de colaborador"
+        placeholder={t("numberPlaceholder")}
         className={inputClasses}
       />
 
@@ -69,11 +72,11 @@ export default function MemberForm({
           checked={values.active}
           onChange={(event) => onChange({ ...values, active: event.target.checked })}
         />
-        Miembro activo
+        {t("activeLabel")}
       </label>
 
       <div>
-        <div className="font-bold mb-2">Areas asignadas</div>
+        <div className="font-bold mb-2">{t("areasLabel")}</div>
         <div className="grid gap-2">
           {areaOptions.map((area) => {
             const checked = values.area_ids.includes(area.id);
@@ -98,11 +101,11 @@ export default function MemberForm({
 
       <div className="flex gap-2 flex-wrap">
         <button onClick={onSubmit} disabled={busy} className={buttonClasses(busy)}>
-          {busy ? "Guardando..." : submitLabel}
+          {busy ? t("saving") : submitLabel}
         </button>
         {onCancel ? (
           <button onClick={onCancel} type="button" className={secondaryButtonClasses}>
-            Cancelar
+            {t("cancel")}
           </button>
         ) : null}
       </div>

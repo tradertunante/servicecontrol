@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useTranslations } from "next-intl";
 import { supabase } from "@/lib/supabaseClient";
 import type { Profile } from "@/lib/types";
 import MemberForm from "./MemberForm";
@@ -41,8 +42,8 @@ function buildSaveErrorMessage(payload: {
     duplicate_member_active?: boolean;
     duplicate_member_within_visible_scope?: boolean;
   };
-} | null) {
-  const baseMessage = normalizeError(payload?.error, "No se pudo guardar el miembro.");
+} | null, fallback: string) {
+  const baseMessage = normalizeError(payload?.error, fallback);
 
   if (!payload?.debug) {
     return baseMessage;
@@ -76,6 +77,7 @@ export default function MembersModule({
   initialHotelId: string;
   initialProfile: Profile;
 }) {
+  const t = useTranslations("app.members");
   const [members, setMembers] = useState<MemberRecord[]>([]);
   const [areaOptions, setAreaOptions] = useState<MemberAreaOption[]>([]);
   const [loading, setLoading] = useState(true);
@@ -103,12 +105,12 @@ export default function MembersModule({
         setError(null);
 
         if (!initialHotelId) {
-          throw new Error("No se pudo resolver el hotel activo.");
+          throw new Error(t("errorHotel"));
         }
       } catch (err) {
         if (err instanceof DOMException && (err as DOMException).name === "AbortError") return;
         if (controller.signal.aborted) return;
-        setError(normalizeError(err instanceof Error ? err.message : null, "No se pudo resolver el hotel activo."));
+        setError(normalizeError(err instanceof Error ? err.message : null, t("errorHotel")));
         setLoading(false);
       }
     }
@@ -126,7 +128,7 @@ export default function MembersModule({
       setError(null);
       const token = await getAccessToken();
       if (!token) {
-        throw new Error("Sesion invalida.");
+        throw new Error(t("errorSession"));
       }
 
       const params = new URLSearchParams();
@@ -143,7 +145,7 @@ export default function MembersModule({
       const payload = (await res.json().catch(() => null)) as MembersResponse | { error?: string } | null;
 
       if (!res.ok) {
-        throw new Error(normalizeError(payload && "error" in payload ? payload.error : null, "No se pudo cargar miembros."));
+        throw new Error(normalizeError(payload && "error" in payload ? payload.error : null, t("errorLoad")));
       }
 
       setMembers(payload && "members" in payload ? payload.members : []);
@@ -152,7 +154,7 @@ export default function MembersModule({
       setRole(payload && "role" in payload ? payload.role : "");
       setPagination(payload && "pagination" in payload ? (payload.pagination ?? null) : null);
     } catch (err) {
-      setError(normalizeError(err instanceof Error ? err.message : null, "No se pudo cargar miembros."));
+      setError(normalizeError(err instanceof Error ? err.message : null, t("errorLoad")));
     } finally {
       setLoading(false);
     }
@@ -191,7 +193,7 @@ export default function MembersModule({
       const token = await getAccessToken();
 
       if (!token) {
-        throw new Error("Sesion invalida.");
+        throw new Error(t("errorSession"));
       }
 
       const body = JSON.stringify({
@@ -224,13 +226,13 @@ export default function MembersModule({
       } | null;
 
       if (!res.ok) {
-        throw new Error(buildSaveErrorMessage(payload));
+        throw new Error(buildSaveErrorMessage(payload, t("errorSave")));
       }
 
       beginCreate();
       await loadMembers();
     } catch (err) {
-      setError(normalizeError(err instanceof Error ? err.message : null, "No se pudo guardar el miembro."));
+      setError(normalizeError(err instanceof Error ? err.message : null, t("errorSave")));
     } finally {
       setSaving(false);
       setBusyMemberId(null);
@@ -250,7 +252,7 @@ export default function MembersModule({
       const token = await getAccessToken();
 
       if (!token) {
-        throw new Error("Sesion invalida.");
+        throw new Error(t("errorSession"));
       }
 
       const res = await fetch(`/api/members/${member.id}`, {
@@ -265,7 +267,7 @@ export default function MembersModule({
       const payload = (await res.json().catch(() => null)) as { error?: string } | null;
 
       if (!res.ok) {
-        throw new Error(normalizeError(payload?.error, "No se pudo eliminar el colaborador."));
+        throw new Error(normalizeError(payload?.error, t("errorDelete")));
       }
 
       if (editingMemberId === member.id) {
@@ -274,7 +276,7 @@ export default function MembersModule({
 
       await loadMembers();
     } catch (err) {
-      setError(normalizeError(err instanceof Error ? err.message : null, "No se pudo eliminar el colaborador."));
+      setError(normalizeError(err instanceof Error ? err.message : null, t("errorDelete")));
     } finally {
       setSaving(false);
       setBusyMemberId(null);
@@ -320,20 +322,20 @@ export default function MembersModule({
   return (
     <div className="grid gap-4 py-6">
       <div data-onboarding="members-header" className="border border-[#e5e7eb] bg-white p-4 rounded-xl">
-        <div className="text-2xl font-[800]">Members</div>
+        <div className="text-2xl font-[800]">{t("title")}</div>
         <div className="mt-1.5 text-[#4b5563] leading-[1.5]">
-          Gestiona miembros, su estado y las areas donde pueden operar dentro de tu alcance actual.
+          {t("subtitle")}
         </div>
         {error ? <div className="mt-2.5 text-[#b91c1c] font-semibold">{error}</div> : null}
       </div>
 
       <div data-onboarding="members-filters" className="border border-[#e5e7eb] bg-white p-4 rounded-xl grid gap-2.5">
-        <div className="text-[18px] font-[800]">Filtros</div>
+        <div className="text-[18px] font-[800]">{t("filters.title")}</div>
         <div className="grid gap-2.5 [grid-template-columns:repeat(auto-fit,minmax(180px,1fr))]">
           <input
             value={search}
             onChange={(event) => { setSearch(event.target.value); setPage(1); }}
-            placeholder="Buscar por nombre o numero"
+            placeholder={t("filters.searchPlaceholder")}
             className="border border-[#d1d5db] rounded-[10px] px-3 py-2.5 w-full bg-white"
           />
           <select
@@ -341,7 +343,7 @@ export default function MembersModule({
             onChange={(event) => { setSelectedAreaId(event.target.value); setPage(1); }}
             className="border border-[#d1d5db] rounded-[10px] px-3 py-2.5 w-full bg-white"
           >
-            <option value="ALL">{isAdminLike ? "Todas las areas" : "Mis areas"}</option>
+            <option value="ALL">{isAdminLike ? t("filters.allAreas") : t("filters.myAreas")}</option>
             {areaOptions.map((area) => (
               <option key={area.id} value={area.id}>
                 {area.name}
@@ -353,17 +355,17 @@ export default function MembersModule({
             onChange={(event) => { setStatusFilter(event.target.value as "all" | "active" | "inactive"); setPage(1); }}
             className="border border-[#d1d5db] rounded-[10px] px-3 py-2.5 w-full bg-white"
           >
-            <option value="all">Todos los estados</option>
-            <option value="active">Solo activos</option>
-            <option value="inactive">Solo inactivos</option>
+            <option value="all">{t("filters.allStatuses")}</option>
+            <option value="active">{t("filters.onlyActive")}</option>
+            <option value="inactive">{t("filters.onlyInactive")}</option>
           </select>
           <select
             value={sortDirection}
             onChange={(event) => setSortDirection(event.target.value as "asc" | "desc")}
             className="border border-[#d1d5db] rounded-[10px] px-3 py-2.5 w-full bg-white"
           >
-            <option value="asc">Nombre A-Z</option>
-            <option value="desc">Nombre Z-A</option>
+            <option value="asc">{t("filters.nameAZ")}</option>
+            <option value="desc">{t("filters.nameZA")}</option>
           </select>
         </div>
       </div>
@@ -378,11 +380,11 @@ export default function MembersModule({
       />
 
       <MemberForm
-        title={editingMember ? `Editar miembro: ${editingMember.full_name}` : "Crear miembro"}
+        title={editingMember ? t("form.titleEdit", { name: editingMember.full_name }) : t("form.titleCreate")}
         values={formValues}
         areaOptions={areaOptions}
         busy={saving}
-        submitLabel={editingMember ? "Guardar cambios" : "Crear miembro"}
+        submitLabel={editingMember ? t("form.saveChanges") : t("form.createMember")}
         onChange={setFormValues}
         onSubmit={() => void handleSubmit()}
         onCancel={editingMember ? beginCreate : undefined}
@@ -390,7 +392,7 @@ export default function MembersModule({
 
       {loading ? (
         <div className="border border-[#e5e7eb] bg-white p-4 rounded-xl">
-          Cargando miembros...
+          {t("loading")}
         </div>
       ) : (
         <>

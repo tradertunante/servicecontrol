@@ -2,6 +2,7 @@
 "use client";
 
 import type { CSSProperties } from "react";
+import { useTranslations } from "next-intl";
 import type {
   AreaTemplateTargetRow,
   AssignmentRow,
@@ -9,7 +10,6 @@ import type {
 } from "./types";
 import {
   getAssignmentStatus,
-  getPeriodLabel,
   getTemplateName,
   normalizeAssignmentValue,
 } from "./types";
@@ -50,6 +50,7 @@ export default function TemplateAssignmentCard({
   onAutoDistributeByLoad,
   onSave,
 }: Props) {
+  const t = useTranslations("app.team.targets");
   const templateId = target.audit_template_id;
   const targetCount = Number(target.target_count ?? 0);
 
@@ -84,7 +85,13 @@ export default function TemplateAssignmentCard({
             {getTemplateName(target)}
           </div>
           <div style={{ opacity: 0.78, marginTop: 4, fontSize: 13 }}>
-            Objetivo {getPeriodLabel(selectedPeriod)} para esta auditoría.
+            {t("templatePeriodSubtitle", {
+              period: selectedPeriod === "daily"
+                ? t("periodLabelDaily")
+                : selectedPeriod === "weekly"
+                ? t("periodLabelWeekly")
+                : t("periodLabelMonthly"),
+            })}
           </div>
         </div>
 
@@ -94,14 +101,14 @@ export default function TemplateAssignmentCard({
             onClick={() => onAutoDistribute(templateId, targetCount)}
             disabled={saving || loading || teamUsers.length === 0}
           >
-            Auto-repartir
+            {t("autoDistribute")}
           </button>
           <button
             style={btn}
             onClick={() => onAutoDistributeByLoad(templateId, targetCount)}
             disabled={saving || loading || teamUsers.length === 0}
           >
-            Auto-repartir por carga
+            {t("autoDistributeByLoad")}
           </button>
         </div>
 
@@ -114,10 +121,10 @@ export default function TemplateAssignmentCard({
             flex: 1,
           }}
         >
-          <div style={input}>Meta: {targetCount}</div>
-          <div style={input}>Asignado: {normalizeAssignmentValue(assignedTotal)} / {targetCount}</div>
-          <div style={input}>Pendiente: {remaining}</div>
-          <div style={input}>Estado: {status}</div>
+          <div style={input}>{t("metaTarget")} {targetCount}</div>
+          <div style={input}>{t("metaAssigned")} {normalizeAssignmentValue(assignedTotal)} / {targetCount}</div>
+          <div style={input}>{t("metaPending")} {remaining}</div>
+          <div style={input}>{t("metaStatus")} {status}</div>
         </div>
       </div>
 
@@ -155,8 +162,8 @@ export default function TemplateAssignmentCard({
       >
         <div style={{ opacity: 0.8, fontSize: 12.5 }}>
           {templateDirty
-            ? "Cambios sin guardar"
-            : templateHint || "Sin cambios pendientes en este template."}
+            ? t("unsavedChanges")
+            : templateHint || t("noChanges")}
         </div>
 
         <button
@@ -164,7 +171,7 @@ export default function TemplateAssignmentCard({
           onClick={() => onSave(templateId)}
           disabled={saving || loading || !templateDirty}
         >
-          {saving ? "Guardando…" : "Guardar template"}
+          {saving ? t("saving") : t("saveTemplate")}
         </button>
       </div>
     </div>
