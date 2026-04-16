@@ -10,7 +10,7 @@ export default function HeroSection() {
       <div className="mx-auto grid w-full max-w-[1480px] gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:items-start">
         <div className="max-w-[820px]">
           <div
-            className="inline-flex rounded-full px-4 py-2 text-sm font-black text-[var(--text-secondary)]"
+            className="inline-flex rounded-full px-4 py-2 text-[11px] font-normal uppercase tracking-[2.5px] text-[#888780]"
             style={{
               background: "var(--card-bg)",
               border: "1px solid var(--border)",
@@ -21,15 +21,14 @@ export default function HeroSection() {
           </div>
 
           <h1
-            className="mt-7 font-extrabold leading-[1.15] tracking-[-0.04em] text-[#0a0a0a]"
-            style={{ fontSize: "clamp(2rem, 5vw, 3.25rem)" }}
+            className="mt-7 text-[#0C1F44]"
           >
             {t("h1Part1")}
             <br />
             <span
               style={{
-                background: "#0a0a0a",
-                color: "#f8f7f4",
+                background: "#0C1F44",
+                color: "#FFFFFF",
                 borderRadius: "4px",
                 padding: "0 10px",
                 display: "inline",
@@ -40,10 +39,10 @@ export default function HeroSection() {
               {t("h1Highlight")}
             </span>
             <br />
-            <span style={{ color: "#9ca3af" }}>{t("h1Muted")}</span>
+            <span style={{ color: "#888780" }}>{t("h1Muted")}</span>
           </h1>
 
-          <p className="mt-7 max-w-[560px] text-[clamp(1rem,1.8vw,1.2rem)] leading-7 text-[var(--text-secondary)]">
+          <p className="mt-7 max-w-[560px] text-[var(--text-secondary)]">
             {t("subtitle")}{" "}
             <strong className="text-[#0a0a0a]">{t("subtitleBold")}</strong>
           </p>
@@ -51,13 +50,13 @@ export default function HeroSection() {
           <div className="mt-10 flex flex-wrap items-center gap-4">
             <Link
               href="/demo"
-              className="rounded-xl bg-[#0a0a0a] px-7 py-4 text-base font-black text-[#f8f7f4] transition hover:bg-[#1f1f1f]"
+              className="rounded-[6px] bg-[#185FA5] px-7 py-4 text-base font-medium text-white transition hover:bg-[#378ADD]"
             >
               {t("ctaPrimary")}
             </Link>
             <Link
               href="/login"
-              className="rounded-xl border border-black/20 bg-transparent px-7 py-4 text-base font-black text-[#0a0a0a] transition hover:bg-black/5"
+              className="rounded-[6px] border border-[#0C1F44] bg-transparent px-7 py-4 text-base font-medium text-[#0C1F44] transition hover:bg-[#0C1F44]/5"
             >
               {t("ctaSecondary")}
             </Link>
@@ -68,28 +67,28 @@ export default function HeroSection() {
               className="rounded-[18px] p-5"
               style={{ background: "var(--card-bg)", border: "1px solid var(--border)", boxShadow: "var(--shadow-sm)" }}
             >
-              <div className="text-xs font-extrabold uppercase tracking-[0.18em] text-[var(--text-secondary)]">
+              <div className="text-[11px] font-normal uppercase tracking-[2.5px] text-[#888780]">
                 {t("card1Title")}
               </div>
-              <p className="mt-3 text-base leading-7">{t("card1Body")}</p>
+              <p className="mt-3">{t("card1Body")}</p>
             </div>
             <div
               className="rounded-[18px] p-5"
               style={{ background: "var(--card-bg)", border: "1px solid var(--border)", boxShadow: "var(--shadow-sm)" }}
             >
-              <div className="text-xs font-extrabold uppercase tracking-[0.18em] text-[var(--text-secondary)]">
+              <div className="text-[11px] font-normal uppercase tracking-[2.5px] text-[#888780]">
                 {t("card2Title")}
               </div>
-              <p className="mt-3 text-base leading-7">{t("card2Body")}</p>
+              <p className="mt-3">{t("card2Body")}</p>
             </div>
             <div
               className="rounded-[18px] p-5"
               style={{ background: "var(--card-bg)", border: "1px solid var(--border)", boxShadow: "var(--shadow-sm)" }}
             >
-              <div className="text-xs font-extrabold uppercase tracking-[0.18em] text-[var(--text-secondary)]">
+              <div className="text-[11px] font-normal uppercase tracking-[2.5px] text-[#888780]">
                 {t("card3Title")}
               </div>
-              <p className="mt-3 text-base leading-7">{t("card3Body")}</p>
+              <p className="mt-3">{t("card3Body")}</p>
             </div>
           </div>
         </div>

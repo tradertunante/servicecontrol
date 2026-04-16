@@ -25,7 +25,7 @@ export default function ProblemSection() {
                 boxShadow: "var(--shadow-sm)",
               }}
             >
-              <div className="text-sm font-extrabold tracking-[0.18em] text-[var(--text-secondary)]">
+              <div className="text-[11px] font-normal uppercase tracking-[2.5px] text-[#888780]">
                 0{index + 1}
               </div>
               <p className="mt-4 text-lg leading-8 text-[var(--text-secondary)]">{point}</p>

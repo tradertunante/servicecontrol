@@ -39,10 +39,10 @@ export default function FeatureGrid() {
                   boxShadow: "var(--shadow-sm)",
                 }}
               >
-                <div className="text-sm font-extrabold uppercase tracking-[0.18em] text-[var(--text-secondary)]">
+                <div className="text-[11px] font-normal uppercase tracking-[2.5px] text-[#888780]">
                   {String(index + 1).padStart(2, "0")}
                 </div>
-                <h3 className="mt-5 text-[1.9rem] font-bold tracking-tight text-[var(--text)]">
+                <h3 className="mt-5 text-[var(--text)]">
                   {module.title}
                 </h3>
                 <p className="mt-4 max-w-[34rem] text-lg leading-8 text-[var(--text-secondary)]">

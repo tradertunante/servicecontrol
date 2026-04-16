@@ -23,7 +23,7 @@ export default function SolutionSection() {
       <div
         className="mx-auto w-full max-w-[1480px] rounded-[28px] px-6 py-10 text-white sm:px-8 lg:px-10 lg:py-14"
         style={{
-          background: "rgba(15,23,42,0.96)",
+          background: "#0C1F44",
           border: "1px solid var(--dark-border-subtle)",
           boxShadow: "var(--dark-shadow)",
         }}
@@ -45,10 +45,10 @@ export default function SolutionSection() {
                 border: "1px solid var(--dark-border-subtle)",
               }}
             >
-              <div className="text-xs font-extrabold uppercase tracking-[0.2em] text-white/60">
+              <div className="text-[11px] font-normal uppercase tracking-[2.5px] text-white/60">
                 {pillar.eyebrow}
               </div>
-              <h3 className="mt-4 text-3xl font-bold tracking-tight text-white">{pillar.title}</h3>
+              <h3 className="mt-4 text-white">{pillar.title}</h3>
               <p className="mt-4 text-lg leading-8 text-[var(--dark-text-muted)]">{pillar.description}</p>
             </div>
           ))}
