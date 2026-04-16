@@ -27,7 +27,7 @@ export default function FinalCTA() {
             </p>
           </div>
 
-          <div className="flex flex-wrap gap-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:gap-4">
             <Link
               href="/demo"
               className="rounded-[6px] border border-[#185FA5] bg-[#185FA5] px-7 py-4 text-base font-medium text-white transition hover:bg-[#378ADD]"

@@ -47,16 +47,16 @@ export default function HeroSection() {
             <strong className="text-[#0a0a0a]">{t("subtitleBold")}</strong>
           </p>
 
-          <div className="mt-10 flex flex-wrap items-center gap-4">
+          <div className="mt-10 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:gap-4">
             <Link
               href="/demo"
-              className="rounded-[6px] bg-[#185FA5] px-7 py-4 text-base font-medium text-white transition hover:bg-[#378ADD]"
+              className="rounded-[6px] bg-[#185FA5] px-7 py-4 text-center text-base font-medium text-white transition hover:bg-[#378ADD]"
             >
               {t("ctaPrimary")}
             </Link>
             <Link
               href="/login"
-              className="rounded-[6px] border border-[#0C1F44] bg-transparent px-7 py-4 text-base font-medium text-[#0C1F44] transition hover:bg-[#0C1F44]/5"
+              className="rounded-[6px] border border-[#0C1F44] bg-transparent px-7 py-4 text-center text-base font-medium text-[#0C1F44] transition hover:bg-[#0C1F44]/5"
             >
               {t("ctaSecondary")}
             </Link>
@@ -93,7 +93,7 @@ export default function HeroSection() {
           </div>
         </div>
 
-        <div className="relative">
+        <div className="relative hidden lg:block">
           <ProductDashboardMock />
         </div>
       </div>

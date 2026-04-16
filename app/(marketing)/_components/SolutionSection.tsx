@@ -54,7 +54,7 @@ export default function SolutionSection() {
           ))}
         </div>
 
-        <div className="mt-10 grid gap-4 border-t border-white/10 pt-8 text-base text-[var(--dark-text-muted)] sm:grid-cols-2 xl:grid-cols-4">
+        <div className="mt-10 grid grid-cols-2 gap-4 border-t border-white/10 pt-8 text-base text-[var(--dark-text-muted)] xl:grid-cols-4">
           {features.map((item) => (
             <div
               key={item}
