@@ -39,7 +39,9 @@ export default function DemoShowcase() {
             </div>
           </div>
 
-          <ProductOperationsMock />
+          <div className="hidden lg:block">
+            <ProductOperationsMock />
+          </div>
         </div>
       </div>
     </section>
