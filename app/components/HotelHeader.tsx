@@ -1,7 +1,7 @@
 // app/components/HotelHeader.tsx
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useToast } from "@/app/providers/ToastProvider";
@@ -110,7 +110,7 @@ export default function HotelHeader() {
     <header
       ref={headerRef}
       data-onboarding="header"
-      className="fixed top-0 left-0 right-0 z-[1000] bg-white border-b border-zinc-200"
+      className="fixed top-0 left-0 right-0 z-[1000] bg-[#0C1F44] border-b border-white/10"
       style={{ height: 56 }}
     >
       <div className="h-full flex items-center justify-between gap-4 max-w-[1400px] mx-auto px-5 max-[720px]:px-3">
@@ -124,7 +124,7 @@ export default function HotelHeader() {
               onClick={() => goBackOrFallback(router, backTarget!)}
               disabled={loading}
               aria-label={t("back")}
-              className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-lg text-zinc-500 hover:text-zinc-900 hover:bg-zinc-100 transition-colors disabled:opacity-40"
+              className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-lg text-white/60 hover:text-white hover:bg-white/10 transition-colors disabled:opacity-40"
             >
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M10 12L6 8l4-4" />
@@ -137,13 +137,18 @@ export default function HotelHeader() {
             onClick={() => navTo(hotelHomeTarget)}
             disabled={loading}
             aria-label={t("home")}
-            className="flex-shrink-0 flex items-center justify-center w-7 h-7 rounded-md bg-zinc-900 text-white text-[11px] font-black tracking-tight leading-none"
+            className="flex-shrink-0 flex items-center justify-center w-7 h-7 rounded-md disabled:opacity-40"
           >
-            SC
+            <svg width="28" height="28" viewBox="0 0 44 44" xmlns="http://www.w3.org/2000/svg">
+              <rect x="0" y="0" width="5" height="38" fill="#FFFFFF" rx="2.5"/>
+              <rect x="0" y="33" width="38" height="5" fill="#FFFFFF" rx="2.5"/>
+              <line x1="11" y1="19" x2="20" y2="31" stroke="#378ADD" strokeWidth="5" strokeLinecap="round"/>
+              <line x1="20" y1="31" x2="35" y2="7" stroke="#378ADD" strokeWidth="5" strokeLinecap="round"/>
+            </svg>
           </button>
 
           {/* Divider */}
-          <span className="flex-shrink-0 w-px h-4 bg-zinc-200" aria-hidden />
+          <span className="flex-shrink-0 w-px h-4 bg-white/20" aria-hidden />
 
           {/* Hotel name + page */}
           <div className="flex items-baseline gap-2 min-w-0">
@@ -151,14 +156,14 @@ export default function HotelHeader() {
               onClick={() => navTo(hotelHomeTarget)}
               disabled={loading}
               title={displayHotel}
-              className="text-[13.5px] font-semibold text-zinc-800 hover:text-zinc-900 bg-transparent border-none cursor-pointer truncate max-w-[min(48vw,320px)] max-[720px]:max-w-[38vw] transition-colors disabled:opacity-50"
+              className="text-[13.5px] font-semibold text-white hover:text-white/80 bg-transparent border-none cursor-pointer truncate max-w-[min(48vw,320px)] max-[720px]:max-w-[38vw] transition-colors disabled:opacity-50"
             >
               {displayHotel}
             </button>
             {pageTitle && (
               <>
-                <span className="flex-shrink-0 text-zinc-300 text-[13px] select-none">/</span>
-                <span className="text-[13px] text-zinc-400 font-medium truncate max-w-[120px]">
+                <span className="flex-shrink-0 text-white/30 text-[13px] select-none">/</span>
+                <span className="text-[13px] text-white/50 font-medium truncate max-w-[120px]">
                   {pageTitle}
                 </span>
               </>
@@ -178,7 +183,7 @@ export default function HotelHeader() {
               <button
                 onClick={() => navTo("/admin")}
                 disabled={loading}
-                className="px-3 h-8 rounded-lg text-[13px] font-medium text-zinc-600 hover:text-zinc-900 hover:bg-zinc-100 transition-colors disabled:opacity-40"
+                className="px-3 h-8 rounded-lg text-[13px] font-medium text-white/70 hover:text-white hover:bg-white/10 transition-colors disabled:opacity-40"
               >
                 {t("pages.admin")}
               </button>
@@ -193,7 +198,7 @@ export default function HotelHeader() {
             <button
               onClick={() => navTo("/profile")}
               disabled={loading}
-              className="ml-0.5 px-3 h-8 rounded-lg text-[13px] font-semibold text-white bg-zinc-900 hover:bg-zinc-700 transition-colors disabled:opacity-40"
+              className="ml-0.5 px-3 h-8 rounded-[6px] text-[13px] font-medium text-white bg-[#185FA5] hover:bg-[#378ADD] transition-colors disabled:opacity-40"
             >
               {t("profile")}
             </button>
@@ -205,7 +210,7 @@ export default function HotelHeader() {
               onClick={() => setMobileMenuOpen((v) => !v)}
               disabled={loading}
               aria-label={t("menu")}
-              className="w-8 h-8 flex items-center justify-center rounded-lg text-zinc-500 hover:text-zinc-900 hover:bg-zinc-100 transition-colors disabled:opacity-40"
+              className="w-8 h-8 flex items-center justify-center rounded-lg text-white/60 hover:text-white hover:bg-white/10 transition-colors disabled:opacity-40"
             >
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round">
                 <path d="M2 4h12M2 8h12M2 12h12" />
@@ -216,7 +221,7 @@ export default function HotelHeader() {
               <div
                 role="menu"
                 aria-label={t("navMenu")}
-                className="absolute top-10 right-0 min-w-[160px] bg-white border border-zinc-200 rounded-xl shadow-lg py-1 z-[2000]"
+                className="absolute top-10 right-0 min-w-[160px] bg-white border border-[#D3D1C7] rounded-xl shadow-lg py-1 z-[2000]"
               >
                 <div className="px-4 py-2">
                   <AppLocaleSwitcher />
@@ -225,7 +230,7 @@ export default function HotelHeader() {
                   <button
                     onClick={() => navTo("/admin")}
                     disabled={loading}
-                    className="w-full text-left px-4 py-2.5 text-[13px] font-medium text-zinc-700 hover:bg-zinc-50 transition-colors disabled:opacity-40"
+                    className="w-full text-left px-4 py-2.5 text-[13px] font-medium text-[#0C1F44] hover:bg-[#F4F7FB] transition-colors disabled:opacity-40"
                   >
                     {t("pages.admin")}
                   </button>
@@ -233,14 +238,14 @@ export default function HotelHeader() {
                 <button
                   onClick={() => void openAuditArea()}
                   disabled={loading}
-                  className="w-full text-left px-4 py-2.5 text-[13px] font-medium text-zinc-700 hover:bg-zinc-50 transition-colors disabled:opacity-40"
+                  className="w-full text-left px-4 py-2.5 text-[13px] font-medium text-[#0C1F44] hover:bg-[#F4F7FB] transition-colors disabled:opacity-40"
                 >
                   {t("audit")}
                 </button>
                 <button
                   onClick={() => navTo("/profile")}
                   disabled={loading}
-                  className="w-full text-left px-4 py-2.5 text-[13px] font-medium text-zinc-700 hover:bg-zinc-50 transition-colors disabled:opacity-40"
+                  className="w-full text-left px-4 py-2.5 text-[13px] font-medium text-[#0C1F44] hover:bg-[#F4F7FB] transition-colors disabled:opacity-40"
                 >
                   {t("profile")}
                 </button>
