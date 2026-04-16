@@ -24,7 +24,7 @@ export default function BenefitsSection() {
                 boxShadow: "var(--shadow-sm)",
               }}
             >
-              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-black text-sm font-extrabold text-white">
+              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#185FA5] text-sm font-medium text-white">
                 +
               </div>
               <p className="mt-5 text-xl leading-8 text-[var(--text-secondary)]">{benefit}</p>

@@ -29,12 +29,12 @@ export default function HowItWorksSection() {
               }}
             >
               <div
-                className="inline-flex rounded-full px-3 py-1 text-sm font-extrabold uppercase tracking-[0.18em] text-[var(--text-secondary)]"
+                className="inline-flex rounded-full px-3 py-1 text-[11px] font-normal uppercase tracking-[2.5px] text-[#888780]"
                 style={{ background: "var(--row-bg)", border: "1px solid var(--border)" }}
               >
                 {item.step}
               </div>
-              <h3 className="mt-5 text-[1.75rem] font-bold tracking-tight text-[var(--text)]">
+              <h3 className="mt-5 text-[var(--text)]">
                 {item.title}
               </h3>
               <p className="mt-4 text-lg leading-8 text-[var(--text-secondary)]">{item.description}</p>
