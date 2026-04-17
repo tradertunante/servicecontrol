@@ -6,7 +6,7 @@ export default function HeroSection() {
   const t = useTranslations("hero");
 
   return (
-    <section className="px-5 pb-20 pt-8 sm:px-8 lg:px-10 lg:pb-24 lg:pt-10">
+    <section className="px-5 pb-20 pt-8 sm:px-8 lg:px-10 lg:pb-24 lg:pt-10" style={{ background: "#f8f7f4" }}>
       <div className="mx-auto grid w-full max-w-[1480px] gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:items-start">
         <div className="max-w-[820px]">
           <div
@@ -21,14 +21,14 @@ export default function HeroSection() {
           </div>
 
           <h1
-            className="mt-7 text-[#0C1F44]"
+            className="mt-7 text-[#0a0a0a]"
           >
             {t("h1Part1")}
             <br />
             <span
               style={{
-                background: "#0C1F44",
-                color: "#FFFFFF",
+                background: "#0a0a0a",
+                color: "#ffffff",
                 borderRadius: "4px",
                 padding: "0 10px",
                 display: "inline",
