@@ -27,9 +27,9 @@ export default function HeroSection() {
             <br />
             <span
               style={{
-                background: "#0a0a0a",
+                background: "#185FA5",
                 color: "#ffffff",
-                borderRadius: "4px",
+                borderRadius: "6px",
                 padding: "0 10px",
                 display: "inline",
                 boxDecorationBreak: "clone",
