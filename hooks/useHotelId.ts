@@ -12,6 +12,7 @@ export function useHotelId() {
         hotelId: result.hotel_id,
         hotelName: result.hotel_name,
         role: result.role ?? null,
+        is_trial: result.is_trial ?? false,
       };
     },
     staleTime: 5 * 60 * 1000,

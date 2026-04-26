@@ -5,7 +5,8 @@
     "pricing": "Pricing",
     "demo": "Demo",
     "login": "Acceder",
-    "requestDemo": "Solicitar demo"
+    "requestDemo": "Solicitar demo",
+    "trial": "Probar gratis"
   },
   "header": {
     "tagline": "Calidad y operación hotelera"
@@ -626,5 +627,43 @@
         "errorSession": "Sesion invalida."
       }
     }
+  },
+  "trialPage": {
+    "eyebrow": "Sandbox gratuito",
+    "title": "Prueba ServiceControl con el nombre de tu hotel.",
+    "description": "Accede al sandbox en menos de un minuto. Datos de demostración, flujo real.",
+    "whatLabel": "Qué incluye el sandbox",
+    "whatTitle": "El sistema completo, listo para explorar",
+    "bullets": [
+      "Dashboard ejecutivo con score por área y backlog correctivo",
+      "Auditorías ejecutables desde móvil con evidencia y scoring",
+      "Acciones correctivas generadas automáticamente tras cada fallo",
+      "Reauditorías y formación conectadas al cierre de desviaciones",
+      "Historial de 30 días de datos ficticios para ver tendencias reales"
+    ],
+    "noteLabel": "Ten en cuenta",
+    "noteBody": "El sandbox comparte datos de demostración entre todos los usuarios. Tu nombre de hotel aparecerá en la interfaz, pero los datos son ficticios. Para verlo con tus áreas y estándares reales, solicita una demo guiada.",
+    "formEyebrow": "Acceso inmediato",
+    "formTitle": "Crea tu acceso al sandbox",
+    "formSubtitle": "Recibirás tus credenciales por email en segundos.",
+    "labelName": "Tu nombre",
+    "placeholderName": "Ana García",
+    "labelEmail": "Email de trabajo",
+    "placeholderEmail": "ana@tuhotel.com",
+    "labelHotel": "Nombre de tu hotel",
+    "placeholderHotel": "Hotel Mediterráneo",
+    "hotelHint": "Así aparecerá en la interfaz del sandbox.",
+    "ctaSubmit": "Acceder al sandbox",
+    "ctaLoading": "Creando acceso...",
+    "errorGeneric": "Algo salió mal. Inténtalo de nuevo.",
+    "loginHint": "¿Ya tienes cuenta?",
+    "loginLink": "Acceder",
+    "successTitle": "¡Listo! Revisa tu email",
+    "successBody": "Te hemos enviado las credenciales de acceso. Entra y explora el sistema con el nombre de tu hotel.",
+    "successHint": "¿Ya tienes las credenciales?",
+    "successLogin": "Entrar ahora",
+    "conflictTitle": "Ya tienes acceso",
+    "conflictBody": "Este email ya tiene una cuenta en el sandbox. Revisa tu bandeja de entrada con las credenciales originales.",
+    "conflictCta": "Ir al login"
   }
 }

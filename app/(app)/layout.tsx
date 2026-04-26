@@ -3,6 +3,7 @@ import { NextIntlClientProvider } from "next-intl";
 import HotelHeader from "@/app/components/HotelHeader";
 import OnboardingProvider from "@/app/providers/OnboardingProvider";
 import OnboardingTour from "@/app/components/OnboardingTour";
+import TrialBanner from "@/app/components/TrialBanner";
 import { requireAuthenticatedUser } from "@/lib/auth/server";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
@@ -17,6 +18,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   return (
     <NextIntlClientProvider locale={locale} messages={messages}>
       <div className="min-h-screen bg-[var(--bg)]">
+        <TrialBanner />
         <HotelHeader />
         <OnboardingProvider>
           <OnboardingTour />

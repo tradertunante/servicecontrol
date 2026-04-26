@@ -21,23 +21,28 @@ export async function GET(request: NextRequest) {
   const activeHotel = await getActiveHotel(request, caller.profile);
 
   let hotelName: string | null = null;
+  let trialHotelName: string | null = null;
+
   if (activeHotel.ok) {
     const admin = supabaseAdmin();
-    const { data } = await admin
-      .from("hotels")
-      .select("name")
-      .eq("id", activeHotel.hotelId)
-      .maybeSingle();
-    hotelName = data?.name ?? null;
+
+    const [hotelResult, profileResult] = await Promise.all([
+      admin.from("hotels").select("name").eq("id", activeHotel.hotelId).maybeSingle(),
+      admin.from("profiles").select("trial_hotel_name, is_trial").eq("id", caller.profile.id).maybeSingle(),
+    ]);
+
+    hotelName = hotelResult.data?.name ?? null;
+    trialHotelName = profileResult.data?.trial_hotel_name ?? null;
   }
 
   return NextResponse.json({
     ok: activeHotel.ok,
     hotel_id: activeHotel.ok ? activeHotel.hotelId : null,
-    hotel_name: hotelName,
+    hotel_name: trialHotelName ?? hotelName,
     error: activeHotel.ok ? null : activeHotel.error,
     role: caller.profile.role,
     profile_hotel_id: caller.profile.hotel_id ?? null,
+    is_trial: trialHotelName !== null,
   });
 }
 

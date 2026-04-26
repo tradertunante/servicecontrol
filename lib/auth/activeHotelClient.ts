@@ -7,6 +7,7 @@ export type ActiveHotelPayload = {
   error?: string | null;
   role?: string | null;
   profile_hotel_id?: string | null;
+  is_trial?: boolean;
 };
 
 async function parseJson(response: Response) {

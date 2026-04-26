@@ -37,8 +37,8 @@ export default async function MarketingLocaleLayout({
         className="marketing-layout min-h-screen bg-[var(--bg)] text-[var(--text)] antialiased"
       >
         <div className="relative overflow-hidden">
-          <div className="absolute inset-x-0 top-0 h-[520px] bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.72),transparent_72%)]" />
-          <div className="absolute inset-x-0 top-0 h-[160px] border-b border-black/[0.04] bg-white/[0.28]" />
+          <div className="pointer-events-none absolute inset-x-0 top-0 h-[520px] bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.72),transparent_72%)]" />
+          <div className="pointer-events-none absolute inset-x-0 top-0 h-[160px] border-b border-black/[0.04] bg-white/[0.28]" />
           <MarketingHeader />
           {children}
           <MarketingFooter />
