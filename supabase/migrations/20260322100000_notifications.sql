@@ -13,11 +13,11 @@ create table if not exists public.notifications (
 );
 
 -- Index for fast unread count
-create index idx_notifications_user_unread
+create index if not exists idx_notifications_user_unread
   on public.notifications (user_id, created_at desc)
   where read_at is null;
 
-create index idx_notifications_hotel
+create index if not exists idx_notifications_hotel
   on public.notifications (hotel_id);
 
 -- RLS

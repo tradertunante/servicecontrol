@@ -54,16 +54,3 @@ begin
   return new;
 end;
 $$;
-
-create or replace function public.cleanup_profile_from_auth_user()
-returns trigger
-language plpgsql
-security definer
-set search_path = public, auth
-as $$
-begin
-  delete from public.user_area_access where user_id = old.id;
-  delete from public.profiles where id = old.id;
-  return old;
-end;
-$$;

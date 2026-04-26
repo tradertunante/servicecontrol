@@ -2010,7 +2010,9 @@ export type Database = {
           full_name: string | null
           hotel_id: string | null
           id: string
+          is_trial: boolean
           role: string
+          trial_hotel_name: string | null
         }
         Insert: {
           active?: boolean | null
@@ -2021,7 +2023,9 @@ export type Database = {
           full_name?: string | null
           hotel_id?: string | null
           id: string
+          is_trial?: boolean
           role: string
+          trial_hotel_name?: string | null
         }
         Update: {
           active?: boolean | null
@@ -2032,7 +2036,9 @@ export type Database = {
           full_name?: string | null
           hotel_id?: string | null
           id?: string
+          is_trial?: boolean
           role?: string
+          trial_hotel_name?: string | null
         }
         Relationships: [
           {
@@ -2304,6 +2310,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      score_events: {
+        Row: {
+          created_at: string
+          event_type: string
+          hotel_id: string
+          id: string
+          points: number
+          reason: string
+          reference_id: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          event_type: string
+          hotel_id: string
+          id?: string
+          points: number
+          reason: string
+          reference_id?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          event_type?: string
+          hotel_id?: string
+          id?: string
+          points?: number
+          reason?: string
+          reference_id?: string | null
+          user_id?: string
+        }
+        Relationships: []
       }
       standard_libraries: {
         Row: {
@@ -3023,6 +3062,30 @@ export type Database = {
           },
         ]
       }
+      trial_leads: {
+        Row: {
+          created_at: string
+          email: string
+          hotel_name: string
+          id: string
+          name: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          hotel_name: string
+          id?: string
+          name: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          hotel_name?: string
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
       user_area_access: {
         Row: {
           area_id: string
@@ -3182,6 +3245,33 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      user_scores: {
+        Row: {
+          hotel_id: string
+          id: string
+          level: number
+          total_points: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          hotel_id: string
+          id?: string
+          level?: number
+          total_points?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          hotel_id?: string
+          id?: string
+          level?: number
+          total_points?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
     }
     Views: {
@@ -3555,6 +3645,17 @@ export type Database = {
         Args: { p_hotel_id: string; p_older_than_days?: number }
         Returns: Json
       }
+      award_gamification_points: {
+        Args: {
+          p_event_type: string
+          p_hotel_id: string
+          p_points: number
+          p_reason: string
+          p_reference_id?: string
+          p_user_id: string
+        }
+        Returns: undefined
+      }
       can_admin_hotel: { Args: { p_hotel_id: string }; Returns: boolean }
       can_manage_areas: { Args: never; Returns: boolean }
       can_manage_hotel: { Args: { p_hotel_id: string }; Returns: boolean }
@@ -3610,6 +3711,7 @@ export type Database = {
         Args: { p_pack_id: string; p_source_template_id: string }
         Returns: string
       }
+      gamification_level: { Args: { p_points: number }; Returns: number }
       get_audit_run_full: {
         Args: { p_actor_user_id: string; p_run_id: string }
         Returns: Json
@@ -3655,6 +3757,17 @@ export type Database = {
           target: number
           target_id: string
           template: string
+        }[]
+      }
+      get_hotel_leaderboard: {
+        Args: { p_hotel_id: string; p_limit?: number }
+        Returns: {
+          full_name: string
+          level: number
+          rank: number
+          role: string
+          total_points: number
+          user_id: string
         }[]
       }
       get_my_daily_targets_progress: {

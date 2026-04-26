@@ -14,6 +14,7 @@ export default function MarketingHeader() {
     { href: "/#modules", label: t("modules") },
     { href: "/pricing", label: t("pricing") },
     { href: "/demo", label: t("demo") },
+    { href: "/trial", label: t("trial") },
   ];
 
   return (
@@ -67,10 +68,10 @@ export default function MarketingHeader() {
             {t("login")}
           </Link>
           <Link
-            href="/demo"
+            href="/trial"
             className="rounded-[6px] border border-[#185FA5] bg-[#185FA5] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#378ADD] sm:px-5"
           >
-            {t("requestDemo")}
+            {t("trial")}
           </Link>
         </div>
 
@@ -131,11 +132,11 @@ export default function MarketingHeader() {
               {t("login")}
             </Link>
             <Link
-              href="/demo"
+              href="/trial"
               onClick={() => setOpen(false)}
               className="rounded-[6px] border border-[#185FA5] bg-[#185FA5] px-5 py-3 text-center text-sm font-medium text-white transition hover:bg-[#378ADD]"
             >
-              {t("requestDemo")}
+              {t("trial")}
             </Link>
           </div>
         </div>
