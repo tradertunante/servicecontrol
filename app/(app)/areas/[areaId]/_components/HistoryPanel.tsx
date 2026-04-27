@@ -29,6 +29,7 @@ const inputStyle: React.CSSProperties = {
 
 const primaryBtn: React.CSSProperties = {
   padding: "10px 14px",
+  minHeight: 44,
   borderRadius: 12,
   border: "1px solid var(--border)",
   background: "#000",
@@ -40,6 +41,7 @@ const primaryBtn: React.CSSProperties = {
 
 const ghostBtn: React.CSSProperties = {
   padding: "10px 14px",
+  minHeight: 44,
   borderRadius: 12,
   border: "1px solid var(--border)",
   background: "var(--card-bg)",
@@ -51,6 +53,7 @@ const ghostBtn: React.CSSProperties = {
 
 const dangerBtn: React.CSSProperties = {
   padding: "10px 14px",
+  minHeight: 44,
   borderRadius: 12,
   border: "1px solid var(--border)",
   background: "var(--card-bg)",
@@ -504,7 +507,7 @@ export default function HistoryPanel({
                   flexWrap: "wrap",
                 }}
               >
-                <div style={{ minWidth: 260 }}>
+                <div style={{ minWidth: 0, flex: "1 1 auto" }}>
                   <div style={{ fontWeight: 950 }}>{fmtDate(r.executed_at)}</div>
                   <div style={{ marginTop: 4, fontSize: 13, opacity: 0.75 }}>
                     Score:{" "}

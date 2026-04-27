@@ -211,7 +211,14 @@ function ManagerAreaDashboardMode({
   return (
     <div style={{ display: "grid", gap: 14 }}>
       {templatesData.templates.length > 0 ? (
-        <div className="flex gap-2 overflow-x-auto pb-1">
+        <div
+          className="flex gap-2 overflow-x-auto pb-1"
+          style={{
+            boxShadow: templatesData.templates.length > 1
+              ? "inset -24px 0 14px -14px rgba(0,0,0,0.12)"
+              : undefined,
+          }}
+        >
           {templatesData.templates.map((tmpl) => (
             <div
               key={tmpl.id}
@@ -221,7 +228,7 @@ function ManagerAreaDashboardMode({
               <button
                 onClick={() => templatesData.handleStart(tmpl.id)}
                 disabled={templatesData.starting === tmpl.id}
-                className="px-3 h-7 rounded-[8px] text-[12px] font-bold bg-black text-white hover:bg-zinc-800 transition-colors disabled:opacity-50 whitespace-nowrap"
+                className="px-3 min-h-[44px] rounded-[8px] text-[12px] font-bold bg-black text-white hover:bg-zinc-800 transition-colors disabled:opacity-50 whitespace-nowrap"
               >
                 {templatesData.starting === tmpl.id ? "Iniciando…" : "Iniciar"}
               </button>
