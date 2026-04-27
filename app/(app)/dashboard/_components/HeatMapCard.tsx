@@ -126,9 +126,6 @@ export default function HeatMapCard({
       <div className="headerRow">
         <div>
           <div className="sectionTitle">{title}</div>
-          <div className="hint">
-            {compareMode ? t("internalLegend") : t("clickAreaTip")}
-          </div>
         </div>
 
         <div className="controls">

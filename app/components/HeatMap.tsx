@@ -344,6 +344,9 @@ export default function HeatMap({
           .left.qualityRow   { background: #f7ebff; }
           .left.qualityChild { background: #faf2ff; }
 
+          /* Cabecera "Departamento" centrada */
+          .headLeft { text-align: center; }
+
           /* Filas hijo: sin indentación extra, spacer oculto */
           .left.child { padding-left: 14px; }
           .left.child .caret.spacer { display: none; }
