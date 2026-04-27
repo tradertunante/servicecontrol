@@ -211,48 +211,16 @@ function ManagerAreaDashboardMode({
   return (
     <div style={{ display: "grid", gap: 14 }}>
       {templatesData.templates.length > 0 ? (
-        <div
-          style={{
-            display: "flex",
-            gap: 10,
-            overflowX: "auto",
-            paddingBottom: 4,
-          }}
-        >
+        <div className="flex gap-2 overflow-x-auto pb-1">
           {templatesData.templates.map((tmpl) => (
-            <div
+            <button
               key={tmpl.id}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 10,
-                background: "rgba(255,255,255,0.07)",
-                border: "1px solid rgba(255,255,255,0.12)",
-                borderRadius: 12,
-                padding: "8px 12px",
-                whiteSpace: "nowrap",
-                flexShrink: 0,
-              }}
+              onClick={() => templatesData.handleStart(tmpl.id)}
+              disabled={templatesData.starting === tmpl.id}
+              className="flex-shrink-0 px-4 h-9 rounded-lg text-[13px] font-semibold bg-zinc-100 text-zinc-900 hover:bg-white transition-colors disabled:opacity-50 whitespace-nowrap"
             >
-              <span style={{ fontWeight: 700, fontSize: 13 }}>{tmpl.name}</span>
-              <button
-                onClick={() => templatesData.handleStart(tmpl.id)}
-                disabled={templatesData.starting === tmpl.id}
-                style={{
-                  padding: "5px 12px",
-                  borderRadius: 8,
-                  border: "none",
-                  background: "#fff",
-                  color: "#000",
-                  fontWeight: 900,
-                  fontSize: 12,
-                  cursor: templatesData.starting === tmpl.id ? "not-allowed" : "pointer",
-                  opacity: templatesData.starting === tmpl.id ? 0.6 : 1,
-                }}
-              >
-                {templatesData.starting === tmpl.id ? "Iniciando…" : "Iniciar"}
-              </button>
-            </div>
+              {templatesData.starting === tmpl.id ? `${tmpl.name} — Iniciando…` : tmpl.name}
+            </button>
           ))}
         </div>
       ) : null}
