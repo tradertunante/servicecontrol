@@ -76,6 +76,11 @@ export async function PATCH(
       typeof body?.full_name === "string" ? body.full_name.trim() || null : target.full_name;
     const active = body?.active !== false;
 
+    const newPassword = typeof body?.password === "string" ? body.password.trim() : null;
+    if (newPassword !== null && newPassword.length < 8) {
+      return jsonError("La contraseña debe tener al menos 8 caracteres.", 400);
+    }
+
     const admin = supabaseAdmin();
     const { error } = await admin
       .from("profiles")
@@ -88,6 +93,13 @@ export async function PATCH(
       .eq("hotel_id", hotelResult.hotelId);
 
     if (error) return jsonDbError(error);
+
+    if (newPassword) {
+      const { error: authError } = await admin.auth.admin.updateUserById(userId, {
+        password: newPassword,
+      });
+      if (authError) return jsonDbError(authError);
+    }
 
     return NextResponse.json({ ok: true });
   } catch (error) {

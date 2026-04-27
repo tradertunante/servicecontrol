@@ -41,6 +41,8 @@ export default function UserDetailPageClient({
   const [areasLoading, setAreasLoading] = useState(true);
   const [areas, setAreas] = useState<AreaRow[]>([]);
   const [selectedAreaIds, setSelectedAreaIds] = useState<string[]>([]);
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [showDelete, setShowDelete] = useState(false);
@@ -147,6 +149,19 @@ export default function UserDetailPageClient({
       const accessToken = sessionData?.session?.access_token;
       if (!accessToken) throw new Error("Sesion invalida.");
 
+      if (newPassword) {
+        if (newPassword.length < 8) {
+          setMsg("La contraseña debe tener al menos 8 caracteres.");
+          setSaving(false);
+          return;
+        }
+        if (newPassword !== confirmPassword) {
+          setMsg("Las contraseñas no coinciden.");
+          setSaving(false);
+          return;
+        }
+      }
+
       const updateRes = await fetch(`/api/admin/users/${userRow.id}`, {
         method: "PATCH",
         headers: {
@@ -157,6 +172,7 @@ export default function UserDetailPageClient({
           full_name: fullName.trim() || null,
           role,
           active,
+          ...(newPassword ? { password: newPassword } : {}),
         }),
       });
       const updatePayload = await updateRes.json().catch(() => ({}));
@@ -172,6 +188,8 @@ export default function UserDetailPageClient({
       });
       const payload = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(payload?.error ?? "No se pudo guardar accesos de areas.");
+      setNewPassword("");
+      setConfirmPassword("");
       setMsg("Guardado.");
     } catch (e: unknown) {
       setMsg(`Error guardando areas: ${e instanceof Error ? e.message : "desconocido"}`);
@@ -335,6 +353,32 @@ export default function UserDetailPageClient({
           <input type="checkbox" checked={active} onChange={(e) => setActive(e.target.checked)} />
           <span className="font-black">Usuario activo</span>
         </label>
+
+        <div className="mt-[10px] pt-[18px] border-t border-[#eee] grid gap-[14px]">
+          <div className="font-black">Cambiar contraseña <span className="font-normal opacity-60 text-sm">(dejar vacío para no cambiar)</span></div>
+          <label className="grid gap-1.5">
+            <span className="font-black text-sm">Nueva contraseña</span>
+            <input
+              type="password"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              placeholder="Mínimo 8 caracteres"
+              className="p-3 rounded-[10px] border border-[#ddd]"
+              autoComplete="new-password"
+            />
+          </label>
+          <label className="grid gap-1.5">
+            <span className="font-black text-sm">Confirmar contraseña</span>
+            <input
+              type="password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              placeholder="Repite la nueva contraseña"
+              className="p-3 rounded-[10px] border border-[#ddd]"
+              autoComplete="new-password"
+            />
+          </label>
+        </div>
       </div>
 
       <div className="mt-[22px]">
