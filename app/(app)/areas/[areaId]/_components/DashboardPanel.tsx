@@ -210,15 +210,15 @@ export default function DashboardPanel({
               value={period}
               onChange={(e) => setPeriod(e.target.value as PeriodKey)}
               style={{
-                padding: "10px 12px",
-                borderRadius: 12,
+                padding: "10px 10px",
+                borderRadius: 10,
                 border: "1px solid var(--border)",
                 outline: "none",
-                minWidth: 220,
                 fontWeight: 900,
                 background: "var(--card-bg)",
                 color: "inherit",
                 width: "100%",
+                fontSize: 14,
               }}
             >
               <option value="THIS_MONTH">{t("periodThisMonth")}</option>
@@ -234,15 +234,15 @@ export default function DashboardPanel({
               value={templateFilter}
               onChange={(e) => setTemplateFilter(e.target.value)}
               style={{
-                padding: "10px 12px",
-                borderRadius: 12,
+                padding: "10px 10px",
+                borderRadius: 10,
                 border: "1px solid var(--border)",
                 outline: "none",
-                minWidth: 260,
                 fontWeight: 900,
                 background: "var(--card-bg)",
                 color: "inherit",
                 width: "100%",
+                fontSize: 14,
               }}
             >
               <option value="ALL">{t("viewAll")}</option>
@@ -261,10 +261,11 @@ export default function DashboardPanel({
             className="col-span-2 w-full sm:w-auto"
             style={{
               padding: "10px 14px",
-              borderRadius: 12,
+              borderRadius: 10,
               border: "1px solid var(--border)",
               outline: "none",
               fontWeight: 900,
+              fontSize: 14,
               background: "var(--card-bg)",
               color: "inherit",
               cursor: "pointer",

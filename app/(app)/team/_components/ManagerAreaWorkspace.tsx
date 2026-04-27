@@ -211,24 +211,17 @@ function ManagerAreaDashboardMode({
   return (
     <div style={{ display: "grid", gap: 14 }}>
       {templatesData.templates.length > 0 ? (
-        <div
-          className="flex gap-2 overflow-x-auto pb-1"
-          style={{
-            boxShadow: templatesData.templates.length > 1
-              ? "inset -24px 0 14px -14px rgba(0,0,0,0.12)"
-              : undefined,
-          }}
-        >
+        <div className="grid grid-cols-1 gap-2 sm:flex sm:flex-nowrap sm:gap-2 sm:overflow-x-auto sm:pb-1">
           {templatesData.templates.map((tmpl) => (
             <div
               key={tmpl.id}
-              className="flex-shrink-0 flex items-center justify-between gap-3 bg-white text-black rounded-[14px] px-4 py-2.5"
+              className="flex items-center justify-between gap-3 bg-white text-black rounded-[14px] px-4 py-3 sm:flex-shrink-0"
             >
-              <span className="text-[13px] font-bold whitespace-nowrap">{tmpl.name}</span>
+              <span className="text-[13px] font-bold">{tmpl.name}</span>
               <button
                 onClick={() => templatesData.handleStart(tmpl.id)}
                 disabled={templatesData.starting === tmpl.id}
-                className="px-3 min-h-[44px] rounded-[8px] text-[12px] font-bold bg-black text-white hover:bg-zinc-800 transition-colors disabled:opacity-50 whitespace-nowrap"
+                className="flex-shrink-0 px-4 h-10 rounded-[8px] text-[13px] font-bold bg-black text-white hover:bg-zinc-800 transition-colors disabled:opacity-50 whitespace-nowrap"
               >
                 {templatesData.starting === tmpl.id ? "Iniciando…" : "Iniciar"}
               </button>
