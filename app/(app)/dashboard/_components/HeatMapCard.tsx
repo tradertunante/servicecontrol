@@ -196,8 +196,8 @@ export default function HeatMapCard({
         @media (max-width: 720px) {
           .headerRow { flex-direction: column; align-items: stretch; }
           .controls { justify-content: flex-start; }
-          .card { padding: 12px 8px !important; }
-          .heatWrap { margin-left: -8px; margin-right: -8px; width: calc(100% + 16px); }
+          .card { padding: 10px 6px !important; }
+          .heatWrap { margin-left: -6px; margin-right: -6px; width: calc(100% + 12px); }
         }
       `}</style>
     </div>

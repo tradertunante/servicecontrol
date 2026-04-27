@@ -211,6 +211,6 @@ const dashCss = `
   .sectionTitle { font-size:22px; font-weight:950; letter-spacing:0.4px; margin-bottom:22px; }
   .gridGauges { display:grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap:16px; }
   @media (max-width: 720px) {
-    .dash { padding: 10px 8px; }
+    .dash { padding: 6px 4px; }
   }
 `;
