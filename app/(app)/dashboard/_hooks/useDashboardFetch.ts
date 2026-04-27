@@ -7,7 +7,7 @@ import type { Profile, AuditRunRow } from "../_lib/dashboardTypes";
 import type { HeatMode } from "../_lib/dashboardUtils";
 
 type HotelRow = { id: string; name: string; active: boolean | null; status: string | null };
-type AreaRow = { id: string; name: string; type: string | null; hotel_id: string | null; active?: boolean | null };
+type AreaRow = { id: string; name: string; type: string | null; hotel_id: string | null; active?: boolean | null; sort_order?: number | null };
 type TemplateRow = { id: string; name: string; hotel_id: string | null };
 type DepartmentBacklogResponse = { rows?: unknown[] };
 
@@ -78,9 +78,10 @@ export function useDashboardFetch({
 
         const areasPromise = supabase
           .from("areas")
-          .select("id,name,type,hotel_id,active")
+          .select("id,name,type,hotel_id,active,sort_order")
           .eq("hotel_id", activeHotelId)
           .eq("active", true)
+          .order("sort_order", { ascending: true, nullsFirst: false })
           .order("name");
 
         const templatesPromise = supabase

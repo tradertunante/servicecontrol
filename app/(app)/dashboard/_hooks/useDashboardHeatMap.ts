@@ -12,7 +12,7 @@ import {
   getRolling12MScore,
 } from "../_lib/dashboardUtils";
 
-type AreaRow = { id: string; name: string; type: string | null; hotel_id: string | null; active?: boolean | null };
+type AreaRow = { id: string; name: string; type: string | null; hotel_id: string | null; active?: boolean | null; sort_order?: number | null };
 type TemplateRow = { id: string; name: string; hotel_id: string | null };
 type HeatCell = { value: number | null; count: number };
 type RunsByArea = Map<string, AuditRunRow[]>;
