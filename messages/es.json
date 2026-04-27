@@ -506,7 +506,7 @@
         "noAudits": "No hay auditorías enviadas todavía.",
         "weakestSection": "Sección más débil",
         "strongestSection": "Sección más fuerte",
-        "failRanking": "Ranking de FAIL (según Vista + Periodo)",
+        "failRanking": "Ranking de FAIL",
         "failBase": "Base: {count} auditorías",
         "standardsFail": "Estándares con más FAIL",
         "classificationsFail": "Clasificaciones con más FAIL",
