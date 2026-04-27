@@ -232,7 +232,6 @@ export default function TeamPageShell({
         style={{
           marginTop: 12,
           overflowX: "auto",
-          WebkitOverflowScrolling: "touch" as React.CSSProperties["WebkitOverflowScrolling"],
           paddingBottom: 4,
           marginLeft: -14,
           marginRight: -14,
