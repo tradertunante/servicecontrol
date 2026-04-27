@@ -193,7 +193,12 @@ export default function HeatMapCard({
         .heatWrap { position: relative; width: 100%; overflow-x: auto; overflow-y: hidden; -webkit-overflow-scrolling: touch; padding-bottom: 8px; }
         .heatInner { width: max-content; }
         .heatWrap:after { content: ""; position: sticky; right: 0; top: 0; height: 100%; width: 28px; float: right; pointer-events: none; background: linear-gradient(to right, rgba(255,255,255,0), rgba(255,255,255,0.9)); }
-        @media (max-width: 720px) { .headerRow { flex-direction: column; align-items: stretch; } .controls { justify-content: flex-start; } }
+        @media (max-width: 720px) {
+          .headerRow { flex-direction: column; align-items: stretch; }
+          .controls { justify-content: flex-start; }
+          .card { padding: 12px 8px !important; }
+          .heatWrap { margin-left: -8px; margin-right: -8px; width: calc(100% + 16px); }
+        }
       `}</style>
     </div>
   );
