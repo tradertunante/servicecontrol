@@ -1,7 +1,7 @@
 // FILE: app/(app)/dashboard/_components/HeatMapCard.tsx
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties } from "react";
 import { useTranslations } from "next-intl";
 import HeatMap from "@/app/components/HeatMap";
@@ -33,6 +33,26 @@ export default function HeatMapCard({
 }) {
   const t = useTranslations("app.dashboard");
   const [compareMode, setCompareMode] = useState(false);
+  const heatWrapRef = useRef<HTMLDivElement>(null);
+
+  // En móvil, desplaza automáticamente al mes en curso al cambiar de modo/año
+  useEffect(() => {
+    const el = heatWrapRef.current;
+    if (!el || typeof window === "undefined" || window.innerWidth > 720) return;
+
+    const now = new Date();
+    let colIdx: number;
+    if (heatMode === "YEAR") {
+      // YEAR: columnas Ene(0)..Dic(11)..Media(12)
+      colIdx = selectedYear === now.getFullYear() ? now.getMonth() : 0;
+    } else {
+      // ROLLING_12M: el mes actual es el índice 11 (justo antes de "Media")
+      colIdx = 11;
+    }
+
+    // móvil: col=82px, gap=8px → paso de 90px por columna
+    el.scrollLeft = colIdx * 90;
+  }, [heatMode, selectedYear]);
 
   const title = useMemo(() => {
     const base = heatMode === "YEAR"
@@ -150,7 +170,7 @@ export default function HeatMapCard({
         </div>
       </div>
 
-      <div className="heatWrap">
+      <div className="heatWrap" ref={heatWrapRef}>
         <div className="heatInner">
           {Array.isArray(dataToShow) && dataToShow.length > 0 ? (
             <HeatMap data={dataToShow} monthLabels={monthLabels} compareMode={compareMode} />
