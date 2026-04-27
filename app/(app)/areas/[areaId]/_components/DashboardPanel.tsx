@@ -197,12 +197,15 @@ export default function DashboardPanel({
 
   return (
     <div style={{ display: "grid", gap: 14 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+      <div className="flex justify-between gap-3 flex-wrap items-start">
         <div style={{ fontSize: 22, fontWeight: 950 }}>{t("title")}</div>
 
-        <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <div style={{ fontWeight: 900, opacity: 0.9 }}>{t("period")}</div>
+        {/* Controles: 2 columnas en móvil, flex en desktop */}
+        <div className="grid grid-cols-2 gap-2 w-full sm:w-auto sm:flex sm:flex-wrap sm:items-center sm:gap-[10px]">
+
+          {/* Periodo */}
+          <div className="flex flex-col sm:flex-row sm:items-center sm:gap-[10px]">
+            <div className="hidden sm:block" style={{ fontWeight: 900, opacity: 0.9 }}>{t("period")}</div>
             <select
               value={period}
               onChange={(e) => setPeriod(e.target.value as PeriodKey)}
@@ -215,6 +218,7 @@ export default function DashboardPanel({
                 fontWeight: 900,
                 background: "var(--card-bg)",
                 color: "inherit",
+                width: "100%",
               }}
             >
               <option value="THIS_MONTH">{t("periodThisMonth")}</option>
@@ -223,8 +227,9 @@ export default function DashboardPanel({
             </select>
           </div>
 
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <div style={{ fontWeight: 900, opacity: 0.9 }}>{t("view")}</div>
+          {/* Vista */}
+          <div className="flex flex-col sm:flex-row sm:items-center sm:gap-[10px]">
+            <div className="hidden sm:block" style={{ fontWeight: 900, opacity: 0.9 }}>{t("view")}</div>
             <select
               value={templateFilter}
               onChange={(e) => setTemplateFilter(e.target.value)}
@@ -237,6 +242,7 @@ export default function DashboardPanel({
                 fontWeight: 900,
                 background: "var(--card-bg)",
                 color: "inherit",
+                width: "100%",
               }}
             >
               <option value="ALL">{t("viewAll")}</option>
@@ -248,9 +254,11 @@ export default function DashboardPanel({
             </select>
           </div>
 
+          {/* Reporte mensual — ancho completo en móvil */}
           <button
             type="button"
             onClick={() => router.push(`/reports/monthly/area/${areaId}?month=${currentMonth}`)}
+            className="col-span-2 w-full sm:w-auto"
             style={{
               padding: "10px 14px",
               borderRadius: 12,
