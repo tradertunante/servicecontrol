@@ -154,9 +154,11 @@ export default function AreasPageClient({
                 <div key={a.id} className="card itemCard">
                   <div className="itemLeft">
                     <div className="areaName">{a.name}</div>
-                    <div className="chips">
-                      <span className="chip">{a.type ?? "Sin tipo"}</span>
-                    </div>
+                    {a.type ? (
+                      <div className="chips">
+                        <span className="chip">{a.type}</span>
+                      </div>
+                    ) : null}
                   </div>
                   <div className="itemActions">
                     <button type="button" onClick={() => goArea(a.id)} className="primaryBtn enterBtn">Entrar</button>
