@@ -663,7 +663,7 @@ export default function AuditTargetsModule({
                     alignItems: "center",
                   }}
                 >
-                  <div style={{ minWidth: 320 }}>
+                  <div style={{ minWidth: 0, flex: 1 }}>
                     <div style={{ fontWeight: 750 }}>
                       {areaName} · <span style={{ opacity: 0.95 }}>{templateName}</span>
                     </div>
