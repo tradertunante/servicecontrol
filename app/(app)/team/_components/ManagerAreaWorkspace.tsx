@@ -213,14 +213,19 @@ function ManagerAreaDashboardMode({
       {templatesData.templates.length > 0 ? (
         <div className="flex gap-2 overflow-x-auto pb-1">
           {templatesData.templates.map((tmpl) => (
-            <button
+            <div
               key={tmpl.id}
-              onClick={() => templatesData.handleStart(tmpl.id)}
-              disabled={templatesData.starting === tmpl.id}
-              className="flex-shrink-0 px-4 h-9 rounded-lg text-[13px] font-semibold bg-zinc-100 text-zinc-900 hover:bg-white transition-colors disabled:opacity-50 whitespace-nowrap"
+              className="flex-shrink-0 flex items-center justify-between gap-3 bg-white text-black rounded-[14px] px-4 py-2.5"
             >
-              {templatesData.starting === tmpl.id ? `${tmpl.name} — Iniciando…` : tmpl.name}
-            </button>
+              <span className="text-[13px] font-bold whitespace-nowrap">{tmpl.name}</span>
+              <button
+                onClick={() => templatesData.handleStart(tmpl.id)}
+                disabled={templatesData.starting === tmpl.id}
+                className="px-3 h-7 rounded-[8px] text-[12px] font-bold bg-black text-white hover:bg-zinc-800 transition-colors disabled:opacity-50 whitespace-nowrap"
+              >
+                {templatesData.starting === tmpl.id ? "Iniciando…" : "Iniciar"}
+              </button>
+            </div>
           ))}
         </div>
       ) : null}
