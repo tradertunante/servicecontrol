@@ -223,9 +223,6 @@ export default function SuperadminTemplatesPage() {
                   {t.created_at ? new Date(t.created_at).toLocaleString() : "—"}
                 </div>
 
-                <div style={{ marginTop: 2, opacity: 0.55, fontWeight: 900, fontSize: 11 }}>
-                  ID: {t.id}
-                </div>
               </button>
             );
           })}

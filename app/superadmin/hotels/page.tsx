@@ -327,7 +327,6 @@ export default function SuperadminHotelsPage() {
                   <div>
                     <div style={{ fontWeight: 950, fontSize: 16, marginBottom: 6 }}>{h.name}</div>
                     <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-                      <span style={{ fontSize: 13, opacity: 0.75 }}>ID: {h.id}</span>
                       <span style={pill(isActive)}>{isActive ? "Activo" : "Inactivo"}</span>
                     </div>
                   </div>

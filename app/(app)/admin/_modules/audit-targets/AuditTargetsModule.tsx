@@ -640,8 +640,8 @@ export default function AuditTargetsModule({
         ) : (
           <div style={{ display: "grid", gap: 10 }}>
             {targets.map((t) => {
-              const areaName = t.areas?.name ?? t.area_id.slice(0, 8);
-              const templateName = t.audit_templates?.name ?? t.audit_template_id.slice(0, 8);
+              const areaName = t.areas?.name ?? "—";
+              const templateName = t.audit_templates?.name ?? "—";
 
               const key = `${t.area_id}__${t.audit_template_id}__${t.period}`;
               const assignedTarget = assignmentMap[key]?.assigned_target ?? 0;
