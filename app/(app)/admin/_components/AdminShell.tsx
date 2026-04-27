@@ -175,7 +175,7 @@ export default function AdminShell({
           ) : viewMode === "builder" ? (
             <BuilderModule hotelId={activeHotelId} />
           ) : viewMode === "audit-targets" ? (
-            <AuditTargetsModule card={card} hotelId={activeHotelId} />
+            <AuditTargetsModule hotelId={activeHotelId} />
           ) : (
             <NotificationsModule hotelId={activeHotelId} />
           )}
