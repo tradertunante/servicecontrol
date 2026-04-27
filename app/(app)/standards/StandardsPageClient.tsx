@@ -162,9 +162,43 @@ export default function StandardsPageClient({
 
   const duplicateHotelTemplate = async (template: HotelTemplate) => {
     if (!hotelIdInUse) { toast.warn("No hay hotel seleccionado."); return; }
-    const name = window.prompt("Nombre para la copia:", `${template.name} (Copia)`);
-    if (!name) return;
+
+    const timesRaw = window.prompt("¿Cuántas copias quieres crear?", "1");
+    if (!timesRaw) return;
+    const times = parseInt(timesRaw, 10);
+    if (isNaN(times) || times < 1 || times > 20) {
+      toast.error("Introduce un número entre 1 y 20.");
+      return;
+    }
+
     setDuplicatingTemplateId(template.id);
+    try {
+      const { data } = await supabase.auth.getSession();
+      const token = data.session?.access_token ?? "";
+      if (!token) throw new Error("Sesion invalida.");
+
+      for (let i = 0; i < times; i++) {
+        const res = await fetch("/api/standards/actions", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ action: "clone_template", template_id: template.id, new_name: template.name }),
+        });
+        const payload = await res.json().catch(() => null);
+        if (!res.ok) throw new Error(payload?.error ?? "No se pudo duplicar la auditoría.");
+      }
+
+      toast.success(`${times} copia${times > 1 ? "s" : ""} creada${times > 1 ? "s" : ""}.`);
+      await loadAll(hotelIdInUse);
+    } catch (e: unknown) { toast.error(e instanceof Error ? e.message : "No se pudo duplicar la auditoría."); }
+    finally { setDuplicatingTemplateId(null); }
+  };
+
+  const [deletingTemplateId, setDeletingTemplateId] = useState<string | null>(null);
+
+  const deleteHotelTemplate = async (template: HotelTemplate) => {
+    if (!hotelIdInUse) return;
+    if (!window.confirm(`¿Eliminar "${template.name}" del hotel? Esta acción no se puede deshacer.`)) return;
+    setDeletingTemplateId(template.id);
     try {
       const { data } = await supabase.auth.getSession();
       const token = data.session?.access_token ?? "";
@@ -172,21 +206,15 @@ export default function StandardsPageClient({
 
       const res = await fetch("/api/standards/actions", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          action: "clone_template",
-          template_id: template.id,
-          new_name: name,
-        }),
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ action: "delete_template", template_id: template.id }),
       });
       const payload = await res.json().catch(() => null);
-      if (!res.ok) throw new Error(payload?.error ?? "No se pudo duplicar la auditoria.");
+      if (!res.ok) throw new Error(payload?.error ?? "No se pudo eliminar la plantilla.");
+      toast.success(`"${template.name}" eliminada.`);
       await loadAll(hotelIdInUse);
-    } catch (e: unknown) { toast.error(e instanceof Error ? e.message : "No se pudo duplicar la auditoría."); }
-    finally { setDuplicatingTemplateId(null); }
+    } catch (e: unknown) { toast.error(e instanceof Error ? e.message : "No se pudo eliminar."); }
+    finally { setDeletingTemplateId(null); }
   };
 
   const templatesByPack = useMemo(() => {
@@ -308,6 +336,13 @@ export default function StandardsPageClient({
                               disabled={duplicatingTemplateId === t.id}
                             >
                               Editar
+                            </button>
+                            <button
+                              className="px-[14px] py-2.5 rounded-xl border border-red-200 text-red-700 bg-white font-black cursor-pointer text-sm whitespace-nowrap disabled:opacity-50"
+                              onClick={() => deleteHotelTemplate(t)}
+                              disabled={deletingTemplateId === t.id || duplicatingTemplateId === t.id}
+                            >
+                              {deletingTemplateId === t.id ? "Eliminando…" : "Eliminar"}
                             </button>
                           </div>
                         </div>

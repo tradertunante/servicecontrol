@@ -101,6 +101,31 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ ok: true });
     }
 
+    if (action === "delete_template") {
+      const templateId = String(body?.template_id ?? "").trim();
+      if (!templateId) return jsonError("template_id es obligatorio.", 400);
+
+      // Verify it belongs to this hotel before deleting
+      const { data: template, error: checkError } = await admin
+        .from("audit_templates")
+        .select("id")
+        .eq("id", templateId)
+        .eq("hotel_id", hotelResult.hotelId)
+        .maybeSingle();
+
+      if (checkError) return jsonDbError(checkError);
+      if (!template?.id) return jsonError("La plantilla no pertenece al hotel seleccionado.", 403);
+
+      const { error } = await admin
+        .from("audit_templates")
+        .delete()
+        .eq("id", templateId)
+        .eq("hotel_id", hotelResult.hotelId);
+
+      if (error) return jsonDbError(error);
+      return NextResponse.json({ ok: true });
+    }
+
     return jsonError("Accion no soportada.", 400);
   } catch (error) {
     return jsonDbError(error instanceof Error ? { message: error.message } : null, "Error inesperado.");
