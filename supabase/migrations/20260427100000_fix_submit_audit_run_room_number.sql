@@ -1,3 +1,6 @@
+-- Fix: submit_audit_run was missing room_number, auditor_email, employee_number
+-- and is_na in SELECT INTO v_run / v_a queries, causing runtime field errors.
+
 create or replace function public.submit_audit_run(
   p_run_id uuid,
   p_actor_user_id uuid
@@ -382,8 +385,6 @@ begin
       );
     end if;
 
-    -- Step 1 intentionally validates against the current live active question set
-    -- of the template, matching the current frontend behavior.
     for v_q in
       select
         q.id,
@@ -820,11 +821,10 @@ begin
           'type', 'internal',
           'field', null,
           'question_id', null,
-          'details', jsonb_build_object()
+          'details', jsonb_build_object('sqlerrm', SQLERRM, 'sqlstate', SQLSTATE)
         ),
         'meta', v_meta
       );
   end;
 end;
 $$;
-
