@@ -18,7 +18,7 @@ type UserRow = {
 
 export default function UsersPageClient({
   initialProfile,
-  hotelId,
+  hotelId: _hotelId,
 }: {
   initialProfile: Profile;
   hotelId: string;
@@ -104,7 +104,7 @@ export default function UsersPageClient({
     return (
       <main className="p-6">
         <BackButton fallback="/home" />
-        <h1 className="text-[56px] mb-1.5">Usuarios</h1>
+        <h1 className="text-[clamp(28px,8vw,56px)] mb-1.5">Usuarios</h1>
         <div className="opacity-80">Cargando...</div>
       </main>
     );
@@ -114,39 +114,39 @@ export default function UsersPageClient({
     return (
       <main className="p-6">
         <BackButton fallback="/home" />
-        <h1 className="text-[56px] mb-1.5">Usuarios</h1>
+        <h1 className="text-[clamp(28px,8vw,56px)] mb-1.5">Usuarios</h1>
         <div className="text-[crimson] font-[950]">{error}</div>
       </main>
     );
   }
 
   return (
-    <main className="p-6">
+    <main className="p-4 sm:p-6">
       <BackButton fallback="/home" />
-      <div className="flex justify-between gap-3 flex-wrap">
+      <div className="flex justify-between gap-3 flex-wrap items-start">
         <div>
-          <h1 className="text-[56px] mb-1.5">Usuarios</h1>
-          <div className="opacity-80">
-            {initialProfile.role} · Hotel: <span className="font-mono">{hotelId}</span>
+          <h1 className="text-[clamp(28px,8vw,56px)] mb-1.5">Usuarios</h1>
+          <div className="opacity-80 text-[13px]">
+            {initialProfile.role}
           </div>
         </div>
-        <div className="flex gap-3 items-center">
+        <div className="flex gap-3 items-center flex-wrap">
           <button
-            className="px-4 py-3 rounded-xl border border-black/20 bg-black text-white font-[950] cursor-pointer h-11"
+            className="px-4 py-3 rounded-xl border border-black/20 bg-black text-white font-[950] cursor-pointer h-11 whitespace-nowrap"
             onClick={() => router.push("/users/new")}
           >
             + Crear usuario
           </button>
           <button
-            className="px-4 py-3 rounded-xl border border-black/20 bg-white text-black font-[950] cursor-pointer h-11"
+            className="px-4 py-3 rounded-xl border border-black/20 bg-white text-black font-[950] cursor-pointer h-11 whitespace-nowrap"
             onClick={() => router.push("/home")}
           >
             Volver
           </button>
         </div>
       </div>
-      <div className="mt-[18px] rounded-[18px] border border-black/[0.08] bg-white/75 overflow-hidden">
-        <div className="grid [grid-template-columns:2fr_2fr_1fr_1fr_220px] items-center">
+      <div className="mt-[18px] rounded-[18px] border border-black/[0.08] bg-white/75 overflow-x-auto">
+        <div className="grid [grid-template-columns:2fr_2fr_1fr_1fr_220px] items-center min-w-[600px]">
           <div className="font-[950] px-4 py-[14px] border-b border-black/[0.06] bg-white/85">Nombre</div>
           <div className="font-[950] px-4 py-[14px] border-b border-black/[0.06] bg-white/85">Email</div>
           <div className="font-[950] px-4 py-[14px] border-b border-black/[0.06] bg-white/85">Rol</div>

@@ -110,22 +110,26 @@ export default function NotificationsModule({ hotelId }: { hotelId: string }) {
                     <div className="text-xs text-gray-500 mt-0.5 leading-relaxed">{description}</div>
                   </div>
 
-                  {/* Toggle */}
+                  {/* Toggle — wrapped in a 44px touch target */}
                   <button
                     role="switch"
                     aria-checked={settings[key]}
                     onClick={() => toggle(key)}
-                    className={[
-                      "relative flex-shrink-0 w-11 h-6 rounded-full transition-colors duration-200 focus:outline-none",
-                      settings[key] ? "bg-black" : "bg-gray-200",
-                    ].join(" ")}
+                    className="flex-shrink-0 flex items-center justify-center min-w-[44px] min-h-[44px] focus:outline-none"
                   >
                     <span
                       className={[
-                        "absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow-sm transition-transform duration-200",
-                        settings[key] ? "translate-x-5" : "translate-x-0",
+                        "relative w-11 h-6 rounded-full transition-colors duration-200",
+                        settings[key] ? "bg-black" : "bg-gray-200",
                       ].join(" ")}
-                    />
+                    >
+                      <span
+                        className={[
+                          "absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow-sm transition-transform duration-200",
+                          settings[key] ? "translate-x-5" : "translate-x-0",
+                        ].join(" ")}
+                      />
+                    </span>
                   </button>
                 </div>
               ))}
@@ -145,7 +149,7 @@ export default function NotificationsModule({ hotelId }: { hotelId: string }) {
           <button
             onClick={handleSave}
             disabled={saving}
-            className="px-5 py-2 rounded-lg bg-black text-white text-sm font-bold hover:bg-gray-800 disabled:opacity-50 transition-colors"
+            className="px-5 py-3 rounded-lg bg-black text-white text-sm font-bold hover:bg-gray-800 disabled:opacity-50 transition-colors min-h-[44px]"
           >
             {saving ? "Guardando…" : "Guardar cambios"}
           </button>

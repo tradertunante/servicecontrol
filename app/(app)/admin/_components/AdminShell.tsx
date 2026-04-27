@@ -58,6 +58,7 @@ function buildNavItemStyle(active: boolean): CSSProperties {
     }`,
     borderRadius: 12,
     padding: "10px 12px",
+    minHeight: 44,
     background: active
       ? v("--sc-row-bg", "rgba(255,255,255,0.08)")
       : v("--sc-row-bg-soft", "rgba(255,255,255,0.03)"),
@@ -120,7 +121,7 @@ export default function AdminShell({
     : { display: "grid", gridTemplateColumns: "260px 1fr", gap: 14, alignItems: "start", width: "100%" };
 
   return (
-    <div className="w-full p-[18px]">
+    <div className="w-full p-[18px] overflow-x-hidden">
       <div style={layoutStyle}>
         <aside style={sidebar} data-onboarding="admin-sidebar">
           <div className="mb-3">
@@ -128,7 +129,7 @@ export default function AdminShell({
             <div className="mt-[3px] text-[13px] opacity-[0.85]">Gestiona hotel, usuarios, accesos, auditorías y objetivos.</div>
           </div>
 
-          <div className={`grid gap-2 mt-[6px] ${isNarrow ? "grid-cols-2" : "grid-cols-1"}`}>
+          <div className="grid gap-2 mt-[6px] grid-cols-1 min-[540px]:grid-cols-2">
             {navItems.map((it) => {
               const active = viewMode === it.key;
               return (

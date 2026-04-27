@@ -19,12 +19,14 @@ import {
 } from "../_lib/areaUtils";
 
 const inputStyle: React.CSSProperties = {
+  width: "100%",
   padding: "10px 12px",
   borderRadius: 12,
   border: "1px solid var(--border)",
   background: "var(--card-bg)",
   color: "inherit",
   fontWeight: 900,
+  boxSizing: "border-box",
 };
 
 const primaryBtn: React.CSSProperties = {
@@ -434,8 +436,8 @@ export default function HistoryPanel({
               </select>
             </div>
 
-            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-              <button onClick={handleSearchHistoryMonthMode} style={primaryBtn} disabled={!histTemplateId || histLoading}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+              <button onClick={handleSearchHistoryMonthMode} style={{ ...primaryBtn, width: "100%" }} disabled={!histTemplateId || histLoading}>
                 {histLoading ? t("searching") : t("search")}
               </button>
               <button
@@ -443,7 +445,7 @@ export default function HistoryPanel({
                   setHistRuns([]);
                   setHistError(null);
                 }}
-                style={ghostBtn}
+                style={{ ...ghostBtn, width: "100%" }}
                 disabled={histLoading}
               >
                 {t("clear")}
@@ -451,17 +453,16 @@ export default function HistoryPanel({
             </div>
           </div>
         ) : (
-          <div style={{ marginTop: 12, display: "flex", gap: 10, flexWrap: "wrap" }}>
-            <button onClick={fetchRunsByPeriodAndViewAndFail} style={primaryBtn} disabled={histLoading}>
+          <div style={{ marginTop: 12, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+            <button onClick={fetchRunsByPeriodAndViewAndFail} style={{ ...primaryBtn, width: "100%" }} disabled={histLoading}>
               {histLoading ? t("loading") : t("refresh")}
             </button>
             <button
               onClick={() => {
-                // Solo limpiamos resultados en modo filtrado
                 setHistRuns([]);
                 setHistError(null);
               }}
-              style={ghostBtn}
+              style={{ ...ghostBtn, width: "100%" }}
               disabled={histLoading}
             >
               {t("clear")}
