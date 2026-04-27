@@ -231,24 +231,30 @@ export default function TeamPageShell({
         data-onboarding="team-nav"
         style={{
           marginTop: 12,
-          display: "flex",
-          gap: 8,
-          flexWrap: "wrap",
+          overflowX: "auto",
+          WebkitOverflowScrolling: "touch" as React.CSSProperties["WebkitOverflowScrolling"],
+          paddingBottom: 4,
+          marginLeft: -14,
+          marginRight: -14,
+          paddingLeft: 14,
+          paddingRight: 14,
         }}
       >
-        {navItems
-          .filter((item) => item.visible)
-          .map((item) =>
-            item.href === "/it" || item.href === "/engineering" ? (
-              <Link key={item.key} href={item.href} prefetch style={tabStyle(item.active)}>
-                {item.label}
-              </Link>
-            ) : (
-              <button key={item.key} style={tabStyle(item.active)} onClick={() => router.push(item.href)}>
-                {item.label}
-              </button>
-            )
-          )}
+        <div style={{ display: "flex", gap: 8, flexWrap: "nowrap", width: "max-content" }}>
+          {navItems
+            .filter((item) => item.visible)
+            .map((item) =>
+              item.href === "/it" || item.href === "/engineering" ? (
+                <Link key={item.key} href={item.href} prefetch style={tabStyle(item.active)}>
+                  {item.label}
+                </Link>
+              ) : (
+                <button key={item.key} style={tabStyle(item.active)} onClick={() => router.push(item.href)}>
+                  {item.label}
+                </button>
+              )
+            )}
+        </div>
       </div>
 
       {profileError ? (
