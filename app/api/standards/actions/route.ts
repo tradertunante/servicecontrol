@@ -33,6 +33,19 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ ok: true });
     }
 
+    if (action === "sync_pack") {
+      const packId = String(body?.pack_id ?? "").trim();
+      if (!packId) return jsonError("pack_id es obligatorio.", 400);
+
+      const { data, error } = await admin.rpc("sync_global_audit_pack_to_hotel", {
+        p_pack_id: packId,
+        p_target_hotel_id: hotelResult.hotelId,
+      });
+
+      if (error) return jsonDbError(error);
+      return NextResponse.json({ ok: true, added: data });
+    }
+
     if (action === "set_template_area") {
       const templateId = String(body?.template_id ?? "").trim();
       const areaId = body?.area_id == null ? null : String(body.area_id).trim() || null;

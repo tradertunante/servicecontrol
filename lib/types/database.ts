@@ -1236,6 +1236,137 @@ export type Database = {
           },
         ]
       }
+      billing_accounts: {
+        Row: {
+          company_name: string | null
+          country: string | null
+          created_at: string
+          email: string
+          id: string
+          owner_user_id: string
+          provider: string
+          provider_customer_id: string | null
+          tax_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          company_name?: string | null
+          country?: string | null
+          created_at?: string
+          email: string
+          id?: string
+          owner_user_id: string
+          provider?: string
+          provider_customer_id?: string | null
+          tax_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          company_name?: string | null
+          country?: string | null
+          created_at?: string
+          email?: string
+          id?: string
+          owner_user_id?: string
+          provider?: string
+          provider_customer_id?: string | null
+          tax_id?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      billing_events: {
+        Row: {
+          id: string
+          payload: Json
+          processed_at: string | null
+          provider: string
+          provider_event_id: string
+          received_at: string
+          status: string
+          type: string
+        }
+        Insert: {
+          id?: string
+          payload?: Json
+          processed_at?: string | null
+          provider?: string
+          provider_event_id: string
+          received_at?: string
+          status?: string
+          type: string
+        }
+        Update: {
+          id?: string
+          payload?: Json
+          processed_at?: string | null
+          provider?: string
+          provider_event_id?: string
+          received_at?: string
+          status?: string
+          type?: string
+        }
+        Relationships: []
+      }
+      billing_subscriptions: {
+        Row: {
+          amount: number
+          billing_account_id: string
+          cancel_at_period_end: boolean
+          created_at: string
+          currency: string
+          current_period_end: string | null
+          current_period_start: string | null
+          id: string
+          interval: string
+          plan_code: string
+          provider_subscription_id: string
+          status: string
+          trial_end: string | null
+          updated_at: string
+        }
+        Insert: {
+          amount?: number
+          billing_account_id: string
+          cancel_at_period_end?: boolean
+          created_at?: string
+          currency?: string
+          current_period_end?: string | null
+          current_period_start?: string | null
+          id?: string
+          interval?: string
+          plan_code: string
+          provider_subscription_id: string
+          status?: string
+          trial_end?: string | null
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          billing_account_id?: string
+          cancel_at_period_end?: boolean
+          created_at?: string
+          currency?: string
+          current_period_end?: string | null
+          current_period_start?: string | null
+          id?: string
+          interval?: string
+          plan_code?: string
+          provider_subscription_id?: string
+          status?: string
+          trial_end?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "billing_subscriptions_billing_account_id_fkey"
+            columns: ["billing_account_id"]
+            isOneToOne: false
+            referencedRelation: "billing_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       department_backlog_items: {
         Row: {
           area_id: string
@@ -1748,6 +1879,7 @@ export type Database = {
       hotels: {
         Row: {
           active: boolean | null
+          billing_account_id: string | null
           created_at: string | null
           deleted_at: string | null
           id: string
@@ -1758,6 +1890,7 @@ export type Database = {
         }
         Insert: {
           active?: boolean | null
+          billing_account_id?: string | null
           created_at?: string | null
           deleted_at?: string | null
           id?: string
@@ -1768,6 +1901,7 @@ export type Database = {
         }
         Update: {
           active?: boolean | null
+          billing_account_id?: string | null
           created_at?: string | null
           deleted_at?: string | null
           id?: string
@@ -1776,7 +1910,15 @@ export type Database = {
           timezone?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "hotels_billing_account_id_fkey"
+            columns: ["billing_account_id"]
+            isOneToOne: false
+            referencedRelation: "billing_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       notifications: {
         Row: {
@@ -1822,6 +1964,42 @@ export type Database = {
           },
         ]
       }
+      plan_entitlements: {
+        Row: {
+          analytics_enabled: boolean
+          created_at: string
+          max_audits_per_month: number
+          max_hotels: number
+          max_users_per_hotel: number
+          name: string
+          plan_code: string
+          reports_enabled: boolean
+          training_enabled: boolean
+        }
+        Insert: {
+          analytics_enabled?: boolean
+          created_at?: string
+          max_audits_per_month?: number
+          max_hotels?: number
+          max_users_per_hotel?: number
+          name: string
+          plan_code: string
+          reports_enabled?: boolean
+          training_enabled?: boolean
+        }
+        Update: {
+          analytics_enabled?: boolean
+          created_at?: string
+          max_audits_per_month?: number
+          max_hotels?: number
+          max_users_per_hotel?: number
+          name?: string
+          plan_code?: string
+          reports_enabled?: boolean
+          training_enabled?: boolean
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           active: boolean | null
@@ -1832,7 +2010,9 @@ export type Database = {
           full_name: string | null
           hotel_id: string | null
           id: string
+          is_trial: boolean
           role: string
+          trial_hotel_name: string | null
         }
         Insert: {
           active?: boolean | null
@@ -1843,7 +2023,9 @@ export type Database = {
           full_name?: string | null
           hotel_id?: string | null
           id: string
+          is_trial?: boolean
           role: string
+          trial_hotel_name?: string | null
         }
         Update: {
           active?: boolean | null
@@ -1854,7 +2036,9 @@ export type Database = {
           full_name?: string | null
           hotel_id?: string | null
           id?: string
+          is_trial?: boolean
           role?: string
+          trial_hotel_name?: string | null
         }
         Relationships: [
           {
@@ -2126,6 +2310,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      score_events: {
+        Row: {
+          created_at: string
+          event_type: string
+          hotel_id: string
+          id: string
+          points: number
+          reason: string
+          reference_id: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          event_type: string
+          hotel_id: string
+          id?: string
+          points: number
+          reason: string
+          reference_id?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          event_type?: string
+          hotel_id?: string
+          id?: string
+          points?: number
+          reason?: string
+          reference_id?: string | null
+          user_id?: string
+        }
+        Relationships: []
       }
       standard_libraries: {
         Row: {
@@ -2845,6 +3062,30 @@ export type Database = {
           },
         ]
       }
+      trial_leads: {
+        Row: {
+          created_at: string
+          email: string
+          hotel_name: string
+          id: string
+          name: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          hotel_name: string
+          id?: string
+          name: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          hotel_name?: string
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
       user_area_access: {
         Row: {
           area_id: string
@@ -3004,6 +3245,33 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      user_scores: {
+        Row: {
+          hotel_id: string
+          id: string
+          level: number
+          total_points: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          hotel_id: string
+          id?: string
+          level?: number
+          total_points?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          hotel_id?: string
+          id?: string
+          level?: number
+          total_points?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
     }
     Views: {
@@ -3377,6 +3645,17 @@ export type Database = {
         Args: { p_hotel_id: string; p_older_than_days?: number }
         Returns: Json
       }
+      award_gamification_points: {
+        Args: {
+          p_event_type: string
+          p_hotel_id: string
+          p_points: number
+          p_reason: string
+          p_reference_id?: string
+          p_user_id: string
+        }
+        Returns: undefined
+      }
       can_admin_hotel: { Args: { p_hotel_id: string }; Returns: boolean }
       can_manage_areas: { Args: never; Returns: boolean }
       can_manage_hotel: { Args: { p_hotel_id: string }; Returns: boolean }
@@ -3432,6 +3711,11 @@ export type Database = {
         Args: { p_pack_id: string; p_source_template_id: string }
         Returns: string
       }
+      gamification_level: { Args: { p_points: number }; Returns: number }
+      get_audit_run_full: {
+        Args: { p_actor_user_id: string; p_run_id: string }
+        Returns: Json
+      }
       get_auditor_leaderboard: {
         Args: { p_day: string; p_hotel_id: string }
         Returns: {
@@ -3473,6 +3757,17 @@ export type Database = {
           target: number
           target_id: string
           template: string
+        }[]
+      }
+      get_hotel_leaderboard: {
+        Args: { p_hotel_id: string; p_limit?: number }
+        Returns: {
+          full_name: string
+          level: number
+          rank: number
+          role: string
+          total_points: number
+          user_id: string
         }[]
       }
       get_my_daily_targets_progress: {
@@ -3708,6 +4003,10 @@ export type Database = {
       submit_audit_run: {
         Args: { p_actor_user_id: string; p_run_id: string }
         Returns: Json
+      }
+      sync_global_audit_pack_to_hotel: {
+        Args: { p_pack_id: string; p_target_hotel_id: string }
+        Returns: number
       }
       update_corrective_action_status_atomic: {
         Args: {

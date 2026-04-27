@@ -42,6 +42,7 @@ export default function PackDetailPage() {
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const [pack, setPack] = useState<PackRow | null>(null);
@@ -119,7 +120,7 @@ export default function PackDetailPage() {
     return globalTemplates
       .filter((t) => map.has(t.id))
       .map((t) => ({ ...t, position: map.get(t.id) ?? 0 }))
-      .sort((a: any, b: any) => (a.position ?? 0) - (b.position ?? 0) || a.name.localeCompare(b.name));
+      .sort((a: any, b: any) => a.name.localeCompare(b.name));
   }, [globalTemplates, packTemplates]);
 
   const templatesNotInPack = useMemo(() => {
@@ -195,6 +196,20 @@ export default function PackDetailPage() {
     void load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [packId]);
+
+  async function deletePack() {
+    if (!pack || !packId) return;
+    if (!window.confirm(`¿Borrar el pack "${pack.name}"? Esta acción no se puede deshacer.`)) return;
+    setDeleting(true);
+    setError(null);
+    try {
+      await fetchJsonOrThrow(`/api/superadmin/packs/${packId}`, { method: "DELETE" });
+      router.push("/superadmin/global-audits");
+    } catch (e: any) {
+      setError(e?.message ?? "No se pudo borrar el pack.");
+      setDeleting(false);
+    }
+  }
 
   async function savePack() {
     if (!pack || !packId) return;
@@ -336,9 +351,18 @@ export default function PackDetailPage() {
           <div style={{ fontSize: 12, opacity: 0.7, marginTop: 6 }}>ID: {pack?.id}</div>
         </div>
 
-        <button style={styles.btnWhite} onClick={() => router.push("/superadmin/global-audits")}>
-          ← Atrás
-        </button>
+        <div style={{ display: "flex", gap: 10 }}>
+          <button style={styles.btnWhite} onClick={() => router.push("/superadmin/global-audits")}>
+            ← Atrás
+          </button>
+          <button
+            style={{ ...styles.btnWhite, color: "#b91c1c", borderColor: "#fca5a5" }}
+            disabled={deleting}
+            onClick={deletePack}
+          >
+            {deleting ? "Borrando…" : "Borrar pack"}
+          </button>
+        </div>
       </div>
 
       <div style={{ ...styles.card, marginTop: 16 }}>

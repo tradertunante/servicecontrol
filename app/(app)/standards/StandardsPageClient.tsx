@@ -84,6 +84,28 @@ export default function StandardsPageClient({
     );
   }, [profile, hotelIdInUse, router]);
 
+  const syncPackToHotel = async (packId: string) => {
+    if (!hotelIdInUse) { toast.warn("No hay hotel seleccionado."); return; }
+    setBusyPackId(packId);
+    try {
+      const { data } = await supabase.auth.getSession();
+      const token = data.session?.access_token ?? "";
+      if (!token) throw new Error("Sesion invalida.");
+
+      const res = await fetch("/api/standards/actions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ action: "sync_pack", pack_id: packId }),
+      });
+      const payload = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(payload?.error ?? "No se pudo actualizar el pack.");
+      const added = payload?.added ?? 0;
+      toast.success(added > 0 ? `${added} plantilla${added > 1 ? "s" : ""} nueva${added > 1 ? "s" : ""} añadida${added > 1 ? "s" : ""}.` : "El pack ya estaba al día.");
+      await loadAll(hotelIdInUse);
+    } catch (e: unknown) { toast.error(e instanceof Error ? e.message : "No se pudo actualizar el pack."); }
+    finally { setBusyPackId(null); }
+  };
+
   const duplicatePackToHotel = async (packId: string) => {
     if (!hotelIdInUse) { toast.warn("No hay hotel seleccionado."); return; }
     setBusyPackId(packId);
@@ -226,6 +248,13 @@ export default function StandardsPageClient({
                       disabled={busyPackId === p.id}
                     >
                       {busyPackId === p.id ? "Duplicando…" : "Duplicar pack a mi hotel"}
+                    </button>
+                    <button
+                      className={`px-[14px] py-2.5 rounded-xl border border-black/20 bg-white text-black font-black text-sm whitespace-nowrap ${busyPackId === p.id ? "opacity-70 cursor-not-allowed" : "opacity-100 cursor-pointer"}`}
+                      onClick={() => syncPackToHotel(p.id)}
+                      disabled={busyPackId === p.id}
+                    >
+                      {busyPackId === p.id ? "Actualizando…" : "Actualizar pack"}
                     </button>
                   </div>
                 </div>
