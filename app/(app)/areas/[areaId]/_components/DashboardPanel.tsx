@@ -384,7 +384,7 @@ export default function DashboardPanel({
           </div>
         </div>
 
-        <div style={{ marginTop: 12, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+        <div className="grid grid-cols-1 sm:grid-cols-2" style={{ marginTop: 12, gap: 14 }}>
           {/* Izquierda: estándares */}
           <div>
             <div style={{ fontWeight: 950, marginBottom: 8 }}>{t("standardsFail")}</div>
@@ -447,8 +447,8 @@ export default function DashboardPanel({
             )}
           </div>
 
-          {/* Derecha: clasificaciones */}
-          <div>
+          {/* Clasificaciones — separador visible solo en móvil (columna única) */}
+          <div className="sm:border-t-0 border-t pt-1" style={{ borderColor: "var(--border)" }}>
             <div style={{ fontWeight: 950, marginBottom: 8 }}>{t("classificationsFail")}</div>
 
             {topClassifications.length === 0 ? (

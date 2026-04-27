@@ -305,10 +305,9 @@ export default function GlobalAuditsPage() {
               <div key={p.id} style={styles.row}>
                 <div style={{ minWidth: 260 }}>
                   <div style={{ fontWeight: 950, fontSize: 16 }}>{p.name}</div>
-                  <div style={{ fontSize: 12, opacity: 0.75, marginTop: 4 }}>
-                    ID: {p.id}
-                    {p.description ? ` · ${p.description}` : ""}
-                  </div>
+                  {p.description ? (
+                    <div style={{ fontSize: 12, opacity: 0.75, marginTop: 4 }}>{p.description}</div>
+                  ) : null}
                 </div>
 
                 <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
