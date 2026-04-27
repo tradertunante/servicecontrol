@@ -131,6 +131,8 @@ export default function ManagerAreaWorkspace({
       {mode === "dashboard" ? (
         <ManagerAreaDashboardMode
           areaId={selectedAreaId}
+          profileRole={profileRole}
+          hotelId={hotelId}
           templateFilter={templateFilter}
           setTemplateFilter={setTemplateFilter}
           period={period}
@@ -161,6 +163,8 @@ export default function ManagerAreaWorkspace({
 
 function ManagerAreaDashboardMode({
   areaId,
+  profileRole,
+  hotelId,
   templateFilter,
   setTemplateFilter,
   period,
@@ -168,6 +172,8 @@ function ManagerAreaDashboardMode({
   onOpenHistory,
 }: {
   areaId: string;
+  profileRole: string | null | undefined;
+  hotelId: string;
   templateFilter: string;
   setTemplateFilter: (v: string) => void;
   period: PeriodKey;
@@ -181,6 +187,7 @@ function ManagerAreaDashboardMode({
     templateFilter,
     setTemplateFilter,
   });
+  const templatesData = useManagerAreaTemplates({ areaId, profileRole, initialHotelId: hotelId });
 
   if (data.loading) {
     return <div style={{ fontWeight: 900 }}>{t("loadingAreaData")}</div>;
@@ -202,29 +209,78 @@ function ManagerAreaDashboardMode({
   }
 
   return (
-    <DashboardPanel
-      areaId={areaId}
-      period={period}
-      setPeriod={setPeriod}
-      templateFilter={templateFilter}
-      setTemplateFilter={setTemplateFilter}
-      templates={data.templates}
-      templateNameById={data.templateNameById}
-      totalsByTemplate={data.totalsByTemplate}
-      exceptionsByRun={data.exceptionsByRun}
-      runs={data.runs}
-      answersByRun={data.answersByRun}
-      questionMetaById={data.questionMetaById}
-      onViewRun={(runId) => router.push(`/audits/${runId}`)}
-      onOpenFailRuns={(payload) =>
-        onOpenHistory({
-          templateFilter,
-          period,
-          questionId: payload.questionId,
-          classification: payload.classification,
-        })
-      }
-    />
+    <div style={{ display: "grid", gap: 14 }}>
+      {templatesData.templates.length > 0 ? (
+        <div
+          style={{
+            display: "flex",
+            gap: 10,
+            overflowX: "auto",
+            paddingBottom: 4,
+          }}
+        >
+          {templatesData.templates.map((tmpl) => (
+            <div
+              key={tmpl.id}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 10,
+                background: "rgba(255,255,255,0.07)",
+                border: "1px solid rgba(255,255,255,0.12)",
+                borderRadius: 12,
+                padding: "8px 12px",
+                whiteSpace: "nowrap",
+                flexShrink: 0,
+              }}
+            >
+              <span style={{ fontWeight: 700, fontSize: 13 }}>{tmpl.name}</span>
+              <button
+                onClick={() => templatesData.handleStart(tmpl.id)}
+                disabled={templatesData.starting === tmpl.id}
+                style={{
+                  padding: "5px 12px",
+                  borderRadius: 8,
+                  border: "none",
+                  background: "#fff",
+                  color: "#000",
+                  fontWeight: 900,
+                  fontSize: 12,
+                  cursor: templatesData.starting === tmpl.id ? "not-allowed" : "pointer",
+                  opacity: templatesData.starting === tmpl.id ? 0.6 : 1,
+                }}
+              >
+                {templatesData.starting === tmpl.id ? "Iniciando…" : "Iniciar"}
+              </button>
+            </div>
+          ))}
+        </div>
+      ) : null}
+
+      <DashboardPanel
+        areaId={areaId}
+        period={period}
+        setPeriod={setPeriod}
+        templateFilter={templateFilter}
+        setTemplateFilter={setTemplateFilter}
+        templates={data.templates}
+        templateNameById={data.templateNameById}
+        totalsByTemplate={data.totalsByTemplate}
+        exceptionsByRun={data.exceptionsByRun}
+        runs={data.runs}
+        answersByRun={data.answersByRun}
+        questionMetaById={data.questionMetaById}
+        onViewRun={(runId) => router.push(`/audits/${runId}`)}
+        onOpenFailRuns={(payload) =>
+          onOpenHistory({
+            templateFilter,
+            period,
+            questionId: payload.questionId,
+            classification: payload.classification,
+          })
+        }
+      />
+    </div>
   );
 }
 
