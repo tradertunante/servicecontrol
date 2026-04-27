@@ -135,7 +135,8 @@ export default function WorstAuditsCard({
         }
         @media (max-width: 520px) {
           .auditBadge { width: 38px; height: 38px; border-radius: 12px; }
-          .auditAside { align-items: stretch; flex-direction: column; text-align: left; }
+          .auditAside { align-items: stretch; flex-direction: column; text-align: center; }
+          .auditScore { text-align: center; }
           .auditBtn { width: 100%; }
         }
       `}</style>
