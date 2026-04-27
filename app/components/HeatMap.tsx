@@ -342,6 +342,10 @@ export default function HeatMap({
           .left.internalRow  { background: #f3f7fe; }
           .left.qualityRow   { background: #f7ebff; }
           .left.qualityChild { background: #faf2ff; }
+
+          /* Filas hijo: sin indentación extra, spacer oculto */
+          .left.child { padding-left: 14px; }
+          .left.child .caret.spacer { display: none; }
         }
       `}</style>
     </div>
