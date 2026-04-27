@@ -318,7 +318,8 @@ export default function HeatMap({
         @media (max-width: 720px) {
           .grid {
             grid-template-columns: 180px repeat(${monthLabels.length}, 82px);
-            gap: 8px;
+            column-gap: 8px;
+            row-gap: 3px;
           }
 
           /* Columna de etiquetas fija al desplazamiento horizontal */
