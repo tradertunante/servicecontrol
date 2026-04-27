@@ -26,11 +26,9 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
     TAB_TO_VIEW_MODE[searchParams?.tab as keyof typeof TAB_TO_VIEW_MODE] ?? "hotel-info";
 
   return (
-    <div className="min-h-screen bg-[#eef1f5]">
+    <div className="min-h-screen bg-[#eef1f5] overflow-x-hidden">
       <HotelHeader />
-      <div className="p-[18px]">
-        <AdminShell initialHotelId={hotelId} initialViewMode={initialViewMode} />
-      </div>
+      <AdminShell initialHotelId={hotelId} initialViewMode={initialViewMode} />
     </div>
   );
 }

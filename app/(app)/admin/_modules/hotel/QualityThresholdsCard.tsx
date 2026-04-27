@@ -132,10 +132,10 @@ export default function QualityThresholdsCard({ hotelId }: Props) {
 
   const validation = useMemo(() => {
     if (form.warning_score_min > form.success_score_min) {
-      return "Warning score min no puede ser mayor que Strong score min.";
+      return "La puntuación mínima de Atención no puede ser mayor que la de Óptimo.";
     }
     if (form.success_fail_rate_max > form.warning_fail_rate_max) {
-      return "Strong fail rate max no puede ser mayor que Attention fail rate max.";
+      return "La tasa máxima de fallos de Óptimo no puede ser mayor que la de Atención.";
     }
     if (
       form.success_score_min < 0 ||
@@ -209,9 +209,10 @@ export default function QualityThresholdsCard({ hotelId }: Props) {
     <section style={cardStyle()}>
       <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
         <div>
-          <h3 style={{ margin: 0, fontSize: 22 }}>Quality Thresholds</h3>
+          <h3 style={{ margin: 0, fontSize: 22 }}>Umbrales de calidad</h3>
           <div style={{ marginTop: 6, opacity: 0.75 }}>
-            Configura cómo se interpreta el resultado de auditorías para este hotel.
+            Define a partir de qué puntuación y tasa de fallos una auditoría se clasifica como
+            óptima, requiere atención o necesita acción prioritaria.
           </div>
         </div>
       </div>
@@ -233,7 +234,7 @@ export default function QualityThresholdsCard({ hotelId }: Props) {
             }}
           >
             <div>
-              <div style={labelStyle()}>Strong score min</div>
+              <div style={labelStyle()}>Puntuación mínima — Óptimo</div>
               <input
                 type="number"
                 min={0}
@@ -243,10 +244,13 @@ export default function QualityThresholdsCard({ hotelId }: Props) {
                 onChange={(e) => updateField("success_score_min", e.target.value)}
                 style={inputStyle()}
               />
+              <div style={{ fontSize: 11, opacity: 0.55, marginTop: 4 }}>
+                Score ≥ este valor para ser Óptimo
+              </div>
             </div>
 
             <div>
-              <div style={labelStyle()}>Attention score min</div>
+              <div style={labelStyle()}>Puntuación mínima — Atención</div>
               <input
                 type="number"
                 min={0}
@@ -256,10 +260,13 @@ export default function QualityThresholdsCard({ hotelId }: Props) {
                 onChange={(e) => updateField("warning_score_min", e.target.value)}
                 style={inputStyle()}
               />
+              <div style={{ fontSize: 11, opacity: 0.55, marginTop: 4 }}>
+                Score ≥ este valor (y &lt; Óptimo) para Requiere atención
+              </div>
             </div>
 
             <div>
-              <div style={labelStyle()}>Strong fail rate max (%)</div>
+              <div style={labelStyle()}>Tasa máxima de fallos — Óptimo (%)</div>
               <input
                 type="number"
                 min={0}
@@ -269,10 +276,13 @@ export default function QualityThresholdsCard({ hotelId }: Props) {
                 onChange={(e) => updateField("success_fail_rate_max", e.target.value)}
                 style={inputStyle()}
               />
+              <div style={{ fontSize: 11, opacity: 0.55, marginTop: 4 }}>
+                % de ítems con FAIL ≤ este valor para ser Óptimo
+              </div>
             </div>
 
             <div>
-              <div style={labelStyle()}>Attention fail rate max (%)</div>
+              <div style={labelStyle()}>Tasa máxima de fallos — Atención (%)</div>
               <input
                 type="number"
                 min={0}
@@ -282,20 +292,29 @@ export default function QualityThresholdsCard({ hotelId }: Props) {
                 onChange={(e) => updateField("warning_fail_rate_max", e.target.value)}
                 style={inputStyle()}
               />
+              <div style={{ fontSize: 11, opacity: 0.55, marginTop: 4 }}>
+                % de ítems con FAIL ≤ este valor para Requiere atención
+              </div>
             </div>
           </div>
 
           <div style={{ marginTop: 16, ...helpBoxStyle() }}>
+            <div style={{ marginBottom: 6, opacity: 0.6, fontSize: 11, fontWeight: 700, letterSpacing: 1 }}>
+              CLASIFICACIÓN RESULTANTE
+            </div>
             <div>
-              <strong>Strong:</strong> score ≥ {form.success_score_min}% y FAIL ≤{" "}
+              <strong>Óptimo:</strong> score ≥ {form.success_score_min}% y fallos ≤{" "}
               {form.success_fail_rate_max}%
             </div>
             <div style={{ marginTop: 4 }}>
-              <strong>Needs attention:</strong> score ≥ {form.warning_score_min}% y FAIL ≤{" "}
+              <strong>Requiere atención:</strong> score ≥ {form.warning_score_min}% y fallos ≤{" "}
               {form.warning_fail_rate_max}%
             </div>
             <div style={{ marginTop: 4 }}>
-              <strong>Priority action:</strong> por debajo de esos umbrales.
+              <strong>Acción prioritaria:</strong> por debajo de alguno de esos umbrales.
+            </div>
+            <div style={{ marginTop: 8, opacity: 0.55, fontSize: 12 }}>
+              La tasa de fallos es el % de ítems de auditoría respondidos como no conformes sobre el total evaluado.
             </div>
           </div>
 
