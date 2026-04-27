@@ -25,12 +25,7 @@ export function useModuleOnboarding(module: string, steps: Step[]) {
 
   useEffect(() => {
     setMounted(true);
-    const completed = getCompleted();
-    if (!completed[module]) {
-      setRun(true);
-      markCompleted(module);
-    }
-  }, [module]);
+  }, []);
 
   const finish = useCallback(() => {
     setRun(false);
