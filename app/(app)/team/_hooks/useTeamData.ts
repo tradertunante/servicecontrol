@@ -98,10 +98,12 @@ export function useTeamData({
   selectedPeriod,
   initialHotelId,
   initialProfile,
+  selectedAreaId,
 }: {
   selectedPeriod: TeamPeriodKey;
   initialHotelId: string;
   initialProfile: Profile;
+  selectedAreaId?: string | null;
 }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -140,6 +142,7 @@ export function useTeamData({
           p_hotel_id: hotelId,
           p_period: selectedPeriod,
           p_user_id: uid,
+          ...(selectedAreaId ? { p_area_id: selectedAreaId } : {}),
         });
 
         if (rpcErr) throw rpcErr;
@@ -179,7 +182,7 @@ export function useTeamData({
     return () => {
       cancelled = true;
     };
-  }, [initialHotelId, initialProfile, selectedPeriod]);
+  }, [initialHotelId, initialProfile, selectedPeriod, selectedAreaId]);
 
   return {
     loading,
