@@ -57,7 +57,6 @@ export default function DashboardPageClient({
   const ghostBtn: CSSProperties = useMemo(() => buildGhostBtnStyle({ fg, border, inputBg, shadowSm }), [fg, border, inputBg, shadowSm]);
 
   const hasPack1 = enabledPacks.includes("pack1");
-  const hasPack2 = enabledPacks.includes("pack2");
 
   const {
     loading, error, hotels, areas, runs,
@@ -198,7 +197,7 @@ export default function DashboardPageClient({
         inputBg={inputBg}
         fg={fg}
         shadowSm={shadowSm}
-        showAnalytics={hasPack2}
+        showAnalytics={hasPack1}
       />
     </DashboardShell>
   );
