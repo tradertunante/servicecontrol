@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
-import { getAssignableRoles } from "@/lib/auth/permissions";
+import { getAssignableRoles, ROLE_LABELS } from "@/lib/auth/permissions";
 import { supabase } from "@/lib/supabaseClient";
 import type { Profile, Role } from "@/lib/types";
 
@@ -55,7 +55,7 @@ export default function UserDetailPageClient({
   );
   const availableRoleOptions = useMemo(() => {
     if (!userRow) return assignableRoles;
-    return assignableRoles.includes(userRow.role) ? assignableRoles : [userRow.role, ...assignableRoles];
+    return (assignableRoles as Role[]).includes(userRow.role) ? assignableRoles : [userRow.role, ...assignableRoles];
   }, [assignableRoles, userRow]);
 
   function toggleArea(areaId: string) {
@@ -343,7 +343,7 @@ export default function UserDetailPageClient({
           >
             {availableRoleOptions.map((candidateRole) => (
               <option key={candidateRole} value={candidateRole}>
-                {candidateRole}
+                {ROLE_LABELS[candidateRole] ?? candidateRole}
               </option>
             ))}
           </select>

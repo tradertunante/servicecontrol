@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 
 import BackButton from "@/app/components/BackButton";
-import { getAssignableRoles } from "@/lib/auth/permissions";
+import { getAssignableRoles, ROLE_LABELS } from "@/lib/auth/permissions";
 import { supabase } from "@/lib/supabaseClient";
 import type { Profile, Role } from "@/lib/types";
 
@@ -172,7 +172,7 @@ export default function NewUserPageClient({
         <select value={effectiveRole} onChange={(e) => setRole(e.target.value as Role)} className="p-3">
           {assignableRoles.map((candidateRole) => (
             <option key={candidateRole} value={candidateRole}>
-              {candidateRole}
+              {ROLE_LABELS[candidateRole] ?? candidateRole}
             </option>
           ))}
         </select>
