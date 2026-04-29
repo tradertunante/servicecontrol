@@ -4,7 +4,10 @@ import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import type {
   AnalyticsFiltersState,
   AnalyticsPagePayload,
+  AreaByTemplate,
   AreaRow,
+  AreaSummaryStats,
+  AreaTrendPoint,
   CommonStandardRow,
   HotelRow,
   MemberReport,
@@ -43,7 +46,7 @@ type QuestionLite = {
 };
 
 function isValidTab(value: string | null | undefined): value is TabKey {
-  return value === "ranking" || value === "common" || value === "member";
+  return value === "area" || value === "ranking" || value === "common" || value === "member";
 }
 
 function normalizePeriod(value: string | null | undefined): AnalyticsFiltersState["period"] {
@@ -82,6 +85,111 @@ function resolvePeriodRange(period: AnalyticsFiltersState["period"], customFrom:
       : new Date().toISOString();
 
   return { fromISO, toISO };
+}
+
+function getISOWeekLabel(dateStr: string): { week_iso: string; week_label: string } {
+  const d = new Date(dateStr);
+  // Lunes de esa semana
+  const day = d.getDay();
+  const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+  const monday = new Date(d.setDate(diff));
+  const dd = String(monday.getDate()).padStart(2, "0");
+  const mm = String(monday.getMonth() + 1).padStart(2, "0");
+  const yyyy = monday.getFullYear();
+  return {
+    week_iso: `${yyyy}-${mm}-${dd}`,
+    week_label: `${dd}/${mm}`,
+  };
+}
+
+function buildAreaStats(args: {
+  runs: AuditRunRow[];
+  answers: AnswerRowLite[];
+  templates: TemplateLite[];
+}): AreaSummaryStats {
+  const { runs, answers, templates } = args;
+
+  const templateNameById = new Map<string, string>(templates.map((t) => [t.id, t.name]));
+  const answeredByRun = new Map<string, { answered: number; fails: number }>();
+
+  for (const answer of answers) {
+    const value = (answer.result ?? answer.answer) as "PASS" | "FAIL" | "NA" | null;
+    if (value !== "PASS" && value !== "FAIL") continue;
+    const current = answeredByRun.get(answer.audit_run_id) ?? { answered: 0, fails: 0 };
+    current.answered += 1;
+    if (value === "FAIL") current.fails += 1;
+    answeredByRun.set(answer.audit_run_id, current);
+  }
+
+  let totalAnswered = 0;
+  let totalFails = 0;
+  let lastAuditAt: string | null = null;
+
+  for (const run of runs) {
+    const agg = answeredByRun.get(run.id);
+    if (agg) {
+      totalAnswered += agg.answered;
+      totalFails += agg.fails;
+    }
+    if (run.executed_at && (!lastAuditAt || run.executed_at > lastAuditAt)) {
+      lastAuditAt = run.executed_at;
+    }
+  }
+
+  // Por template
+  const byTemplateMap = new Map<string | null, { audits: number; answered: number; fails: number }>();
+  for (const run of runs) {
+    const key = run.audit_template_id ?? null;
+    const current = byTemplateMap.get(key) ?? { audits: 0, answered: 0, fails: 0 };
+    current.audits += 1;
+    const agg = answeredByRun.get(run.id);
+    if (agg) {
+      current.answered += agg.answered;
+      current.fails += agg.fails;
+    }
+    byTemplateMap.set(key, current);
+  }
+
+  const by_template: AreaByTemplate[] = Array.from(byTemplateMap.entries())
+    .map(([templateId, value]) => ({
+      template_id: templateId,
+      template_name: templateId ? (templateNameById.get(templateId) ?? "—") : "Sin tipo",
+      audits_count: value.audits,
+      fail_pct: value.answered ? pct(value.fails, value.answered) : null,
+    }))
+    .sort((a, b) => b.audits_count - a.audits_count);
+
+  // Tendencia semanal
+  const weekMap = new Map<string, { week_label: string; audits: number; answered: number; fails: number }>();
+  for (const run of runs) {
+    if (!run.executed_at) continue;
+    const { week_iso, week_label } = getISOWeekLabel(run.executed_at);
+    const current = weekMap.get(week_iso) ?? { week_label, audits: 0, answered: 0, fails: 0 };
+    current.audits += 1;
+    const agg = answeredByRun.get(run.id);
+    if (agg) {
+      current.answered += agg.answered;
+      current.fails += agg.fails;
+    }
+    weekMap.set(week_iso, current);
+  }
+
+  const trend: AreaTrendPoint[] = Array.from(weekMap.entries())
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([week_iso, value]) => ({
+      week_iso,
+      week_label: value.week_label,
+      audits_count: value.audits,
+      fail_pct: value.answered ? pct(value.fails, value.answered) : null,
+    }));
+
+  return {
+    audits_count: runs.length,
+    overall_fail_pct: totalAnswered ? pct(totalFails, totalAnswered) : null,
+    last_audit_at: lastAuditAt,
+    by_template,
+    trend,
+  };
 }
 
 async function loadAreasForAnalytics(profile: Profile, hotelId: string) {
@@ -405,7 +513,7 @@ export async function buildAnalyticsPagePayload(args: {
   const requestedMemberAuditMode =
     typeof searchParams?.memberAuditMode === "string" ? searchParams.memberAuditMode : "all";
   const tabValue = typeof searchParams?.tab === "string" ? searchParams.tab : "";
-  const tab = isValidTab(tabValue) ? tabValue : "ranking";
+  const tab = isValidTab(tabValue) ? tabValue : "area";
   const { fromISO, toISO } = resolvePeriodRange(period, customFrom, customTo);
 
   const [{ data: hotelData, error: hotelError }, areas] = await Promise.all([
@@ -451,6 +559,7 @@ export async function buildAnalyticsPagePayload(args: {
       memberReport: null,
       memberTrend: [],
       memberTopStandards: [],
+      areaSummary: null,
     };
   }
 
@@ -481,6 +590,7 @@ export async function buildAnalyticsPagePayload(args: {
       memberReport: null,
       memberTrend: [],
       memberTopStandards: [],
+      areaSummary: null,
     };
   }
 
@@ -501,6 +611,7 @@ export async function buildAnalyticsPagePayload(args: {
       memberReport: null,
       memberTrend: [],
       memberTopStandards: [],
+      areaSummary: null,
     };
   }
 
@@ -599,6 +710,8 @@ export async function buildAnalyticsPagePayload(args: {
     memberAuditMode,
   });
 
+  const areaSummary = buildAreaStats({ runs, answers, templates });
+
   return {
     hotel,
     areas,
@@ -618,5 +731,6 @@ export async function buildAnalyticsPagePayload(args: {
     memberReport: member.report,
     memberTrend: member.trend,
     memberTopStandards: member.topStandards,
+    areaSummary,
   };
 }

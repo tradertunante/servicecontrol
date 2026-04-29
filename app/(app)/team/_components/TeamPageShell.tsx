@@ -162,7 +162,7 @@ export default function TeamPageShell({
       label: t("nav.analytics"),
       href: "/analytics",
       active: false,
-      visible: enabledPacks?.includes("pack2") === true,
+      visible: enabledPacks?.includes("pack1") === true,
     },
     {
       key: "members",
@@ -176,14 +176,14 @@ export default function TeamPageShell({
       label: t("nav.it"),
       href: "/it",
       active: false,
-      visible: !!showDepartmentNav && enabledPacks?.includes("pack1") === true,
+      visible: !!showDepartmentNav && enabledPacks?.includes("pack_it") === true,
     },
     {
       key: "engineering",
       label: t("nav.engineering"),
       href: "/engineering",
       active: false,
-      visible: !!showDepartmentNav && enabledPacks?.includes("pack1") === true,
+      visible: !!showDepartmentNav && enabledPacks?.includes("pack_engineering") === true,
     },
   ];
 
