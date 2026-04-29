@@ -68,7 +68,7 @@ export async function PATCH(
   if (body && Object.prototype.hasOwnProperty.call(body, "enabled_packs")) {
     const packs = body.enabled_packs;
     if (!Array.isArray(packs)) return jsonError("enabled_packs debe ser un array.");
-    const valid = ["base", "pack1", "pack2", "pack3"];
+    const valid = ["base", "pack1", "pack_it", "pack_engineering", "pack2", "pack3"];
     if (!packs.every((p: unknown) => typeof p === "string" && valid.includes(p))) {
       return jsonError("enabled_packs contiene valores inválidos.");
     }
