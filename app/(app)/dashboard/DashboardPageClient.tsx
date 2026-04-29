@@ -57,6 +57,9 @@ export default function DashboardPageClient({
   const ghostBtn: CSSProperties = useMemo(() => buildGhostBtnStyle({ fg, border, inputBg, shadowSm }), [fg, border, inputBg, shadowSm]);
 
   const hasPack1 = enabledPacks.includes("pack1");
+  const hasPackIt = enabledPacks.includes("pack_it");
+  const hasPackEngineering = enabledPacks.includes("pack_engineering");
+  const hasPackItOrEngineering = hasPackIt || hasPackEngineering;
 
   const {
     loading, error, hotels, areas, runs,
@@ -66,7 +69,7 @@ export default function DashboardPageClient({
     monthLabels, availableYears,
     top3Areas, worst3Areas, worst3Audits, pendingByTeam,
     selectedHotelName, canChooseHotel, resetForHotelChange,
-  } = useDashboardData({ profile, activeHotelId, setActiveHotelId, heatMode, selectedYear, hasPack1 });
+  } = useDashboardData({ profile, activeHotelId, setActiveHotelId, heatMode, selectedYear, hasPackIt, hasPackEngineering });
 
   useEffect(() => {
     if (!availableYears.length) return;
@@ -179,7 +182,7 @@ export default function DashboardPageClient({
         onGoWorstAuditDetail={goWorstAuditDetail}
       />
 
-      {hasPack1 && (
+      {hasPackItOrEngineering && (
         <PendingTeamsCard
           card={card}
           rowBg={rowBg}

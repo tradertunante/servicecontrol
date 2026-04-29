@@ -15,10 +15,10 @@ export const PACK_LABELS: Record<PackCode, string> = {
 
 export const PACK_DESCRIPTIONS: Record<PackCode, string> = {
   base: "General, Progreso, Historial, Members",
-  pack1: "Recuperación",
+  pack1: "Analítica",
   pack_it: "IT",
   pack_engineering: "Engineering / Mantenimiento",
-  pack2: "Análisis",
+  pack2: "Recuperación / Reauditorías",
   pack3: "Formaciones",
 };
 

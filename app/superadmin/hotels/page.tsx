@@ -12,10 +12,10 @@ import type { Profile as LoadedProfile } from "@/lib/types";
 import { fetchJsonOrThrow } from "@/lib/superadmin/clientApi";
 
 const PACKS = [
-  { code: "pack1", label: "Pack 1", desc: "Recuperación" },
-  { code: "pack_it", label: "Pack IT", desc: "IT" },
-  { code: "pack_engineering", label: "Pack Engineering", desc: "Engineering / Mantenimiento" },
-  { code: "pack2", label: "Pack 2", desc: "Análisis" },
+  { code: "pack1", label: "Pack 1", desc: "Analítica" },
+  { code: "pack2", label: "Pack 2", desc: "Recuperación / Reauditorías" },
+  { code: "pack_it", label: "Pack 2.1", desc: "IT" },
+  { code: "pack_engineering", label: "Pack 2.2", desc: "Engineering / Mantenimiento" },
   { code: "pack3", label: "Pack 3", desc: "Formaciones" },
 ] as const;
 

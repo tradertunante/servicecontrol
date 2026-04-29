@@ -28,14 +28,16 @@ export function useDashboardFetch({
   setActiveHotelId,
   heatMode,
   selectedYear,
-  hasPack1 = true,
+  hasPackIt = true,
+  hasPackEngineering = true,
 }: {
   profile: Profile | null;
   activeHotelId: string | null;
   setActiveHotelId: (s: string | null) => void;
   heatMode: HeatMode;
   selectedYear: number;
-  hasPack1?: boolean;
+  hasPackIt?: boolean;
+  hasPackEngineering?: boolean;
 }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -108,7 +110,7 @@ export function useDashboardFetch({
 
         const emptyBacklog: DepartmentBacklogResponse = { rows: [] };
 
-        const backlogItPromise = hasPack1
+        const backlogItPromise = hasPackIt
           ? fetch(`/api/departments/backlog?department=it&hotel_id=${activeHotelId}`, {
               method: "GET", credentials: "include", cache: "no-store", signal: controller.signal,
             }).then(async (response) => {
@@ -118,7 +120,7 @@ export function useDashboardFetch({
             })
           : Promise.resolve(emptyBacklog);
 
-        const backlogEngineeringPromise = hasPack1
+        const backlogEngineeringPromise = hasPackEngineering
           ? fetch(`/api/departments/backlog?department=engineering&hotel_id=${activeHotelId}`, {
               method: "GET", credentials: "include", cache: "no-store", signal: controller.signal,
             }).then(async (response) => {

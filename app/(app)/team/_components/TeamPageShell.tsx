@@ -141,7 +141,7 @@ export default function TeamPageShell({
       label: t("nav.reaudits"),
       href: "/team/recuperacion",
       active: activeSection === "reaudits",
-      visible: showReauditsTab && enabledPacks?.includes("pack1") === true,
+      visible: showReauditsTab && enabledPacks?.includes("pack2") === true,
     },
     {
       key: "history",

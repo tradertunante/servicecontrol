@@ -47,9 +47,11 @@ function TrendBar({
 export default function AreaPanel({
   summary,
   areaLabel,
+  selectedAreaId,
 }: {
   summary: AreaSummaryStats | null;
   areaLabel: string;
+  selectedAreaId: string;
 }) {
   if (!summary) {
     return (
@@ -88,27 +90,39 @@ export default function AreaPanel({
             Por plantilla
           </div>
           <div className="divide-y divide-gray-50">
-            {summary.by_template.map((row) => (
-              <div key={row.template_id ?? "__none__"} className="flex items-center gap-4 px-5 py-3">
-                <span className="flex-1 text-sm font-bold text-gray-800">{row.template_name}</span>
-                <span className="text-xs text-gray-400">{row.audits_count} aud.</span>
-                <span
-                  className="w-16 text-right text-sm font-extrabold"
-                  style={{
-                    color:
-                      row.fail_pct === null
-                        ? "#9ca3af"
-                        : row.fail_pct >= 20
-                        ? "#ef4444"
-                        : row.fail_pct >= 10
-                        ? "#f59e0b"
-                        : "#22c55e",
-                  }}
-                >
-                  {row.fail_pct !== null ? `${row.fail_pct.toFixed(1)}%` : "—"}
-                </span>
-              </div>
-            ))}
+            {summary.by_template.map((row) => {
+              const href = row.template_id
+                ? `/team/historial?area=${selectedAreaId}&template=${row.template_id}`
+                : `/team/historial?area=${selectedAreaId}`;
+
+              return (
+                <div key={row.template_id ?? "__none__"} className="flex items-center gap-4 px-5 py-3">
+                  <span className="flex-1 text-sm font-bold text-gray-800">{row.template_name}</span>
+                  <span className="text-xs text-gray-400">{row.audits_count} aud.</span>
+                  <span
+                    className="w-16 text-right text-sm font-extrabold"
+                    style={{
+                      color:
+                        row.fail_pct === null
+                          ? "#9ca3af"
+                          : row.fail_pct >= 20
+                          ? "#ef4444"
+                          : row.fail_pct >= 10
+                          ? "#f59e0b"
+                          : "#22c55e",
+                    }}
+                  >
+                    {row.fail_pct !== null ? `${row.fail_pct.toFixed(1)}%` : "—"}
+                  </span>
+                  <a
+                    href={href}
+                    className="shrink-0 rounded-lg border border-gray-200 bg-gray-50 px-3 py-1 text-xs font-bold text-gray-600 hover:bg-gray-100"
+                  >
+                    Ver →
+                  </a>
+                </div>
+              );
+            })}
           </div>
         </div>
       )}

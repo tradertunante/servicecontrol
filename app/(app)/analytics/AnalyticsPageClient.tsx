@@ -142,7 +142,7 @@ export default function AnalyticsPageClient({ payload }: { payload: AnalyticsPag
         <AnalyticsTabs tab={filters.tab} setTab={(value) => updateQuery({ tab: value })} />
 
         {filters.tab === "area" ? (
-          <AreaPanel summary={payload.areaSummary} areaLabel={filters.selectedAreaLabel} />
+          <AreaPanel summary={payload.areaSummary} areaLabel={filters.selectedAreaLabel} selectedAreaId={filters.selectedAreaId} />
         ) : null}
 
         {filters.tab === "ranking" ? (
