@@ -570,7 +570,6 @@ export async function buildAnalyticsPagePayload(args: {
     .eq("area_id", selectedArea.id)
     .is("archived_at", null)
     .eq("status", "submitted")
-    .not("team_member_id", "is", null)
     .gte("executed_at", fromISO)
     .lte("executed_at", toISO)
     .order("executed_at", { ascending: false });

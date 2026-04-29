@@ -14,7 +14,7 @@ export default async function TeamRecoveryLayout({ children }: { children: React
 
   if (profile.role !== "superadmin") {
     const packs = await getHotelEnabledPacks(hotelId);
-    if (!packs.includes("pack1")) redirect("/team/general");
+    if (!packs.includes("pack2")) redirect("/team/general");
   }
 
   return <>{children}</>;
