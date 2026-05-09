@@ -5,6 +5,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { jsonError } from "@/lib/api/response";
 import { sendTrialWelcomeEmail } from "@/lib/email/sendTrialWelcomeEmail";
+import { addTrialLeadToBrevo } from "@/lib/brevo";
 
 const DEMO_HOTEL_ID = process.env.TRIAL_DEMO_HOTEL_ID;
 
@@ -123,17 +124,19 @@ export async function POST(request: NextRequest) {
     ip_address: ip,
   });
 
-  // Enviar email con credenciales
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://app.servicecontrol.io";
-  await sendTrialWelcomeEmail({
-    to: email,
-    name,
-    hotelName,
-    email,
-    password,
-    loginUrl: `${appUrl}/login`,
-    demoUrl: `${appUrl}/demo`,
-  });
+  await Promise.all([
+    sendTrialWelcomeEmail({
+      to: email,
+      name,
+      hotelName,
+      email,
+      password,
+      loginUrl: `${appUrl}/login`,
+      demoUrl: `${appUrl}/demo`,
+    }),
+    addTrialLeadToBrevo(email, name, hotelName),
+  ]);
 
   return NextResponse.json({ ok: true });
 }
