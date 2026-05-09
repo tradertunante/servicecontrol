@@ -6,14 +6,25 @@ import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { jsonError } from "@/lib/api/response";
 import { sendTrialWelcomeEmail } from "@/lib/email/sendTrialWelcomeEmail";
 
-const DEMO_HOTEL_ID = "db3d0004-f4fe-4db5-8e8d-ae710d2c4d33";
+const DEMO_HOTEL_ID = process.env.TRIAL_DEMO_HOTEL_ID;
+if (!DEMO_HOTEL_ID) throw new Error("TRIAL_DEMO_HOTEL_ID env var is not set");
 
 function generatePassword(): string {
   return randomBytes(8).toString("base64url").slice(0, 12);
 }
 
+const RATE_LIMIT_PER_HOUR = 5;
+
 function sanitizeText(value: unknown): string {
   return String(value ?? "").trim().slice(0, 200);
+}
+
+function getClientIp(request: NextRequest): string {
+  return (
+    request.headers.get("x-forwarded-for")?.split(",")[0].trim() ??
+    request.headers.get("x-real-ip") ??
+    "unknown"
+  );
 }
 
 export async function POST(request: NextRequest) {
@@ -31,7 +42,20 @@ export async function POST(request: NextRequest) {
     return jsonError("Email no válido.", 400);
   }
 
+  const ip = getClientIp(request);
   const admin = supabaseAdmin();
+
+  // Rate limit por IP: máx RATE_LIMIT_PER_HOUR registros en la última hora
+  const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+  const { count } = await admin
+    .from("trial_leads")
+    .select("id", { count: "exact", head: true })
+    .eq("ip_address", ip)
+    .gte("created_at", oneHourAgo);
+
+  if ((count ?? 0) >= RATE_LIMIT_PER_HOUR) {
+    return jsonError("Demasiados intentos. Inténtalo de nuevo más tarde.", 429);
+  }
 
   // Comprobar si el email ya tiene cuenta trial
   const { data: existing } = await admin
@@ -95,6 +119,7 @@ export async function POST(request: NextRequest) {
     name,
     email,
     hotel_name: hotelName,
+    ip_address: ip,
   });
 
   // Enviar email con credenciales
@@ -106,6 +131,7 @@ export async function POST(request: NextRequest) {
     email,
     password,
     loginUrl: `${appUrl}/login`,
+    demoUrl: `${appUrl}/demo`,
   });
 
   return NextResponse.json({ ok: true });

@@ -3,9 +3,9 @@
     "solution": "Solution",
     "modules": "Modules",
     "pricing": "Pricing",
-    "demo": "Demo",
+    "demo": "Book a call",
     "login": "Log in",
-    "requestDemo": "Request demo",
+    "requestDemo": "Book a call",
     "trial": "Try free"
   },
   "header": {
@@ -18,8 +18,9 @@
     "h1Muted": "Start over.",
     "subtitle": "Centralize everything that currently lives in Excel, paper and WhatsApp. Your team knows what to fix.",
     "subtitleBold": "You know if it got done.",
-    "ctaPrimary": "Request demo",
-    "ctaSecondary": "See how it works",
+    "ctaPrimary": "Book a call",
+    "ctaTrial": "Try for free",
+    "ctaSecondary": "Member login",
     "card1Title": "Real visibility",
     "card1Body": "Score by area, corrective backlog and red flags visible to operations.",
     "card2Title": "Daily execution",
@@ -119,14 +120,15 @@
     "eyebrow": "Visual preview",
     "title": "A quality view designed for fast decision-making.",
     "description": "The demo shows operations by area, findings status, re-audits and training in a clean, sober and executive layout.",
-    "ctaPrimary": "See demo",
+    "ctaPrimary": "Book a call",
     "ctaSecondary": "See plans"
   },
   "finalCta": {
-    "eyebrow": "Request a demo",
+    "eyebrow": "Book a call",
     "title": "Bring real control, follow-up and visibility to your hotel operations.",
     "description": "We'll show you how to adapt ServiceControl to your areas, standards and operational workflow without mixing the commercial experience with the internal app.",
-    "ctaPrimary": "Request demo",
+    "ctaPrimary": "Book a call",
+    "ctaTrial": "Try for free",
     "ctaSecondary": "Log in"
   },
   "footer": {
@@ -154,7 +156,7 @@
       "Reporting needs for management and leadership"
     ],
     "evaluationNote": "If you want to assess fit, we'll show you the platform and prepare a proposal tailored to your operation.",
-    "ctaPrimary": "Request demo",
+    "ctaPrimary": "Book a call",
     "ctaSecondary": "Log in"
   },
   "demoPage": {
