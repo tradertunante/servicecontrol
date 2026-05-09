@@ -101,7 +101,7 @@ export async function POST(request: NextRequest) {
       );
     }
     return NextResponse.json(
-      { ok: false, error: "No se pudo crear la cuenta.", _debug: authError?.message, _status: authError?.status },
+      { ok: false, error: "No se pudo crear la cuenta." },
       { status: 500 }
     );
   }
