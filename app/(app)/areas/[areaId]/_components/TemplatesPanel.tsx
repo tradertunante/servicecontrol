@@ -39,6 +39,8 @@ export default function TemplatesPanel({
               disabled={starting === t.id}
               style={{
                 padding: "10px 14px",
+                minHeight: 44,
+                flexShrink: 0,
                 borderRadius: 12,
                 border: "1px solid rgba(0,0,0,0.2)",
                 background: "#000",

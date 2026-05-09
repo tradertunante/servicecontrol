@@ -317,9 +317,39 @@ export default function HeatMap({
 
         @media (max-width: 720px) {
           .grid {
-            grid-template-columns: 250px repeat(${monthLabels.length}, 82px);
-            gap: 8px;
+            grid-template-columns: 180px repeat(${monthLabels.length}, 82px);
+            column-gap: 8px;
+            row-gap: 3px;
           }
+
+          /* Columna de etiquetas fija al desplazamiento horizontal */
+          .headLeft {
+            position: sticky;
+            left: 0;
+            z-index: 3;
+            background: var(--card-bg, #fff);
+            box-shadow: 2px 0 8px rgba(0,0,0,0.08);
+          }
+
+          .left {
+            position: sticky;
+            left: 0;
+            z-index: 2;
+            background: var(--card-bg, #fff);
+            box-shadow: 2px 0 6px rgba(0,0,0,0.06);
+          }
+
+          .left.child        { background: #fafafa; }
+          .left.internalRow  { background: #f3f7fe; }
+          .left.qualityRow   { background: #f7ebff; }
+          .left.qualityChild { background: #faf2ff; }
+
+          /* Cabecera "Departamento" centrada */
+          .headLeft { text-align: center; }
+
+          /* Filas hijo: sin indentación extra, spacer oculto */
+          .left.child { padding-left: 14px; }
+          .left.child .caret.spacer { display: none; }
         }
       `}</style>
     </div>

@@ -15,9 +15,6 @@ function formatPct(value: number) {
   return `${value.toFixed(1)}%`;
 }
 
-function formatStatus(value: string | null) {
-  return value?.trim() || "—";
-}
 
 export default function MonthlyAreaReportPageClient({ report }: { report: MonthlyAreaReportData }) {
   const score = report.summary.avg_score;
@@ -125,11 +122,6 @@ export default function MonthlyAreaReportPageClient({ report }: { report: Monthl
           key: "score",
           label: "Score",
           render: (audit) => <span style={{ fontWeight: 900 }}>{formatScore(audit.score)}</span>,
-        },
-        {
-          key: "status",
-          label: "Estado",
-          render: (audit) => formatStatus(audit.status),
         },
         {
           key: "fail",

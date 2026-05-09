@@ -45,3 +45,36 @@ export async function PATCH(
     updated_by: caller.profile.id,
   });
 }
+
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: { packId: string } }
+) {
+  const caller = await requireSuperadminRoute(request);
+  if (!caller) return jsonError("No autorizado.", 401);
+
+  const packId = parseUUID(params.packId, "packId");
+  if (isErrorResponse(packId)) return packId;
+
+  const pack = await loadGlobalPack(packId);
+  if (!pack.ok) return jsonError(pack.error, pack.status);
+
+  const admin = supabaseAdmin();
+
+  // Eliminar relaciones pack→plantillas primero
+  const { error: relError } = await admin
+    .from("global_audit_pack_templates")
+    .delete()
+    .eq("pack_id", pack.packId);
+
+  if (relError) return jsonDbError(relError);
+
+  const { error } = await admin
+    .from("global_audit_packs")
+    .delete()
+    .eq("id", pack.packId);
+
+  if (error) return jsonDbError(error);
+
+  return jsonOk({ deleted_pack_id: pack.packId });
+}

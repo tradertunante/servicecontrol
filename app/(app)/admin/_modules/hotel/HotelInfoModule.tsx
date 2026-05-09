@@ -104,7 +104,6 @@ export default function HotelInfoModule({ hotelId }: { hotelId: string }) {
             gap: 12,
           }}
         >
-          <Info label="Hotel ID" value={hotelId ?? "—"} />
           <Info label="Nombre" value={hotel?.name ?? "—"} />
           <Info
             label="Creado"

@@ -12,12 +12,14 @@ import type { Profile as LoadedProfile } from "@/lib/types";
 import { fetchJsonOrThrow } from "@/lib/superadmin/clientApi";
 
 const PACKS = [
-  { code: "pack1", label: "Pack 1", desc: "Recuperación, IT, Engineering" },
-  { code: "pack2", label: "Pack 2", desc: "Analisis" },
+  { code: "pack1", label: "Pack 1", desc: "Analítica" },
+  { code: "pack2", label: "Pack 2", desc: "Recuperación / Reauditorías" },
+  { code: "pack_it", label: "Pack 2.1", desc: "IT" },
+  { code: "pack_engineering", label: "Pack 2.2", desc: "Engineering / Mantenimiento" },
   { code: "pack3", label: "Pack 3", desc: "Formaciones" },
 ] as const;
 
-type PackCode = "base" | "pack1" | "pack2" | "pack3";
+type PackCode = "base" | "pack1" | "pack_it" | "pack_engineering" | "pack2" | "pack3";
 
 type Hotel = {
   id: string;
@@ -175,11 +177,12 @@ export default function SuperadminHotelsPage() {
         method: "PATCH",
         body: JSON.stringify({ enabled_packs: nextPacks }),
       });
-    } catch {
+    } catch (e: any) {
       // Revertir en caso de error
       setHotels((prev) =>
         prev.map((h) => (h.id === hotelId ? { ...h, enabled_packs: currentPacks } : h))
       );
+      setError(e?.message ?? "No se pudo actualizar el pack.");
     } finally {
       setPacksBusy(null);
     }
@@ -327,7 +330,6 @@ export default function SuperadminHotelsPage() {
                   <div>
                     <div style={{ fontWeight: 950, fontSize: 16, marginBottom: 6 }}>{h.name}</div>
                     <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-                      <span style={{ fontSize: 13, opacity: 0.75 }}>ID: {h.id}</span>
                       <span style={pill(isActive)}>{isActive ? "Activo" : "Inactivo"}</span>
                     </div>
                   </div>

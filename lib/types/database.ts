@@ -4004,6 +4004,10 @@ export type Database = {
         Args: { p_actor_user_id: string; p_run_id: string }
         Returns: Json
       }
+      sync_global_audit_pack_to_hotel: {
+        Args: { p_pack_id: string; p_target_hotel_id: string }
+        Returns: number
+      }
       update_corrective_action_status_atomic: {
         Args: {
           p_action_id: string

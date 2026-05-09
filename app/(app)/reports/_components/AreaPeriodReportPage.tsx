@@ -126,14 +126,6 @@ function sectionCardStyle(): CSSProperties {
   };
 }
 
-function kpiStyle(): CSSProperties {
-  return {
-    border: "1px solid rgba(0,0,0,0.08)",
-    borderRadius: 16,
-    padding: 16,
-    background: "#fafafa",
-  };
-}
 
 function btnStyle(dark = false): CSSProperties {
   return {
@@ -211,14 +203,35 @@ function cellToneStyle(tone?: AuditColumn["tone"]): CSSProperties | undefined {
   return undefined;
 }
 
-function kpiValueTone(tone?: KpiCard["tone"]): CSSProperties | undefined {
-  if (tone === "fail") return { color: "#b91c1c" };
-  if (tone === "ok") return { color: "#15803d" };
-  return undefined;
-}
 
 function renderPrintStyles(kpiCount: number) {
   return `
+    @media (max-width: 720px) {
+      .report-page { padding: 10px 6px !important; }
+      .report-no-print { padding: 12px !important; flex-direction: column !important; gap: 10px !important; align-items: stretch !important; }
+      .report-no-print-actions { display: grid !important; grid-template-columns: 1fr 1fr !important; gap: 8px !important; }
+      .report-no-print-actions > button:first-child { grid-column: 1 / -1 !important; }
+      .report-no-print-actions > button { width: 100% !important; box-sizing: border-box !important; padding: 10px 8px !important; font-size: 14px !important; }
+      .report-body-padding { padding: 16px 14px !important; }
+      .report-header-grid {
+        display: block !important;
+        grid-template-columns: unset !important;
+      }
+      .report-header-info { margin-bottom: 14px; }
+      .report-title-xl { font-size: 22px !important; line-height: 1.1 !important; }
+      .report-score-box {
+        display: flex !important;
+        flex-direction: row !important;
+        align-items: center !important;
+        gap: 14px !important;
+        text-align: left !important;
+        padding: 14px 16px !important;
+      }
+      .report-score-value { font-size: 36px !important; margin-top: 0 !important; flex-shrink: 0; }
+      .report-kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+      .report-title-lg { font-size: 18px !important; margin-bottom: 10px !important; }
+    }
+
     @page {
       size: A4;
       margin: 12mm;
@@ -339,7 +352,7 @@ export default function AreaPeriodReportPage({
   const printStyles = renderPrintStyles(kpis.length);
 
   return (
-    <main style={pageStyle()}>
+    <main className="report-page" style={pageStyle()}>
       <style jsx global>{printStyles}</style>
 
       <div className="report-paper" style={paperStyle()}>
@@ -360,7 +373,7 @@ export default function AreaPeriodReportPage({
             <div style={{ fontSize: 13, opacity: 0.55 }}>{copy.shellSubtitle}</div>
           </div>
 
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+          <div className="report-no-print-actions" style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
             <button onClick={() => window.print()} style={btnStyle(true)}>
               Imprimir / PDF
             </button>
@@ -383,7 +396,7 @@ export default function AreaPeriodReportPage({
               alignItems: "start",
             }}
           >
-            <div>
+            <div className="report-header-info">
               <div
                 style={{
                   fontSize: 12,
@@ -397,7 +410,7 @@ export default function AreaPeriodReportPage({
                 {copy.eyebrow}
               </div>
 
-              <h1 className="report-title-xl" style={{ margin: 0, fontSize: 40, lineHeight: 1.05 }}>
+              <h1 className="report-title-xl" style={{ margin: 0, fontSize: "clamp(20px, 5vw, 40px)", lineHeight: 1.05 }}>
                 {report.area.name}
               </h1>
 
@@ -452,27 +465,6 @@ export default function AreaPeriodReportPage({
             </div>
           </header>
 
-          <section
-            className="report-break-avoid report-kpi-grid report-mt-24"
-            style={{
-              marginTop: 24,
-              display: "grid",
-              gridTemplateColumns: `repeat(${kpis.length}, minmax(0, 1fr))`,
-              gap: 12,
-            }}
-          >
-            {kpis.map((kpi) => (
-              <div key={kpi.label} className="report-card" style={kpiStyle()}>
-                <div style={{ fontSize: 12, opacity: 0.6, fontWeight: 900 }}>{kpi.label}</div>
-                <div
-                  className="report-kpi-value"
-                  style={{ fontSize: 28, fontWeight: 900, marginTop: 6, ...kpiValueTone(kpi.tone) }}
-                >
-                  {kpi.value}
-                </div>
-              </div>
-            ))}
-          </section>
 
           <section className="report-break-avoid report-mt-24" style={{ marginTop: 24 }}>
             <div

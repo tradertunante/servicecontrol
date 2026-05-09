@@ -58,6 +58,7 @@ function buildNavItemStyle(active: boolean): CSSProperties {
     }`,
     borderRadius: 12,
     padding: "10px 12px",
+    minHeight: 44,
     background: active
       ? v("--sc-row-bg", "rgba(255,255,255,0.08)")
       : v("--sc-row-bg-soft", "rgba(255,255,255,0.03)"),
@@ -68,17 +69,6 @@ function buildNavItemStyle(active: boolean): CSSProperties {
   };
 }
 
-function buildPillStyle(): CSSProperties {
-  return {
-    border: `1px solid ${v("--sc-border", "rgba(255,255,255,0.12)")}`,
-    borderRadius: 999,
-    padding: "6px 10px",
-    background: v("--sc-pill-bg", "rgba(255,255,255,0.04)"),
-    fontSize: 12,
-    opacity: 0.9,
-    whiteSpace: "nowrap",
-  };
-}
 
 export default function AdminShell({
   initialHotelId,
@@ -102,7 +92,15 @@ export default function AdminShell({
   }, []);
 
   const card = useMemo(() => buildCardStyle(), []);
-  const sidebar = useMemo(() => buildSidebarStyle(), []);
+  const sidebar = useMemo(
+    () => ({
+      ...buildSidebarStyle(),
+      // En móvil (1 columna) la sidebar va arriba del contenido:
+      // sticky causaría overlap al hacer scroll → la dejamos estática
+      ...(isNarrow ? { position: "static" as const } : {}),
+    }),
+    [isNarrow]
+  );
 
   const navItems = useMemo(
     () =>
@@ -123,23 +121,15 @@ export default function AdminShell({
     : { display: "grid", gridTemplateColumns: "260px 1fr", gap: 14, alignItems: "start", width: "100%" };
 
   return (
-    <div className="w-full p-[18px]">
+    <div className="w-full p-[18px] overflow-x-hidden">
       <div style={layoutStyle}>
         <aside style={sidebar} data-onboarding="admin-sidebar">
-          <div className="flex items-center justify-between gap-3 flex-wrap mb-3">
-            <div>
-              <div className="text-[18px] font-black tracking-[0.2px]">Administración</div>
-              <div className="mt-[3px] text-[13px] opacity-[0.85]">Gestiona hotel, usuarios, accesos, auditorías y objetivos.</div>
-            </div>
-
-            <div className="flex gap-2 flex-wrap">
-              <div style={buildPillStyle()}>
-                <b>Hotel:</b> {activeHotelId ? activeHotelId.slice(0, 8) + "…" : "—"}
-              </div>
-            </div>
+          <div className="mb-3">
+            <div className="text-[18px] font-black tracking-[0.2px]">Administración</div>
+            <div className="mt-[3px] text-[13px] opacity-[0.85]">Gestiona hotel, usuarios, accesos, auditorías y objetivos.</div>
           </div>
 
-          <div className="grid gap-2 mt-[6px]">
+          <div className="grid gap-2 mt-[6px] grid-cols-1 min-[540px]:grid-cols-2">
             {navItems.map((it) => {
               const active = viewMode === it.key;
               return (
@@ -185,7 +175,7 @@ export default function AdminShell({
           ) : viewMode === "builder" ? (
             <BuilderModule hotelId={activeHotelId} />
           ) : viewMode === "audit-targets" ? (
-            <AuditTargetsModule card={card} hotelId={activeHotelId} />
+            <AuditTargetsModule hotelId={activeHotelId} />
           ) : (
             <NotificationsModule hotelId={activeHotelId} />
           )}

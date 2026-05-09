@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 
 import type { Profile } from "@/lib/types";
@@ -21,24 +20,6 @@ const selectStyle = {
   outline: "none",
 } as const;
 
-const reportBtnStyle = {
-  width: "100%",
-  marginTop: 8,
-  padding: "9px 11px",
-  borderRadius: 10,
-  border: "1px solid rgba(255,255,255,0.14)",
-  background: "rgba(255,255,255,0.94)",
-  color: "#0f172a",
-  fontWeight: 800,
-  cursor: "pointer",
-} as const;
-
-const reportBtnDisabledStyle = {
-  ...reportBtnStyle,
-  opacity: 0.55,
-  cursor: "not-allowed",
-} as const;
-
 export default function TeamProgressPageClient({
   initialProfile,
   initialHotelId,
@@ -46,7 +27,6 @@ export default function TeamProgressPageClient({
   initialProfile: Profile;
   initialHotelId: string;
 }) {
-  const router = useRouter();
   const t = useTranslations("app.team.progress");
 
   const { profile, profileError, hotelId, managerAreaOptions } = useTeamWorkspace({
@@ -54,53 +34,21 @@ export default function TeamProgressPageClient({
     initialHotelId,
   });
   const [selectedPeriod, setSelectedPeriod] = useState<TeamPeriodKey>("monthly");
-
-  const reportTargetAreaId = managerAreaOptions[0]?.id ?? null;
-  const reportHref =
-    selectedPeriod === "monthly" && reportTargetAreaId
-      ? `/reports/monthly/area/${reportTargetAreaId}`
-      : selectedPeriod === "weekly" && reportTargetAreaId
-      ? `/reports/weekly/area/${reportTargetAreaId}`
-      : null;
-  const reportLabel =
-    selectedPeriod === "monthly"
-      ? t("reportMonthly")
-      : selectedPeriod === "weekly"
-      ? t("reportWeekly")
-      : t("reportUnavailable");
+  const [selectedAreaId, setSelectedAreaId] = useState<string | null>(null);
 
   const periodControl = useMemo(
     () => (
-      <div>
-        <select
-          style={selectStyle}
-          value={selectedPeriod}
-          onChange={(e) => setSelectedPeriod(e.target.value as TeamPeriodKey)}
-        >
-          <option value="daily">{t("periodDaily")}</option>
-          <option value="weekly">{t("periodWeekly")}</option>
-          <option value="monthly">{t("periodMonthly")}</option>
-        </select>
-
-        <button
-          type="button"
-          disabled={!reportHref}
-          onClick={() => {
-            if (!reportHref) return;
-            router.push(reportHref);
-          }}
-          title={
-            reportHref
-              ? t("reportTooltip")
-              : t("reportTooltipDaily")
-          }
-          style={reportHref ? reportBtnStyle : reportBtnDisabledStyle}
-        >
-          {reportLabel}
-        </button>
-      </div>
+      <select
+        style={selectStyle}
+        value={selectedPeriod}
+        onChange={(e) => setSelectedPeriod(e.target.value as TeamPeriodKey)}
+      >
+        <option value="daily">{t("periodDaily")}</option>
+        <option value="weekly">{t("periodWeekly")}</option>
+        <option value="monthly">{t("periodMonthly")}</option>
+      </select>
     ),
-    [reportHref, reportLabel, router, selectedPeriod]
+    [selectedPeriod, t]
   );
 
   return (
@@ -110,7 +58,14 @@ export default function TeamProgressPageClient({
       activeSection="progress"
       periodControl={periodControl}
     >
-      <TeamSummaryTab selectedPeriod={selectedPeriod} hotelId={hotelId} initialProfile={initialProfile} />
+      <TeamSummaryTab
+        selectedPeriod={selectedPeriod}
+        hotelId={hotelId}
+        initialProfile={initialProfile}
+        selectedAreaId={selectedAreaId}
+        areaOptions={managerAreaOptions}
+        onSelectArea={(id: string | null) => setSelectedAreaId(id)}
+      />
     </TeamPageShell>
   );
 }

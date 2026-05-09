@@ -293,11 +293,6 @@ export default function DepartmentsModule({ hotelId }: { hotelId: string }) {
           flexWrap: "wrap",
         }}
       >
-        <div style={{ fontSize: 13, color: "var(--muted)", fontWeight: 900 }}>
-          Hotel:{" "}
-          <span style={{ fontWeight: 900, color: "var(--text)" }}>{activeHotelId ?? "—"}</span>
-        </div>
-
         <button
           onClick={openCreate}
           style={{
@@ -473,7 +468,6 @@ export default function DepartmentsModule({ hotelId }: { hotelId: string }) {
                     ) : null}
                   </div>
 
-                  <div style={{ marginTop: 6, fontSize: 12, color: "var(--muted)" }}>ID: {d.id}</div>
                 </div>
 
                 <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>

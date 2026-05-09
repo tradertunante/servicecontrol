@@ -1,7 +1,7 @@
 // FILE: app/(app)/dashboard/_components/HeatMapCard.tsx
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties } from "react";
 import { useTranslations } from "next-intl";
 import HeatMap from "@/app/components/HeatMap";
@@ -33,6 +33,26 @@ export default function HeatMapCard({
 }) {
   const t = useTranslations("app.dashboard");
   const [compareMode, setCompareMode] = useState(false);
+  const heatWrapRef = useRef<HTMLDivElement>(null);
+
+  // En móvil, desplaza automáticamente al mes en curso al cambiar de modo/año
+  useEffect(() => {
+    const el = heatWrapRef.current;
+    if (!el || typeof window === "undefined" || window.innerWidth > 720) return;
+
+    const now = new Date();
+    let colIdx: number;
+    if (heatMode === "YEAR") {
+      // YEAR: columnas Ene(0)..Dic(11)..Media(12)
+      colIdx = selectedYear === now.getFullYear() ? now.getMonth() : 0;
+    } else {
+      // ROLLING_12M: el mes actual es el índice 11 (justo antes de "Media")
+      colIdx = 11;
+    }
+
+    // móvil: col=82px, gap=8px → paso de 90px por columna
+    el.scrollLeft = colIdx * 90;
+  }, [heatMode, selectedYear]);
 
   const title = useMemo(() => {
     const base = heatMode === "YEAR"
@@ -106,9 +126,6 @@ export default function HeatMapCard({
       <div className="headerRow">
         <div>
           <div className="sectionTitle">{title}</div>
-          <div className="hint">
-            {compareMode ? t("internalLegend") : t("clickAreaTip")}
-          </div>
         </div>
 
         <div className="controls">
@@ -150,7 +167,7 @@ export default function HeatMapCard({
         </div>
       </div>
 
-      <div className="heatWrap">
+      <div className="heatWrap" ref={heatWrapRef}>
         <div className="heatInner">
           {Array.isArray(dataToShow) && dataToShow.length > 0 ? (
             <HeatMap data={dataToShow} monthLabels={monthLabels} compareMode={compareMode} />
@@ -173,7 +190,12 @@ export default function HeatMapCard({
         .heatWrap { position: relative; width: 100%; overflow-x: auto; overflow-y: hidden; -webkit-overflow-scrolling: touch; padding-bottom: 8px; }
         .heatInner { width: max-content; }
         .heatWrap:after { content: ""; position: sticky; right: 0; top: 0; height: 100%; width: 28px; float: right; pointer-events: none; background: linear-gradient(to right, rgba(255,255,255,0), rgba(255,255,255,0.9)); }
-        @media (max-width: 720px) { .headerRow { flex-direction: column; align-items: stretch; } .controls { justify-content: flex-start; } }
+        @media (max-width: 720px) {
+          .headerRow { flex-direction: column; align-items: stretch; }
+          .controls { justify-content: flex-start; }
+          .card { padding: 10px 6px !important; }
+          .heatWrap { margin-left: -6px; margin-right: -6px; width: calc(100% + 12px); }
+        }
       `}</style>
     </div>
   );

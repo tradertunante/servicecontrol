@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import type { CSSProperties } from "react";
 import AuditLogModal from "@/components/audit/AuditLogModal";
 import { postAuditLogEntries } from "@/lib/auditLogsClient";
 import type { AuditLogEntryInput } from "@/lib/auditLogTypes";
@@ -50,32 +49,23 @@ type AssignmentAgg = {
   assigned_target: number;
 };
 
-function buildBtn(): CSSProperties {
-  return {
-    border: "1px solid rgba(255,255,255,0.14)",
-    borderRadius: 12,
-    padding: "10px 12px",
-    background: "rgba(255,255,255,0.06)",
-    cursor: "pointer",
-    color: "white",
-  };
-}
+const PERIOD_LABELS: Record<string, string> = {
+  daily: "Diario",
+  weekly: "Semanal",
+  monthly: "Mensual",
+};
 
-function buildInput(): CSSProperties {
-  return {
-    width: "100%",
-    padding: "10px 12px",
-    borderRadius: 12,
-    border: "1px solid rgba(255,255,255,0.14)",
-    background: "rgba(0,0,0,0.18)",
-    color: "white",
-    outline: "none",
-  };
-}
+const STATUS_STYLES: Record<string, string> = {
+  complete: "bg-green-50 text-green-700",
+  pending: "bg-yellow-50 text-yellow-700",
+  over_assigned: "bg-red-50 text-red-700",
+};
 
-function buildSelect(): CSSProperties {
-  return buildInput();
-}
+const STATUS_LABELS: Record<string, string> = {
+  complete: "Completo",
+  pending: "Pendiente",
+  over_assigned: "Excedido",
+};
 
 function getAssignmentStatus(areaTarget: number, assigned: number) {
   if (assigned === areaTarget) return "complete";
@@ -89,17 +79,7 @@ function normalizeRelation(value: MaybeRelation): NameRelation | null {
   return value;
 }
 
-export default function AuditTargetsModule({
-  card,
-  hotelId,
-}: {
-  card: CSSProperties;
-  hotelId: string;
-}) {
-  const btn = useMemo(() => buildBtn(), []);
-  const input = useMemo(() => buildInput(), []);
-  const select = useMemo(() => buildSelect(), []);
-
+export default function AuditTargetsModule({ hotelId }: { hotelId: string }) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -144,7 +124,6 @@ export default function AuditTargetsModule({
     setLoading(true);
     setError(null);
 
-    // 1) Áreas del hotel
     const a = await supabase
       .from("areas")
       .select("id,name,active")
@@ -153,55 +132,27 @@ export default function AuditTargetsModule({
       .order("sort_order", { ascending: true })
       .order("name", { ascending: true });
 
-    if (a.error) {
-      setError(a.error.message);
-      setLoading(false);
-      return;
-    }
-
+    if (a.error) { setError(a.error.message); setLoading(false); return; }
     setAreas((a.data ?? []) as AreaRow[]);
 
-    // 2) Templates del hotel
     const tpls = await supabase
       .from("audit_templates")
       .select("id,name,area_id")
       .eq("hotel_id", hotelId)
       .order("name", { ascending: true });
 
-    if (tpls.error) {
-      setError(tpls.error.message);
-      setLoading(false);
-      return;
-    }
-
+    if (tpls.error) { setError(tpls.error.message); setLoading(false); return; }
     setTemplates((tpls.data ?? []) as TemplateRow[]);
 
-    // 3) Objetivos de área por template
     const tg = await supabase
       .from("area_template_targets")
-      .select(`
-        id,
-        hotel_id,
-        area_id,
-        audit_template_id,
-        period,
-        target_count,
-        active,
-        areas(name),
-        audit_templates(name)
-      `)
+      .select(`id,hotel_id,area_id,audit_template_id,period,target_count,active,areas(name),audit_templates(name)`)
       .eq("hotel_id", hotelId)
       .order("created_at", { ascending: false });
 
-    if (tg.error) {
-      setError(tg.error.message);
-      setLoading(false);
-      return;
-    }
+    if (tg.error) { setError(tg.error.message); setLoading(false); return; }
 
-    const targetRowsRaw = (tg.data ?? []) as AreaTemplateTargetRowRaw[];
-
-    const targetRows: AreaTemplateTargetRow[] = targetRowsRaw.map((row) => ({
+    const targetRows: AreaTemplateTargetRow[] = ((tg.data ?? []) as AreaTemplateTargetRowRaw[]).map((row) => ({
       id: row.id,
       hotel_id: row.hotel_id,
       area_id: row.area_id,
@@ -212,40 +163,23 @@ export default function AuditTargetsModule({
       areas: normalizeRelation(row.areas ?? null),
       audit_templates: normalizeRelation(row.audit_templates ?? null),
     }));
-
     setTargets(targetRows);
 
-    // 4) Reparto agregado desde area_template_target_assignments
     const ass = await supabase
       .from("area_template_target_assignments")
       .select("area_id, audit_template_id, period, target_count, active")
       .eq("hotel_id", hotelId)
       .eq("active", true);
 
-    if (ass.error) {
-      setError(ass.error.message);
-      setLoading(false);
-      return;
-    }
+    if (ass.error) { setError(ass.error.message); setLoading(false); return; }
 
     const agg: Record<string, AssignmentAgg> = {};
     for (const row of ass.data ?? []) {
-      const r = row as {
-        area_id: string;
-        audit_template_id: string;
-        period: string;
-        target_count: number | null;
-      };
-
+      const r = row as { area_id: string; audit_template_id: string; period: string; target_count: number | null };
       const key = `${r.area_id}__${r.audit_template_id}__${r.period}`;
-
-      if (!agg[key]) {
-        agg[key] = { assigned_target: 0 };
-      }
-
+      if (!agg[key]) agg[key] = { assigned_target: 0 };
       agg[key].assigned_target += Number(r.target_count ?? 0);
     }
-
     setAssignmentMap(agg);
     setLoading(false);
   }
@@ -275,57 +209,36 @@ export default function AuditTargetsModule({
 
     const { data: sessionData } = await supabase.auth.getSession();
     const accessToken = sessionData?.session?.access_token;
-    if (!accessToken) {
-      setError("Sesión inválida.");
-      setSaving(false);
-      return;
-    }
+    if (!accessToken) { setError("Sesión inválida."); setSaving(false); return; }
 
     const response = await fetch("/api/admin/audit-targets", {
       method: "DELETE",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${accessToken}`,
-      },
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
       body: JSON.stringify({ id: rowId }),
     });
     const payload = await response.json().catch(() => null);
 
-    if (!response.ok) {
-      setError(payload?.error ?? "No se pudo eliminar el objetivo.");
-      setSaving(false);
-      return;
-    }
+    if (!response.ok) { setError(payload?.error ?? "No se pudo eliminar el objetivo."); setSaving(false); return; }
 
     if (row) {
-      const logEntries: AuditLogEntryInput[] = [
-        {
-          hotel_id: hotelId,
-          actor_user_id: actorUserId,
-          entity_type: "area_template_target",
-          entity_id: row.id,
-          action: "deactivate",
-          old_value: {
-            target_count: Number(row.target_count ?? 0),
-            active: row.active ?? true,
-          },
-          new_value: null,
-          metadata: {
-            area_id: row.area_id,
-            area_name: row.areas?.name ?? getAreaName(row.area_id),
-            audit_template_id: row.audit_template_id,
-            template_name: row.audit_templates?.name ?? getTemplateName(row.audit_template_id),
-            period: row.period,
-            source_screen: "admin_audit_targets",
-          },
+      const logEntries: AuditLogEntryInput[] = [{
+        hotel_id: hotelId,
+        actor_user_id: actorUserId,
+        entity_type: "area_template_target",
+        entity_id: row.id,
+        action: "deactivate",
+        old_value: { target_count: Number(row.target_count ?? 0), active: row.active ?? true },
+        new_value: null,
+        metadata: {
+          area_id: row.area_id,
+          area_name: row.areas?.name ?? getAreaName(row.area_id),
+          audit_template_id: row.audit_template_id,
+          template_name: row.audit_templates?.name ?? getTemplateName(row.audit_template_id),
+          period: row.period,
+          source_screen: "admin_audit_targets",
         },
-      ];
-
-      try {
-        await postAuditLogEntries(logEntries);
-      } catch (auditError) {
-        console.error("No se pudo registrar el historial de objetivos", auditError);
-      }
+      }];
+      try { await postAuditLogEntries(logEntries); } catch (e) { console.error(e); }
     }
 
     await loadAll();
@@ -337,18 +250,8 @@ export default function AuditTargetsModule({
     setSaving(true);
     setError(null);
 
-    if (!areaId) {
-      setError("Selecciona un área.");
-      setSaving(false);
-      return;
-    }
-
-    if (!templateId) {
-      setError("Selecciona un template.");
-      setSaving(false);
-      return;
-    }
-
+    if (!areaId) { setError("Selecciona un área."); setSaving(false); return; }
+    if (!templateId) { setError("Selecciona un template."); setSaving(false); return; }
     if (!Number.isFinite(Number(targetCount)) || Number(targetCount) < 0) {
       setError("El objetivo debe ser un número válido (>= 0).");
       setSaving(false);
@@ -356,7 +259,7 @@ export default function AuditTargetsModule({
     }
 
     const selectedTemplate = templates.find((t) => t.id === templateId);
-    if (selectedTemplate && selectedTemplate.area_id && selectedTemplate.area_id !== areaId) {
+    if (selectedTemplate?.area_id && selectedTemplate.area_id !== areaId) {
       setError("El template seleccionado no pertenece a esa área.");
       setSaving(false);
       return;
@@ -366,122 +269,52 @@ export default function AuditTargetsModule({
     const createdBy = auth.data.user?.id ?? null;
     const existingTarget =
       targets.find((row) => row.id === editId) ??
-      targets.find(
-        (row) =>
-          row.area_id === areaId &&
-          row.audit_template_id === templateId &&
-          row.period === period
-      ) ??
+      targets.find((row) => row.area_id === areaId && row.audit_template_id === templateId && row.period === period) ??
       null;
 
     const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
-    if (sessionError) {
-      setError(sessionError.message);
-      setSaving(false);
-      return;
-    }
-
+    if (sessionError) { setError(sessionError.message); setSaving(false); return; }
     const accessToken = sessionData?.session?.access_token;
-    if (!accessToken) {
-      setError("Sesión inválida.");
-      setSaving(false);
-      return;
-    }
-
-    const payload: {
-      id?: string;
-      hotel_id: string;
-      area_id: string;
-      audit_template_id: string;
-      period: string;
-      target_count: number;
-      active: boolean;
-      created_by: string | null;
-    } = {
-      id: editId ?? undefined,
-      hotel_id: hotelId,
-      area_id: areaId,
-      audit_template_id: templateId,
-      period,
-      target_count: Number(targetCount),
-      active,
-      created_by: createdBy,
-    };
+    if (!accessToken) { setError("Sesión inválida."); setSaving(false); return; }
 
     const response = await fetch("/api/admin/audit-targets", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${accessToken}`,
-      },
-      body: JSON.stringify({
-        id: editId ?? undefined,
-        area_id: areaId,
-        audit_template_id: templateId,
-        period,
-        target_count: Number(targetCount),
-        active,
-      }),
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
+      body: JSON.stringify({ id: editId ?? undefined, area_id: areaId, audit_template_id: templateId, period, target_count: Number(targetCount), active }),
     });
     const result = await response.json().catch(() => null);
-    if (!response.ok) {
-      setError(result?.error ?? "No se pudo guardar el objetivo.");
-      setSaving(false);
-      return;
-    }
-    if (result?.id) {
-      payload.id = result.id;
-    }
+    if (!response.ok) { setError(result?.error ?? "No se pudo guardar el objetivo."); setSaving(false); return; }
 
     const nextTargetCount = Number(targetCount);
     const oldTargetCount = Number(existingTarget?.target_count ?? 0);
-    const action =
-      !existingTarget
-        ? "create"
-        : existingTarget.active === false && active
-          ? "reactivate"
-          : existingTarget.active !== false && active === false
-            ? "deactivate"
-            : "update";
+    const action = !existingTarget
+      ? "create"
+      : existingTarget.active === false && active
+        ? "reactivate"
+        : existingTarget.active !== false && active === false
+          ? "deactivate"
+          : "update";
 
-    if (
-      !existingTarget ||
-      oldTargetCount !== nextTargetCount ||
-      Boolean(existingTarget.active ?? true) !== active
-    ) {
-      const logEntries: AuditLogEntryInput[] = [
-        {
-          hotel_id: hotelId,
-          actor_user_id: createdBy,
-          entity_type: "area_template_target",
-          entity_id: payload.id ?? `${hotelId}:${areaId}:${period}:${templateId}`,
-          action,
-          old_value: existingTarget
-            ? {
-                target_count: Number(existingTarget.target_count ?? 0),
-                active: existingTarget.active ?? true,
-              }
-            : null,
-          new_value: {
-            target_count: nextTargetCount,
-            active,
-          },
-          metadata: {
-            area_id: areaId,
-            area_name: getAreaName(areaId),
-            audit_template_id: templateId,
-            template_name: getTemplateName(templateId),
-            period,
-            source_screen: "admin_audit_targets",
-          },
+    if (!existingTarget || oldTargetCount !== nextTargetCount || Boolean(existingTarget.active ?? true) !== active) {
+      const entityId = result?.id ?? `${hotelId}:${areaId}:${period}:${templateId}`;
+      const logEntries: AuditLogEntryInput[] = [{
+        hotel_id: hotelId,
+        actor_user_id: createdBy,
+        entity_type: "area_template_target",
+        entity_id: entityId,
+        action,
+        old_value: existingTarget ? { target_count: oldTargetCount, active: existingTarget.active ?? true } : null,
+        new_value: { target_count: nextTargetCount, active },
+        metadata: {
+          area_id: areaId,
+          area_name: getAreaName(areaId),
+          audit_template_id: templateId,
+          template_name: getTemplateName(templateId),
+          period,
+          source_screen: "admin_audit_targets",
         },
-      ];
-
-      try {
-        await postAuditLogEntries(logEntries);
-      } catch (auditError) {
-        console.error("No se pudo registrar el historial de objetivos", auditError);
-      }
+      }];
+      try { await postAuditLogEntries(logEntries); } catch (e) { console.error(e); }
     }
 
     await loadAll();
@@ -489,108 +322,77 @@ export default function AuditTargetsModule({
     setSaving(false);
   }
 
-  return (
-    <div style={card}>
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          gap: 12,
-          flexWrap: "wrap",
-          alignItems: "flex-start",
-        }}
-      >
-        <div>
-          <div style={{ fontSize: 18, fontWeight: 800 }}>Objetivos de área por auditoría</div>
-          <div style={{ opacity: 0.8, marginTop: 6, fontSize: 13 }}>
-            El admin define cuántas veces debe realizarse cada auditoría/template dentro de un área.
-          </div>
-        </div>
+  const inputCls = "w-full px-3 py-3 rounded-lg border border-gray-200 text-sm focus:outline-none focus:border-blue-400 min-h-[44px] bg-white";
+  const selectCls = inputCls;
 
-        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-          <button style={btn} onClick={() => loadAll()} disabled={loading || saving}>
+  return (
+    <div className="rounded-2xl border border-black/10 bg-white p-5 shadow-sm">
+      {/* Header */}
+      <div className="flex items-start justify-between gap-3 flex-wrap mb-1">
+        <div>
+          <h2 className="text-lg font-black">Objetivos de área por auditoría</h2>
+          <p className="text-sm text-gray-500 mt-0.5">
+            Define cuántas veces debe realizarse cada auditoría/template dentro de un área.
+          </p>
+        </div>
+        <div className="flex gap-2 flex-wrap">
+          <button
+            onClick={() => loadAll()}
+            disabled={loading || saving}
+            className="px-4 py-2 rounded-lg border border-gray-200 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50 transition-colors min-h-[44px]"
+          >
             Refrescar
           </button>
-          <button style={btn} onClick={() => setHistoryOpen(true)}>
+          <button
+            onClick={() => setHistoryOpen(true)}
+            className="px-4 py-2 rounded-lg border border-gray-200 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors min-h-[44px]"
+          >
             Historial
           </button>
         </div>
       </div>
 
-      {error ? (
-        <div
-          style={{
-            marginTop: 12,
-            padding: 12,
-            borderRadius: 14,
-            border: "1px solid rgba(255,0,0,0.25)",
-            background: "rgba(255,0,0,0.06)",
-          }}
-        >
-          <b>Error:</b> {error}
+      {error && (
+        <div className="mt-3 px-4 py-3 rounded-lg bg-red-50 border border-red-100 text-sm text-red-700 font-semibold">
+          {error}
         </div>
-      ) : null}
+      )}
 
-      <div
-        style={{
-          marginTop: 14,
-          padding: 14,
-          borderRadius: 16,
-          border: "1px solid rgba(255,255,255,0.10)",
-          background: "rgba(0,0,0,0.10)",
-        }}
-      >
-        <div style={{ fontWeight: 800, marginBottom: 10 }}>
-          {editId ? "Editar objetivo por auditoría" : "Crear objetivo por auditoría"}
+      {/* Form */}
+      <div className="rounded-xl border border-gray-100 bg-gray-50/50 p-4 mt-5 mb-5">
+        <div className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-4">
+          {editId ? "Editar objetivo" : "Crear objetivo por auditoría"}
         </div>
 
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-            gap: 12,
-          }}
-        >
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
           <div>
-            <div style={{ opacity: 0.8, fontSize: 12, marginBottom: 6 }}>Área</div>
+            <label className="block text-xs font-bold text-gray-600 mb-1">Área</label>
             <select
-              style={select}
+              className={selectCls}
               value={areaId}
-              onChange={(e) => {
-                const nextAreaId = e.target.value;
-                setAreaId(nextAreaId);
-                setTemplateId("");
-              }}
+              onChange={(e) => { setAreaId(e.target.value); setTemplateId(""); }}
             >
               <option value="">{areas.length ? "Selecciona un área…" : "No se pudieron cargar áreas"}</option>
-              {areas.map((a) => (
-                <option key={a.id} value={a.id}>
-                  {a.name}
-                </option>
-              ))}
+              {areas.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
             </select>
           </div>
 
           <div>
-            <div style={{ opacity: 0.8, fontSize: 12, marginBottom: 6 }}>Auditoría / Template</div>
+            <label className="block text-xs font-bold text-gray-600 mb-1">Auditoría / Template</label>
             <select
-              style={select}
+              className={selectCls}
               value={templateId}
               onChange={(e) => setTemplateId(e.target.value)}
               disabled={!areaId}
             >
               <option value="">{areaId ? "Selecciona un template…" : "Primero elige un área"}</option>
-              {filteredTemplates.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.name}
-                </option>
-              ))}
+              {filteredTemplates.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
             </select>
           </div>
 
           <div>
-            <div style={{ opacity: 0.8, fontSize: 12, marginBottom: 6 }}>Periodo</div>
-            <select style={select} value={period} onChange={(e) => setPeriod(e.target.value)}>
+            <label className="block text-xs font-bold text-gray-600 mb-1">Periodo</label>
+            <select className={selectCls} value={period} onChange={(e) => setPeriod(e.target.value)}>
               <option value="daily">Diario</option>
               <option value="weekly">Semanal</option>
               <option value="monthly">Mensual</option>
@@ -598,9 +400,9 @@ export default function AuditTargetsModule({
           </div>
 
           <div>
-            <div style={{ opacity: 0.8, fontSize: 12, marginBottom: 6 }}>Objetivo total</div>
+            <label className="block text-xs font-bold text-gray-600 mb-1">Objetivo total</label>
             <input
-              style={input}
+              className={inputCls}
               type="number"
               min={0}
               value={targetCount}
@@ -609,88 +411,108 @@ export default function AuditTargetsModule({
           </div>
 
           <div>
-            <div style={{ opacity: 0.8, fontSize: 12, marginBottom: 6 }}>Activo</div>
-            <select style={select} value={active ? "1" : "0"} onChange={(e) => setActive(e.target.value === "1")}>
+            <label className="block text-xs font-bold text-gray-600 mb-1">Activo</label>
+            <select className={selectCls} value={active ? "1" : "0"} onChange={(e) => setActive(e.target.value === "1")}>
               <option value="1">Sí</option>
               <option value="0">No</option>
             </select>
           </div>
         </div>
 
-        <div style={{ marginTop: 12, display: "flex", gap: 10, flexWrap: "wrap" }}>
-          <button style={btn} onClick={save} disabled={saving || loading}>
+        <div className="flex gap-2 flex-wrap">
+          <button
+            onClick={save}
+            disabled={saving || loading}
+            className="px-5 py-3 rounded-lg bg-black text-white text-sm font-bold hover:bg-gray-800 disabled:opacity-50 transition-colors min-h-[44px]"
+          >
             {saving ? "Guardando…" : editId ? "Guardar cambios" : "Crear objetivo"}
           </button>
-
-          {editId ? (
-            <button style={btn} onClick={resetForm} disabled={saving || loading}>
-              Cancelar edición
+          {editId && (
+            <button
+              onClick={resetForm}
+              disabled={saving || loading}
+              className="px-5 py-3 rounded-lg border border-gray-200 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50 transition-colors min-h-[44px]"
+            >
+              Cancelar
             </button>
-          ) : null}
+          )}
         </div>
       </div>
 
-      <div style={{ marginTop: 14 }}>
-        <div style={{ fontWeight: 800, marginBottom: 10 }}>Objetivos configurados</div>
+      {/* List */}
+      <div className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-3">
+        Objetivos configurados
+      </div>
 
-        {loading ? (
-          <div style={{ padding: 12, opacity: 0.85 }}>Cargando…</div>
-        ) : targets.length === 0 ? (
-          <div style={{ padding: 12, opacity: 0.85 }}>Aún no hay objetivos configurados.</div>
-        ) : (
-          <div style={{ display: "grid", gap: 10 }}>
-            {targets.map((t) => {
-              const areaName = t.areas?.name ?? t.area_id.slice(0, 8);
-              const templateName = t.audit_templates?.name ?? t.audit_template_id.slice(0, 8);
+      {loading ? (
+        <p className="text-sm text-gray-400">Cargando…</p>
+      ) : targets.length === 0 ? (
+        <p className="text-sm text-gray-400">Aún no hay objetivos configurados.</p>
+      ) : (
+        <div className="flex flex-col gap-2">
+          {targets.map((t) => {
+            const areaName = t.areas?.name ?? "—";
+            const templateName = t.audit_templates?.name ?? "—";
+            const key = `${t.area_id}__${t.audit_template_id}__${t.period}`;
+            const assignedTarget = assignmentMap[key]?.assigned_target ?? 0;
+            const remaining = Number(t.target_count ?? 0) - assignedTarget;
+            const status = getAssignmentStatus(Number(t.target_count ?? 0), assignedTarget);
 
-              const key = `${t.area_id}__${t.audit_template_id}__${t.period}`;
-              const assignedTarget = assignmentMap[key]?.assigned_target ?? 0;
-              const remainingToAssign = Number(t.target_count ?? 0) - assignedTarget;
-              const status = getAssignmentStatus(Number(t.target_count ?? 0), assignedTarget);
-
-              return (
-                <div
-                  key={t.id}
-                  style={{
-                    border: "1px solid rgba(255,255,255,0.10)",
-                    borderRadius: 14,
-                    padding: 12,
-                    background: "rgba(0,0,0,0.12)",
-                    display: "flex",
-                    justifyContent: "space-between",
-                    gap: 12,
-                    flexWrap: "wrap",
-                    alignItems: "center",
-                  }}
-                >
-                  <div style={{ minWidth: 320 }}>
-                    <div style={{ fontWeight: 750 }}>
-                      {areaName} · <span style={{ opacity: 0.95 }}>{templateName}</span>
-                    </div>
-
-                    <div style={{ opacity: 0.8, marginTop: 4, fontSize: 13 }}>
-                      Periodo: <b>{t.period}</b> · Objetivo: <b>{t.target_count}</b> · Activo: <b>{t.active ? "sí" : "no"}</b>
-                    </div>
-
-                    <div style={{ opacity: 0.8, marginTop: 4, fontSize: 13 }}>
-                      Asignado: <b>{assignedTarget}</b> · Pendiente: <b>{remainingToAssign}</b> · Estado: <b>{status}</b>
-                    </div>
+            return (
+              <div
+                key={t.id}
+                className="rounded-xl border border-gray-100 bg-gray-50/50 p-3"
+              >
+                <div className="flex items-start justify-between gap-2 mb-2">
+                  <div className="min-w-0 flex-1">
+                    <div className="text-xs font-bold text-gray-400 uppercase tracking-wide leading-none mb-0.5">{areaName}</div>
+                    <div className="text-sm font-semibold text-gray-800 leading-snug">{templateName}</div>
                   </div>
-
-                  <div style={{ display: "flex", gap: 10 }}>
-                    <button style={btn} onClick={() => startEdit(t)} disabled={saving}>
+                  <div className="flex gap-2 flex-shrink-0">
+                    <button
+                      onClick={() => startEdit(t)}
+                      disabled={saving}
+                      className="text-xs font-bold text-gray-600 hover:text-gray-900 disabled:opacity-50"
+                    >
                       Editar
                     </button>
-                    <button style={btn} onClick={() => remove(t.id)} disabled={saving}>
+                    <button
+                      onClick={() => remove(t.id)}
+                      disabled={saving}
+                      className="text-xs font-bold text-red-500 hover:text-red-700 disabled:opacity-50"
+                    >
                       Eliminar
                     </button>
                   </div>
                 </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
+
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="inline-block px-2 py-0.5 rounded-full text-xs font-bold bg-gray-100 text-gray-600">
+                    {PERIOD_LABELS[t.period] ?? t.period}
+                  </span>
+                  <span className="text-xs text-gray-500">
+                    Objetivo: <b className="text-gray-700">{t.target_count}</b>
+                  </span>
+                  <span className="text-xs text-gray-500">
+                    Asignado: <b className="text-gray-700">{assignedTarget}</b>
+                  </span>
+                  <span className="text-xs text-gray-500">
+                    Pendiente: <b className="text-gray-700">{remaining}</b>
+                  </span>
+                  <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-bold ${STATUS_STYLES[status]}`}>
+                    {STATUS_LABELS[status]}
+                  </span>
+                  {!t.active && (
+                    <span className="inline-block px-2 py-0.5 rounded-full text-xs font-bold bg-gray-100 text-gray-400">
+                      Inactivo
+                    </span>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       <AuditLogModal
         open={historyOpen}

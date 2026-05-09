@@ -168,14 +168,25 @@ export async function createManagedUser(
   }
 ) {
   const email = String(payload.email ?? "").trim().toLowerCase();
-  const password = String(payload.password ?? "");
+  const password =
+    typeof payload.password === "string" && payload.password.trim().length > 0
+      ? payload.password.trim()
+      : null;
   const fullName =
     typeof payload.full_name === "string" ? payload.full_name.trim() || null : null;
 
-  if (!email || !password) {
+  if (!email) {
     return {
       ok: false as const,
-      error: "Email y password son obligatorios.",
+      error: "El email es obligatorio.",
+      status: 400,
+    };
+  }
+
+  if (password !== null && password.length < 8) {
+    return {
+      ok: false as const,
+      error: "La contraseña debe tener al menos 8 caracteres.",
       status: 400,
     };
   }
@@ -195,9 +206,8 @@ export async function createManagedUser(
   }
 
   const admin = supabaseAdmin();
-  const { data: authUser, error: authErr } = await admin.auth.admin.createUser({
+  const createParams: Parameters<typeof admin.auth.admin.createUser>[0] = {
     email,
-    password,
     email_confirm: true,
     user_metadata: {
       full_name: fullName,
@@ -205,7 +215,10 @@ export async function createManagedUser(
       hotel_id: hotelResult.hotelId,
       active: true,
     },
-  });
+  };
+  if (password) createParams.password = password;
+
+  const { data: authUser, error: authErr } = await admin.auth.admin.createUser(createParams);
 
   if (authErr) {
     return {
@@ -243,6 +256,7 @@ export async function createManagedUser(
   // Fetch hotel name for the welcome email (fire-and-forget, never blocks creation)
   void (async () => {
     try {
+      const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://app.servicecontrol.io";
       const [{ data: hotel }, enabled] = await Promise.all([
         admin.from("hotels").select("name").eq("id", hotelResult.hotelId).single(),
         shouldSendNotification(hotelResult.hotelId, "new_user_email"),
@@ -250,11 +264,23 @@ export async function createManagedUser(
 
       if (!enabled) return;
 
+      // If no password was set, generate an activation link so the user sets their own password.
+      let activationUrl: string | null = null;
+      if (!password) {
+        const { data: linkData } = await admin.auth.admin.generateLink({
+          type: "recovery",
+          email,
+          options: { redirectTo: `${appUrl}/reset-password` },
+        });
+        activationUrl = linkData?.properties?.action_link ?? null;
+      }
+
       await sendWelcomeEmail({
         to: email,
         userName: fullName,
         hotelName: hotel?.name ?? "Su hotel",
-        loginUrl: `${process.env.NEXT_PUBLIC_APP_URL ?? "https://app.servicecontrol.io"}/login`,
+        loginUrl: `${appUrl}/login`,
+        activationUrl,
       });
     } catch (err) {
       console.error("[welcome-email] Failed to send to", email, err);

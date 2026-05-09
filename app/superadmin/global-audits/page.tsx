@@ -20,6 +20,7 @@ export default function GlobalAuditsPage() {
 
   const [loading, setLoading] = useState(true);
   const [busyCreate, setBusyCreate] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [packs, setPacks] = useState<PackRow[]>([]);
 
@@ -132,6 +133,20 @@ export default function GlobalAuditsPage() {
 
     setPacks((data ?? []) as PackRow[]);
     setLoading(false);
+  }
+
+  async function deletePack(pack: PackRow) {
+    if (!window.confirm(`¿Borrar el pack "${pack.name}"? Esta acción no se puede deshacer.`)) return;
+    setDeletingId(pack.id);
+    setError(null);
+    try {
+      await fetchJsonOrThrow(`/api/superadmin/packs/${pack.id}`, { method: "DELETE" });
+      await load();
+    } catch (e: any) {
+      setError(e?.message ?? "No se pudo borrar el pack.");
+    } finally {
+      setDeletingId(null);
+    }
   }
 
   async function createPack() {
@@ -290,10 +305,9 @@ export default function GlobalAuditsPage() {
               <div key={p.id} style={styles.row}>
                 <div style={{ minWidth: 260 }}>
                   <div style={{ fontWeight: 950, fontSize: 16 }}>{p.name}</div>
-                  <div style={{ fontSize: 12, opacity: 0.75, marginTop: 4 }}>
-                    ID: {p.id}
-                    {p.description ? ` · ${p.description}` : ""}
-                  </div>
+                  {p.description ? (
+                    <div style={{ fontSize: 12, opacity: 0.75, marginTop: 4 }}>{p.description}</div>
+                  ) : null}
                 </div>
 
                 <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
@@ -302,6 +316,14 @@ export default function GlobalAuditsPage() {
 
                   <button style={styles.btnDark} onClick={() => router.push(`/superadmin/global-audits/${p.id}`)}>
                     Abrir
+                  </button>
+
+                  <button
+                    style={{ ...styles.btnWhite, color: "#b91c1c", borderColor: "#fca5a5" }}
+                    disabled={deletingId === p.id}
+                    onClick={() => deletePack(p)}
+                  >
+                    {deletingId === p.id ? "Borrando…" : "Borrar"}
                   </button>
                 </div>
               </div>

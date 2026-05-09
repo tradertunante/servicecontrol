@@ -7,6 +7,7 @@ type WelcomeEmailData = {
   userName: string | null;
   hotelName: string;
   loginUrl: string;
+  activationUrl?: string | null;
 };
 
 export async function sendWelcomeEmail(data: WelcomeEmailData) {
@@ -67,13 +68,22 @@ function buildWelcomeHtml(data: WelcomeEmailData & { displayName: string }): str
 
       <!-- CTA -->
       <div style="text-align:center;margin-bottom:36px">
-        <a href="${data.loginUrl}"
-           style="display:inline-block;background:#0f172a;color:#ffffff;font-size:14px;font-weight:600;padding:14px 32px;border-radius:8px;text-decoration:none;letter-spacing:-0.01em">
-          Acceder al panel &rarr;
-        </a>
-        <div style="margin-top:12px;font-size:12px;color:#94a3b8">
-          O copia este enlace: <span style="color:#475569">${data.loginUrl}</span>
-        </div>
+        ${data.activationUrl
+          ? `<a href="${data.activationUrl}"
+               style="display:inline-block;background:#0f172a;color:#ffffff;font-size:14px;font-weight:600;padding:14px 32px;border-radius:8px;text-decoration:none;letter-spacing:-0.01em">
+              Activar cuenta y crear contraseña &rarr;
+             </a>
+             <div style="margin-top:12px;font-size:12px;color:#94a3b8">
+               Este enlace expira en 24 horas. Si caduca, solicita uno nuevo al administrador.
+             </div>`
+          : `<a href="${data.loginUrl}"
+               style="display:inline-block;background:#0f172a;color:#ffffff;font-size:14px;font-weight:600;padding:14px 32px;border-radius:8px;text-decoration:none;letter-spacing:-0.01em">
+              Acceder al panel &rarr;
+             </a>
+             <div style="margin-top:12px;font-size:12px;color:#94a3b8">
+               O copia este enlace: <span style="color:#475569">${data.loginUrl}</span>
+             </div>`
+        }
       </div>
 
       <!-- Footer -->
