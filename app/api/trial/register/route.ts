@@ -100,7 +100,10 @@ export async function POST(request: NextRequest) {
         { status: 409 }
       );
     }
-    return jsonError("No se pudo crear la cuenta. Inténtalo de nuevo.", 500);
+    return NextResponse.json(
+      { ok: false, error: "No se pudo crear la cuenta.", _debug: authError?.message, _status: authError?.status },
+      { status: 500 }
+    );
   }
 
   const userId = authData.user.id;
