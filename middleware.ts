@@ -14,7 +14,7 @@ const PUBLIC_API_PREFIXES = [
   "/api/billing/webhook",
 ];
 
-const MARKETING_PATHS = ["/", "/pricing", "/demo"];
+const MARKETING_PATHS = ["/", "/pricing", "/demo", "/trial"];
 
 const intlMiddleware = createIntlMiddleware(routing);
 
@@ -61,7 +61,8 @@ export function middleware(request: NextRequest, event: NextFetchEvent) {
     routing.locales.some((locale) =>
       pathname === `/${locale}` ||
       pathname.startsWith(`/${locale}/pricing`) ||
-      pathname.startsWith(`/${locale}/demo`)
+      pathname.startsWith(`/${locale}/demo`) ||
+      pathname.startsWith(`/${locale}/trial`)
     );
 
   if (isMarketingPath) {

@@ -55,6 +55,12 @@ export default function HeroSection() {
               {t("ctaPrimary")}
             </Link>
             <Link
+              href="/trial"
+              className="rounded-[6px] border border-[#185FA5] bg-transparent px-7 py-4 text-center text-base font-medium text-[#185FA5] transition hover:bg-[#185FA5]/5"
+            >
+              {t("ctaTrial")}
+            </Link>
+            <Link
               href="/login"
               className="rounded-[6px] border border-[#0C1F44] bg-transparent px-7 py-4 text-center text-base font-medium text-[#0C1F44] transition hover:bg-[#0C1F44]/5"
             >

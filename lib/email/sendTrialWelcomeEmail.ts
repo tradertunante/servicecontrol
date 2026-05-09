@@ -9,6 +9,7 @@ type TrialWelcomeEmailData = {
   email: string;
   password: string;
   loginUrl: string;
+  demoUrl: string;
 };
 
 export async function sendTrialWelcomeEmail(data: TrialWelcomeEmailData) {
@@ -105,7 +106,7 @@ function buildHtml(data: TrialWelcomeEmailData & { displayName: string }): strin
       <div style="border-top:1px solid #f1f5f9;padding-top:20px">
         <div style="font-size:12px;color:#94a3b8;line-height:1.7;text-align:center">
           ¿Quieres ver cómo quedaría con tus áreas y estándares reales?<br>
-          <a href="${data.loginUrl.replace("/login", "/demo")}" style="color:#185FA5;text-decoration:none;font-weight:600">Solicita una demo guiada</a>
+          <a href="${data.demoUrl}" style="color:#185FA5;text-decoration:none;font-weight:600">Solicita una demo guiada</a>
         </div>
       </div>
 

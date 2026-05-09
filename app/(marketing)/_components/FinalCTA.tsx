@@ -35,6 +35,12 @@ export default function FinalCTA() {
               {t("ctaPrimary")}
             </Link>
             <Link
+              href="/trial"
+              className="rounded-[6px] border border-white/40 bg-white/10 px-7 py-4 text-base font-medium text-white transition hover:bg-white/20"
+            >
+              {t("ctaTrial")}
+            </Link>
+            <Link
               href="/login"
               className="rounded-[6px] border border-white/30 px-7 py-4 text-base font-medium text-white transition hover:bg-white/10"
             >

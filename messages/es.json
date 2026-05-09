@@ -3,9 +3,9 @@
     "solution": "Solución",
     "modules": "Módulos",
     "pricing": "Pricing",
-    "demo": "Demo",
+    "demo": "Concertar cita",
     "login": "Acceder",
-    "requestDemo": "Solicitar demo",
+    "requestDemo": "Concertar cita",
     "trial": "Probar gratis"
   },
   "header": {
@@ -18,8 +18,9 @@
     "h1Muted": "Vuelves a empezar.",
     "subtitle": "Centraliza todo lo que hoy vive en Excel, papel y WhatsApp. Tu equipo sabe qué tiene que corregir.",
     "subtitleBold": "Tú sabes si lo hizo.",
-    "ctaPrimary": "Solicitar demo",
-    "ctaSecondary": "Ver cómo funciona",
+    "ctaPrimary": "Concertar cita",
+    "ctaTrial": "Probar gratis",
+    "ctaSecondary": "Acceso miembros",
     "card1Title": "Visibilidad real",
     "card1Body": "Score por área, backlog correctivo y focos rojos visibles para operaciones.",
     "card2Title": "Ejecución diaria",
@@ -119,14 +120,15 @@
     "eyebrow": "Prueba visual",
     "title": "Una vista de calidad diseñada para tomar decisiones rápidas.",
     "description": "La demo muestra la operación por área, el estado de hallazgos, reauditorías y formación en una composición clara, sobria y ejecutiva.",
-    "ctaPrimary": "Ver demo",
+    "ctaPrimary": "Concertar cita",
     "ctaSecondary": "Ver planes"
   },
   "finalCta": {
-    "eyebrow": "Solicita una demo",
+    "eyebrow": "Concertar una cita",
     "title": "Lleva control, seguimiento y visibilidad real a la operación de tu hotel.",
     "description": "Te mostramos cómo adaptar ServiceControl a tus áreas, estándares y flujo operativo sin mezclar la experiencia comercial con la app interna.",
-    "ctaPrimary": "Solicitar demo",
+    "ctaPrimary": "Concertar cita",
+    "ctaTrial": "Probar gratis",
     "ctaSecondary": "Acceder"
   },
   "footer": {
@@ -154,7 +156,7 @@
       "Necesidades de reporting para dirección y management"
     ],
     "evaluationNote": "Si quieres evaluar encaje, te mostramos la plataforma y preparamos una propuesta ajustada a tu operación.",
-    "ctaPrimary": "Solicitar demo",
+    "ctaPrimary": "Concertar cita",
     "ctaSecondary": "Acceder"
   },
   "demoPage": {

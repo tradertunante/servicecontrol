@@ -22,6 +22,7 @@ export async function GET(request: NextRequest) {
 
   let hotelName: string | null = null;
   let trialHotelName: string | null = null;
+  let isTrial = false;
 
   if (activeHotel.ok) {
     const admin = supabaseAdmin();
@@ -33,6 +34,7 @@ export async function GET(request: NextRequest) {
 
     hotelName = hotelResult.data?.name ?? null;
     trialHotelName = profileResult.data?.trial_hotel_name ?? null;
+    isTrial = profileResult.data?.is_trial ?? false;
   }
 
   return NextResponse.json({
@@ -42,7 +44,7 @@ export async function GET(request: NextRequest) {
     error: activeHotel.ok ? null : activeHotel.error,
     role: caller.profile.role,
     profile_hotel_id: caller.profile.hotel_id ?? null,
-    is_trial: trialHotelName !== null,
+    is_trial: isTrial,
   });
 }
 
