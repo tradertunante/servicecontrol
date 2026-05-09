@@ -93,7 +93,8 @@ export async function POST(request: NextRequest) {
 
   if (authError || !authData.user) {
     console.error("[trial/register] auth error:", authError?.message, authError?.status);
-    if (authError?.message?.includes("already been registered")) {
+    const msg = authError?.message?.toLowerCase() ?? "";
+    if (msg.includes("already") || msg.includes("registered") || authError?.status === 422) {
       return NextResponse.json(
         { ok: false, error: "Este email ya tiene acceso al sandbox. Revisa tu bandeja de entrada." },
         { status: 409 }
