@@ -406,12 +406,10 @@ Deno.serve(async (req) => {
     await sendViaResend(recipientEmail, subject, html);
     console.log(`[auth-email-hook] Sent '${type}' email to ${recipientEmail}`);
   } catch (err) {
+    // Log but do NOT return 500 — a 500 causes Supabase to abort the auth
+    // operation (e.g. "Database error creating new user"). Email delivery
+    // failure must never block user creation or password recovery flows.
     console.error(`[auth-email-hook] Failed for ${recipientEmail}:`, err);
-    // Return 500 so Supabase can log the failure, but don't leak details
-    return new Response(JSON.stringify({ error: "Email delivery failed" }), {
-      status: 500,
-      headers: { "Content-Type": "application/json" },
-    });
   }
 
   // Supabase requires this exact response to consider the hook handled
