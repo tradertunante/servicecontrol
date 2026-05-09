@@ -6,6 +6,7 @@ import { useTranslations } from "next-intl";
 import type { Profile } from "@/lib/types";
 import TeamTargetAssignmentsCard from "./TeamTargetAssignmentsCard";
 import { useTeamData, type TeamPeriodKey } from "../_hooks/useTeamData";
+import type { ManagerAreaOption } from "./ManagerAreaWorkspace";
 
 function formatPct(n: number | null | undefined) {
   if (n === null || n === undefined) return "—";
@@ -18,15 +19,21 @@ export default function TeamSummaryTab({
   selectedPeriod,
   hotelId,
   initialProfile,
+  selectedAreaId,
+  areaOptions = [],
+  onSelectArea,
 }: {
   selectedPeriod: TeamPeriodKey;
   hotelId: string;
   initialProfile: Profile;
+  selectedAreaId?: string | null;
+  areaOptions?: ManagerAreaOption[];
+  onSelectArea?: (id: string | null) => void;
 }) {
   const t = useTranslations("app.team.summary");
   const [showAssignmentsConfig, setShowAssignmentsConfig] = useState(false);
   const { loading, error, leaderboard, teamTargets, teamRecentRuns, teamTemplateProgress, summary } =
-    useTeamData({ selectedPeriod, initialHotelId: hotelId, initialProfile });
+    useTeamData({ selectedPeriod, initialHotelId: hotelId, initialProfile, selectedAreaId });
 
   const overviewSummary = useMemo(() => {
     let totalTargets = 0;
@@ -305,7 +312,7 @@ export default function TeamSummaryTab({
     gap: 10,
     maxHeight: 620,
     overflowY: "auto",
-    paddingRight: 4,
+    paddingRight: 10,
     alignContent: "start",
   };
 
@@ -326,6 +333,36 @@ export default function TeamSummaryTab({
           <b>Error:</b> {error}
         </Card>
       ) : null}
+
+      {areaOptions.length > 1 && (
+        <Card style={{ marginTop: 14 }}>
+          <div style={{ fontSize: 12, fontWeight: 900, opacity: 0.7, marginBottom: 6 }}>
+            {t("filterArea")}
+          </div>
+          <select
+            value={selectedAreaId ?? ""}
+            onChange={(e) => onSelectArea?.(e.target.value || null)}
+            style={{
+              width: "100%",
+              padding: "10px 12px",
+              borderRadius: 12,
+              border: "1px solid var(--border)",
+              background: "var(--card-bg)",
+              color: "inherit",
+              fontWeight: 700,
+              fontSize: 14,
+              outline: "none",
+            }}
+          >
+            <option value="">{t("allAreas")}</option>
+            {areaOptions.map((area) => (
+              <option key={area.id} value={area.id}>
+                {area.name}{area.type ? ` · ${area.type}` : ""}
+              </option>
+            ))}
+          </select>
+        </Card>
+      )}
 
       {insights.length > 0 && (
         <Card style={{ marginTop: 14 }}>
@@ -401,39 +438,16 @@ export default function TeamSummaryTab({
             ) : (
               rubricGoalProgress.map((group) => (
                 <Card key={group.template} padding={12}>
-                  <div
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      gap: 12,
-                      alignItems: "flex-start",
-                    }}
-                  >
-                    <div style={{ minWidth: 0 }}>
-                      <div
-                        style={{
-                          fontWeight: 700,
-                          fontSize: 18,
-                          whiteSpace: "nowrap",
-                          overflow: "hidden",
-                          textOverflow: "ellipsis",
-                        }}
-                      >
-                        {group.template}
-                      </div>
-                      <div style={{ opacity: 0.8, fontSize: 12, marginTop: 4 }}>
-                        {t("remaining", { count: group.remaining })}
-                      </div>
-                    </div>
-
-                    <div style={{ textAlign: "right", whiteSpace: "nowrap", display: "grid", gap: 4 }}>
-                      <div style={{ fontWeight: 800, fontSize: 20 }}>
-                        {formatPct(group.progressPct)}
-                      </div>
-                      <div style={{ fontWeight: 800, fontSize: 16, opacity: 0.88 }}>
-                        {group.completed} / {group.target}
-                      </div>
-                    </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                    <span style={{ fontWeight: 700, fontSize: 15, lineHeight: 1.3, flex: "1 1 auto", minWidth: 0 }}>
+                      {group.template}
+                    </span>
+                    <span style={{ fontWeight: 800, fontSize: 15, color: "#2563eb", flexShrink: 0 }}>
+                      {formatPct(group.progressPct)}
+                    </span>
+                  </div>
+                  <div style={{ opacity: 0.75, fontSize: 12, marginTop: 4 }}>
+                    {t("remaining", { count: group.remaining })} · <b>{group.completed}/{group.target}</b>
                   </div>
 
                   <div style={progressTrackStyle}>
@@ -474,27 +488,16 @@ export default function TeamSummaryTab({
             ) : (
               leaderboard.map((row, idx) => (
                 <Card key={row.auditor_user_id} padding={12}>
-                  <div
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      gap: 12,
-                      alignItems: "flex-start",
-                    }}
-                  >
-                    <div style={{ minWidth: 0 }}>
-                      <div
-                        style={{
-                          fontWeight: 700,
-                          fontSize: 18,
-                          whiteSpace: "nowrap",
-                          overflow: "hidden",
-                          textOverflow: "ellipsis",
-                        }}
-                      >
+                  <div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                      <span style={{ fontWeight: 700, fontSize: 15, lineHeight: 1.3, flex: "1 1 auto", minWidth: 0 }}>
                         #{idx + 1} · {row.auditor_name}
-                      </div>
-                      <div style={{ opacity: 0.8, fontSize: 13, marginTop: 4 }}>
+                      </span>
+                      <span style={{ fontWeight: 800, fontSize: 15, color: "#2563eb", flexShrink: 0 }}>
+                        {formatPct(row.progress_pct)}
+                      </span>
+                    </div>
+                    <div style={{ opacity: 0.8, fontSize: 13, marginTop: 4 }}>
                         {t("production")} <b>{row.audits_done}</b> {t("audits")} · {t("average")}{" "}
                         <b>
                           {row.avg_score !== null
@@ -538,13 +541,6 @@ export default function TeamSummaryTab({
                           ))
                         )}
                       </div>
-                    </div>
-
-                    <div style={{ textAlign: "right", whiteSpace: "nowrap" }}>
-                      <div style={{ fontWeight: 800, fontSize: 20 }}>
-                        {formatPct(row.progress_pct)}
-                      </div>
-                    </div>
                   </div>
 
                   <div style={progressTrackStyle}>

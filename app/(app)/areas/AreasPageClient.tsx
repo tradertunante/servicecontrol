@@ -7,7 +7,7 @@ import { supabase } from "@/lib/supabaseClient";
 import HotelHeader from "@/app/components/HotelHeader";
 import type { Profile } from "@/lib/types";
 
-type AreaRow = { id: string; name: string; type: string | null; hotel_id: string | null; created_at?: string | null };
+type AreaRow = { id: string; name: string; type: string | null; hotel_id: string | null; sort_order: number | null };
 type HotelRow = { id: string; name: string };
 
 export default function AreasPageClient({
@@ -65,9 +65,10 @@ export default function AreasPageClient({
         if (isAdminLike) {
           const { data, error: aErr } = await supabase
             .from("areas")
-            .select("id,name,type,hotel_id,created_at")
+            .select("id,name,type,hotel_id,sort_order")
             .eq("hotel_id", hotelId)
-            .order("created_at", { ascending: false });
+            .order("sort_order", { ascending: true, nullsFirst: false })
+            .order("name", { ascending: true });
           if (aErr) throw aErr;
           areasList = (data ?? []) as AreaRow[];
         } else {
@@ -82,10 +83,11 @@ export default function AreasPageClient({
           if (allowedIds.length > 0) {
             const { data: areasData, error: areasErr } = await supabase
               .from("areas")
-              .select("id,name,type,hotel_id,created_at")
+              .select("id,name,type,hotel_id,sort_order")
               .eq("hotel_id", hotelId)
               .in("id", allowedIds)
-              .order("created_at", { ascending: false });
+              .order("sort_order", { ascending: true, nullsFirst: false })
+              .order("name", { ascending: true });
             if (areasErr) throw areasErr;
             areasList = (areasData ?? []) as AreaRow[];
           }
@@ -154,9 +156,11 @@ export default function AreasPageClient({
                 <div key={a.id} className="card itemCard">
                   <div className="itemLeft">
                     <div className="areaName">{a.name}</div>
-                    <div className="chips">
-                      <span className="chip">{a.type ?? "Sin tipo"}</span>
-                    </div>
+                    {a.type ? (
+                      <div className="chips">
+                        <span className="chip">{a.type}</span>
+                      </div>
+                    ) : null}
                   </div>
                   <div className="itemActions">
                     <button type="button" onClick={() => goArea(a.id)} className="primaryBtn enterBtn">Entrar</button>

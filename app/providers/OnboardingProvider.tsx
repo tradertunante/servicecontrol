@@ -40,15 +40,8 @@ export default function OnboardingProvider({ children }: { children: ReactNode }
     let alive = true;
 
     const init = async () => {
-      const { data } = await (supabase
-        .from("profiles")
-        .select("onboarding_completed")
-        .eq("id", profile.id)
-        .single() as unknown as Promise<{ data: { onboarding_completed: boolean | null } | null }>);
-
       if (!alive) return;
       setIsReady(true);
-      if (!data?.onboarding_completed) setRun(true);
     };
 
     void init();

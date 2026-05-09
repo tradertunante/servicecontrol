@@ -9,7 +9,7 @@ export default async function AnalyticsPage({
   searchParams?: Record<string, string | string[] | undefined>;
 }) {
   const { profile, hotelId } = await requirePageAccess({
-    roles: ["admin", "manager", "superadmin"],
+    roles: ["admin", "manager", "superadmin", "general_manager", "quality"],
     requireHotel: true,
     nextPath: "/analytics",
     redirectTo: "/dashboard",
@@ -19,7 +19,7 @@ export default async function AnalyticsPage({
     profile: {
       id: profile.id,
       hotel_id: profile.hotel_id,
-      role: profile.role as "admin" | "manager" | "superadmin",
+      role: profile.role as "admin" | "manager" | "superadmin" | "general_manager" | "quality",
       active: profile.active ?? null,
       full_name: profile.full_name ?? null,
     },

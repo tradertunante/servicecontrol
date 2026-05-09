@@ -32,7 +32,7 @@ export type Permission =
 
 const MODULE_ROLE_MAP: Record<AuthorizationModule, Role[]> = {
   areas: ["admin", "general_manager", "manager", "auditor", "superadmin", "quality"],
-  reports: ["admin", "manager", "auditor", "quality", "superadmin"],
+  reports: ["admin", "general_manager", "manager", "auditor", "quality", "superadmin"],
   admin: ["admin", "superadmin"],
   builder: ["admin", "superadmin"],
   users: ["admin", "superadmin"],
@@ -81,6 +81,18 @@ const ASSIGNABLE_ROLE_MAP: Record<Role, Role[]> = {
   engineering: [],
   it: [],
   systems: [],
+};
+
+export const ROLE_LABELS: Record<Role, string> = {
+  superadmin:      "Superadmin",
+  admin:           "Administrador",
+  general_manager: "Director General",
+  manager:         "Manager",
+  auditor:         "Auditor",
+  quality:         "Quality",
+  engineering:     "Engineering",
+  it:              "IT",
+  systems:         "Systems",
 };
 
 export function normalizeRole(role: any): Role {

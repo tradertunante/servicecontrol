@@ -10,6 +10,7 @@ import { periodLabel } from "./_lib/analyticsUtils";
 import AnalyticsHeader from "./_components/AnalyticsHeader";
 import AnalyticsFilters from "./_components/AnalyticsFilters";
 import AnalyticsTabs from "./_components/AnalyticsTabs";
+import AreaPanel from "./_components/AreaPanel";
 import RankingPanel from "./_components/RankingPanel";
 import CommonFailuresPanel from "./_components/CommonFailuresPanel";
 import MemberPanel from "./_components/MemberPanel";
@@ -139,6 +140,10 @@ export default function AnalyticsPageClient({ payload }: { payload: AnalyticsPag
         />
 
         <AnalyticsTabs tab={filters.tab} setTab={(value) => updateQuery({ tab: value })} />
+
+        {filters.tab === "area" ? (
+          <AreaPanel summary={payload.areaSummary} areaLabel={filters.selectedAreaLabel} selectedAreaId={filters.selectedAreaId} />
+        ) : null}
 
         {filters.tab === "ranking" ? (
           <RankingPanel

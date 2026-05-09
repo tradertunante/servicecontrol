@@ -33,6 +33,19 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ ok: true });
     }
 
+    if (action === "sync_pack") {
+      const packId = String(body?.pack_id ?? "").trim();
+      if (!packId) return jsonError("pack_id es obligatorio.", 400);
+
+      const { data, error } = await admin.rpc("sync_global_audit_pack_to_hotel", {
+        p_pack_id: packId,
+        p_target_hotel_id: hotelResult.hotelId,
+      });
+
+      if (error) return jsonDbError(error);
+      return NextResponse.json({ ok: true, added: data });
+    }
+
     if (action === "set_template_area") {
       const templateId = String(body?.template_id ?? "").trim();
       const areaId = body?.area_id == null ? null : String(body.area_id).trim() || null;
@@ -83,6 +96,31 @@ export async function POST(request: NextRequest) {
         p_target_hotel_id: hotelResult.hotelId,
         p_new_name: newName,
       });
+
+      if (error) return jsonDbError(error);
+      return NextResponse.json({ ok: true });
+    }
+
+    if (action === "delete_template") {
+      const templateId = String(body?.template_id ?? "").trim();
+      if (!templateId) return jsonError("template_id es obligatorio.", 400);
+
+      // Verify it belongs to this hotel before deleting
+      const { data: template, error: checkError } = await admin
+        .from("audit_templates")
+        .select("id")
+        .eq("id", templateId)
+        .eq("hotel_id", hotelResult.hotelId)
+        .maybeSingle();
+
+      if (checkError) return jsonDbError(checkError);
+      if (!template?.id) return jsonError("La plantilla no pertenece al hotel seleccionado.", 403);
+
+      const { error } = await admin
+        .from("audit_templates")
+        .delete()
+        .eq("id", templateId)
+        .eq("hotel_id", hotelResult.hotelId);
 
       if (error) return jsonDbError(error);
       return NextResponse.json({ ok: true });

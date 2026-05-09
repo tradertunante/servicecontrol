@@ -1,4 +1,4 @@
-export type Role = "admin" | "manager" | "auditor" | "superadmin";
+export type Role = "admin" | "manager" | "auditor" | "superadmin" | "general_manager" | "quality";
 
 export type Profile = {
   id: string;
@@ -51,7 +51,7 @@ export type TeamMemberLite = {
 export type TemplateLite = { id: string; name: string };
 
 export type Period = "30" | "60" | "90" | "365" | "custom";
-export type TabKey = "ranking" | "common" | "member";
+export type TabKey = "area" | "ranking" | "common" | "member";
 
 export type SortKey = "name" | "audits_count" | "fail_rate_pct" | "last_audit_at";
 export type SortDir = "asc" | "desc";
@@ -118,6 +118,28 @@ export type AnalyticsFiltersState = {
   tab: TabKey;
 };
 
+export type AreaTrendPoint = {
+  week_iso: string;
+  week_label: string;
+  audits_count: number;
+  fail_pct: number | null;
+};
+
+export type AreaByTemplate = {
+  template_id: string | null;
+  template_name: string;
+  audits_count: number;
+  fail_pct: number | null;
+};
+
+export type AreaSummaryStats = {
+  audits_count: number;
+  overall_fail_pct: number | null;
+  last_audit_at: string | null;
+  by_template: AreaByTemplate[];
+  trend: AreaTrendPoint[];
+};
+
 export type AnalyticsPagePayload = {
   hotel: HotelRow | null;
   areas: AreaRow[];
@@ -132,4 +154,5 @@ export type AnalyticsPagePayload = {
   memberReport: MemberReport | null;
   memberTrend: MemberTrendRow[];
   memberTopStandards: MemberTopStandardRow[];
+  areaSummary: AreaSummaryStats | null;
 };

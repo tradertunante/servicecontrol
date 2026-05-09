@@ -197,24 +197,28 @@ export default function DashboardPanel({
 
   return (
     <div style={{ display: "grid", gap: 14 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+      <div className="flex justify-between gap-3 flex-wrap items-start">
         <div style={{ fontSize: 22, fontWeight: 950 }}>{t("title")}</div>
 
-        <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <div style={{ fontWeight: 900, opacity: 0.9 }}>{t("period")}</div>
+        {/* Controles: 2 columnas en móvil, flex en desktop */}
+        <div className="grid grid-cols-2 gap-2 w-full sm:w-auto sm:flex sm:flex-wrap sm:items-center sm:gap-[10px]">
+
+          {/* Periodo */}
+          <div className="flex flex-col sm:flex-row sm:items-center sm:gap-[10px]">
+            <div className="hidden sm:block" style={{ fontWeight: 900, opacity: 0.9 }}>{t("period")}</div>
             <select
               value={period}
               onChange={(e) => setPeriod(e.target.value as PeriodKey)}
               style={{
-                padding: "10px 12px",
-                borderRadius: 12,
+                padding: "10px 10px",
+                borderRadius: 10,
                 border: "1px solid var(--border)",
                 outline: "none",
-                minWidth: 220,
                 fontWeight: 900,
                 background: "var(--card-bg)",
                 color: "inherit",
+                width: "100%",
+                fontSize: 14,
               }}
             >
               <option value="THIS_MONTH">{t("periodThisMonth")}</option>
@@ -223,20 +227,22 @@ export default function DashboardPanel({
             </select>
           </div>
 
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <div style={{ fontWeight: 900, opacity: 0.9 }}>{t("view")}</div>
+          {/* Vista */}
+          <div className="flex flex-col sm:flex-row sm:items-center sm:gap-[10px]">
+            <div className="hidden sm:block" style={{ fontWeight: 900, opacity: 0.9 }}>{t("view")}</div>
             <select
               value={templateFilter}
               onChange={(e) => setTemplateFilter(e.target.value)}
               style={{
-                padding: "10px 12px",
-                borderRadius: 12,
+                padding: "10px 10px",
+                borderRadius: 10,
                 border: "1px solid var(--border)",
                 outline: "none",
-                minWidth: 260,
                 fontWeight: 900,
                 background: "var(--card-bg)",
                 color: "inherit",
+                width: "100%",
+                fontSize: 14,
               }}
             >
               <option value="ALL">{t("viewAll")}</option>
@@ -248,15 +254,18 @@ export default function DashboardPanel({
             </select>
           </div>
 
+          {/* Reporte mensual — ancho completo en móvil */}
           <button
             type="button"
             onClick={() => router.push(`/reports/monthly/area/${areaId}?month=${currentMonth}`)}
+            className="col-span-2 w-full sm:w-auto"
             style={{
               padding: "10px 14px",
-              borderRadius: 12,
+              borderRadius: 10,
               border: "1px solid var(--border)",
               outline: "none",
               fontWeight: 900,
+              fontSize: 14,
               background: "var(--card-bg)",
               color: "inherit",
               cursor: "pointer",
@@ -384,7 +393,7 @@ export default function DashboardPanel({
           </div>
         </div>
 
-        <div style={{ marginTop: 12, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+        <div className="grid grid-cols-1 sm:grid-cols-2" style={{ marginTop: 12, gap: 14 }}>
           {/* Izquierda: estándares */}
           <div>
             <div style={{ fontWeight: 950, marginBottom: 8 }}>{t("standardsFail")}</div>
@@ -447,8 +456,8 @@ export default function DashboardPanel({
             )}
           </div>
 
-          {/* Derecha: clasificaciones */}
-          <div>
+          {/* Clasificaciones — separador visible solo en móvil (columna única) */}
+          <div className="sm:border-t-0 border-t pt-1" style={{ borderColor: "var(--border)" }}>
             <div style={{ fontWeight: 950, marginBottom: 8 }}>{t("classificationsFail")}</div>
 
             {topClassifications.length === 0 ? (

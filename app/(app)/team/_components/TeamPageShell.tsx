@@ -18,6 +18,10 @@ function buildBtnStyle(): CSSProperties {
     border: "1px solid var(--border)",
     borderRadius: 10,
     padding: "9px 11px",
+    minHeight: 44,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
     background: "var(--card-bg)",
     color: "rgba(15,23,42,0.82)",
     cursor: "pointer",
@@ -137,7 +141,7 @@ export default function TeamPageShell({
       label: t("nav.reaudits"),
       href: "/team/recuperacion",
       active: activeSection === "reaudits",
-      visible: showReauditsTab && enabledPacks?.includes("pack1") === true,
+      visible: showReauditsTab && enabledPacks?.includes("pack2") === true,
     },
     {
       key: "history",
@@ -158,7 +162,7 @@ export default function TeamPageShell({
       label: t("nav.analytics"),
       href: "/analytics",
       active: false,
-      visible: enabledPacks?.includes("pack2") === true,
+      visible: enabledPacks?.includes("pack1") === true,
     },
     {
       key: "members",
@@ -172,14 +176,14 @@ export default function TeamPageShell({
       label: t("nav.it"),
       href: "/it",
       active: false,
-      visible: !!showDepartmentNav && enabledPacks?.includes("pack1") === true,
+      visible: !!showDepartmentNav && enabledPacks?.includes("pack_it") === true,
     },
     {
       key: "engineering",
       label: t("nav.engineering"),
       href: "/engineering",
       active: false,
-      visible: !!showDepartmentNav && enabledPacks?.includes("pack1") === true,
+      visible: !!showDepartmentNav && enabledPacks?.includes("pack_engineering") === true,
     },
   ];
 
@@ -214,7 +218,7 @@ export default function TeamPageShell({
               {areaLabel}
             </div>
           ) : null}
-          <div style={{ opacity: 0.65, marginTop: 4, fontSize: 12 }}>
+          <div style={{ opacity: 0.75, marginTop: 4, fontSize: 13 }}>
             {t("subtitle")}
           </div>
         </div>
@@ -229,6 +233,7 @@ export default function TeamPageShell({
 
       <div
         data-onboarding="team-nav"
+        className="teamNav"
         style={{
           marginTop: 12,
           display: "flex",
@@ -250,6 +255,20 @@ export default function TeamPageShell({
             )
           )}
       </div>
+      <style jsx>{`
+        @media (max-width: 720px) {
+          .teamNav {
+            display: grid !important;
+            grid-template-columns: 1fr 1fr;
+            gap: 6px !important;
+          }
+          .teamNav > * {
+            width: 100%;
+            box-sizing: border-box;
+            text-align: center;
+          }
+        }
+      `}</style>
 
       {profileError ? (
         <Card style={{ marginTop: 14, border: "1px solid rgba(255,0,0,0.25)" }}>

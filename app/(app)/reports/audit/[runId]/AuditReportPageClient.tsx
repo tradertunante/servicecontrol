@@ -268,7 +268,7 @@ export default function AuditReportPageClient({
       : "-";
 
   return (
-    <main style={pageStyle()}>
+    <main className="audit-report-main" style={pageStyle()}>
       <style jsx global>{`
         @page {
           size: A4;
@@ -398,6 +398,43 @@ export default function AuditReportPageClient({
             resize: none !important;
           }
         }
+
+        @media (max-width: 720px) {
+          .audit-report-main { padding: 10px 6px !important; }
+          .report-no-print {
+            padding: 12px !important;
+            flex-direction: column !important;
+            gap: 8px !important;
+            align-items: stretch !important;
+          }
+          .report-no-print > div:first-child { display: none !important; }
+          .audit-actions {
+            display: grid !important;
+            grid-template-columns: 1fr 1fr !important;
+            gap: 8px !important;
+          }
+          .audit-actions > button:first-child { grid-column: 1 / -1 !important; }
+          .audit-actions > button {
+            width: 100% !important;
+            box-sizing: border-box !important;
+            min-height: 44px !important;
+            font-size: 14px !important;
+          }
+          .report-body-padding { padding: 16px 14px !important; }
+          .report-header-grid { display: block !important; grid-template-columns: unset !important; }
+          .report-score-box {
+            display: flex !important;
+            flex-direction: row !important;
+            align-items: center !important;
+            gap: 14px !important;
+            text-align: left !important;
+            padding: 14px 16px !important;
+            margin-top: 14px;
+          }
+          .report-score-value { font-size: 36px !important; margin-top: 0 !important; flex-shrink: 0; }
+          .report-kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+          .report-title-lg { font-size: 18px !important; margin-bottom: 10px !important; }
+        }
       `}</style>
 
       <div className="report-paper" style={paperStyle()}>
@@ -418,7 +455,7 @@ export default function AuditReportPageClient({
             <div style={{ fontSize: 13, opacity: 0.55 }}>Vista imprimible de auditoría</div>
           </div>
 
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+          <div className="audit-actions" style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
             <button onClick={() => window.print()} style={btnStyle(true)}>
               Imprimir / PDF
             </button>
@@ -460,7 +497,7 @@ export default function AuditReportPageClient({
 
               <h1
                 className="report-title-xl"
-                style={{ margin: 0, fontSize: 40, lineHeight: 1.05 }}
+                style={{ margin: 0, fontSize: "clamp(20px, 5vw, 40px)", lineHeight: 1.05 }}
               >
                 {report.template?.name ?? "Auditoría"}
               </h1>
@@ -469,9 +506,6 @@ export default function AuditReportPageClient({
                 <div>
                   <strong>Área:</strong> {report.area?.name ?? report.run.area_id}{" "}
                   {report.area?.type ? `(${report.area.type})` : ""}
-                </div>
-                <div>
-                  <strong>Estado:</strong> {report.run.status ?? "-"}
                 </div>
                 {report.run.room_number ? (
                   <div>
@@ -483,9 +517,6 @@ export default function AuditReportPageClient({
                   {report.run.executed_at
                     ? new Date(report.run.executed_at).toLocaleString()
                     : "No ejecutada"}
-                </div>
-                <div>
-                  <strong>Run ID:</strong> {report.run.id}
                 </div>
               </div>
             </div>

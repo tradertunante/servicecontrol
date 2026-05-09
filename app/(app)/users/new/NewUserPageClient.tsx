@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 
 import BackButton from "@/app/components/BackButton";
-import { getAssignableRoles } from "@/lib/auth/permissions";
+import { getAssignableRoles, ROLE_LABELS } from "@/lib/auth/permissions";
 import { supabase } from "@/lib/supabaseClient";
 import type { Profile, Role } from "@/lib/types";
 
@@ -23,6 +23,7 @@ export default function NewUserPageClient({
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<Role>("auditor");
+  const [setPasswordManually, setSetPasswordManually] = useState(false);
   const [password, setPassword] = useState("");
   const [password2, setPassword2] = useState("");
   const [showPasswords, setShowPasswords] = useState(false);
@@ -55,15 +56,18 @@ export default function NewUserPageClient({
   const effectiveRole = (assignableRoles as string[]).includes(role) ? role : assignableRoles[0] ?? "auditor";
   const passwordStrongEnough = password.length >= 8;
   const passwordsMatch = password.length > 0 && password === password2;
-  const canSubmit = !busy && email.trim().length > 0 && passwordStrongEnough && passwordsMatch;
+  const canSubmit =
+    !busy &&
+    email.trim().length > 0 &&
+    (!setPasswordManually || (passwordStrongEnough && passwordsMatch));
 
   async function handleCreate() {
     setError(null);
     setOk(null);
 
     if (!email.trim()) return setError("El email es obligatorio.");
-    if (!passwordStrongEnough) return setError("La contrasena debe tener al menos 8 caracteres.");
-    if (!passwordsMatch) return setError("Las contrasenas no coinciden.");
+    if (setPasswordManually && !passwordStrongEnough) return setError("La contrasena debe tener al menos 8 caracteres.");
+    if (setPasswordManually && !passwordsMatch) return setError("Las contrasenas no coinciden.");
 
     try {
       setBusy(true);
@@ -83,7 +87,7 @@ export default function NewUserPageClient({
         body: JSON.stringify({
           full_name: fullName.trim() || null,
           email: email.trim().toLowerCase(),
-          password,
+          ...(setPasswordManually ? { password } : {}),
           role: effectiveRole,
         }),
       });
@@ -111,11 +115,16 @@ export default function NewUserPageClient({
         }
       }
 
-      setOk("Usuario creado correctamente.");
+      setOk(
+        setPasswordManually
+          ? "Usuario creado correctamente."
+          : "Usuario creado. Se ha enviado un email con el link para que establezca su contraseña."
+      );
       setFullName("");
       setEmail("");
       setPassword("");
       setPassword2("");
+      setSetPasswordManually(false);
       setRole("auditor");
       setSelectedAreaIds([]);
     } catch (e: unknown) {
@@ -136,15 +145,34 @@ export default function NewUserPageClient({
       <div className="grid gap-3 mt-4">
         <input value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Nombre completo (opcional)" className="p-3" />
         <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email *" type="email" className="p-3" />
-        <input value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Password * (minimo 8)" type={showPasswords ? "text" : "password"} className="p-3" />
-        <input value={password2} onChange={(e) => setPassword2(e.target.value)} placeholder="Repetir password *" type={showPasswords ? "text" : "password"} className="p-3" />
-        <button type="button" onClick={() => setShowPasswords((value) => !value)} className="p-3 font-[900]">
-          {showPasswords ? "Ocultar contrasenas" : "Mostrar contrasenas"}
-        </button>
+
+        <label className="flex items-center gap-2.5 cursor-pointer select-none">
+          <input
+            type="checkbox"
+            checked={setPasswordManually}
+            onChange={(e) => {
+              setSetPasswordManually(e.target.checked);
+              setPassword("");
+              setPassword2("");
+            }}
+          />
+          <span className="font-[900]">Asignar contraseña ahora</span>
+          <span className="opacity-60 font-normal text-sm">(si no, el usuario recibirá un link para crearla)</span>
+        </label>
+
+        {setPasswordManually && (
+          <>
+            <input value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Password * (minimo 8)" type={showPasswords ? "text" : "password"} className="p-3" />
+            <input value={password2} onChange={(e) => setPassword2(e.target.value)} placeholder="Repetir password *" type={showPasswords ? "text" : "password"} className="p-3" />
+            <button type="button" onClick={() => setShowPasswords((value) => !value)} className="p-3 font-[900]">
+              {showPasswords ? "Ocultar contrasenas" : "Mostrar contrasenas"}
+            </button>
+          </>
+        )}
         <select value={effectiveRole} onChange={(e) => setRole(e.target.value as Role)} className="p-3">
           {assignableRoles.map((candidateRole) => (
             <option key={candidateRole} value={candidateRole}>
-              {candidateRole}
+              {ROLE_LABELS[candidateRole] ?? candidateRole}
             </option>
           ))}
         </select>

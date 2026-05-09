@@ -445,6 +445,8 @@
         "reportTooltipDaily": "There is no printable report for the daily period."
       },
       "summary": {
+        "allAreas": "All areas",
+        "filterArea": "Areas",
         "insightsTitle": "System insights",
         "insightWarningAttention": "Attention",
         "insightNotStarted": "The team hasn't started the period target yet.",
@@ -509,7 +511,7 @@
         "noAudits": "No submitted audits yet.",
         "weakestSection": "Weakest section",
         "strongestSection": "Strongest section",
-        "failRanking": "FAIL ranking (by View + Period)",
+        "failRanking": "FAIL ranking",
         "failBase": "Base: {count} audits",
         "standardsFail": "Standards with most FAILs",
         "classificationsFail": "Classifications with most FAILs",

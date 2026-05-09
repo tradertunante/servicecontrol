@@ -171,8 +171,8 @@ export default function AreaRankings({
         }
         @media (max-width: 520px) {
           .rankingBadge { width: 38px; height: 38px; border-radius: 12px; }
-          .rankingAside { align-items: stretch; flex-direction: column; text-align: left; }
-          .rankingScoreBlock { justify-items: start; }
+          .rankingAside { align-items: stretch; flex-direction: column; text-align: center; }
+          .rankingScoreBlock { justify-items: center; }
           .rankingBtn { width: 100%; }
         }
       `}</style>

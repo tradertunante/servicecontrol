@@ -25,6 +25,7 @@ export default function AnalyticsTabs({
 
   return (
     <div className="mt-6 flex flex-wrap gap-2">
+      {btn("area", "Resumen del área")}
       {btn("ranking", "Ranking")}
       {btn("common", "Fallos comunes")}
       {btn("member", "Datos por colaborador")}

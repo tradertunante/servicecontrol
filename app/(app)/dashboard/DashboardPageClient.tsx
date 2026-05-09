@@ -57,7 +57,9 @@ export default function DashboardPageClient({
   const ghostBtn: CSSProperties = useMemo(() => buildGhostBtnStyle({ fg, border, inputBg, shadowSm }), [fg, border, inputBg, shadowSm]);
 
   const hasPack1 = enabledPacks.includes("pack1");
-  const hasPack2 = enabledPacks.includes("pack2");
+  const hasPackIt = enabledPacks.includes("pack_it");
+  const hasPackEngineering = enabledPacks.includes("pack_engineering");
+  const hasPackItOrEngineering = hasPackIt || hasPackEngineering;
 
   const {
     loading, error, hotels, areas, runs,
@@ -67,7 +69,7 @@ export default function DashboardPageClient({
     monthLabels, availableYears,
     top3Areas, worst3Areas, worst3Audits, pendingByTeam,
     selectedHotelName, canChooseHotel, resetForHotelChange,
-  } = useDashboardData({ profile, activeHotelId, setActiveHotelId, heatMode, selectedYear, hasPack1 });
+  } = useDashboardData({ profile, activeHotelId, setActiveHotelId, heatMode, selectedYear, hasPackIt, hasPackEngineering });
 
   useEffect(() => {
     if (!availableYears.length) return;
@@ -180,7 +182,7 @@ export default function DashboardPageClient({
         onGoWorstAuditDetail={goWorstAuditDetail}
       />
 
-      {hasPack1 && (
+      {hasPackItOrEngineering && (
         <PendingTeamsCard
           card={card}
           rowBg={rowBg}
@@ -198,7 +200,7 @@ export default function DashboardPageClient({
         inputBg={inputBg}
         fg={fg}
         shadowSm={shadowSm}
-        showAnalytics={hasPack2}
+        showAnalytics={hasPack1}
       />
     </DashboardShell>
   );
@@ -210,4 +212,7 @@ const dashCss = `
   .topText { opacity:0.7; font-size:14px; line-height:1.25; }
   .sectionTitle { font-size:22px; font-weight:950; letter-spacing:0.4px; margin-bottom:22px; }
   .gridGauges { display:grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap:16px; }
+  @media (max-width: 720px) {
+    .dash { padding: 6px 4px; }
+  }
 `;

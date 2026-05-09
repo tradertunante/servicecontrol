@@ -131,6 +131,8 @@ export default function ManagerAreaWorkspace({
       {mode === "dashboard" ? (
         <ManagerAreaDashboardMode
           areaId={selectedAreaId}
+          profileRole={profileRole}
+          hotelId={hotelId}
           templateFilter={templateFilter}
           setTemplateFilter={setTemplateFilter}
           period={period}
@@ -161,6 +163,8 @@ export default function ManagerAreaWorkspace({
 
 function ManagerAreaDashboardMode({
   areaId,
+  profileRole,
+  hotelId,
   templateFilter,
   setTemplateFilter,
   period,
@@ -168,6 +172,8 @@ function ManagerAreaDashboardMode({
   onOpenHistory,
 }: {
   areaId: string;
+  profileRole: string | null | undefined;
+  hotelId: string;
   templateFilter: string;
   setTemplateFilter: (v: string) => void;
   period: PeriodKey;
@@ -181,6 +187,7 @@ function ManagerAreaDashboardMode({
     templateFilter,
     setTemplateFilter,
   });
+  const templatesData = useManagerAreaTemplates({ areaId, profileRole, initialHotelId: hotelId });
 
   if (data.loading) {
     return <div style={{ fontWeight: 900 }}>{t("loadingAreaData")}</div>;
@@ -202,29 +209,51 @@ function ManagerAreaDashboardMode({
   }
 
   return (
-    <DashboardPanel
-      areaId={areaId}
-      period={period}
-      setPeriod={setPeriod}
-      templateFilter={templateFilter}
-      setTemplateFilter={setTemplateFilter}
-      templates={data.templates}
-      templateNameById={data.templateNameById}
-      totalsByTemplate={data.totalsByTemplate}
-      exceptionsByRun={data.exceptionsByRun}
-      runs={data.runs}
-      answersByRun={data.answersByRun}
-      questionMetaById={data.questionMetaById}
-      onViewRun={(runId) => router.push(`/audits/${runId}`)}
-      onOpenFailRuns={(payload) =>
-        onOpenHistory({
-          templateFilter,
-          period,
-          questionId: payload.questionId,
-          classification: payload.classification,
-        })
-      }
-    />
+    <div style={{ display: "grid", gap: 14 }}>
+      {templatesData.templates.length > 0 ? (
+        <div className="grid grid-cols-1 gap-2 sm:flex sm:flex-nowrap sm:gap-2 sm:overflow-x-auto sm:pb-1">
+          {templatesData.templates.map((tmpl) => (
+            <div
+              key={tmpl.id}
+              className="flex items-center justify-between gap-3 bg-white text-black rounded-[14px] px-4 py-3 sm:flex-shrink-0"
+            >
+              <span className="text-[13px] font-bold">{tmpl.name}</span>
+              <button
+                onClick={() => templatesData.handleStart(tmpl.id)}
+                disabled={templatesData.starting === tmpl.id}
+                className="flex-shrink-0 px-4 h-10 rounded-[8px] text-[13px] font-bold bg-black text-white hover:bg-zinc-800 transition-colors disabled:opacity-50 whitespace-nowrap"
+              >
+                {templatesData.starting === tmpl.id ? "Iniciando…" : "Iniciar"}
+              </button>
+            </div>
+          ))}
+        </div>
+      ) : null}
+
+      <DashboardPanel
+        areaId={areaId}
+        period={period}
+        setPeriod={setPeriod}
+        templateFilter={templateFilter}
+        setTemplateFilter={setTemplateFilter}
+        templates={data.templates}
+        templateNameById={data.templateNameById}
+        totalsByTemplate={data.totalsByTemplate}
+        exceptionsByRun={data.exceptionsByRun}
+        runs={data.runs}
+        answersByRun={data.answersByRun}
+        questionMetaById={data.questionMetaById}
+        onViewRun={(runId) => router.push(`/audits/${runId}`)}
+        onOpenFailRuns={(payload) =>
+          onOpenHistory({
+            templateFilter,
+            period,
+            questionId: payload.questionId,
+            classification: payload.classification,
+          })
+        }
+      />
+    </div>
   );
 }
 
