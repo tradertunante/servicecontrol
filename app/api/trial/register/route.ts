@@ -7,7 +7,6 @@ import { jsonError } from "@/lib/api/response";
 import { sendTrialWelcomeEmail } from "@/lib/email/sendTrialWelcomeEmail";
 
 const DEMO_HOTEL_ID = process.env.TRIAL_DEMO_HOTEL_ID;
-if (!DEMO_HOTEL_ID) throw new Error("TRIAL_DEMO_HOTEL_ID env var is not set");
 
 function generatePassword(): string {
   return randomBytes(8).toString("base64url").slice(0, 12);
@@ -41,6 +40,8 @@ export async function POST(request: NextRequest) {
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     return jsonError("Email no válido.", 400);
   }
+
+  if (!DEMO_HOTEL_ID) return jsonError("Sandbox no disponible. Contacta con soporte.", 503);
 
   const ip = getClientIp(request);
   const admin = supabaseAdmin();
