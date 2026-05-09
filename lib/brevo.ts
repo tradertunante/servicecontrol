@@ -6,6 +6,7 @@ const TRIAL_LEADS_LIST_ID = 3; // Lista "Leads Landing" en Brevo
 type BrevoContactAttributes = {
   NOMBRE?: string;
   HOTEL?: string;
+  FUENTE?: string;
 };
 
 export async function addTrialLeadToBrevo(
@@ -15,7 +16,7 @@ export async function addTrialLeadToBrevo(
 ): Promise<void> {
   if (!BREVO_API_KEY) return;
 
-  const attributes: BrevoContactAttributes = {};
+  const attributes: BrevoContactAttributes = { FUENTE: "landing" };
   if (name) attributes.NOMBRE = name;
   if (hotelName) attributes.HOTEL = hotelName;
 
