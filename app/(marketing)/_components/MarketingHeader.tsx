@@ -57,12 +57,6 @@ export default function MarketingHeader() {
               {item.label}
             </Link>
           ))}
-          <a
-            href="/help"
-            className="rounded-xl px-3 py-2 text-[14px] font-medium text-[var(--text-secondary)] transition hover:bg-[#0C1F44]/[0.04] hover:text-[var(--text)]"
-          >
-            Ayuda
-          </a>
         </nav>
 
         {/* Acciones desktop */}
@@ -129,13 +123,6 @@ export default function MarketingHeader() {
                 {item.label}
               </Link>
             ))}
-            <a
-              href="/help"
-              onClick={() => setOpen(false)}
-              className="rounded-xl px-4 py-3 text-[15px] font-medium text-[var(--text-secondary)] transition hover:bg-[#0C1F44]/[0.04] hover:text-[var(--text)]"
-            >
-              Ayuda
-            </a>
           </nav>
           <div className="mt-4 flex flex-col gap-3 border-t border-black/[0.06] pt-4">
             <Link
