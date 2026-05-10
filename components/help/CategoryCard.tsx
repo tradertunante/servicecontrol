@@ -24,7 +24,7 @@ export default function CategoryCard({ slug, name, articles }: Props) {
   const dotColor = CATEGORY_COLORS[slug] ?? 'bg-gray-400'
 
   return (
-    <div id={slug} className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+    <div id={slug} className="bg-white rounded-xl border border-gray-200 shadow-sm p-4 sm:p-6">
       <div className="flex items-center gap-3 mb-4">
         <span className={`w-2.5 h-2.5 rounded-full ${dotColor} shrink-0`} />
         <h2 className="text-base font-semibold text-[#0C1F44]">{name}</h2>

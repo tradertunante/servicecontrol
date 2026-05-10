@@ -12,12 +12,12 @@ export default function HelpPage() {
 
   return (
     <div>
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-[#0C1F44] mb-2">Centro de ayuda</h1>
-        <p className="text-gray-500">Todo lo que necesitas saber sobre ServiceControl.</p>
+      <div className="mb-6 sm:mb-8">
+        <h1 className="text-2xl sm:text-3xl font-bold text-[#0C1F44] mb-2">Centro de ayuda</h1>
+        <p className="text-gray-500 text-sm sm:text-base">Todo lo que necesitas saber sobre ServiceControl.</p>
       </div>
 
-      <div className="grid gap-6">
+      <div className="grid gap-4 sm:gap-6">
         {categories.map(cat => (
           <CategoryCard
             key={cat.slug}

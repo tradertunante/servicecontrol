@@ -31,7 +31,7 @@ export default function ArticlePage({
   relatedArticles,
 }: Props) {
   return (
-    <article className="bg-white rounded-xl border border-gray-200 shadow-sm p-8">
+    <article className="bg-white rounded-xl border border-gray-200 shadow-sm p-5 sm:p-8">
       <Breadcrumb
         items={[
           { label: categoryName, href: `/help#${category}` },
@@ -40,7 +40,7 @@ export default function ArticlePage({
       />
 
       <header className="mb-8">
-        <h1 className="text-3xl font-bold text-[#0C1F44] mb-3">{title}</h1>
+        <h1 className="text-2xl sm:text-3xl font-bold text-[#0C1F44] mb-3">{title}</h1>
         <p className="text-gray-500 text-base leading-relaxed">{description}</p>
         <div className="flex flex-wrap items-center gap-3 mt-4">
           <span className="text-xs text-gray-400">Actualizado: {lastUpdated}</span>

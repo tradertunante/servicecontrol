@@ -39,7 +39,7 @@ export default function SearchPage({ searchParams }: Props) {
   }
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-8">
+    <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5 sm:p-8">
       <Breadcrumb items={[{ label: q ? `Resultados para "${q}"` : 'Búsqueda' }]} />
 
       <h1 className="text-2xl font-bold text-[#0C1F44] mb-1">
