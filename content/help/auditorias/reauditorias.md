@@ -15,11 +15,11 @@ La reauditoría verifica que los puntos que fallaron en la auditoría original a
 ## Cuándo se activa
 
 - **Automáticamente**: si el Admin configuró reauditoría obligatoria en la plantilla. Se programa cuando se cierran las acciones correctivas del área.
-- **Manualmente**: el Admin puede crear una reauditoría en cualquier momento desde el panel de auditorías.
+- **Manualmente**: el Manager puede crear una reauditoría en cualquier momento desde el panel de su área.
 
 ## Quién la ejecuta
 
-Cualquier Auditor asignado por el Admin. No tiene que ser el mismo que realizó la auditoría original.
+El Manager asigna la reauditoría a cualquier Auditor de su equipo. No tiene que ser el mismo que realizó la auditoría original.
 
 ## Qué incluye la reauditoría
 
