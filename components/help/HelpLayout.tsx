@@ -19,6 +19,7 @@ interface CategoryNav {
 interface Props {
   categories: CategoryNav[]
   children: React.ReactNode
+  backUrl?: string
 }
 
 function SidebarNav({ categories, pathname, onNavigate }: {
@@ -71,7 +72,7 @@ function SidebarNav({ categories, pathname, onNavigate }: {
   )
 }
 
-export default function HelpLayout({ categories, children }: Props) {
+export default function HelpLayout({ categories, children, backUrl = '/' }: Props) {
   const pathname = usePathname()
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
 
@@ -80,7 +81,7 @@ export default function HelpLayout({ categories, children }: Props) {
       {/* Header */}
       <header className="bg-white border-b border-gray-200 sticky top-0 z-30">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-14 flex items-center gap-3">
-          <Link href="/" className="font-semibold text-[#0C1F44] text-sm sm:text-base shrink-0">
+          <Link href={backUrl} className="font-semibold text-[#0C1F44] text-sm sm:text-base shrink-0">
             ServiceControl
           </Link>
           <span className="text-gray-300 select-none">/</span>

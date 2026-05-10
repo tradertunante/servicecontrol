@@ -1,9 +1,12 @@
+import { cookies } from 'next/headers'
 import { getCategories } from '@/lib/help'
 import HelpLayout from '@/components/help/HelpLayout'
 
-export default function HelpRootLayout({ children }: { children: React.ReactNode }) {
-  const categories = getCategories()
+export default async function HelpRootLayout({ children }: { children: React.ReactNode }) {
+  const cookieStore = await cookies()
+  const isAuthenticated = !!cookieStore.get('sc-access-token')?.value
 
+  const categories = getCategories()
   const categoryNav = categories.map(cat => ({
     slug: cat.slug,
     name: cat.name,
@@ -13,5 +16,12 @@ export default function HelpRootLayout({ children }: { children: React.ReactNode
     })),
   }))
 
-  return <HelpLayout categories={categoryNav}>{children}</HelpLayout>
+  return (
+    <HelpLayout
+      categories={categoryNav}
+      backUrl={isAuthenticated ? '/home' : '/'}
+    >
+      {children}
+    </HelpLayout>
+  )
 }
