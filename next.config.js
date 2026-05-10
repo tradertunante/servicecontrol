@@ -1,7 +1,60 @@
 const { withSentryConfig } = require("@sentry/nextjs");
 const createNextIntlPlugin = require("next-intl/plugin");
+const fs = require("fs");
+const path = require("path");
+const matter = require("gray-matter");
 
 const withNextIntl = createNextIntlPlugin("./i18n/request.ts");
+
+// ─── Help search index generation ────────────────────────────────────────────
+function stripMarkdownCJS(md) {
+  return md
+    .replace(/^---[\s\S]*?---\n?/m, "")
+    .replace(/```[\s\S]*?```/g, "")
+    .replace(/`[^`]+`/g, "")
+    .replace(/!\[.*?\]\(.*?\)/g, "")
+    .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")
+    .replace(/^#{1,6}\s+/gm, "")
+    .replace(/[*_]{1,2}([^*_]+)[*_]{1,2}/g, "$1")
+    .replace(/^\s*[-*+]\s+/gm, "")
+    .replace(/^\s*\d+\.\s+/gm, "")
+    .replace(/^\s*>\s*/gm, "")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
+(function generateHelpSearchIndex() {
+  const helpDir = path.join(process.cwd(), "content/help");
+  const outPath = path.join(process.cwd(), "public/help/search-index.json");
+
+  if (!fs.existsSync(helpDir)) return;
+
+  const entries = [];
+
+  for (const dirent of fs.readdirSync(helpDir, { withFileTypes: true })) {
+    if (!dirent.isDirectory()) continue;
+    const dirPath = path.join(helpDir, dirent.name);
+
+    for (const file of fs.readdirSync(dirPath).filter((f) => f.endsWith(".md"))) {
+      const slug = file.replace(/\.md$/, "");
+      const raw = fs.readFileSync(path.join(dirPath, file), "utf-8");
+      const { data, content } = matter(raw);
+
+      entries.push({
+        slug,
+        title: data.title ?? "",
+        description: data.description ?? "",
+        category: data.category ?? dirent.name,
+        tags: data.tags ?? [],
+        content: stripMarkdownCJS(content),
+      });
+    }
+  }
+
+  fs.mkdirSync(path.dirname(outPath), { recursive: true });
+  fs.writeFileSync(outPath, JSON.stringify(entries), "utf-8");
+  console.log(`[help] search index: ${entries.length} articles → public/help/search-index.json`);
+})();
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {

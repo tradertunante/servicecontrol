@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import { NextIntlClientProvider } from "next-intl";
 import HotelHeader from "@/app/components/HotelHeader";
+import HelpButton from "@/app/components/HelpButton";
 import OnboardingProvider from "@/app/providers/OnboardingProvider";
 import OnboardingTour from "@/app/components/OnboardingTour";
 import TrialBanner from "@/app/components/TrialBanner";
@@ -24,6 +25,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           <OnboardingTour />
           <main className="pt-16 px-6 max-w-[1400px] mx-auto">{children}</main>
         </OnboardingProvider>
+        <HelpButton />
       </div>
     </NextIntlClientProvider>
   );
