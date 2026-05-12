@@ -23,11 +23,11 @@ El Manager asigna la reauditoría a cualquier Auditor de su equipo. No tiene que
 
 ## Qué incluye la reauditoría
 
-Por defecto, solo se evalúan los puntos que fallaron. Los puntos que cumplieron no se vuelven a revisar.
+La reauditoría incluye todos los puntos de la plantilla original. Los puntos que cumplieron en la auditoría anterior aparecen pre-marcados como "Cumple"; el auditor solo necesita confirmar o corregir los que aún no cumplen.
 
 ## Cómo completarla
 
-El proceso es idéntico al de una auditoría normal. Consulta [Cómo ejecutar una auditoría](/help/ejecutar-auditoria). Los puntos ya están pre-filtrados: solo verás los que necesitan verificación.
+El proceso es idéntico al de una auditoría normal. Consulta [Cómo ejecutar una auditoría](/help/ejecutar-auditoria). Los puntos que ya cumplían aparecen pre-marcados como "Cumple" para que sea más rápido.
 
 ## Comparar resultados
 

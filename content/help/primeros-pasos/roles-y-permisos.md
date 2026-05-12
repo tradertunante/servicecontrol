@@ -15,14 +15,15 @@ lastUpdated: "2026-05-10"
 |---------|:-----:|:-------:|:-------:|:-------:|:--:|
 | Configurar plantillas y áreas | ✓ | — | — | — | — |
 | Crear y asignar auditorías | ✓ | — | — | — | — |
-| Ejecutar auditorías asignadas | — | ✓ | — | — | — |
-| Ver sus propias auditorías | — | ✓ | — | — | — |
+| Ejecutar auditorías | — | ✓ | ✓ | — | — |
+| Ver sus propias auditorías | — | ✓ | ✓ | — | — |
 | Ver auditorías de su área | — | — | ✓ | ✓ | ✓ |
 | Cambiar estado de acciones correctivas | — | — | ✓ | ✓ | — |
 | Ver dashboard global | ✓ | — | — | ✓ | ✓ |
 | Ver dashboard de área | — | — | ✓ | ✓ | ✓ |
-| Exportar reportes | ✓ | — | — | ✓ | ✓ |
-| Gestionar usuarios | ✓ | — | — | — | — |
+| Exportar reportes | ✓ | — | ✓ | ✓ | ✓ |
+| Gestionar usuarios del SaaS | ✓ | — | — | — | — |
+| Crear empleados auditados | ✓ | — | ✓ | ✓ | ✓ |
 
 ## Descripción de cada rol
 
@@ -30,7 +31,7 @@ lastUpdated: "2026-05-10"
 
 **Auditor** — Recibe auditorías asignadas y las completa en campo. Solo ve sus propias auditorías activas.
 
-**Manager** — Responsable de uno o varios áreas. Gestiona las acciones correctivas de su área y puede marcarlas como resueltas.
+**Manager** — Responsable de una o varias áreas. Puede ejecutar auditorías, gestionar las acciones correctivas de su área y crear empleados auditados.
 
 **Quality** — Visión transversal de todas las áreas. Mismas capacidades que GM más la gestión de acciones correctivas.
 
@@ -39,5 +40,5 @@ lastUpdated: "2026-05-10"
 ## Notas
 
 - Un usuario solo puede tener un rol a la vez.
-- El rol se puede cambiar en cualquier momento desde **Equipo**.
+- El rol solo lo puede cambiar el Admin, desde la sección de **Usuarios**.
 - Los datos históricos se conservan aunque cambie el rol.
