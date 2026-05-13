@@ -2007,11 +2007,14 @@ export type Database = {
           created_at: string | null
           email: string | null
           employee_number: string | null
+          first_audit_completed_at: string | null
+          first_login_at: string | null
           full_name: string | null
           hotel_id: string | null
           id: string
           is_trial: boolean
           role: string
+          trial_expires_at: string | null
           trial_hotel_name: string | null
         }
         Insert: {
@@ -2020,11 +2023,14 @@ export type Database = {
           created_at?: string | null
           email?: string | null
           employee_number?: string | null
+          first_audit_completed_at?: string | null
+          first_login_at?: string | null
           full_name?: string | null
           hotel_id?: string | null
           id: string
           is_trial?: boolean
           role: string
+          trial_expires_at?: string | null
           trial_hotel_name?: string | null
         }
         Update: {
@@ -2033,11 +2039,14 @@ export type Database = {
           created_at?: string | null
           email?: string | null
           employee_number?: string | null
+          first_audit_completed_at?: string | null
+          first_login_at?: string | null
           full_name?: string | null
           hotel_id?: string | null
           id?: string
           is_trial?: boolean
           role?: string
+          trial_expires_at?: string | null
           trial_hotel_name?: string | null
         }
         Relationships: [

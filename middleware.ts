@@ -13,6 +13,7 @@ const PUBLIC_API_PREFIXES = [
   "/api/trainings/attendances",
   "/api/billing/webhook",
   "/api/trial/register",
+  "/api/trial/track-login",
 ];
 
 const MARKETING_PATHS = ["/", "/pricing", "/demo", "/trial"];

@@ -108,10 +108,12 @@ export async function POST(request: NextRequest) {
 
   const userId = authData.user.id;
 
-  // El trigger ya creó el perfil; solo actualizamos trial_hotel_name.
+  const trialExpiresAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString();
+
+  // El trigger ya creó el perfil; actualizamos trial_hotel_name y trial_expires_at.
   const { error: profileError } = await admin
     .from("profiles")
-    .update({ trial_hotel_name: hotelName })
+    .update({ trial_hotel_name: hotelName, trial_expires_at: trialExpiresAt })
     .eq("id", userId);
 
   if (profileError) {
@@ -139,7 +141,7 @@ export async function POST(request: NextRequest) {
       loginUrl: `${appUrl}/login`,
       demoUrl: `${appUrl}/demo`,
     }),
-    addTrialLeadToBrevo(email, name, hotelName),
+    addTrialLeadToBrevo(email, name, hotelName, trialExpiresAt),
   ]);
 
   return NextResponse.json({ ok: true });

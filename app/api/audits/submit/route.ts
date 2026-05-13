@@ -8,7 +8,29 @@ import {
 } from "@/lib/auth/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { sendInstantNotifications } from "@/lib/email/sendInstantNotifications";
+import { updateBrevoContact } from "@/lib/brevo";
 import { logger } from "@/lib/logger";
+
+async function maybeTrackFirstAudit(userId: string) {
+  const admin = supabaseAdmin();
+  const { data: profile } = await admin
+    .from("profiles")
+    .select("is_trial, first_audit_completed_at, email")
+    .eq("id", userId)
+    .maybeSingle();
+
+  if (!profile?.is_trial || profile.first_audit_completed_at) return;
+
+  const now = new Date().toISOString();
+  await admin
+    .from("profiles")
+    .update({ first_audit_completed_at: now })
+    .eq("id", userId);
+
+  if (profile.email) {
+    await updateBrevoContact(profile.email, { FIRST_AUDIT_AT: now });
+  }
+}
 
 type SubmitAuditBody = {
   run_id?: unknown;
@@ -268,12 +290,15 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Send emails in the background — waitUntil keeps the function alive
-    // after the response is sent so Vercel doesn't kill the process early.
+    // Send emails and track trial signals in the background.
+    // waitUntil keeps the function alive after the response is sent.
     waitUntil(
-      sendInstantNotifications(runId).catch((err) =>
-        logger.error("instant_email_background_error", { error: err instanceof Error ? err.message : String(err) })
-      )
+      Promise.all([
+        sendInstantNotifications(runId).catch((err) =>
+          logger.error("instant_email_background_error", { error: err instanceof Error ? err.message : String(err) })
+        ),
+        maybeTrackFirstAudit(caller.profile.id).catch(() => undefined),
+      ])
     );
 
     return NextResponse.json(data);

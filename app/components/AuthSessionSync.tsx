@@ -20,6 +20,17 @@ async function clearCookie() {
   return syncCookie("");
 }
 
+async function trackFirstLogin(token: string) {
+  try {
+    await fetch("/api/trial/track-login", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  } catch {
+    // Non-critical
+  }
+}
+
 export default function AuthSessionSync() {
   useEffect(() => {
     let mounted = true;
@@ -41,6 +52,9 @@ export default function AuthSessionSync() {
       if (session?.access_token) {
         // Refresh or sign-in: update the cookie with the new token
         syncCookie(session.access_token, session.expires_at ?? null);
+        if (event === "SIGNED_IN") {
+          void trackFirstLogin(session.access_token);
+        }
       } else if (event === "SIGNED_OUT") {
         // Only clear the cookie on explicit sign-out
         clearCookie();
