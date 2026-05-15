@@ -11,7 +11,10 @@ function verifySignature(rawBody: string, signature: string | null): boolean {
   if (!CAL_SECRET || !signature) return false;
   const expected = "sha256=" + createHmac("sha256", CAL_SECRET).update(rawBody).digest("hex");
   try {
-    return timingSafeEqual(Buffer.from(signature), Buffer.from(expected));
+    const a = new Uint8Array(Buffer.from(signature));
+    const b = new Uint8Array(Buffer.from(expected));
+    if (a.length !== b.length) return false;
+    return timingSafeEqual(a, b);
   } catch {
     return false;
   }
@@ -20,11 +23,6 @@ function verifySignature(rawBody: string, signature: string | null): boolean {
 export async function POST(request: NextRequest) {
   const rawBody = await request.text();
   const signature = request.headers.get("x-cal-signature-256");
-
-  if (!verifySignature(rawBody, signature)) {
-    logger.warn("cal_webhook_invalid_signature");
-    return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
-  }
 
   let payload: unknown;
   try {
@@ -37,6 +35,17 @@ export async function POST(request: NextRequest) {
     triggerEvent?: string;
     payload?: { attendees?: { email: string }[] };
   };
+
+  // Cal.com ping test has no signature — allow it through for connectivity checks
+  if (event.triggerEvent === "PING") {
+    return NextResponse.json({ received: true, pong: true });
+  }
+
+  // All other events require a valid signature
+  if (!verifySignature(rawBody, signature)) {
+    logger.warn("cal_webhook_invalid_signature");
+    return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
+  }
 
   if (event.triggerEvent !== "BOOKING_CREATED") {
     return NextResponse.json({ received: true, skipped: "unhandled_event" });
