@@ -32,6 +32,23 @@ export async function updateBrevoContact(
   }
 }
 
+export async function markDemoBooked(email: string): Promise<void> {
+  if (!BREVO_API_KEY) return;
+  try {
+    await fetch(`https://api.brevo.com/v3/contacts/${encodeURIComponent(email)}`, {
+      method: "PATCH",
+      headers: {
+        accept: "application/json",
+        "content-type": "application/json",
+        "api-key": BREVO_API_KEY,
+      },
+      body: JSON.stringify({ attributes: { DEMO_BOOKED_AT: new Date().toISOString() } }),
+    });
+  } catch {
+    // Brevo no es crítico
+  }
+}
+
 export async function addTrialLeadToBrevo(
   email: string,
   name: string,

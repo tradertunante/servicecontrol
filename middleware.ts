@@ -12,6 +12,7 @@ const PUBLIC_API_PREFIXES = [
   "/api/trainings/sessions",
   "/api/trainings/attendances",
   "/api/billing/webhook",
+  "/api/cal/webhook",
   "/api/trial/register",
   "/api/trial/track-login",
 ];
