@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 740 180" width="740" height="180">
+  <defs>
+    <style>
+      .name { font-family: Georgia, 'Times New Roman', serif; font-size: 54px; font-weight: bold; }
+      .sub  { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 13.5px; letter-spacing: 5px; fill: #9CA3AF; }
+    </style>
+  </defs>
+
+  <polyline points="40,18 40,148 162,148"
+            fill="none" stroke="#1B2D52" stroke-width="20"
+            stroke-linecap="round" stroke-linejoin="round"/>
+
+  <polyline points="63,108 90,138 154,56"
+            fill="none" stroke="#2563EB" stroke-width="17"
+            stroke-linecap="round" stroke-linejoin="round"/>
+
+  <line x1="190" y1="24" x2="190" y2="156"
+        stroke="#D1D5DB" stroke-width="1.5"/>
+
+  <text x="213" y="110" class="name">
+    <tspan fill="#1B2D52">Service</tspan><tspan fill="#2563EB">Control</tspan>
+  </text>
+
+  <text x="215" y="147" class="sub">HOTEL QUALITY PLATFORM</text>
+</svg>

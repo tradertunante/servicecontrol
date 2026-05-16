@@ -11,6 +11,7 @@ import NotificationBell from "./NotificationBell";
 import SupportButton from "./SupportButton";
 import AppLocaleSwitcher from "./AppLocaleSwitcher";
 import { useHotelId } from "@/hooks/useHotelId";
+import { ServiceControlIcon } from "./ServiceControlLogo";
 
 function usePageTitle(pathname: string | null): string {
   const t = useTranslations("app.header.pages");
@@ -139,12 +140,7 @@ export default function HotelHeader() {
             aria-label={t("home")}
             className="flex-shrink-0 flex items-center justify-center w-7 h-7 rounded-md disabled:opacity-40"
           >
-            <svg width="28" height="28" viewBox="0 0 44 44" xmlns="http://www.w3.org/2000/svg">
-              <rect x="0" y="0" width="5" height="38" fill="#FFFFFF" rx="2.5"/>
-              <rect x="0" y="33" width="38" height="5" fill="#FFFFFF" rx="2.5"/>
-              <line x1="11" y1="19" x2="20" y2="31" stroke="#378ADD" strokeWidth="5" strokeLinecap="round"/>
-              <line x1="20" y1="31" x2="35" y2="7" stroke="#378ADD" strokeWidth="5" strokeLinecap="round"/>
-            </svg>
+            <ServiceControlIcon variant="light" size={28} />
           </button>
 
           {/* Divider */}

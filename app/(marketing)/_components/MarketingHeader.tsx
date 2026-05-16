@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import LanguageSwitcher from "./LanguageSwitcher";
+import ServiceControlLogo from "@/app/components/ServiceControlLogo";
 
 export default function MarketingHeader() {
   const t = useTranslations("nav");
@@ -29,21 +30,7 @@ export default function MarketingHeader() {
       >
         {/* Logo — escala en móvil */}
         <Link href="/" className="flex shrink-0 items-center" onClick={() => setOpen(false)}>
-          <svg
-            viewBox="0 0 500 58"
-            xmlns="http://www.w3.org/2000/svg"
-            className="h-8 w-auto sm:h-[44px]"
-          >
-            <rect x="0" y="0" width="7" height="47" fill="#0C1F44" rx="3"/>
-            <rect x="0" y="40" width="47" height="7" fill="#0C1F44" rx="3"/>
-            <line x1="15" y1="23" x2="26" y2="38" stroke="#185FA5" strokeWidth="7" strokeLinecap="round"/>
-            <line x1="26" y1="38" x2="43" y2="10" stroke="#185FA5" strokeWidth="7" strokeLinecap="round"/>
-            <line x1="63" y1="6" x2="63" y2="52" stroke="#D3D1C7" strokeWidth="0.8"/>
-            <text x="75" y="36" fontFamily="Georgia, 'Times New Roman', serif" fontSize="28" fontWeight="700">
-              <tspan fill="#0C1F44">Service</tspan><tspan fill="#185FA5">Control</tspan>
-            </text>
-            <text x="76" y="51" fontFamily="Georgia, 'Times New Roman', serif" fontSize="9.5" fontWeight="400" fill="#8A9BAD" letterSpacing="4">HOTEL QUALITY PLATFORM</text>
-          </svg>
+          <ServiceControlLogo variant="dark" className="h-8 w-auto sm:h-[44px]" />
         </Link>
 
         {/* Nav desktop */}
