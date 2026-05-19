@@ -1,0 +1,142 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" width="1200" height="630">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0C1F44"/>
+      <stop offset="100%" stop-color="#0f2860"/>
+    </linearGradient>
+    <marker id="arr" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#3B82F6"/>
+    </marker>
+    <marker id="arrR" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="rgba(96,165,250,0.7)"/>
+    </marker>
+  </defs>
+
+  <!-- Fondo -->
+  <rect width="1200" height="630" fill="url(#bg)"/>
+
+  <!-- Título -->
+  <text x="600" y="56" text-anchor="middle"
+    font-family="Georgia, 'Times New Roman', serif"
+    font-size="34" font-weight="700" fill="#FFFFFF">
+    El ciclo operativo que los hoteles necesitaban
+  </text>
+  <text x="600" y="84" text-anchor="middle"
+    font-family="'Helvetica Neue', Helvetica, Arial, sans-serif"
+    font-size="14" fill="rgba(255,255,255,0.4)" letter-spacing="1">
+    Ciclo completo · De la detección a la solución verificada
+  </text>
+  <rect x="508" y="97" width="184" height="1.5" rx="1" fill="#2563EB" opacity="0.4"/>
+
+  <!-- === FLECHAS DEL CICLO === -->
+
+  <!-- 1→2: Auditoría → Fallos -->
+  <path d="M 229 334 C 280 400 340 415 375 411"
+    fill="none" stroke="#3B82F6" stroke-width="2.5"
+    marker-end="url(#arr)"/>
+
+  <!-- 2→3: Fallos → Corrección -->
+  <path d="M 492 440 C 560 458 640 458 708 440"
+    fill="none" stroke="#3B82F6" stroke-width="2.5"
+    marker-end="url(#arr)"/>
+
+  <!-- 3→4: Corrección → Verificado -->
+  <path d="M 825 411 C 875 385 930 355 971 334"
+    fill="none" stroke="#3B82F6" stroke-width="2.5"
+    marker-end="url(#arr)"/>
+
+  <!-- 4→1: Arco de retorno (punteado) -->
+  <path d="M 1035 228 C 900 118 300 118 165 228"
+    fill="none" stroke="#60A5FA" stroke-width="2" stroke-opacity="0.5"
+    stroke-dasharray="9,6"
+    marker-end="url(#arrR)"/>
+
+  <!-- === NODO 1: Auditoría (azul) === -->
+  <circle cx="165" cy="300" r="72" fill="#0d1f4a" stroke="#2563EB" stroke-width="2.5"/>
+  <!-- Badge paso -->
+  <circle cx="122" cy="260" r="13" fill="#2563EB"/>
+  <text x="122" y="265" text-anchor="middle"
+    font-family="Georgia, serif" font-size="11" font-weight="700" fill="#FFFFFF">01</text>
+  <!-- Ícono lupa -->
+  <circle cx="165" cy="287" r="21" fill="none" stroke="#60A5FA" stroke-width="2.5"/>
+  <line x1="180" y1="302" x2="192" y2="314" stroke="#60A5FA" stroke-width="2.5" stroke-linecap="round"/>
+  <!-- Texto nodo -->
+  <text x="165" y="331" text-anchor="middle"
+    font-family="Georgia, serif" font-size="17" font-weight="700" fill="#FFFFFF">Auditoría</text>
+  <text x="165" y="348" text-anchor="middle"
+    font-family="'Helvetica Neue', Arial, sans-serif"
+    font-size="11" fill="rgba(255,255,255,0.45)">Programada · Puntual</text>
+
+  <!-- === NODO 2: Fallos detectados (naranja) === -->
+  <circle cx="430" cy="440" r="62" fill="#1e0d00" stroke="#F59E0B" stroke-width="2.5"/>
+  <!-- Badge paso -->
+  <circle cx="390" cy="400" r="13" fill="#F59E0B"/>
+  <text x="390" y="405" text-anchor="middle"
+    font-family="Georgia, serif" font-size="11" font-weight="700" fill="#FFFFFF">02</text>
+  <!-- Ícono exclamación -->
+  <line x1="430" y1="422" x2="430" y2="443" stroke="#F59E0B" stroke-width="3" stroke-linecap="round"/>
+  <circle cx="430" cy="451" r="3" fill="#F59E0B"/>
+  <!-- Texto nodo -->
+  <text x="430" y="470" text-anchor="middle"
+    font-family="Georgia, serif" font-size="16" font-weight="700" fill="#FFFFFF">Fallos</text>
+  <text x="430" y="487" text-anchor="middle"
+    font-family="'Helvetica Neue', Arial, sans-serif"
+    font-size="11" fill="rgba(255,255,255,0.45)">detectados</text>
+
+  <!-- Ramas de tipos de fallo -->
+  <line x1="412" y1="501" x2="348" y2="551" stroke="#F59E0B" stroke-width="1.5" stroke-opacity="0.45"/>
+  <line x1="430" y1="502" x2="430" y2="551" stroke="#F59E0B" stroke-width="1.5" stroke-opacity="0.45"/>
+  <line x1="448" y1="501" x2="512" y2="551" stroke="#F59E0B" stroke-width="1.5" stroke-opacity="0.45"/>
+
+  <!-- Etiquetas de tipos -->
+  <text x="340" y="567" text-anchor="middle"
+    font-family="'Helvetica Neue', Arial, sans-serif"
+    font-size="11" fill="rgba(245,158,11,0.7)">Formación</text>
+  <text x="430" y="567" text-anchor="middle"
+    font-family="'Helvetica Neue', Arial, sans-serif"
+    font-size="11" fill="rgba(245,158,11,0.7)">Operativo</text>
+  <text x="520" y="567" text-anchor="middle"
+    font-family="'Helvetica Neue', Arial, sans-serif"
+    font-size="11" fill="rgba(245,158,11,0.7)">Mantenimiento</text>
+
+  <!-- === NODO 3: Corrección asignada (naranja) === -->
+  <circle cx="770" cy="440" r="62" fill="#1e0d00" stroke="#F59E0B" stroke-width="2.5"/>
+  <!-- Badge paso -->
+  <circle cx="730" cy="400" r="13" fill="#F59E0B"/>
+  <text x="730" y="405" text-anchor="middle"
+    font-family="Georgia, serif" font-size="11" font-weight="700" fill="#FFFFFF">03</text>
+  <!-- Ícono portapapeles -->
+  <rect x="758" y="416" width="24" height="28" rx="3" fill="none" stroke="#F59E0B" stroke-width="2"/>
+  <line x1="763" y1="424" x2="778" y2="424" stroke="#F59E0B" stroke-width="1.5" stroke-opacity="0.8"/>
+  <line x1="763" y1="430" x2="778" y2="430" stroke="#F59E0B" stroke-width="1.5" stroke-opacity="0.8"/>
+  <line x1="763" y1="436" x2="774" y2="436" stroke="#F59E0B" stroke-width="1.5" stroke-opacity="0.8"/>
+  <!-- Texto nodo -->
+  <text x="770" y="460" text-anchor="middle"
+    font-family="Georgia, serif" font-size="16" font-weight="700" fill="#FFFFFF">Corrección</text>
+  <text x="770" y="476" text-anchor="middle"
+    font-family="'Helvetica Neue', Arial, sans-serif"
+    font-size="10" fill="rgba(255,255,255,0.45)">Responsable · Fecha límite</text>
+
+  <!-- === NODO 4: Verificado (verde) === -->
+  <circle cx="1035" cy="300" r="72" fill="#051805" stroke="#22C55E" stroke-width="2.5"/>
+  <!-- Badge paso -->
+  <circle cx="992" cy="260" r="13" fill="#22C55E"/>
+  <text x="992" y="265" text-anchor="middle"
+    font-family="Georgia, serif" font-size="11" font-weight="700" fill="#FFFFFF">04</text>
+  <!-- Ícono check -->
+  <polyline points="1013,296 1028,313 1056,280"
+    fill="none" stroke="#22C55E" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Texto nodo -->
+  <text x="1035" y="332" text-anchor="middle"
+    font-family="Georgia, serif" font-size="17" font-weight="700" fill="#FFFFFF">Verificado</text>
+  <text x="1035" y="349" text-anchor="middle"
+    font-family="'Helvetica Neue', Arial, sans-serif"
+    font-size="11" fill="rgba(255,255,255,0.45)">Con evidencia fotográfica</text>
+
+  <!-- Footer -->
+  <text x="600" y="608" text-anchor="middle"
+    font-family="'Helvetica Neue', Helvetica, Arial, sans-serif"
+    font-size="12" fill="rgba(255,255,255,0.28)" letter-spacing="0.5">
+    servicecontrol.io  ·  Mejora continua para hoteles que exigen excelencia operativa
+  </text>
+</svg>
