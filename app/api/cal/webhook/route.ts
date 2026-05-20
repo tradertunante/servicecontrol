@@ -3,6 +3,7 @@ import "server-only";
 import { createHmac, timingSafeEqual } from "crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { markDemoBooked } from "@/lib/brevo";
+import { addDemoLeadToNotion } from "@/lib/notion";
 import { logger } from "@/lib/logger";
 
 const CAL_SECRET = process.env.CAL_WEBHOOK_SECRET;
@@ -33,7 +34,11 @@ export async function POST(request: NextRequest) {
 
   const event = payload as {
     triggerEvent?: string;
-    payload?: { attendees?: { email: string }[] };
+    payload?: {
+      attendees?: { name: string; email: string }[];
+      startTime?: string;
+      description?: string;
+    };
   };
 
   // Cal.com ping test has no signature — allow it through for connectivity checks
@@ -51,13 +56,21 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ received: true, skipped: "unhandled_event" });
   }
 
-  const email = event.payload?.attendees?.[0]?.email;
+  const attendee = event.payload?.attendees?.[0];
+  const email = attendee?.email;
   if (!email) {
     logger.warn("cal_webhook_missing_email");
     return NextResponse.json({ error: "Missing attendee email" }, { status: 400 });
   }
 
-  await markDemoBooked(email);
+  const name      = attendee?.name ?? "";
+  const startTime = event.payload?.startTime ?? new Date().toISOString();
+  const notes     = event.payload?.description;
+
+  await Promise.all([
+    markDemoBooked(email),
+    addDemoLeadToNotion(email, name, startTime, notes),
+  ]);
   logger.info("cal_demo_booked", { email });
 
   return NextResponse.json({ received: true });

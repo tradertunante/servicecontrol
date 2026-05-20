@@ -40,6 +40,7 @@ export default function AuditPageShell() {
     submitting,
     savingMember,
     submitted,
+    isOnline,
     error,
     activeQuestionId,
     activeSectionId,
@@ -89,6 +90,12 @@ export default function AuditPageShell() {
 
   const content = (
     <div className="flex flex-col gap-2.5">
+      {!isOnline ? (
+        <div className="rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm font-extrabold text-amber-800">
+          Sin conexión — tus respuestas se guardan localmente y se sincronizarán al reconectar.
+        </div>
+      ) : null}
+
       {error ? (
         <div className="rounded-2xl border border-rose-200 bg-rose-50 px-3 py-2.5 text-sm font-extrabold text-rose-700">
           {error}
@@ -201,6 +208,7 @@ export default function AuditPageShell() {
       submitting={submitting}
       submitted={submitted}
       saving={saving}
+      isOnline={isOnline}
       onSave={onSubmit}
     />
   );

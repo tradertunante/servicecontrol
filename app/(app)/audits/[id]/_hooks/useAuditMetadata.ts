@@ -38,6 +38,11 @@ export function useAuditMetadata({
   async function saveTeamMember(nextId: string) {
     if (!run || submitted) return;
 
+    if (!navigator.onLine) {
+      setError("Sin conexión. El colaborador se guardará al reconectar.");
+      return;
+    }
+
     const prevMember = selectedMember;
     setSavingMember(true);
     setError(null);
@@ -73,6 +78,11 @@ export function useAuditMetadata({
 
   async function saveRoomNumber(nextValue: string) {
     if (!run || submitted || !showRoomNumberField) return;
+
+    if (!navigator.onLine) {
+      setError("Sin conexión. El número de habitación se guardará al reconectar.");
+      return;
+    }
 
     const prevRoomNumber = roomNumber; // capturar previo
     const trimmedValue = nextValue.trim();

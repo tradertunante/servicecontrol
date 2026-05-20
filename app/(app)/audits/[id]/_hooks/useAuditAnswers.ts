@@ -141,6 +141,11 @@ export function useAuditAnswers({
   async function uploadPhoto(questionId: string, file: File) {
     if (!runId || submitted) return;
 
+    if (!navigator.onLine) {
+      setError("Sin conexión. Conéctate para subir fotos.");
+      return;
+    }
+
     const current = answersByQ[questionId];
     if (!current) {
       setError("No existe respuesta para esta pregunta.");
@@ -192,6 +197,11 @@ export function useAuditAnswers({
 
   async function deletePhoto(questionId: string) {
     if (!runId || submitted) return;
+
+    if (!navigator.onLine) {
+      setError("Sin conexión. Conéctate para eliminar fotos.");
+      return;
+    }
 
     const current = answersByQ[questionId];
     if (!current?.photo_path) return;

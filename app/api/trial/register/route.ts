@@ -6,6 +6,7 @@ import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { jsonError } from "@/lib/api/response";
 import { sendTrialWelcomeEmail } from "@/lib/email/sendTrialWelcomeEmail";
 import { addTrialLeadToBrevo } from "@/lib/brevo";
+import { addTrialLeadToNotion } from "@/lib/notion";
 
 const DEMO_HOTEL_ID = process.env.TRIAL_DEMO_HOTEL_ID;
 
@@ -142,6 +143,7 @@ export async function POST(request: NextRequest) {
       demoUrl: `${appUrl}/demo`,
     }),
     addTrialLeadToBrevo(email, name, hotelName, trialExpiresAt),
+    addTrialLeadToNotion(email, hotelName),
   ]);
 
   return NextResponse.json({ ok: true });

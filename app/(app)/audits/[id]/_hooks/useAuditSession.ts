@@ -7,6 +7,7 @@ import { useAuditAutosave } from "./useAuditAutosave";
 import { useAuditLoader } from "./useAuditLoader";
 import { useAuditAnswers } from "./useAuditAnswers";
 import { useAuditMetadata } from "./useAuditMetadata";
+import { useOnlineStatus } from "@/lib/hooks/useOnlineStatus";
 import {
   getAccessToken,
   getErrorMessage,
@@ -36,6 +37,7 @@ export type {
 export function useAuditSession(runId: string | undefined) {
   const router = useRouter();
   const { pendingCount, scheduleSave: rawScheduleSave, flushAll } = useAuditAutosave();
+  const isOnline = useOnlineStatus();
 
   const [submitting, setSubmitting] = useState(false);
   const submittingRef = useRef(false);
@@ -90,6 +92,11 @@ export function useAuditSession(runId: string | undefined) {
 
   async function submitRun() {
     if (!run || !loaderState.area || submitted) return;
+
+    if (!navigator.onLine) {
+      setError("Sin conexión. Envía la auditoría cuando recuperes la señal.");
+      return;
+    }
 
     if (requiresAuditedEmployee && !selectedMember.trim()) {
       setError("Debes seleccionar el colaborador auditado antes de enviar esta auditoría.");
@@ -206,6 +213,7 @@ export function useAuditSession(runId: string | undefined) {
 
   return {
     loading: loaderState.loading,
+    isOnline,
     saving,
     uploading,
     submitting,

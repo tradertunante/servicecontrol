@@ -9,6 +9,7 @@ export function useAuditAutosave(delayMs = 450) {
   const actionsRef = useRef(new Map<string, SaveAction>());
   const runningRef = useRef(new Map<string, Promise<void>>());
   const [pendingCount, setPendingCount] = useState(0);
+  const isOnlineRef = useRef(typeof navigator !== "undefined" ? navigator.onLine : true);
 
   const refreshPendingCount = useCallback(() => {
     setPendingCount(
@@ -22,6 +23,8 @@ export function useAuditAutosave(delayMs = 450) {
 
   const runAction = useCallback(
     async (key: string) => {
+      if (!isOnlineRef.current) return;
+
       const running = runningRef.current.get(key);
       if (running) {
         await running;
@@ -86,7 +89,7 @@ export function useAuditAutosave(delayMs = 450) {
 
   const flushAll = useCallback(async () => {
     // 1. Clear ALL pending timers and promote them to immediate actions
-    for (const [key, timer] of timersRef.current.entries()) {
+    for (const timer of timersRef.current.values()) {
       clearTimeout(timer);
     }
     timersRef.current.clear();
@@ -120,6 +123,22 @@ export function useAuditAutosave(delayMs = 450) {
       running.clear();
     };
   }, []);
+
+  useEffect(() => {
+    const handleOnline = () => {
+      isOnlineRef.current = true;
+      void flushAll();
+    };
+    const handleOffline = () => {
+      isOnlineRef.current = false;
+    };
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
+    return () => {
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
+    };
+  }, [flushAll]);
 
   return {
     pendingCount,
