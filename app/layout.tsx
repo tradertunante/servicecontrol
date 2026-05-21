@@ -4,6 +4,7 @@ import type { Metadata } from "next";
 import QueryProvider from "./providers/QueryProvider";
 import AuthSessionSync from "./components/AuthSessionSync";
 import ToastProvider from "./providers/ToastProvider";
+import PostHogProvider from "./providers/PostHogProvider";
 
 export const metadata: Metadata = {
   title: "ServiceControl",
@@ -24,12 +25,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="es">
       <body>
-        <QueryProvider>
-          <AuthSessionSync />
-          <ToastProvider>
-            {children}
-          </ToastProvider>
-        </QueryProvider>
+        <PostHogProvider>
+          <QueryProvider>
+            <AuthSessionSync />
+            <ToastProvider>
+              {children}
+            </ToastProvider>
+          </QueryProvider>
+        </PostHogProvider>
       </body>
     </html>
   );

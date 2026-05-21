@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
+import posthog from "posthog-js";
 import { supabase } from "@/lib/supabaseClient";
 import { normalizeRole } from "@/lib/auth/permissions";
 
@@ -62,6 +63,12 @@ export default function LoginClient() {
         .maybeSingle();
 
       if (profileError) throw profileError;
+
+      posthog.identify(userData.user.id, {
+        email: userData.user.email,
+        role: profile?.role ?? null,
+      });
+      posthog.capture("user_logged_in", { role: profile?.role ?? null });
 
       if (normalizeRole(profile?.role) === "superadmin") {
         router.replace("/superadmin");

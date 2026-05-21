@@ -2,6 +2,7 @@
 
 import { useCallback, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import posthog from "posthog-js";
 
 import { useAuditAutosave } from "./useAuditAutosave";
 import { useAuditLoader } from "./useAuditLoader";
@@ -190,6 +191,16 @@ export function useAuditSession(runId: string | undefined) {
       const payload = (await response.json().catch(() => null)) as SubmitAuditResponse | null;
       if (!response.ok || !payload?.ok) {
         throw new Error(payload?.message || "No se pudo enviar la auditoría.");
+      }
+
+      const failCount = submitAnswersPayload.filter((a) => a.answer === "FAIL").length;
+      posthog.capture("audit_completed", {
+        run_id: run.id,
+        score: payload.data?.run?.score ?? null,
+        fail_count: failCount,
+      });
+      if (failCount > 0) {
+        posthog.capture("finding_registered", { run_id: run.id, count: failCount });
       }
 
       setRun((prev) =>

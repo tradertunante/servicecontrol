@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import posthog from "posthog-js";
 
 import { supabase } from "@/lib/supabaseClient";
 import type { Profile } from "@/lib/types";
@@ -165,6 +166,14 @@ export default function NewAuditPageClient({
       if (!response.ok || !payload?.run_id) {
         throw new Error(payload?.error ?? "No se pudo crear la auditoría.");
       }
+
+      posthog.capture("audit_created", {
+        run_id: payload.run_id,
+        template_id: templateId,
+        template_name: template?.name ?? null,
+        area_id: area.id,
+        area_name: area.name ?? null,
+      });
 
       router.replace(`/audits/${payload.run_id}`);
     } catch (e: any) {

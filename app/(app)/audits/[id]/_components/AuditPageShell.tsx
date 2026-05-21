@@ -208,7 +208,6 @@ export default function AuditPageShell() {
       submitting={submitting}
       submitted={submitted}
       saving={saving}
-      isOnline={isOnline}
       onSave={onSubmit}
     />
   );
