@@ -37,3 +37,4 @@ next-env.d.ts
 
 # Imágenes LinkedIn generadas
 public/linkedin-images/
+.env.save
