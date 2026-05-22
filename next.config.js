@@ -91,11 +91,11 @@ const nextConfig = {
             key: "Content-Security-Policy",
             value: [
               "default-src 'self'",
-              "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cal.com",
+              "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cal.com https://us-assets.i.posthog.com blob:",
               "style-src 'self' 'unsafe-inline' https://cal.com",
               "img-src 'self' blob: data: https://*.supabase.co https://cal.com",
               "font-src 'self' https://cal.com",
-              "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.sentry.io https://*.ingest.de.sentry.io https://cal.com",
+              "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.sentry.io https://*.ingest.de.sentry.io https://cal.com https://us.i.posthog.com https://us-assets.i.posthog.com blob:",
               "frame-src https://cal.com",
               "frame-ancestors 'none'",
               "base-uri 'self'",
