@@ -1,5 +1,8 @@
+"use client";
+
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
+import posthog from "posthog-js";
 
 export default function FinalCTA() {
   const t = useTranslations("finalCta");
@@ -30,18 +33,21 @@ export default function FinalCTA() {
           <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:gap-4">
             <Link
               href="/demo"
+              onClick={() => posthog.capture('cta_clicked', { cta_location: 'final_cta', cta_destination: 'demo' })}
               className="rounded-[6px] border border-[#185FA5] bg-[#185FA5] px-7 py-4 text-base font-medium text-white transition hover:bg-[#378ADD]"
             >
               {t("ctaPrimary")}
             </Link>
             <Link
               href="/trial"
+              onClick={() => posthog.capture('cta_clicked', { cta_location: 'final_cta', cta_destination: 'trial' })}
               className="rounded-[6px] border border-white/40 bg-white/10 px-7 py-4 text-base font-medium text-white transition hover:bg-white/20"
             >
               {t("ctaTrial")}
             </Link>
             <Link
               href="/login"
+              onClick={() => posthog.capture('cta_clicked', { cta_location: 'final_cta', cta_destination: 'login' })}
               className="rounded-[6px] border border-white/30 px-7 py-4 text-base font-medium text-white transition hover:bg-white/10"
             >
               {t("ctaSecondary")}

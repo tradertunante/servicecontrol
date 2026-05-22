@@ -1,6 +1,9 @@
+"use client";
+
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { ProductDashboardMock } from "./MarketingShowcase";
+import posthog from "posthog-js";
 
 export default function HeroSection() {
   const t = useTranslations("hero");
@@ -50,18 +53,21 @@ export default function HeroSection() {
           <div className="mt-10 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:gap-4">
             <Link
               href="/demo"
+              onClick={() => posthog.capture('cta_clicked', { cta_location: 'hero', cta_destination: 'demo' })}
               className="rounded-[6px] bg-[#185FA5] px-7 py-4 text-center text-base font-medium text-white transition hover:bg-[#378ADD]"
             >
               {t("ctaPrimary")}
             </Link>
             <Link
               href="/trial"
+              onClick={() => posthog.capture('cta_clicked', { cta_location: 'hero', cta_destination: 'trial' })}
               className="rounded-[6px] border border-[#185FA5] bg-transparent px-7 py-4 text-center text-base font-medium text-[#185FA5] transition hover:bg-[#185FA5]/5"
             >
               {t("ctaTrial")}
             </Link>
             <Link
               href="/login"
+              onClick={() => posthog.capture('cta_clicked', { cta_location: 'hero', cta_destination: 'login' })}
               className="rounded-[6px] border border-[#0C1F44] bg-transparent px-7 py-4 text-center text-base font-medium text-[#0C1F44] transition hover:bg-[#0C1F44]/5"
             >
               {t("ctaSecondary")}
