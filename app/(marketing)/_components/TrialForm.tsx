@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
+import posthog from "posthog-js";
 
 type State = "idle" | "loading" | "success" | "error" | "conflict";
 
@@ -17,6 +18,7 @@ export default function TrialForm() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setState("loading");
+    posthog.capture('trial_form_submitted', { send_instantly: true });
     setErrorMsg("");
 
     try {
@@ -39,6 +41,7 @@ export default function TrialForm() {
         return;
       }
 
+      posthog.capture('trial_form_success', { send_instantly: true });
       setState("success");
     } catch {
       setState("error");
@@ -114,6 +117,7 @@ export default function TrialForm() {
             required
             value={name}
             onChange={(e) => setName(e.target.value)}
+            onFocus={() => posthog.capture('trial_form_started', { send_instantly: true })}
             placeholder={t("placeholderName")}
             className="w-full rounded-[8px] border border-[var(--border)] bg-[var(--bg)] px-4 py-3 text-sm text-[var(--text)] placeholder-[var(--text-secondary)] outline-none focus:border-[#185FA5] focus:ring-2 focus:ring-[#185FA5]/20"
           />
