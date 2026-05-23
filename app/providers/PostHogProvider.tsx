@@ -11,6 +11,13 @@ if (typeof window !== "undefined") {
     capture_pageleave: true,
     persistence: "localStorage+cookie",
   });
+
+  if (typeof window !== "undefined") {
+    const hostname = window.location.hostname;
+    if (hostname === "localhost" || hostname === "127.0.0.1") {
+      posthog.setPersonProperties({ is_internal: true });
+    }
+  }
 }
 
 function PostHogPageview() {
