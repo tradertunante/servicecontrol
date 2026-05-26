@@ -1,4 +1,5 @@
 "use client";
+
 import posthog from "posthog-js";
 import { PostHogProvider as PHProvider } from "posthog-js/react";
 import { usePathname, useSearchParams } from "next/navigation";
@@ -23,10 +24,12 @@ if (typeof window !== "undefined") {
 function PostHogPageview() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
+
   useEffect(() => {
     if (typeof window === "undefined") return;
     posthog.capture("$pageview", { $current_url: window.location.href });
   }, [pathname, searchParams]);
+
   return null;
 }
 
