@@ -2921,6 +2921,63 @@ export type Database = {
           },
         ]
       }
+      ai_training_suggestions: {
+        Row: {
+          id: string
+          hotel_id: string
+          area_id: string
+          question_id: string | null
+          question_text: string
+          trigger_ratio: number
+          trigger_count: number
+          trigger_period_days: number
+          ai_content: Json
+          review_status: string
+          reviewed_by: string | null
+          reviewed_at: string | null
+          approved_at: string | null
+          realized_at: string | null
+          topic_id: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          hotel_id: string
+          area_id: string
+          question_id?: string | null
+          question_text: string
+          trigger_ratio: number
+          trigger_count: number
+          trigger_period_days: number
+          ai_content: Json
+          review_status?: string
+          reviewed_by?: string | null
+          reviewed_at?: string | null
+          approved_at?: string | null
+          realized_at?: string | null
+          topic_id?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          hotel_id?: string
+          area_id?: string
+          question_id?: string | null
+          question_text?: string
+          trigger_ratio?: number
+          trigger_count?: number
+          trigger_period_days?: number
+          ai_content?: Json
+          review_status?: string
+          reviewed_by?: string | null
+          reviewed_at?: string | null
+          approved_at?: string | null
+          realized_at?: string | null
+          topic_id?: string | null
+          created_at?: string
+        }
+        Relationships: []
+      }
       training_sessions: {
         Row: {
           closed_at: string | null

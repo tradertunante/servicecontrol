@@ -65,6 +65,34 @@ export type TrainingHistoryDetailResponse = {
   attendances: TrainingHistoryAttendance[];
 };
 
+export type AiTrainingSuggestion = {
+  id: string;
+  area_id: string;
+  area_name: string | null;
+  question_id: string | null;
+  question_text: string;
+  trigger_ratio: number;
+  trigger_count: number;
+  trigger_period_days: number;
+  ai_content: {
+    objective: string;
+    procedure: string[];
+    checklist: string[];
+    questions: string[];
+  };
+  review_status: "pending" | "approved" | "rejected" | "realized";
+  reviewed_at: string | null;
+  approved_at: string | null;
+  realized_at: string | null;
+  topic_id: string | null;
+  created_at: string;
+};
+
+export type AiSuggestionsResponse = {
+  ok: boolean;
+  suggestions: AiTrainingSuggestion[];
+};
+
 export type TrainingPublicTopicResponse = {
   ok: boolean;
   topic: {

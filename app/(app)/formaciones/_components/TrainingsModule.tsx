@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { CSSProperties } from "react";
 import QRCode from "react-qr-code";
 import { supabase } from "@/lib/supabaseClient";
+import AiSuggestionsPanel from "./AiSuggestionsPanel";
 import type {
   TrainingAttendance,
   TrainingHistoryDetailResponse,
@@ -940,6 +941,8 @@ export default function TrainingsModule() {
           )}
         </div>
       </div>
+
+      <AiSuggestionsPanel onSuggestionApproved={() => void loadTopics()} />
     </div>
   );
 }
