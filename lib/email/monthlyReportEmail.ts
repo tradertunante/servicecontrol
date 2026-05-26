@@ -15,6 +15,7 @@ type MonthlyReportEmailData = {
   overallScore: number;
   prevOverallScore?: number | null;
   totalAudits: number;
+  narrativeHotel?: string | null;
 };
 
 export async function sendMonthlyReportEmail(data: MonthlyReportEmailData) {
@@ -76,6 +77,12 @@ export async function sendMonthlyReportEmail(data: MonthlyReportEmailData) {
           </thead>
           <tbody>${areaRows}</tbody>
         </table>
+
+        ${data.narrativeHotel ? `
+        <div style="margin-top:20px;background:#f0f9ff;border-left:3px solid #0ea5e9;padding:14px 16px;border-radius:0 8px 8px 0">
+          <p style="margin:0 0 6px;font-size:11px;font-weight:700;color:#0369a1;text-transform:uppercase;letter-spacing:0.05em">Análisis IA</p>
+          <p style="margin:0;font-size:14px;color:#1e3a5f;line-height:1.5">${data.narrativeHotel}</p>
+        </div>` : ""}
 
         <p style="margin-top:20px;font-size:12px;color:#9ca3af;text-align:center">
           Generado automáticamente por ServiceControl

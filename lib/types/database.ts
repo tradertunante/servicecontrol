@@ -2978,6 +2978,51 @@ export type Database = {
         }
         Relationships: []
       }
+      report_narratives: {
+        Row: {
+          id: string
+          hotel_id: string
+          period_type: string
+          period_label: string
+          period_start: string
+          period_end: string
+          narrative_hotel: string
+          narrative_areas: Json
+          overall_score: number | null
+          prev_overall_score: number | null
+          total_audits: number | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          hotel_id: string
+          period_type: string
+          period_label: string
+          period_start: string
+          period_end: string
+          narrative_hotel: string
+          narrative_areas?: Json
+          overall_score?: number | null
+          prev_overall_score?: number | null
+          total_audits?: number | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          hotel_id?: string
+          period_type?: string
+          period_label?: string
+          period_start?: string
+          period_end?: string
+          narrative_hotel?: string
+          narrative_areas?: Json
+          overall_score?: number | null
+          prev_overall_score?: number | null
+          total_audits?: number | null
+          created_at?: string
+        }
+        Relationships: []
+      }
       training_sessions: {
         Row: {
           closed_at: string | null

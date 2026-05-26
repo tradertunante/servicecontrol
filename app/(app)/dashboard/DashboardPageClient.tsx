@@ -23,6 +23,7 @@ import WorstAuditsCard from "./_components/WorstAuditsCard";
 import PendingTeamsCard from "./_components/PendingTeamsCard";
 import QuickLinks from "./_components/QuickLinks";
 import AreaTrendCard from "./_components/AreaTrendCard";
+import NarrativeWidget from "./_components/NarrativeWidget";
 import { useDashboardData } from "./_hooks/useDashboardData";
 import type { HeatMode } from "./_lib/dashboardUtils";
 
@@ -143,6 +144,8 @@ export default function DashboardPageClient({
         prevQuarterScore={prevQuarterScore}
         prevYearScore={prevYearScore}
       />
+
+      <NarrativeWidget hotelId={activeHotelId} />
 
       <HeatMapCard
         card={card}
