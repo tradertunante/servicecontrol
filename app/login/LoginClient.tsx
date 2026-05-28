@@ -7,6 +7,7 @@ import { useTranslations } from "next-intl";
 import posthog from "posthog-js";
 import { supabase } from "@/lib/supabaseClient";
 import { normalizeRole } from "@/lib/auth/permissions";
+import TermsModal from "./TermsModal";
 
 export default function LoginClient() {
   const router = useRouter();
@@ -16,6 +17,9 @@ export default function LoginClient() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>("");
+  const [showTerms, setShowTerms] = useState(false);
+  const [acceptingTerms, setAcceptingTerms] = useState(false);
+  const [pendingRedirect, setPendingRedirect] = useState<string | null>(null);
 
   async function waitForSession(maxMs = 1500) {
     const start = Date.now();
@@ -58,7 +62,7 @@ export default function LoginClient() {
 
       const { data: profile, error: profileError } = await supabase
         .from("profiles")
-        .select("role")
+        .select("role, terms_accepted_at")
         .eq("id", userData.user.id)
         .maybeSingle();
 
@@ -70,13 +74,15 @@ export default function LoginClient() {
       });
       posthog.capture("user_logged_in", { role: profile?.role ?? null });
 
-      if (normalizeRole(profile?.role) === "superadmin") {
-        router.replace("/superadmin");
-        router.refresh();
+      const destination = normalizeRole(profile?.role) === "superadmin" ? "/superadmin" : "/home";
+
+      if (!profile?.terms_accepted_at) {
+        setPendingRedirect(destination);
+        setShowTerms(true);
         return;
       }
 
-      router.replace("/home");
+      router.replace(destination);
       router.refresh();
     } catch (e: any) {
       setError(e?.message ?? "No se pudo iniciar sesión.");
@@ -85,7 +91,28 @@ export default function LoginClient() {
     }
   };
 
+  const handleAcceptTerms = async () => {
+    setAcceptingTerms(true);
+    try {
+      const res = await fetch("/api/auth/accept-terms", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ version: "1.0" }),
+      });
+      if (!res.ok) throw new Error("Error al registrar aceptación");
+      posthog.capture("terms_accepted", { version: "1.0" });
+      router.replace(pendingRedirect ?? "/home");
+      router.refresh();
+    } catch {
+      setError("No se pudo registrar la aceptación de los términos. Intenta de nuevo.");
+      setShowTerms(false);
+    } finally {
+      setAcceptingTerms(false);
+    }
+  };
+
   return (
+    <>
     <main style={{ minHeight: "100vh", display: "grid", placeItems: "center", padding: 24 }}>
       <div style={{ width: "100%", maxWidth: 520 }}>
         <h1 style={{ fontSize: 34, fontWeight: 950, marginBottom: 10 }}>
@@ -155,5 +182,10 @@ export default function LoginClient() {
         <style jsx global>{`input::placeholder { color: rgba(0,0,0,0.45); }`}</style>
       </div>
     </main>
+
+    {showTerms && (
+      <TermsModal onAccept={handleAcceptTerms} loading={acceptingTerms} />
+    )}
+  </>
   );
 }
