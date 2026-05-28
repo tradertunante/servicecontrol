@@ -27,10 +27,16 @@ export function middleware(request: NextRequest, event: NextFetchEvent) {
   // Rate limit API routes
   if (pathname.startsWith("/api/")) {
     const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
-    const { allowed, retryAfterMs } = checkRateLimit(ip);
+
+    // Strict limit for auth routes to prevent brute-force attacks (5 req/min)
+    const isAuthRoute = pathname.startsWith("/api/auth/");
+    const { allowed, retryAfterMs } = isAuthRoute
+      ? checkRateLimit(ip, { maxRequests: 5, windowMs: 60_000, storeKey: "auth" })
+      : checkRateLimit(ip);
+
     if (!allowed) {
       event.waitUntil(
-        logger.warn("rate_limit_exceeded", { ip, pathname }, { edgeContext: event })
+        logger.warn("rate_limit_exceeded", { ip, pathname, isAuthRoute }, { edgeContext: event })
       );
       return NextResponse.json(
         { ok: false, error: "Demasiadas solicitudes. Intenta de nuevo en un momento." },

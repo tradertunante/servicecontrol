@@ -27,6 +27,11 @@ export async function POST(request: NextRequest) {
       return jsonError("Debes adjuntar un archivo Excel.", 400);
     }
 
+    const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 MB
+    if (file.size > MAX_FILE_SIZE) {
+      return jsonError("El archivo no puede superar 5 MB.", 400);
+    }
+
     const fileName = String(file.name ?? "").toLowerCase();
     if (!fileName.endsWith(".xlsx") && !fileName.endsWith(".xls")) {
       return jsonError("El archivo debe ser .xlsx o .xls.", 400);
