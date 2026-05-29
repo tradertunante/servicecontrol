@@ -3,9 +3,11 @@
 import { useQuery } from "@tanstack/react-query";
 import { fetchActiveHotel } from "@/lib/auth/activeHotelClient";
 
+export const ACTIVE_HOTEL_QUERY_KEY = ["active-hotel"] as const;
+
 export function useHotelId() {
   return useQuery({
-    queryKey: ["active-hotel"],
+    queryKey: ACTIVE_HOTEL_QUERY_KEY,
     queryFn: async () => {
       const result = await fetchActiveHotel();
       return {

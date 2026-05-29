@@ -74,8 +74,7 @@ Sin texto adicional, sin markdown, solo el JSON.`;
 export async function generateReportNarrative(
   input: ReportNarrativeInput
 ): Promise<ReportNarrativeOutput> {
-  const envKey = "ANTHROPIC" + "_API_KEY";
-  const apiKey = process.env[envKey];
+  const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) throw new Error("API de IA no configurada.");
 
   const client = new Anthropic({ apiKey });

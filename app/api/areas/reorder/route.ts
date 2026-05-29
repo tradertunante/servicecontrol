@@ -33,15 +33,18 @@ export async function POST(request: NextRequest) {
     return jsonError("Hay áreas fuera del hotel activo.", 403);
   }
 
-  for (const [index, areaId] of areaIds.entries()) {
-    const { error } = await admin
-      .from("areas")
-      .update({ sort_order: index + 1 })
-      .eq("id", areaId)
-      .eq("hotel_id", hotelResult.hotelId);
+  const updates = await Promise.all(
+    areaIds.map((areaId, index) =>
+      admin
+        .from("areas")
+        .update({ sort_order: index + 1 })
+        .eq("id", areaId)
+        .eq("hotel_id", hotelResult.hotelId)
+    )
+  );
 
-    if (error) return jsonDbError(error);
-  }
+  const firstError = updates.find((r) => r.error)?.error;
+  if (firstError) return jsonDbError(firstError);
 
   return NextResponse.json({ ok: true, count: areaIds.length });
 }

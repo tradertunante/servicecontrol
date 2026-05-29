@@ -3,7 +3,9 @@
 import { useEffect, useMemo, useState } from "react";
 import type { CSSProperties } from "react";
 import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
+import { ACTIVE_HOTEL_QUERY_KEY } from "@/hooks/useHotelId";
 
 import { setActiveHotel } from "@/lib/auth/activeHotelClient";
 import type { Profile } from "@/lib/types";
@@ -37,6 +39,7 @@ export default function DashboardPageClient({
   enabledPacks: PackCode[];
 }) {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const t = useTranslations("app.common");
   const [profile] = useState<Profile>(initialProfile);
   const [activeHotelId, setActiveHotelId] = useState<string | null>(initialHotelId);
@@ -86,6 +89,7 @@ export default function DashboardPageClient({
   const handleChangeHotel = () => {
     void (async () => {
       await setActiveHotel(null);
+      await queryClient.invalidateQueries({ queryKey: ACTIVE_HOTEL_QUERY_KEY });
       setActiveHotelId(null);
       resetForHotelChange();
     })();

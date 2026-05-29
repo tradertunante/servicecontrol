@@ -16,6 +16,17 @@ const FROM_EMAIL =
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const HOOK_SECRET = Deno.env.get("SEND_EMAIL_HOOK_SECRET") ?? "";
 
+// Startup checks — appear in Edge Function boot logs
+if (!RESEND_API_KEY) {
+  console.error("[auth-email-hook] STARTUP ERROR: RESEND_API_KEY is not set. Emails will fail silently.");
+}
+if (!HOOK_SECRET) {
+  console.warn("[auth-email-hook] STARTUP WARN: SEND_EMAIL_HOOK_SECRET is not set. Hook auth is disabled.");
+}
+if (!SUPABASE_URL) {
+  console.error("[auth-email-hook] STARTUP ERROR: SUPABASE_URL is not set. Confirmation URLs will be malformed.");
+}
+
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
@@ -166,7 +177,6 @@ function fallbackLink(href: string): string {
   </div>`;
 }
 
-// --- recovery ---
 function buildRecoveryEmail(displayName: string, actionUrl: string): string {
   return emailShell(`
     <div style="font-size:22px;font-weight:700;color:#0f172a;letter-spacing:-0.02em;margin-bottom:10px">
@@ -187,7 +197,6 @@ function buildRecoveryEmail(displayName: string, actionUrl: string): string {
   `);
 }
 
-// --- signup (email confirmation) ---
 function buildSignupEmail(displayName: string, actionUrl: string): string {
   return emailShell(`
     <div style="font-size:22px;font-weight:700;color:#0f172a;letter-spacing:-0.02em;margin-bottom:10px">
@@ -206,7 +215,6 @@ function buildSignupEmail(displayName: string, actionUrl: string): string {
   `);
 }
 
-// --- magic link ---
 function buildMagicLinkEmail(displayName: string, actionUrl: string): string {
   return emailShell(`
     <div style="font-size:22px;font-weight:700;color:#0f172a;letter-spacing:-0.02em;margin-bottom:10px">
@@ -226,7 +234,6 @@ function buildMagicLinkEmail(displayName: string, actionUrl: string): string {
   `);
 }
 
-// --- invite ---
 function buildInviteEmail(displayName: string, actionUrl: string): string {
   return emailShell(`
     <div style="font-size:22px;font-weight:700;color:#0f172a;letter-spacing:-0.02em;margin-bottom:10px">
@@ -246,29 +253,34 @@ function buildInviteEmail(displayName: string, actionUrl: string): string {
   `);
 }
 
-// --- email change ---
-function buildEmailChangeEmail(
-  displayName: string,
-  actionUrl: string,
-  isCurrent: boolean
-): string {
-  const title = isCurrent
-    ? "Confirma el cambio de email"
-    : "Confirma tu nuevo email";
-  const body = isCurrent
-    ? "Alguien solicitó cambiar el email de tu cuenta en ServiceControl. Confirma el cambio desde tu dirección actual."
-    : "Confirma tu nueva dirección de correo para completar el cambio de email en ServiceControl.";
-  const cta = isCurrent ? "Confirmar cambio" : "Confirmar nuevo email";
-
+function buildEmailChangeCurrentEmail(displayName: string, actionUrl: string): string {
   return emailShell(`
     <div style="font-size:22px;font-weight:700;color:#0f172a;letter-spacing:-0.02em;margin-bottom:10px">
-      ${title}
+      Confirma el cambio de email
     </div>
     <div style="font-size:14px;color:#64748b;line-height:1.6;margin-bottom:4px">
       Hola, ${escapeHtml(displayName)}.<br><br>
-      ${body}
+      Alguien solicitó cambiar el email de tu cuenta en ServiceControl. Confirma el cambio desde tu dirección actual.
     </div>
-    ${ctaButton(actionUrl, cta)}
+    ${ctaButton(actionUrl, "Confirmar cambio")}
+    <div style="padding:14px 16px;border-radius:8px;background:#f8fafc;border:1px solid #e2e8f0;font-size:13px;color:#64748b;line-height:1.6">
+      Si no solicitaste este cambio, ignora este mensaje y tu email actual seguirá activo.
+      El enlace expirará en <strong>24 horas</strong>.
+    </div>
+    ${fallbackLink(actionUrl)}
+  `);
+}
+
+function buildEmailChangeNewEmail(displayName: string, actionUrl: string): string {
+  return emailShell(`
+    <div style="font-size:22px;font-weight:700;color:#0f172a;letter-spacing:-0.02em;margin-bottom:10px">
+      Confirma tu nuevo email
+    </div>
+    <div style="font-size:14px;color:#64748b;line-height:1.6;margin-bottom:4px">
+      Hola, ${escapeHtml(displayName)}.<br><br>
+      Confirma tu nueva dirección de correo para completar el cambio de email en ServiceControl.
+    </div>
+    ${ctaButton(actionUrl, "Confirmar nuevo email")}
     <div style="padding:14px 16px;border-radius:8px;background:#f8fafc;border:1px solid #e2e8f0;font-size:13px;color:#64748b;line-height:1.6">
       Si no solicitaste este cambio, ignora este mensaje y tu email actual seguirá activo.
       El enlace expirará en <strong>24 horas</strong>.
@@ -278,76 +290,60 @@ function buildEmailChangeEmail(
 }
 
 // ---------------------------------------------------------------------------
-// Email dispatch
+// Email dispatch — single lookup table per action type
 // ---------------------------------------------------------------------------
 
-function resolveSubject(type: EmailActionType): string {
-  switch (type) {
-    case "recovery":
-      return "Restablece tu contraseña · ServiceControl";
-    case "signup":
-      return "Confirma tu cuenta · ServiceControl";
-    case "magic_link":
-      return "Tu enlace de acceso · ServiceControl";
-    case "invite":
-      return "Invitación a ServiceControl";
-    case "email_change_new":
-    case "email_change_current":
-      return "Confirma el cambio de email · ServiceControl";
-    case "reauthentication":
-      return "Código de verificación · ServiceControl";
-    default:
-      return "Acción requerida · ServiceControl";
-  }
-}
+type EmailConfig = { subject: string; html: (displayName: string, actionUrl: string) => string };
 
-function resolveHtml(
-  type: EmailActionType,
-  displayName: string,
-  actionUrl: string
-): string {
-  switch (type) {
-    case "recovery":
-      return buildRecoveryEmail(displayName, actionUrl);
-    case "signup":
-      return buildSignupEmail(displayName, actionUrl);
-    case "magic_link":
-      return buildMagicLinkEmail(displayName, actionUrl);
-    case "invite":
-      return buildInviteEmail(displayName, actionUrl);
-    case "email_change_current":
-      return buildEmailChangeEmail(displayName, actionUrl, true);
-    case "email_change_new":
-      return buildEmailChangeEmail(displayName, actionUrl, false);
-    default:
-      // Fallback genérico para reauthentication u otros
-      return buildRecoveryEmail(displayName, actionUrl);
-  }
-}
+const EMAIL_CONFIG: Partial<Record<EmailActionType, EmailConfig>> = {
+  recovery:             { subject: "Restablece tu contraseña · ServiceControl",    html: buildRecoveryEmail },
+  signup:               { subject: "Confirma tu cuenta · ServiceControl",           html: buildSignupEmail },
+  magic_link:           { subject: "Tu enlace de acceso · ServiceControl",          html: buildMagicLinkEmail },
+  invite:               { subject: "Invitación a ServiceControl",                   html: buildInviteEmail },
+  email_change_current: { subject: "Confirma el cambio de email · ServiceControl",  html: buildEmailChangeCurrentEmail },
+  email_change_new:     { subject: "Confirma el cambio de email · ServiceControl",  html: buildEmailChangeNewEmail },
+  reauthentication:     { subject: "Código de verificación · ServiceControl",       html: buildRecoveryEmail },
+};
+
+const FALLBACK_CONFIG: EmailConfig = {
+  subject: "Acción requerida · ServiceControl",
+  html: buildRecoveryEmail,
+};
 
 async function sendViaResend(
   to: string,
   subject: string,
   html: string
 ): Promise<void> {
+  if (!RESEND_API_KEY) {
+    throw new Error("Resend API key is not configured (RESEND_API_KEY secret missing)");
+  }
+
+  const payload = {
+    from: `ServiceControl <${FROM_EMAIL}>`,
+    to,
+    subject,
+    html,
+  };
+
+  console.log(`[auth-email-hook] Calling Resend: to=${to} from=${FROM_EMAIL} subject="${subject}"`);
+
   const res = await fetch("https://api.resend.com/emails", {
     method: "POST",
     headers: {
       Authorization: `Bearer ${RESEND_API_KEY}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({
-      from: `ServiceControl <${FROM_EMAIL}>`,
-      to,
-      subject,
-      html,
-    }),
+    body: JSON.stringify(payload),
   });
 
+  const responseText = await res.text().catch(() => "");
+
   if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    throw new Error(`Resend error ${res.status}: ${text}`);
+    throw new Error(`Resend HTTP ${res.status}: ${responseText}`);
   }
+
+  console.log(`[auth-email-hook] Resend accepted: ${responseText}`);
 }
 
 // ---------------------------------------------------------------------------
@@ -355,6 +351,8 @@ async function sendViaResend(
 // ---------------------------------------------------------------------------
 
 Deno.serve(async (req) => {
+  console.log(`[auth-email-hook] Request: ${req.method} from ${req.headers.get("x-forwarded-for") ?? "unknown"}`);
+
   if (req.method !== "POST") {
     return new Response("Method not allowed", { status: 405 });
   }
@@ -365,7 +363,7 @@ Deno.serve(async (req) => {
     const token = authHeader.replace(/^Bearer\s+/i, "");
     const valid = await verifyHookRequest(token, HOOK_SECRET);
     if (!valid) {
-      console.error("[auth-email-hook] Invalid hook JWT");
+      console.error("[auth-email-hook] UNAUTHORIZED: Hook JWT verification failed. Check SEND_EMAIL_HOOK_SECRET matches Authentication → Hooks secret.");
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401,
         headers: { "Content-Type": "application/json" },
@@ -387,7 +385,10 @@ Deno.serve(async (req) => {
   const type = email_data?.email_action_type;
   const recipientEmail = user?.email;
 
+  console.log(`[auth-email-hook] Payload: type=${type ?? "MISSING"} recipient=${recipientEmail ?? "MISSING"}`);
+
   if (!recipientEmail || !type) {
+    console.error(`[auth-email-hook] Bad payload — email=${recipientEmail} type=${type}`);
     return new Response(JSON.stringify({ error: "Missing email or type" }), {
       status: 400,
       headers: { "Content-Type": "application/json" },
@@ -399,17 +400,19 @@ Deno.serve(async (req) => {
     recipientEmail.split("@")[0];
 
   const actionUrl = buildConfirmUrl(payload);
-  const subject = resolveSubject(type);
-  const html = resolveHtml(type, displayName, actionUrl);
+  const config = EMAIL_CONFIG[type] ?? FALLBACK_CONFIG;
+  const subject = config.subject;
+  const html = config.html(displayName, actionUrl);
 
   try {
     await sendViaResend(recipientEmail, subject, html);
-    console.log(`[auth-email-hook] Sent '${type}' email to ${recipientEmail}`);
+    console.log(`[auth-email-hook] OK: sent '${type}' to ${recipientEmail}`);
   } catch (err) {
     // Log but do NOT return 500 — a 500 causes Supabase to abort the auth
     // operation (e.g. "Database error creating new user"). Email delivery
     // failure must never block user creation or password recovery flows.
-    console.error(`[auth-email-hook] Failed for ${recipientEmail}:`, err);
+    const message = err instanceof Error ? err.message : String(err);
+    console.error(`[auth-email-hook] SEND FAILED for ${recipientEmail} (type=${type}): ${message}`);
   }
 
   // Supabase requires this exact response to consider the hook handled

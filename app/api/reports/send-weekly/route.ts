@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
+import { authorizeRouteRequest } from "@/lib/auth/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { sendWeeklyReportEmail } from "@/lib/email/weeklyReportEmail";
 import { generateReportNarrative } from "@/lib/reports/generateNarrative";
@@ -29,6 +30,8 @@ export async function POST(request: NextRequest) {
     if (error) return jsonDbError(error);
     hotelIds = Array.from(new Set((subs ?? []).map((s) => s.hotel_id)));
   } else {
+    const caller = await authorizeRouteRequest(request, { roles: ["superadmin", "admin"] });
+    if (!caller) return jsonError("No autorizado.", 401);
     const body = await request.json().catch(() => null);
     const hotelId = typeof body?.hotel_id === "string" ? body.hotel_id.trim() : "";
     if (!hotelId) return jsonError("hotel_id es obligatorio.", 400);

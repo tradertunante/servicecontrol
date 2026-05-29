@@ -1,8 +1,10 @@
-// FILE: app/(app)/areas/order/page.tsx
+// FILE: app/(app)/areas/order/OrderAreasPageClient.tsx
 "use client";
 
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
+import { ACTIVE_HOTEL_QUERY_KEY } from "@/hooks/useHotelId";
 import { supabase } from "@/lib/supabaseClient";
 import { setActiveHotel } from "@/lib/auth/activeHotelClient";
 import HotelHeader from "@/app/components/HotelHeader";
@@ -19,6 +21,7 @@ export default function OrderAreasPageClient({
   initialActiveHotelId: string;
 }) {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [loading, setLoading] = useState(true);
   const [busySave, setBusySave] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -64,9 +67,10 @@ export default function OrderAreasPageClient({
     return sorted.map((a, idx) => ({ ...a, sort_order: idx + 1 }));
   };
 
-  const loadAreas = async (hotelId: string) => {
+  const loadAreas = async (hotelId: string, signal?: AbortSignal) => {
     const { data, error: aErr } = await supabase.from("areas").select("id,name,type,hotel_id,sort_order").eq("hotel_id", hotelId).order("sort_order", { ascending: true, nullsFirst: false }).order("name", { ascending: true });
     if (aErr) throw aErr;
+    if (signal?.aborted) return;
     setAreas(normalizeOrder((data ?? []) as AreaRow[]));
   };
 
@@ -80,13 +84,13 @@ export default function OrderAreasPageClient({
           if (hErr) throw hErr;
           if (controller.signal.aborted) return;
           setHotels((hData ?? []) as HotelRow[]);
-          if (initialActiveHotelId) await loadAreas(initialActiveHotelId);
+          if (initialActiveHotelId) await loadAreas(initialActiveHotelId, controller.signal);
           setLoading(false);
           return;
         }
 
         if (!initialActiveHotelId) { setError("Tu usuario no tiene hotel asignado."); setLoading(false); return; }
-        await loadAreas(initialActiveHotelId);
+        await loadAreas(initialActiveHotelId, controller.signal);
         setLoading(false);
       } catch (e: any) {
         if (e instanceof DOMException && e.name === "AbortError") return;
@@ -106,6 +110,20 @@ export default function OrderAreasPageClient({
       const tmp = list[index]; list[index] = list[to]; list[to] = tmp;
       return list.map((a, idx) => ({ ...a, sort_order: idx + 1 }));
     });
+  };
+
+  const handleSelectHotel = async (hotelId: string) => {
+    try {
+      await setActiveHotel(hotelId);
+      await queryClient.invalidateQueries({ queryKey: ACTIVE_HOTEL_QUERY_KEY });
+      setActiveHotelId(hotelId);
+      setLoading(true);
+      await loadAreas(hotelId);
+    } catch (e: any) {
+      setError(e?.message ?? "No se pudo cambiar el hotel.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const resetAZ = () => {
@@ -131,7 +149,6 @@ export default function OrderAreasPageClient({
       });
       const payload = await response.json().catch(() => null);
       if (!response.ok) throw new Error(payload?.error ?? "No se pudo guardar el orden.");
-      await loadAreas(activeHotelId);
     } catch (e: any) {
       setError(e?.message ?? "No se pudo guardar el orden.");
     } finally {
@@ -151,7 +168,7 @@ export default function OrderAreasPageClient({
           <div style={styles.sub}>Primero selecciona el hotel para ordenar sus áreas.</div>
           <div style={{ marginTop: 16, display: "grid", gap: 10 }}>
             {hotels.length === 0 ? <div style={{ opacity: 0.7 }}>No hay hoteles creados todavía.</div> : hotels.map((h) => (
-              <button key={h.id} onClick={async () => { await setActiveHotel(h.id); setActiveHotelId(h.id); setLoading(true); try { await loadAreas(h.id); } finally { setLoading(false); } }} style={styles.btn}>
+              <button key={h.id} onClick={() => handleSelectHotel(h.id)} style={styles.btn}>
                 <span style={{ fontWeight: 950 }}>{h.name}</span> <span style={{ opacity: 0.7 }}>· Entrar →</span>
               </button>
             ))}
@@ -175,7 +192,7 @@ export default function OrderAreasPageClient({
           <button style={styles.btn} onClick={() => router.push("/dashboard")}>← Volver al dashboard</button>
           <button style={styles.btn} onClick={resetAZ}>Reset A→Z</button>
           {profile?.role === "superadmin" && (
-            <button style={styles.btn} onClick={() => { void setActiveHotel(null).then(() => { setActiveHotelId(null); setAreas([]); }); }}>Cambiar hotel</button>
+            <button style={styles.btn} onClick={() => { void (async () => { await setActiveHotel(null); await queryClient.invalidateQueries({ queryKey: ACTIVE_HOTEL_QUERY_KEY }); setActiveHotelId(null); setAreas([]); })(); }}>Cambiar hotel</button>
           )}
           <button style={{ ...styles.btnDark, opacity: busySave ? 0.7 : 1, cursor: busySave ? "not-allowed" : "pointer" }} onClick={save} disabled={busySave}>
             {busySave ? "Guardando…" : "Guardar orden"}

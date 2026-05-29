@@ -3,6 +3,8 @@
 
 import type { CSSProperties } from "react";
 import { useTranslations } from "next-intl";
+import { useQueryClient } from "@tanstack/react-query";
+import { ACTIVE_HOTEL_QUERY_KEY } from "@/hooks/useHotelId";
 import { setActiveHotel } from "@/lib/auth/activeHotelClient";
 import type { HotelRow } from "../_lib/dashboardTypes";
 
@@ -24,6 +26,7 @@ export default function HotelPicker({
   setActiveHotelId: (v: string | null) => void;
 }) {
   const t = useTranslations("app.dashboard");
+  const queryClient = useQueryClient();
 
   if (activeHotelId) return null;
 
@@ -45,6 +48,7 @@ export default function HotelPicker({
                 onClick={() => {
                   void (async () => {
                     await setActiveHotel(h.id);
+                    await queryClient.invalidateQueries({ queryKey: ACTIVE_HOTEL_QUERY_KEY });
                     setActiveHotelId(h.id);
                   })();
                 }}

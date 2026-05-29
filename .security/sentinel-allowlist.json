@@ -1,8 +1,14 @@
 {
   "paths": [
     "process.env",
-    ".env"
+    ".env",
+    "lib/supabaseAdmin.ts",
+    "lib/reports/generateNarrative.ts"
   ],
   "domains": [],
-  "commands": []
+  "commands": [],
+  "envVars": [
+    "SUPABASE_SERVICE_ROLE_KEY",
+    "ANTHROPIC_API_KEY"
+  ]
 }
