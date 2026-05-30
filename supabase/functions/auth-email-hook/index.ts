@@ -58,45 +58,44 @@ type HookPayload = {
 };
 
 // ---------------------------------------------------------------------------
-// Hook auth verification
-// Supabase may send either:
-//   (a) a raw Bearer secret (older hook versions)
-//   (b) a HS256-signed JWT (newer hook versions)
-// We accept both.
+// Hook auth verification — Standard Webhooks (v1,whsec_<base64>)
+// Supabase sends: webhook-id, webhook-timestamp, webhook-signature headers.
+// Signed content: "{webhook-id}.{webhook-timestamp}.{raw body}"
 // ---------------------------------------------------------------------------
 
-async function verifyHookRequest(
-  token: string,
+async function verifyStandardWebhook(
+  req: Request,
+  rawBody: string,
   secret: string
 ): Promise<boolean> {
-  // (a) Raw secret comparison
-  if (token === secret) return true;
-
-  // (b) JWT HS256 verification
   try {
-    const parts = token.split(".");
-    if (parts.length !== 3) return false;
+    const webhookId        = req.headers.get("webhook-id") ?? "";
+    const webhookTimestamp = req.headers.get("webhook-timestamp") ?? "";
+    const webhookSignature = req.headers.get("webhook-signature") ?? "";
+
+    if (!webhookId || !webhookTimestamp || !webhookSignature) return false;
+
+    // Secret format: "v1,whsec_<base64>" → decode the base64 bytes
+    const base64Part  = secret.replace(/^v1,whsec_/, "");
+    const secretBytes = Uint8Array.from(atob(base64Part), (c) => c.charCodeAt(0));
 
     const key = await crypto.subtle.importKey(
       "raw",
-      new TextEncoder().encode(secret),
+      secretBytes,
       { name: "HMAC", hash: "SHA-256" },
       false,
-      ["verify"]
+      ["sign"]
     );
 
-    const fixB64 = (s: string) =>
-      s
-        .replace(/-/g, "+")
-        .replace(/_/g, "/")
-        .padEnd(Math.ceil(s.length / 4) * 4, "=");
+    const signedContent = `${webhookId}.${webhookTimestamp}.${rawBody}`;
+    const sigBytes      = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(signedContent));
+    const expected      = btoa(String.fromCharCode(...new Uint8Array(sigBytes)));
 
-    const signature = Uint8Array.from(atob(fixB64(parts[2])), (c) =>
-      c.charCodeAt(0)
-    );
-    const data = new TextEncoder().encode(`${parts[0]}.${parts[1]}`);
-
-    return await crypto.subtle.verify("HMAC", key, signature, data);
+    // webhook-signature may contain multiple space-separated "v1,<sig>" entries
+    return webhookSignature.split(" ").some((entry) => {
+      const [, sigValue] = entry.split(",");
+      return sigValue === expected;
+    });
   } catch {
     return false;
   }
@@ -357,13 +356,13 @@ Deno.serve(async (req) => {
     return new Response("Method not allowed", { status: 405 });
   }
 
-  // Verify hook secret
+  const rawBody = await req.text();
+
+  // Verify hook secret (Standard Webhooks format)
   if (HOOK_SECRET) {
-    const authHeader = req.headers.get("authorization") ?? "";
-    const token = authHeader.replace(/^Bearer\s+/i, "");
-    const valid = await verifyHookRequest(token, HOOK_SECRET);
+    const valid = await verifyStandardWebhook(req, rawBody, HOOK_SECRET);
     if (!valid) {
-      console.error("[auth-email-hook] UNAUTHORIZED: Hook JWT verification failed. Check SEND_EMAIL_HOOK_SECRET matches Authentication → Hooks secret.");
+      console.error("[auth-email-hook] UNAUTHORIZED: Standard Webhook signature invalid. Check SEND_EMAIL_HOOK_SECRET matches the hook secret in Auth → Hooks.");
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401,
         headers: { "Content-Type": "application/json" },
@@ -373,7 +372,7 @@ Deno.serve(async (req) => {
 
   let payload: HookPayload;
   try {
-    payload = (await req.json()) as HookPayload;
+    payload = JSON.parse(rawBody) as HookPayload;
   } catch {
     return new Response(JSON.stringify({ error: "Invalid JSON" }), {
       status: 400,
