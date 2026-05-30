@@ -17,6 +17,28 @@ const PUBLIC_API_PREFIXES = [
   "/api/trial/track-login",
 ];
 
+// Webhook paths are called server-to-server — skip CORS check for them
+const WEBHOOK_PREFIXES = ["/api/billing/webhook", "/api/cal/webhook"];
+
+// Server-to-server requests to superadmin API must include this header.
+// Browser requests from our domain are already protected by CORS.
+const SUPERADMIN_SECRET = process.env.SUPERADMIN_SECRET ?? "";
+
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://app.servicecontrol.io";
+
+const ALLOWED_ORIGINS = new Set([
+  APP_URL,
+  // Allow localhost in development
+  "http://localhost:3000",
+  "http://localhost:3001",
+]);
+
+function isCorsViolation(origin: string | null): boolean {
+  // No Origin header = server-to-server request (Stripe, cron, curl) — allow
+  if (!origin) return false;
+  return !ALLOWED_ORIGINS.has(origin);
+}
+
 const MARKETING_PATHS = ["/", "/pricing", "/demo", "/trial"];
 
 const intlMiddleware = createIntlMiddleware(routing);
@@ -24,9 +46,38 @@ const intlMiddleware = createIntlMiddleware(routing);
 export function middleware(request: NextRequest, event: NextFetchEvent) {
   const { pathname } = request.nextUrl;
 
-  // Rate limit API routes
+  // Rate limit + CORS for API routes
   if (pathname.startsWith("/api/")) {
     const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+    const origin = request.headers.get("origin");
+
+    // CORS: reject browser requests from unauthorized origins (skip for webhooks)
+    const isWebhook = WEBHOOK_PREFIXES.some((p) => pathname.startsWith(p));
+    if (!isWebhook && isCorsViolation(origin)) {
+      event.waitUntil(
+        logger.warn("cors_violation", { ip, pathname, origin }, { edgeContext: event })
+      );
+      return NextResponse.json(
+        { ok: false, error: "No autorizado." },
+        { status: 403 }
+      );
+    }
+
+    // Superadmin API: server-to-server requests (no Origin) must include the secret header.
+    // Browser requests from our domain are already covered by the CORS check above.
+    const isSuperadminApi = pathname.startsWith("/api/superadmin/");
+    if (isSuperadminApi && !origin && SUPERADMIN_SECRET) {
+      const incomingSecret = request.headers.get("x-sc-internal");
+      if (incomingSecret !== SUPERADMIN_SECRET) {
+        event.waitUntil(
+          logger.warn("superadmin_secret_missing", { ip, pathname }, { edgeContext: event })
+        );
+        return NextResponse.json(
+          { ok: false, error: "No autorizado." },
+          { status: 403 }
+        );
+      }
+    }
 
     // Strict limit for auth routes to prevent brute-force attacks (5 req/min)
     const isAuthRoute = pathname.startsWith("/api/auth/");
