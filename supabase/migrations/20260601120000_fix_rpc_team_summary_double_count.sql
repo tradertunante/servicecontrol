@@ -1,9 +1,14 @@
--- Add optional p_area_id filter to rpc_team_summary and rpc_team_summary_v2.
--- When p_area_id is provided, all CTEs are scoped to that single area,
--- so admins/quality/managers can see progress for one area at a time.
--- When NULL (default), behaviour is identical to before.
+-- Fix double-counting in rpc_team_summary when a user has multiple assignments
+-- for the same template across different areas.
+--
+-- Root cause: run_counts_by_user_template grouped only by (user, template),
+-- so the same completed_count was joined to every assignment row for that
+-- user+template pair. Summing in leaderboard_rows then multiplied the count
+-- by the number of assignments.
+--
+-- Fix: add area_id to the grouping and the join, so each assignment row only
+-- picks up runs that actually belong to its area.
 
--- 1. Replace rpc_team_summary with the new optional parameter
 create or replace function public.rpc_team_summary(
   p_hotel_id uuid,
   p_user_id uuid,
@@ -76,7 +81,6 @@ begin
       and uaa.user_id = p_user_id
   ),
 
-  -- When p_area_id is given, restrict to that single area (must be in scope)
   scoped_area_ids as (
     select distinct sa.area_id
     from scoped_areas sa
@@ -126,7 +130,6 @@ begin
     where p.id in (select user_id from assigned_users)
   ),
 
-  -- Filter runs by hotel, assigned auditors, period AND scoped areas
   period_runs as (
     select
       r.id,
@@ -144,8 +147,9 @@ begin
       and r.executed_at <= v_end_ts
   ),
 
-  -- Group by area_id to avoid double-counting when a user has multiple
-  -- assignments for the same template across different areas.
+  -- Include area_id in grouping so that a user with multiple assignments for
+  -- the same template (different areas) gets a separate count per area,
+  -- preventing the same count from being joined to multiple assignment rows.
   run_counts_by_user_template as (
     select
       pr.executed_by as auditor_user_id,
@@ -419,8 +423,9 @@ begin
 end;
 $$;
 
--- 2. Drop old v2 wrapper (3-arg signature) and recreate with 4th optional arg
+-- Recreate v2 wrapper to maintain compatibility (same signature as 20260427)
 drop function if exists public.rpc_team_summary_v2(uuid, text, uuid);
+drop function if exists public.rpc_team_summary_v2(uuid, text, uuid, uuid);
 
 create or replace function public.rpc_team_summary_v2(
   p_hotel_id uuid,
