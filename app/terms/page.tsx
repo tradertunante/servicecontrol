@@ -39,14 +39,14 @@ export default function TermsPage() {
 
         <Section title="1. Aceptación de los Términos">
           <p>
-            Al acceder y utilizar la plataforma <strong>{COMPANY_NAME}</strong> (en adelante, "la Plataforma"), el
+            Al acceder y utilizar la plataforma <strong>{COMPANY_NAME}</strong> (en adelante, &quot;la Plataforma&quot;), el
             usuario acepta quedar vinculado por los presentes Términos y Condiciones de Uso (en adelante,
-            "los Términos"). Si no está de acuerdo con alguna de las condiciones aquí establecidas, deberá
+            &quot;los Términos&quot;). Si no está de acuerdo con alguna de las condiciones aquí establecidas, deberá
             abstenerse de utilizar la Plataforma.
           </p>
           <p>
             El acceso a {COMPANY_NAME} es exclusivo para usuarios invitados por un hotel o empresa cliente
-            (en adelante, "el Cliente"). Los usuarios no pueden registrarse de forma autónoma.
+            (en adelante, &quot;el Cliente&quot;). Los usuarios no pueden registrarse de forma autónoma.
           </p>
         </Section>
 
