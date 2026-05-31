@@ -138,7 +138,12 @@ export function middleware(request: NextRequest, event: NextFetchEvent) {
   }
 
   // Auth guard for protected app routes
-  const token = request.cookies.get(AUTH_TOKEN_COOKIE)?.value;
+  const cookieToken = request.cookies.get(AUTH_TOKEN_COOKIE)?.value;
+  const bearerToken = (() => {
+    const h = request.headers.get("authorization") || "";
+    return h.startsWith("Bearer ") ? h.slice(7).trim() : "";
+  })();
+  const token = cookieToken || bearerToken;
 
   if (!token) {
     if (pathname.startsWith("/api/")) {
