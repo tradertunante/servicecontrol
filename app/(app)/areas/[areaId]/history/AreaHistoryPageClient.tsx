@@ -137,7 +137,7 @@ export default function AreaHistoryPageClient({
   const [period, setPeriod] = useState<PeriodKey>(qsPeriod ?? "THIS_MONTH");
 
   const now = new Date();
-  const [histTemplateId, setHistTemplateId] = useState<string>("");
+  const [histTemplateId, setHistTemplateId] = useState<string>("ALL");
   const [histYear, setHistYear] = useState<number>(now.getFullYear());
   const [histMonth, setHistMonth] = useState<number>(now.getMonth());
 
@@ -196,7 +196,7 @@ export default function AreaHistoryPageClient({
         const overview = await loadAreaOverviewData(areaId);
         setArea(overview.area);
         setTemplates(overview.templates);
-        if (!histTemplateId && overview.templates.length > 0) setHistTemplateId(overview.templates[0].id);
+        if (histTemplateId !== "ALL" && !histTemplateId && overview.templates.length > 0) setHistTemplateId(overview.templates[0].id);
         setRuns(overview.runs);
         setTemplateNameById(overview.templateNameById);
         setTotalsByTemplate(overview.totalsByTemplate);
@@ -249,7 +249,7 @@ export default function AreaHistoryPageClient({
   }
 
   async function handleSearchHistory() {
-    if (!areaId || !histTemplateId) return;
+    if (!areaId) return;
 
     setHistLoading(true);
     setHistError(null);
@@ -257,17 +257,22 @@ export default function AreaHistoryPageClient({
     try {
       const { start, end } = monthStartEndISO(histYear, histMonth);
 
-      const { data, error: rErr } = await supabase
+      let query = supabase
         .from("audit_runs")
         .select("id,status,score,notes,executed_at,executed_by,audit_template_id,area_id")
         .eq("area_id", areaId)
         .is("archived_at", null)
         .eq("status", "submitted")
-        .eq("audit_template_id", histTemplateId)
         .gte("executed_at", start)
         .lt("executed_at", end)
         .order("executed_at", { ascending: false })
         .limit(100);
+
+      if (histTemplateId !== "ALL") {
+        query = query.eq("audit_template_id", histTemplateId);
+      }
+
+      const { data, error: rErr } = await query;
 
       if (rErr) throw rErr;
 
@@ -628,6 +633,7 @@ export default function AreaHistoryPageClient({
               <div>
                 <div style={{ fontSize: 12, fontWeight: 950, opacity: 0.75, marginBottom: 6 }}>Tipo de auditoría</div>
                 <select value={histTemplateId} onChange={(e) => setHistTemplateId(e.target.value)} style={inputStyle}>
+                  <option value="ALL">Todas</option>
                   {templates.map((t) => (
                     <option key={t.id} value={t.id}>
                       {t.name}
@@ -660,7 +666,7 @@ export default function AreaHistoryPageClient({
               </div>
 
               <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                <button onClick={handleSearchHistory} style={primaryBtn} disabled={!histTemplateId || histLoading}>
+                <button onClick={handleSearchHistory} style={primaryBtn} disabled={histLoading || templates.length === 0}>
                   {histLoading ? "Buscando…" : "Buscar"}
                 </button>
                 <button
@@ -705,6 +711,11 @@ export default function AreaHistoryPageClient({
                   >
                     <div style={{ minWidth: 260 }}>
                       <div style={{ fontWeight: 950 }}>{fmtDate(r.executed_at)}</div>
+                      {histTemplateId === "ALL" && (
+                        <div style={{ marginTop: 2, fontSize: 13, fontWeight: 700, opacity: 0.6 }}>
+                          {templateNameById[r.audit_template_id] ?? r.audit_template_id}
+                        </div>
+                      )}
                       <div style={{ marginTop: 4, fontSize: 13, opacity: 0.75 }}>
                         Score:{" "}
                         <span style={{ fontWeight: 950, color: scoreColor(r.score) }}>
