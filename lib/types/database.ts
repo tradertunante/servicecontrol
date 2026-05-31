@@ -2014,6 +2014,8 @@ export type Database = {
           id: string
           is_trial: boolean
           role: string
+          terms_accepted_at: string | null
+          terms_version: string | null
           trial_expires_at: string | null
           trial_hotel_name: string | null
         }
@@ -2030,6 +2032,8 @@ export type Database = {
           id: string
           is_trial?: boolean
           role: string
+          terms_accepted_at?: string | null
+          terms_version?: string | null
           trial_expires_at?: string | null
           trial_hotel_name?: string | null
         }
@@ -2046,6 +2050,8 @@ export type Database = {
           id?: string
           is_trial?: boolean
           role?: string
+          terms_accepted_at?: string | null
+          terms_version?: string | null
           trial_expires_at?: string | null
           trial_hotel_name?: string | null
         }
