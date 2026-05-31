@@ -32,6 +32,10 @@ type Props = {
 const thStyle: React.CSSProperties = {
   padding: "10px 8px",
   borderBottom: "1px solid rgba(0,0,0,0.15)",
+  position: "sticky",
+  top: 0,
+  background: "#fff",
+  zIndex: 1,
 };
 
 export default function QuestionsTable({
@@ -102,7 +106,7 @@ export default function QuestionsTable({
         </div>
       </div>
 
-      <div style={{ marginTop: 14, overflowX: "auto" }}>
+      <div style={{ marginTop: 14, overflowX: "auto", overflowY: "auto", maxHeight: "calc(100dvh - 460px)", minHeight: 200 }}>
         <table
           style={{ width: "100%", borderCollapse: "collapse", minWidth: 1560 }}
         >

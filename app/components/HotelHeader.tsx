@@ -193,7 +193,7 @@ export default function HotelHeader() {
             <button
               onClick={() => void openAuditArea()}
               disabled={loading}
-              className="px-3 h-8 rounded-lg text-[13px] font-medium text-zinc-600 hover:text-zinc-900 hover:bg-zinc-100 transition-colors disabled:opacity-40"
+              className="px-3 h-8 rounded-lg text-[13px] font-medium text-white/70 hover:text-white hover:bg-white/10 transition-colors disabled:opacity-40"
             >
               {t("audit")}
             </button>

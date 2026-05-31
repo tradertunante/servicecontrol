@@ -359,24 +359,6 @@ export default function AuditRunViewPage() {
     width: "100%",
   };
 
-  const thBase: React.CSSProperties = {
-    padding: "8px 6px",
-    borderBottom: "1px solid rgba(0,0,0,0.15)",
-    whiteSpace: "nowrap",
-    fontWeight: 900,
-    fontSize: 14,
-    textAlign: "left",
-  };
-
-  const tdBase: React.CSSProperties = {
-    padding: "8px 6px",
-    borderBottom: "1px solid rgba(0,0,0,0.08)",
-    verticalAlign: "top",
-    fontSize: 14,
-  };
-
-  const numCell: React.CSSProperties = { ...tdBase, textAlign: "right", fontWeight: 900 };
-
   if (loading) {
     return (
       <main style={{ padding: "14px 14px 20px" }}>
@@ -520,124 +502,126 @@ export default function AuditRunViewPage() {
           Desglose por secciones
         </div>
 
-        <div style={{ overflowX: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 640 }}>
-            <colgroup>
-              <col style={{ width: "44%" }} />
-              <col style={{ width: "10%" }} />
-              <col style={{ width: "10%" }} />
-              <col style={{ width: "10%" }} />
-              <col style={{ width: "16%" }} />
-              <col style={{ width: "10%" }} />
-            </colgroup>
+        <div style={{ display: "grid", gap: 8 }}>
+          {sections.map((s) => {
+            const isOpen = openSectionId === s.section_id;
+            const findings = s.fail_count + s.na_count;
 
-            <thead>
-              <tr>
-                <th style={thBase}>Sección</th>
-                <th style={{ ...thBase, textAlign: "right" }}>Total</th>
-                <th style={{ ...thBase, textAlign: "right" }}>FAIL</th>
-                <th style={{ ...thBase, textAlign: "right" }}>NA</th>
-                <th style={{ ...thBase, textAlign: "right" }}>Score sección</th>
-                <th style={thBase}>Hallazgos</th>
-              </tr>
-            </thead>
+            return (
+              <div
+                key={s.section_id}
+                style={{
+                  border: "1px solid rgba(0,0,0,0.10)",
+                  borderRadius: 12,
+                  overflow: "hidden",
+                }}
+              >
+                {/* Header fila */}
+                <div style={{ padding: "10px 12px", background: "rgba(0,0,0,0.02)" }}>
+                  <div style={{ fontWeight: 900, fontSize: 15, marginBottom: 8, overflowWrap: "anywhere" }}>
+                    {s.section_name}
+                  </div>
 
-            <tbody>
-              {sections.map((s) => {
-                const isOpen = openSectionId === s.section_id;
-                const findings = s.fail_count + s.na_count;
+                  {/* Stats en fila */}
+                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+                    <span style={{ fontSize: 13, color: "#555" }}>
+                      Total: <strong>{s.total_questions}</strong>
+                    </span>
+                    <span style={{ fontSize: 13, color: s.fail_count > 0 ? "#b91c1c" : "#555" }}>
+                      FAIL: <strong>{s.fail_count}</strong>
+                    </span>
+                    <span style={{ fontSize: 13, color: s.na_count > 0 ? "#0369a1" : "#555" }}>
+                      NA: <strong>{s.na_count}</strong>
+                    </span>
+                    <span
+                      style={{
+                        fontSize: 13,
+                        fontWeight: 950,
+                        color: scoreColor(s.score),
+                      }}
+                    >
+                      Score: {s.score === null ? "—" : `${s.score.toFixed(1)}%`}
+                    </span>
 
-                return (
-                  <React.Fragment key={s.section_id}>
-                    <tr>
-                      <td style={tdBase}>{s.section_name}</td>
-                      <td style={numCell}>{s.total_questions}</td>
-                      <td style={numCell}>{s.fail_count}</td>
-                      <td style={numCell}>{s.na_count}</td>
-                      <td style={numCell}>{s.score === null ? "—" : `${s.score.toFixed(2)}%`}</td>
-                      <td style={tdBase}>
-                        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                          {findings === 0 ? chip("0", undefined) : chip(String(findings), s.fail_count > 0 ? "FAIL" : "NA")}
+                    <div style={{ marginLeft: "auto", display: "flex", gap: 6, alignItems: "center" }}>
+                      {findings > 0 && chip(String(findings), s.fail_count > 0 ? "FAIL" : "NA")}
+                      <button
+                        onClick={() => setOpenSectionId(isOpen ? null : s.section_id)}
+                        style={{
+                          padding: "6px 12px",
+                          borderRadius: 8,
+                          border: "1px solid rgba(0,0,0,0.2)",
+                          background: isOpen ? "#000" : "#fff",
+                          color: isOpen ? "#fff" : "#000",
+                          fontWeight: 900,
+                          fontSize: 13,
+                          cursor: "pointer",
+                          whiteSpace: "nowrap",
+                          minHeight: 36,
+                        }}
+                      >
+                        {isOpen ? "Ocultar" : "Ver detalle"}
+                      </button>
+                    </div>
+                  </div>
+                </div>
 
-                          <button
-                            onClick={() => setOpenSectionId(isOpen ? null : s.section_id)}
-                            style={{
-                              padding: "8px 10px",
-                              borderRadius: 10,
-                              border: "1px solid rgba(0,0,0,0.2)",
-                              background: isOpen ? "#000" : "#fff",
-                              color: isOpen ? "#fff" : "#000",
-                              fontWeight: 900,
-                              cursor: "pointer",
-                              whiteSpace: "nowrap",
-                            }}
-                          >
-                            {isOpen ? "Ocultar" : "Ver detalle"}
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-
-                    {isOpen ? (
-                      <tr>
-                      <td colSpan={6} style={{ padding: "8px 6px" }}>
+                {/* Detalle expandible */}
+                {isOpen && (
+                  <div
+                    style={{
+                      padding: 12,
+                      background: "rgba(0,0,0,0.03)",
+                      borderTop: "1px solid rgba(0,0,0,0.08)",
+                    }}
+                  >
+                    {s.items.length === 0 ? (
+                      <div style={{ opacity: 0.8, fontSize: 14 }}>
+                        No hay hallazgos en esta sección (todo PASS implícito).
+                      </div>
+                    ) : (
+                      <div style={{ display: "grid", gap: 8 }}>
+                        {s.items.map((it) => (
                           <div
+                            key={it.question_id}
                             style={{
-                              background: "rgba(0,0,0,0.04)",
+                              background: "#fff",
                               border: "1px solid rgba(0,0,0,0.10)",
-                              borderRadius: 14,
+                              borderRadius: 10,
                               padding: 12,
                             }}
                           >
-                            {s.items.length === 0 ? (
-                              <div style={{ opacity: 0.8 }}>
-                                No hay hallazgos en esta sección (todo PASS implícito).
+                            <div
+                              style={{
+                                display: "flex",
+                                justifyContent: "space-between",
+                                gap: 8,
+                                alignItems: "flex-start",
+                                flexWrap: "wrap",
+                              }}
+                            >
+                              <div style={{ fontWeight: 950, minWidth: 0, overflowWrap: "anywhere", flex: 1 }}>
+                                {it.question_text}
+                              </div>
+                              {chip(it.result, it.result)}
+                            </div>
+
+                            {it.comment ? (
+                              <div style={{ marginTop: 6, fontSize: 14, overflowWrap: "anywhere" }}>
+                                <strong>Comentario:</strong> {it.comment}
                               </div>
                             ) : (
-                              <div style={{ display: "grid", gap: 8 }}>
-                                {s.items.map((it) => (
-                                  <div
-                                    key={it.question_id}
-                                    style={{
-                                      background: "#fff",
-                                      border: "1px solid rgba(0,0,0,0.10)",
-                                      borderRadius: 12,
-                                      padding: 12,
-                                    }}
-                                  >
-                                    <div
-                                      style={{
-                                        display: "flex",
-                                        justifyContent: "space-between",
-                                      gap: 8,
-                                      alignItems: "flex-start",
-                                      flexWrap: "wrap",
-                                    }}
-                                  >
-                                      <div style={{ fontWeight: 950, minWidth: 0, overflowWrap: "anywhere" }}>{it.question_text}</div>
-                                      {chip(it.result, it.result)}
-                                    </div>
-
-                                    {it.comment ? (
-                                      <div style={{ marginTop: 6 }}>
-                                        <strong>Comentario:</strong> {it.comment}
-                                      </div>
-                                    ) : (
-                                      <div style={{ marginTop: 6, opacity: 0.7 }}>Sin comentario</div>
-                                    )}
-                                  </div>
-                                ))}
-                              </div>
+                              <div style={{ marginTop: 6, opacity: 0.7, fontSize: 14 }}>Sin comentario</div>
                             )}
                           </div>
-                        </td>
-                      </tr>
-                    ) : null}
-                  </React.Fragment>
-                );
-              })}
-            </tbody>
-          </table>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
 
         <div style={{ marginTop: 10, opacity: 0.75, fontSize: 13 }}>
