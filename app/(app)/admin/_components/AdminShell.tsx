@@ -129,7 +129,7 @@ export default function AdminShell({
             <div className="mt-[3px] text-[13px] opacity-[0.85]">Gestiona hotel, usuarios, accesos, auditorías y objetivos.</div>
           </div>
 
-          <div className="grid gap-2 mt-[6px] grid-cols-1 min-[540px]:grid-cols-2">
+          <div className="grid gap-2 mt-[6px] grid-cols-1">
             {navItems.map((it) => {
               const active = viewMode === it.key;
               return (
