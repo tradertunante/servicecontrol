@@ -24,19 +24,19 @@ const WEBHOOK_PREFIXES = ["/api/billing/webhook", "/api/cal/webhook"];
 // Browser requests from our domain are already protected by CORS.
 const SUPERADMIN_SECRET = process.env.SUPERADMIN_SECRET ?? "";
 
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://app.servicecontrol.io";
-
-const ALLOWED_ORIGINS = new Set([
-  APP_URL,
-  // Allow localhost in development
-  "http://localhost:3000",
-  "http://localhost:3001",
-]);
-
-function isCorsViolation(origin: string | null): boolean {
+function isCorsViolation(origin: string | null, request: NextRequest): boolean {
   // No Origin header = server-to-server request (Stripe, cron, curl) — allow
   if (!origin) return false;
-  return !ALLOWED_ORIGINS.has(origin);
+
+  // Same-origin: Origin matches the actual host serving the app
+  const host = request.headers.get("x-forwarded-host") || request.headers.get("host") || "";
+  const proto = request.headers.get("x-forwarded-proto") || "https";
+  if (origin === `${proto}://${host}`) return false;
+
+  // Allow localhost in development
+  if (origin === "http://localhost:3000" || origin === "http://localhost:3001") return false;
+
+  return true;
 }
 
 const MARKETING_PATHS = ["/", "/pricing", "/demo", "/trial"];
@@ -53,7 +53,7 @@ export function middleware(request: NextRequest, event: NextFetchEvent) {
 
     // CORS: reject browser requests from unauthorized origins (skip for webhooks)
     const isWebhook = WEBHOOK_PREFIXES.some((p) => pathname.startsWith(p));
-    if (!isWebhook && isCorsViolation(origin)) {
+    if (!isWebhook && isCorsViolation(origin, request)) {
       event.waitUntil(
         logger.warn("cors_violation", { ip, pathname, origin }, { edgeContext: event })
       );
