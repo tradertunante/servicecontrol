@@ -29,11 +29,16 @@ export default function DashboardTopBar({
         <strong>{areasCount}</strong> · {t("selectedHotel")} <strong>{selectedHotelName}</strong>
       </div>
 
-      {canChooseHotel ? (
-        <button style={ghostBtn} onClick={onChangeHotel}>
-          {t("changeHotel")}
+      <div className="no-print" style={{ display: "flex", gap: 8, alignItems: "center" }}>
+        {canChooseHotel ? (
+          <button style={ghostBtn} onClick={onChangeHotel}>
+            {t("changeHotel")}
+          </button>
+        ) : null}
+        <button style={ghostBtn} onClick={() => window.print()}>
+          ↓ {t("downloadPdf")}
         </button>
-      ) : null}
+      </div>
     </div>
   );
 }

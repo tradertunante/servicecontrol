@@ -222,4 +222,13 @@ const dashCss = `
   @media (max-width: 720px) {
     .dash { padding: 6px 4px; }
   }
+  @media print {
+    @page { size: A4 landscape; margin: 10mm; }
+    :global(header),
+    :global([class*="fixed"]),
+    .no-print { display: none !important; }
+    :global(main.pt-16) { padding-top: 0 !important; }
+    :global(body), :global(*) { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .dash { padding: 8px; overflow: visible; }
+  }
 `;
