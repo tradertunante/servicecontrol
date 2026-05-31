@@ -89,6 +89,7 @@ export default function HistoryPanel({
   embeddedFailQuestionId,
   embeddedFailClassification,
   hotelId,
+  allAreaIds,
 }: {
   areaId: string;
   profileRole: Role | null;
@@ -100,6 +101,7 @@ export default function HistoryPanel({
   embeddedFailQuestionId?: string | null;
   embeddedFailClassification?: string | null;
   hotelId: string;
+  allAreaIds?: string[];
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -143,7 +145,8 @@ export default function HistoryPanel({
   // Query helpers
   // -------------------------
   async function fetchRunsByPeriodAndViewAndFail() {
-    if (!areaId) return;
+    const isAllMode = areaId === "ALL" && allAreaIds && allAreaIds.length > 0;
+    if (!isAllMode && !areaId) return;
     if (!activeHotelId) {
       setHistError("No hay hotel activo seleccionado.");
       setHistRuns([]);
@@ -163,13 +166,18 @@ export default function HistoryPanel({
         .from("audit_runs")
         .select("id,status,score,notes,executed_at,executed_by,audit_template_id,area_id")
         .eq("hotel_id", activeHotelId)
-        .eq("area_id", areaId)
         .is("archived_at", null)
         .eq("status", "submitted")
         .gte("executed_at", startISO)
         .lte("executed_at", endISO)
         .order("executed_at", { ascending: false })
         .limit(100);
+
+      if (isAllMode) {
+        q = q.in("area_id", allAreaIds!);
+      } else {
+        q = q.eq("area_id", areaId);
+      }
 
       if (urlTemplate !== "ALL") {
         q = q.eq("audit_template_id", urlTemplate);
@@ -271,7 +279,8 @@ export default function HistoryPanel({
   }
 
   async function handleSearchHistoryMonthMode() {
-    if (!areaId || !histTemplateId) return;
+    const isAllMode = areaId === "ALL" && allAreaIds && allAreaIds.length > 0;
+    if (!isAllMode && (!areaId || !histTemplateId)) return;
     if (!activeHotelId) {
       setHistError("No hay hotel activo seleccionado.");
       setHistRuns([]);
@@ -284,18 +293,24 @@ export default function HistoryPanel({
     try {
       const { start, end } = monthStartEndISO(histYear, histMonth);
 
-      const { data, error: rErr } = await supabase
+      let q = supabase
         .from("audit_runs")
         .select("id,status,score,notes,executed_at,executed_by,audit_template_id,area_id")
         .eq("hotel_id", activeHotelId)
-        .eq("area_id", areaId)
         .is("archived_at", null)
         .eq("status", "submitted")
-        .eq("audit_template_id", histTemplateId)
         .gte("executed_at", start)
         .lt("executed_at", end)
         .order("executed_at", { ascending: false })
         .limit(100);
+
+      if (isAllMode) {
+        q = q.in("area_id", allAreaIds!);
+      } else {
+        q = q.eq("area_id", areaId).eq("audit_template_id", histTemplateId);
+      }
+
+      const { data, error: rErr } = await q;
 
       if (rErr) throw rErr;
 
@@ -346,12 +361,13 @@ export default function HistoryPanel({
 
   // ✅ auto-carga cuando vienes del dashboard con fail filters
   useEffect(() => {
-    if (!areaId) return;
+    const isAllMode = areaId === "ALL" && allAreaIds && allAreaIds.length > 0;
+    if (!isAllMode && !areaId) return;
     if (!isFailMode) return;
     if (!activeHotelId) return;
     fetchRunsByPeriodAndViewAndFail();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [areaId, activeHotelId, urlTemplate, urlPeriod, urlFailQ, urlFailCls]);
+  }, [areaId, allAreaIds, activeHotelId, urlTemplate, urlPeriod, urlFailQ, urlFailCls]);
 
   const activeChips = useMemo(() => {
     const out: { label: string }[] = [];
@@ -402,17 +418,19 @@ export default function HistoryPanel({
               alignItems: "end",
             }}
           >
-            <div>
-              <div style={{ fontSize: 12, fontWeight: 950, opacity: 0.75, marginBottom: 6 }}>{t("templateLabel")}</div>
-              <select value={histTemplateId} onChange={(e) => setHistTemplateId(e.target.value)} style={inputStyle}>
-                {templates.map((tpl) => (
-                  <option key={tpl.id} value={tpl.id}>
-                    {tpl.name}
-                  </option>
-                ))}
-                {templates.length === 0 ? <option value="">{t("noTemplates")}</option> : null}
-              </select>
-            </div>
+            {!allAreaIds ? (
+              <div>
+                <div style={{ fontSize: 12, fontWeight: 950, opacity: 0.75, marginBottom: 6 }}>{t("templateLabel")}</div>
+                <select value={histTemplateId} onChange={(e) => setHistTemplateId(e.target.value)} style={inputStyle}>
+                  {templates.map((tpl) => (
+                    <option key={tpl.id} value={tpl.id}>
+                      {tpl.name}
+                    </option>
+                  ))}
+                  {templates.length === 0 ? <option value="">{t("noTemplates")}</option> : null}
+                </select>
+              </div>
+            ) : null}
 
             <div>
               <div style={{ fontSize: 12, fontWeight: 950, opacity: 0.75, marginBottom: 6 }}>{t("yearLabel")}</div>
@@ -437,7 +455,7 @@ export default function HistoryPanel({
             </div>
 
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-              <button onClick={handleSearchHistoryMonthMode} style={{ ...primaryBtn, width: "100%" }} disabled={!histTemplateId || histLoading}>
+              <button onClick={handleSearchHistoryMonthMode} style={{ ...primaryBtn, width: "100%" }} disabled={(!allAreaIds && !histTemplateId) || histLoading}>
                 {histLoading ? t("searching") : t("search")}
               </button>
               <button

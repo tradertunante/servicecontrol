@@ -261,7 +261,8 @@
       "noHotels": "No hay hoteles creados todavía.",
       "enter": "Entrar →",
       "auditCount": "{count, plural, one {(# auditoría)} other {(# auditorías)}}",
-      "auditCountPrev": "{count, plural, one {# auditoría} other {# auditorías}}"
+      "auditCountPrev": "{count, plural, one {# auditoría} other {# auditorías}}",
+      "downloadPdf": "Descargar PDF"
     },
     "login": {
       "subtitle": "Inicia sesión para continuar",
@@ -488,6 +489,7 @@
         "noAreasDesc": "Pide a un administrador que te asigne al menos un área para usar este espacio.",
         "selectArea": "Selecciona un área.",
         "activeArea": "Área activa",
+        "allAreas": "Todas las áreas",
         "loadingAreaData": "Cargando información del área…"
       }
     },

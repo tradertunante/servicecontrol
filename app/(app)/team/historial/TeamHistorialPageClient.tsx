@@ -34,11 +34,17 @@ export default function TeamHistorialPageClient({
 
   useEffect(() => {
     if (!managerAreaOptions.length) return;
+    if (selectedAreaId === "ALL") return;
     if (selectedAreaId && managerAreaOptions.some((area) => area.id === selectedAreaId)) return;
     router.replace(`/team/historial?area=${managerAreaOptions[0].id}`);
   }, [managerAreaOptions, router, selectedAreaId]);
 
-  const areaLabel = activeArea ? `${activeArea.name}${activeArea.type ? ` · ${activeArea.type}` : ""}` : null;
+  const areaLabel =
+    selectedAreaId === "ALL"
+      ? "Todas las áreas"
+      : activeArea
+        ? `${activeArea.name}${activeArea.type ? ` · ${activeArea.type}` : ""}`
+        : null;
 
   const historyFilters =
     searchParams.get("template") || searchParams.get("period") || searchParams.get("fail_q") || searchParams.get("fail_cls")
@@ -64,7 +70,7 @@ export default function TeamHistorialPageClient({
         areasLoading={managerAreasLoading}
         areasError={managerAreasError}
         areaOptions={managerAreaOptions}
-        selectedAreaId={activeArea?.id ?? ""}
+        selectedAreaId={selectedAreaId === "ALL" ? "ALL" : (activeArea?.id ?? "")}
         onSelectArea={(areaId) => router.replace(`/team/historial?area=${areaId}`)}
         historyFilters={historyFilters}
         onOpenHistory={() => {}}

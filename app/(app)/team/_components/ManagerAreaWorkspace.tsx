@@ -118,6 +118,9 @@ export default function ManagerAreaWorkspace({
               outline: "none",
             }}
           >
+            {mode === "history" ? (
+              <option value="ALL">{t("allAreas")}</option>
+            ) : null}
             {areaOptions.map((area) => (
               <option key={area.id} value={area.id}>
                 {area.name}
@@ -147,6 +150,7 @@ export default function ManagerAreaWorkspace({
           profileRole={profileRole}
           hotelId={hotelId}
           historyFilters={historyFilters}
+          allAreaIds={areaOptions.map((a) => a.id)}
         />
       ) : null}
 
@@ -262,11 +266,13 @@ function ManagerAreaHistoryMode({
   profileRole,
   hotelId,
   historyFilters,
+  allAreaIds,
 }: {
   areaId: string;
   profileRole: string | null | undefined;
   hotelId: string;
   historyFilters: ManagerAreaHistoryFilters;
+  allAreaIds: string[];
 }) {
   const router = useRouter();
   const t = useTranslations("app.team.workspace");
@@ -303,6 +309,7 @@ function ManagerAreaHistoryMode({
       embeddedPeriod={historyFilters?.period ?? null}
       embeddedFailQuestionId={historyFilters?.questionId ?? null}
       embeddedFailClassification={historyFilters?.classification ?? null}
+      allAreaIds={areaId === "ALL" ? allAreaIds : undefined}
     />
   );
 }

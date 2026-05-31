@@ -22,7 +22,11 @@ export function useManagerAreaTemplates({
   const [areaHotelId, setAreaHotelId] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!areaId) return;
+    if (!areaId || areaId === "ALL") {
+      setLoading(false);
+      setTemplates([]);
+      return;
+    }
 
     const controller = new AbortController();
 

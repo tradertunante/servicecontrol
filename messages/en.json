@@ -261,7 +261,8 @@
       "noHotels": "No hotels created yet.",
       "enter": "Enter →",
       "auditCount": "{count, plural, one {(# audit)} other {(# audits)}}",
-      "auditCountPrev": "{count, plural, one {# audit} other {# audits}}"
+      "auditCountPrev": "{count, plural, one {# audit} other {# audits}}",
+      "downloadPdf": "Download PDF"
     },
     "login": {
       "subtitle": "Sign in to continue",
@@ -488,6 +489,7 @@
         "noAreasDesc": "Ask an administrator to assign you at least one area to use this workspace.",
         "selectArea": "Select an area.",
         "activeArea": "Active area",
+        "allAreas": "All areas",
         "loadingAreaData": "Loading area data…"
       }
     },
