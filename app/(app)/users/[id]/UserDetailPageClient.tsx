@@ -188,7 +188,7 @@ export default function UserDetailPageClient({
   const isSelf = userRow.id === initialProfile.id;
 
   return (
-    <main className="p-4 sm:p-6 max-w-xl">
+    <main className="p-4 sm:p-6">
       {/* Header */}
       <button
         onClick={() => router.push("/users")}
@@ -199,12 +199,12 @@ export default function UserDetailPageClient({
 
       <div className="flex justify-between items-start gap-3 flex-wrap mb-6">
         <div>
-          <h1 className="text-[clamp(24px,6vw,40px)] font-[950] leading-tight">
+          <h1 className="text-[clamp(24px,6vw,48px)] font-[950] leading-tight">
             {userRow.full_name?.trim() || "Sin nombre"}
           </h1>
           <div className="text-sm opacity-60 font-[800] mt-1">{userRow.email ?? "—"}</div>
         </div>
-        <div className="flex gap-2.5 flex-wrap">
+        <div className="flex gap-2.5 flex-wrap items-center">
           <button
             onClick={save}
             disabled={saving}
@@ -223,7 +223,7 @@ export default function UserDetailPageClient({
 
       {/* Delete confirmation */}
       {showDelete && (
-        <div className="mb-4 p-4 rounded-[18px] border border-[rgba(220,20,60,0.3)] bg-[rgba(220,20,60,0.05)]">
+        <div className="mb-5 p-4 rounded-[18px] border border-[rgba(220,20,60,0.3)] bg-[rgba(220,20,60,0.05)]">
           <div className="font-[950] text-[crimson] mb-2">Borrado permanente</div>
           <p className="text-sm opacity-80 mb-3">
             Esta acción no se puede deshacer. Escribe <strong>BORRAR</strong> para confirmar.
@@ -254,48 +254,101 @@ export default function UserDetailPageClient({
         </div>
       )}
 
-      <div className="grid gap-4">
-        {/* Datos básicos */}
-        <div className="rounded-[18px] border border-black/[0.08] bg-white/75 p-5 grid gap-4">
-          <div className="font-[950] text-sm opacity-60 uppercase tracking-wider">Datos básicos</div>
+      {/* Two-column layout */}
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_1fr] gap-4 items-start">
 
-          <label className="grid gap-1.5">
-            <span className="font-[950] text-sm">Nombre completo</span>
-            <input
-              value={fullName}
-              onChange={(e) => setFullName(e.target.value)}
-              placeholder="Nombre y apellidos"
-              className="h-11 px-3 rounded-xl border border-black/20 font-[800] text-sm bg-white"
-            />
-          </label>
+        {/* Left column */}
+        <div className="grid gap-4">
+          {/* Datos básicos */}
+          <div className="rounded-[18px] border border-black/[0.08] bg-white/75 p-5 grid gap-4">
+            <div className="font-[950] text-sm opacity-60 uppercase tracking-wider">Datos básicos</div>
 
-          <label className="grid gap-1.5">
-            <span className="font-[950] text-sm">Rol</span>
-            <select
-              value={role}
-              onChange={(e) => setRole(e.target.value as Role)}
-              className="h-11 px-3 rounded-xl border border-black/20 font-[950] text-sm bg-white cursor-pointer"
+            <label className="grid gap-1.5">
+              <span className="font-[950] text-sm">Nombre completo</span>
+              <input
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+                placeholder="Nombre y apellidos"
+                className="h-11 px-3 rounded-xl border border-black/20 font-[800] text-sm bg-white"
+              />
+            </label>
+
+            <label className="grid gap-1.5">
+              <span className="font-[950] text-sm">Rol</span>
+              <select
+                value={role}
+                onChange={(e) => setRole(e.target.value as Role)}
+                className="h-11 px-3 rounded-xl border border-black/20 font-[950] text-sm bg-white cursor-pointer"
+              >
+                {availableRoleOptions.map((r) => (
+                  <option key={r} value={r}>{ROLE_LABELS[r as Role] ?? r}</option>
+                ))}
+              </select>
+            </label>
+
+            <label className="flex items-center gap-2.5 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={active}
+                onChange={(e) => setActive(e.target.checked)}
+                disabled={isSelf}
+                className="cursor-pointer disabled:cursor-default"
+              />
+              <span className="font-[950] text-sm">Usuario activo</span>
+              {isSelf && <span className="text-xs opacity-50 font-[800]">(no puedes desactivarte)</span>}
+            </label>
+          </div>
+
+          {/* Contraseña */}
+          <div className="rounded-[18px] border border-black/[0.08] bg-white/75 p-5 grid gap-4">
+            <div className="font-[950] text-sm opacity-60 uppercase tracking-wider">
+              Cambiar contraseña
+              <span className="ml-2 text-xs normal-case font-[800]">(vacío = sin cambios)</span>
+            </div>
+
+            <label className="grid gap-1.5">
+              <span className="font-[950] text-sm">Nueva contraseña</span>
+              <input
+                type={showPasswords ? "text" : "password"}
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                placeholder="Mínimo 8 caracteres"
+                autoComplete="new-password"
+                className="h-11 px-3 rounded-xl border border-black/20 font-[800] text-sm bg-white"
+              />
+            </label>
+
+            <label className="grid gap-1.5">
+              <span className="font-[950] text-sm">Confirmar contraseña</span>
+              <input
+                type={showPasswords ? "text" : "password"}
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder="Repite la nueva contraseña"
+                autoComplete="new-password"
+                className={`h-11 px-3 rounded-xl border font-[800] text-sm bg-white ${confirmPassword.length > 0 && confirmPassword !== newPassword ? "border-[crimson]" : "border-black/20"}`}
+              />
+            </label>
+
+            <button
+              type="button"
+              onClick={() => setShowPasswords((v) => !v)}
+              className="text-sm font-[950] opacity-60 cursor-pointer text-left"
             >
-              {availableRoleOptions.map((r) => (
-                <option key={r} value={r}>{ROLE_LABELS[r as Role] ?? r}</option>
-              ))}
-            </select>
-          </label>
+              {showPasswords ? "Ocultar contraseñas" : "Mostrar contraseñas"}
+            </button>
+          </div>
 
-          <label className="flex items-center gap-2.5 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={active}
-              onChange={(e) => setActive(e.target.checked)}
-              disabled={isSelf}
-              className="cursor-pointer disabled:cursor-default"
-            />
-            <span className="font-[950] text-sm">Usuario activo</span>
-            {isSelf && <span className="text-xs opacity-50 font-[800]">(no puedes desactivarte)</span>}
-          </label>
+          <button
+            onClick={save}
+            disabled={saving}
+            className="h-12 rounded-xl bg-black text-white font-[950] cursor-pointer disabled:opacity-40"
+          >
+            {saving ? "Guardando..." : "Guardar cambios"}
+          </button>
         </div>
 
-        {/* Áreas */}
+        {/* Right column — Áreas */}
         <div className="rounded-[18px] border border-black/[0.08] bg-white/75 p-5 grid gap-3">
           <div className="font-[950] text-sm opacity-60 uppercase tracking-wider">Áreas de acceso</div>
           {areasLoading ? (
@@ -329,54 +382,6 @@ export default function UserDetailPageClient({
           )}
         </div>
 
-        {/* Contraseña */}
-        <div className="rounded-[18px] border border-black/[0.08] bg-white/75 p-5 grid gap-4">
-          <div className="font-[950] text-sm opacity-60 uppercase tracking-wider">
-            Cambiar contraseña
-            <span className="ml-2 text-xs normal-case font-[800]">(dejar vacío para no cambiar)</span>
-          </div>
-
-          <label className="grid gap-1.5">
-            <span className="font-[950] text-sm">Nueva contraseña</span>
-            <input
-              type={showPasswords ? "text" : "password"}
-              value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
-              placeholder="Mínimo 8 caracteres"
-              autoComplete="new-password"
-              className="h-11 px-3 rounded-xl border border-black/20 font-[800] text-sm bg-white"
-            />
-          </label>
-
-          <label className="grid gap-1.5">
-            <span className="font-[950] text-sm">Confirmar contraseña</span>
-            <input
-              type={showPasswords ? "text" : "password"}
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              placeholder="Repite la nueva contraseña"
-              autoComplete="new-password"
-              className={`h-11 px-3 rounded-xl border font-[800] text-sm bg-white ${confirmPassword.length > 0 && confirmPassword !== newPassword ? "border-[crimson]" : "border-black/20"}`}
-            />
-          </label>
-
-          <button
-            type="button"
-            onClick={() => setShowPasswords((v) => !v)}
-            className="text-sm font-[950] opacity-60 cursor-pointer text-left"
-          >
-            {showPasswords ? "Ocultar contraseñas" : "Mostrar contraseñas"}
-          </button>
-        </div>
-
-        {/* Guardar */}
-        <button
-          onClick={save}
-          disabled={saving}
-          className="h-12 rounded-xl bg-black text-white font-[950] cursor-pointer disabled:opacity-40"
-        >
-          {saving ? "Guardando..." : "Guardar cambios"}
-        </button>
       </div>
     </main>
   );
