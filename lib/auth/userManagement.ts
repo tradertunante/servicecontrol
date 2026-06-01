@@ -14,6 +14,10 @@ export type ManagedUserRow = {
   active: boolean;
   full_name: string | null;
   email: string | null;
+  last_sign_in_at: string | null;
+  email_confirmed_at: string | null;
+  areas: { id: string; name: string }[];
+  audit_run_count: number;
 };
 
 const KNOWN_ROLES: Role[] = [
@@ -83,6 +87,10 @@ export async function loadManagedUser(userId: string, hotelId?: string | null) {
     active: data.active ?? true,
     full_name: (data.full_name as string | null) ?? null,
     email: (data.email as string | null) ?? null,
+    last_sign_in_at: null,
+    email_confirmed_at: null,
+    areas: [],
+    audit_run_count: 0,
   } satisfies ManagedUserRow;
 }
 
@@ -131,12 +139,10 @@ export async function listManagedUsers(actorProfile: Profile) {
   }
 
   const admin = supabaseAdmin();
-  const { data, error } = await admin
-    .from("profiles")
-    .select("id, full_name, email, role, active, hotel_id")
-    .eq("hotel_id", hotelResult.hotelId)
-    .order("full_name", { ascending: true })
-    .limit(200);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data, error } = await (admin as any).rpc("list_hotel_users_with_meta", {
+    p_hotel_id: hotelResult.hotelId,
+  });
 
   if (error) {
     return {
@@ -146,10 +152,24 @@ export async function listManagedUsers(actorProfile: Profile) {
     };
   }
 
-  const users =
+  const rows = (data ?? []) as Array<Record<string, unknown>>;
+  const filtered =
     actorProfile.role === "superadmin"
-      ? data ?? []
-      : (data ?? []).filter((row) => String(row.role ?? "").trim().toLowerCase() !== "superadmin");
+      ? rows
+      : rows.filter((row) => String(row.role ?? "").trim().toLowerCase() !== "superadmin");
+
+  const users: ManagedUserRow[] = filtered.map((row) => ({
+    id: String(row.id),
+    hotel_id: (row.hotel_id as string | null) ?? null,
+    role: normalizeRole(row.role),
+    active: (row.active as boolean) ?? true,
+    full_name: (row.full_name as string | null) ?? null,
+    email: (row.email as string | null) ?? null,
+    last_sign_in_at: (row.last_sign_in_at as string | null) ?? null,
+    email_confirmed_at: (row.email_confirmed_at as string | null) ?? null,
+    areas: Array.isArray(row.areas) ? (row.areas as { id: string; name: string }[]) : [],
+    audit_run_count: Number(row.audit_run_count ?? 0),
+  }));
 
   return {
     ok: true as const,
@@ -317,6 +337,8 @@ export async function deleteManagedUser(actorProfile: Profile, userId: string) {
   }
 
   const admin = supabaseAdmin();
+
+
   const { error: delAuthErr } = await admin.auth.admin.deleteUser(targetUserId);
   if (delAuthErr) {
     return {

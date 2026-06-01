@@ -4,6 +4,7 @@ import { authorizeRouteRequest, resolveRouteHotelScope } from "@/lib/auth/server
 import { createManagedUser, listManagedUsers } from "@/lib/auth/userManagement";
 import { jsonError , jsonDbError } from "@/lib/api/response";
 import { canAddUser } from "@/lib/billing/enforcement";
+import { logAdminAction } from "@/lib/admin/auditLog";
 
 export async function GET(request: NextRequest) {
   try {
@@ -43,6 +44,18 @@ export async function POST(request: NextRequest) {
     const result = await createManagedUser(caller.profile, body ?? {});
     if (!result.ok) {
       return jsonError(result.error, result.status);
+    }
+
+    if (hotelResult.ok) {
+      void logAdminAction({
+        hotelId: hotelResult.hotelId,
+        actorId: caller.profile.id,
+        actorName: caller.profile.full_name ?? caller.profile.id,
+        targetId: result.userId,
+        targetName: typeof body?.full_name === "string" ? body.full_name.trim() || null : (body?.email ?? null),
+        action: "user_created",
+        newValue: typeof body?.role === "string" ? body.role : undefined,
+      });
     }
 
     return NextResponse.json({

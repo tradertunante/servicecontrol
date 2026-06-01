@@ -11,6 +11,8 @@ import {
 } from "@/lib/auth/userManagement";
 import { jsonError, jsonDbError } from "@/lib/api/response";
 import { parseUUID, isErrorResponse } from "@/lib/api/validate";
+import { logAdminAction } from "@/lib/admin/auditLog";
+import { sendRoleChangeEmail } from "@/lib/email/sendRoleChangeEmail";
 
 export async function GET(
   request: NextRequest,
@@ -101,6 +103,57 @@ export async function PATCH(
       if (authError) return jsonDbError(authError);
     }
 
+    const actorName = caller.profile.full_name ?? caller.profile.id;
+    const targetName = target.full_name ?? target.email ?? userId;
+
+    if (roleResult.role !== target.role) {
+      void logAdminAction({
+        hotelId: hotelResult.hotelId,
+        actorId: caller.profile.id,
+        actorName,
+        targetId: userId,
+        targetName,
+        action: "role_changed",
+        oldValue: target.role,
+        newValue: roleResult.role,
+      });
+
+      if (target.email) {
+        void (async () => {
+          try {
+            const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://app.servicecontrol.io";
+            const { data: hotel } = await supabaseAdmin()
+              .from("hotels")
+              .select("name")
+              .eq("id", hotelResult.hotelId)
+              .single();
+            await sendRoleChangeEmail({
+              to: target.email!,
+              userName: target.full_name,
+              hotelName: hotel?.name ?? "Su hotel",
+              oldRole: target.role,
+              newRole: roleResult.role,
+              loginUrl: `${appUrl}/login`,
+            });
+          } catch (err) {
+            console.error("[role-change-email] Failed to send to", target.email, err);
+          }
+        })();
+      }
+    }
+    if (active !== target.active) {
+      void logAdminAction({
+        hotelId: hotelResult.hotelId,
+        actorId: caller.profile.id,
+        actorName,
+        targetId: userId,
+        targetName,
+        action: "active_changed",
+        oldValue: String(target.active),
+        newValue: String(active),
+      });
+    }
+
     return NextResponse.json({ ok: true });
   } catch (error) {
     return jsonDbError(error instanceof Error ? { message: error.message } : null, "Error inesperado.");
@@ -118,8 +171,24 @@ export async function DELETE(
     const userId = parseUUID(params.id, "user_id");
     if (isErrorResponse(userId)) return userId;
 
+    const hotelResult = resolveManagedHotelId(caller.profile);
+    const targetSnap = hotelResult.ok
+      ? await loadManagedUser(userId, hotelResult.hotelId)
+      : null;
+
     const result = await deleteManagedUser(caller.profile, userId);
     if (!result.ok) return jsonError(result.error, result.status);
+
+    if (hotelResult.ok && targetSnap) {
+      void logAdminAction({
+        hotelId: hotelResult.hotelId,
+        actorId: caller.profile.id,
+        actorName: caller.profile.full_name ?? caller.profile.id,
+        targetId: userId,
+        targetName: targetSnap.full_name ?? targetSnap.email ?? userId,
+        action: "user_deleted",
+      });
+    }
 
     return NextResponse.json({ ok: true });
   } catch (error) {
