@@ -4,6 +4,11 @@ import { useEffect, useMemo, useState } from "react";
 import type { CSSProperties } from "react";
 import { supabase } from "@/lib/supabaseClient";
 
+async function getAccessToken() {
+  const { data } = await supabase.auth.getSession();
+  return data?.session?.access_token ?? null;
+}
+
 type Props = {
   hotelId: string | null;
 };
@@ -97,34 +102,27 @@ export default function QualityThresholdsCard({ hotelId }: Props) {
       setError(null);
       setOkMsg(null);
 
-      const { data, error } = await supabase
-        .from("hotel_quality_thresholds")
-        .select(
-          "success_score_min, warning_score_min, success_fail_rate_max, warning_fail_rate_max"
-        )
-        .eq("hotel_id", hotelId)
-        .maybeSingle();
+      const token = await getAccessToken();
+      if (!token) { setError("Sesión inválida."); setLoading(false); return; }
 
-      if (error) {
-        setError(error.message);
+      const res = await fetch("/api/admin/quality-thresholds", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const payload = await res.json().catch(() => null);
+
+      if (!res.ok) {
+        setError(payload?.error ?? "No se pudieron cargar los umbrales.");
         setLoading(false);
         return;
       }
 
-      if (data) {
-        setForm({
-          success_score_min: Number(data.success_score_min ?? DEFAULTS.success_score_min),
-          warning_score_min: Number(data.warning_score_min ?? DEFAULTS.warning_score_min),
-          success_fail_rate_max: Number(
-            data.success_fail_rate_max ?? DEFAULTS.success_fail_rate_max
-          ),
-          warning_fail_rate_max: Number(
-            data.warning_fail_rate_max ?? DEFAULTS.warning_fail_rate_max
-          ),
-        });
-      } else {
-        setForm(DEFAULTS);
-      }
+      const data = payload.thresholds;
+      setForm({
+        success_score_min: Number(data.success_score_min ?? DEFAULTS.success_score_min),
+        warning_score_min: Number(data.warning_score_min ?? DEFAULTS.warning_score_min),
+        success_fail_rate_max: Number(data.success_fail_rate_max ?? DEFAULTS.success_fail_rate_max),
+        warning_fail_rate_max: Number(data.warning_fail_rate_max ?? DEFAULTS.warning_fail_rate_max),
+      });
 
       setLoading(false);
     })();
@@ -176,23 +174,20 @@ export default function QualityThresholdsCard({ hotelId }: Props) {
     setError(null);
     setOkMsg(null);
 
-    const payload = {
-      hotel_id: hotelId,
-      success_score_min: form.success_score_min,
-      warning_score_min: form.warning_score_min,
-      success_fail_rate_max: form.success_fail_rate_max,
-      warning_fail_rate_max: form.warning_fail_rate_max,
-      updated_at: new Date().toISOString(),
-    };
+    const token = await getAccessToken();
+    if (!token) { setError("Sesión inválida."); setSaving(false); return; }
 
-    const { error } = await supabase
-      .from("hotel_quality_thresholds")
-      .upsert(payload, { onConflict: "hotel_id" });
+    const res = await fetch("/api/admin/quality-thresholds", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify(form),
+    });
+    const payload = await res.json().catch(() => null);
 
     setSaving(false);
 
-    if (error) {
-      setError(error.message);
+    if (!res.ok) {
+      setError(payload?.error ?? "No se pudieron guardar los umbrales.");
       return;
     }
 

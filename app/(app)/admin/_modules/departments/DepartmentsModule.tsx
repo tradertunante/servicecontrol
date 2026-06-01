@@ -36,6 +36,9 @@ export default function DepartmentsModule({ hotelId }: { hotelId: string }) {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<AreaRow | null>(null);
 
+  // modal confirmación borrado
+  const [confirmRow, setConfirmRow] = useState<AreaRow | null>(null);
+
   const [name, setName] = useState("");
   const [sortOrder, setSortOrder] = useState<string>("");
   const [active, setActive] = useState(true);
@@ -258,8 +261,6 @@ export default function DepartmentsModule({ hotelId }: { hotelId: string }) {
     setError("");
     setMessage("");
     if (!activeHotelId) return setError("No hay hotel seleccionado.");
-
-    if (!confirm(`¿Borrar "${row.name}"? Esto elimina el registro.`)) return;
 
     setBusyId(row.id);
     try {
@@ -511,7 +512,7 @@ export default function DepartmentsModule({ hotelId }: { hotelId: string }) {
 
                   <button
                     disabled={disabled}
-                    onClick={() => hardDelete(d)}
+                    onClick={() => setConfirmRow(d)}
                     style={{
                       padding: "8px 10px",
                       borderRadius: 12,
@@ -654,6 +655,72 @@ export default function DepartmentsModule({ hotelId }: { hotelId: string }) {
                 ) : null}
               </div>
             </form>
+          </div>
+        </div>
+      ) : null}
+
+      {/* MODAL confirmación borrado */}
+      {confirmRow ? (
+        <div
+          onClick={() => setConfirmRow(null)}
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.35)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 18,
+            zIndex: 60,
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              width: "100%",
+              maxWidth: 420,
+              borderRadius: 16,
+              border: "1px solid var(--border)",
+              background: "var(--card-bg)",
+              boxShadow: "var(--shadow-sm)",
+              padding: 20,
+            }}
+          >
+            <div style={{ fontSize: 18, fontWeight: 900, marginBottom: 8 }}>
+              ¿Borrar departamento?
+            </div>
+            <div style={{ opacity: 0.75, marginBottom: 18, lineHeight: 1.5 }}>
+              Se eliminará <b>{confirmRow.name}</b> permanentemente. Esta acción no se puede deshacer.
+            </div>
+            <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+              <button
+                onClick={() => setConfirmRow(null)}
+                style={{
+                  padding: "10px 14px",
+                  borderRadius: 12,
+                  border: "1px solid var(--border)",
+                  background: "transparent",
+                  fontWeight: 900,
+                  cursor: "pointer",
+                }}
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={() => { hardDelete(confirmRow); setConfirmRow(null); }}
+                style={{
+                  padding: "10px 14px",
+                  borderRadius: 12,
+                  border: "1px solid rgba(220,0,0,0.35)",
+                  background: "rgba(220,0,0,0.10)",
+                  color: "crimson",
+                  fontWeight: 900,
+                  cursor: "pointer",
+                }}
+              >
+                Sí, borrar
+              </button>
+            </div>
           </div>
         </div>
       ) : null}

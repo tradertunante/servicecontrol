@@ -113,11 +113,21 @@ export default function AdminShell({
   const navItems = useMemo(
     () =>
       [
-        { key: "hotel-info" as const, label: "Hotel", onboarding: "admin-hotel" },
-        { key: "departments" as const, label: "Departamentos", onboarding: "admin-departments" },
-        { key: "builder" as const, label: "Biblioteca de estándares", onboarding: "admin-builder" },
-        { key: "audit-targets" as const, label: "Objetivos", onboarding: "admin-targets" },
-        { key: "notifications" as const, label: "Notificaciones", onboarding: "admin-notifications" },
+        { key: "hotel-info" as const, label: "Hotel", onboarding: "admin-hotel", icon: (
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9.5L12 3l9 6.5V20a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9.5z"/><path d="M9 21V12h6v9"/></svg>
+        )},
+        { key: "departments" as const, label: "Departamentos", onboarding: "admin-departments", icon: (
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/><line x1="12" y1="12" x2="12" y2="16"/><line x1="10" y1="14" x2="14" y2="14"/></svg>
+        )},
+        { key: "builder" as const, label: "Biblioteca de estándares", onboarding: "admin-builder", icon: (
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+        )},
+        { key: "audit-targets" as const, label: "Objetivos", onboarding: "admin-targets", icon: (
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
+        )},
+        { key: "notifications" as const, label: "Notificaciones", onboarding: "admin-notifications", icon: (
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+        )},
       ] as const,
     []
   );
@@ -155,7 +165,10 @@ export default function AdminShell({
                     (e.currentTarget as HTMLButtonElement).style.transform = "scale(1)";
                   }}
                 >
-                  {it.label}
+                  <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    {it.icon}
+                    {it.label}
+                  </span>
                 </button>
               );
             })}
@@ -167,7 +180,10 @@ export default function AdminShell({
             style={buildNavItemStyle(false)}
             className="block no-underline"
           >
-            Usuarios ↗
+            <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+              Usuarios ↗
+            </span>
           </a>
 
           {!activeHotelId ? (
