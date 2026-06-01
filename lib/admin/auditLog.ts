@@ -21,8 +21,7 @@ type LogEntry = {
 
 export async function logAdminAction(entry: LogEntry): Promise<void> {
   try {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (supabaseAdmin() as any)
+    await supabaseAdmin()
       .from("admin_audit_log")
       .insert({
         hotel_id:    entry.hotelId,

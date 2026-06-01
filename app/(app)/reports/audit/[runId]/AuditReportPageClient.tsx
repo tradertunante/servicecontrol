@@ -170,6 +170,12 @@ export default function AuditReportPageClient({
     );
   }, [report]);
 
+  const passedItems = useMemo(() => {
+    return (report?.sections ?? []).flatMap((section) =>
+      section.items.filter((item) => item.status === "OK")
+    );
+  }, [report]);
+
   const showTrainingSignoff = useMemo(() => {
     return (report?.summary.fail ?? 0) > 0;
   }, [report]);
@@ -962,6 +968,71 @@ export default function AuditReportPageClient({
               </div>
             </section>
           ) : null}
+
+          <section className="report-mt-28" style={{ marginTop: 28 }}>
+            <h2
+              className="report-title-lg"
+              style={{ margin: "0 0 14px 0", fontSize: 24 }}
+            >
+              Estándares aprobados
+            </h2>
+
+            {passedItems.length === 0 ? (
+              <div className="report-card" style={sectionCardStyle()}>
+                No hay ítems en Pass.
+              </div>
+            ) : (
+              <div style={{ display: "grid", gap: 8 }}>
+                {passedItems.map((item) => (
+                  <div
+                    key={item.question_id}
+                    className="report-break-avoid report-card"
+                    style={{
+                      ...sectionCardStyle(),
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      gap: 12,
+                      flexWrap: "wrap",
+                      padding: "12px 16px",
+                    }}
+                  >
+                    <div style={{ flex: "1 1 500px" }}>
+                      <div
+                        style={{
+                          fontSize: 11,
+                          fontWeight: 900,
+                          opacity: 0.5,
+                          marginBottom: 4,
+                          textTransform: "uppercase",
+                          letterSpacing: 0.4,
+                        }}
+                      >
+                        {item.section_name}
+                      </div>
+                      <div style={{ fontWeight: 700, fontSize: 15 }}>
+                        {item.question_text}
+                      </div>
+                    </div>
+
+                    <span
+                      className="report-badge"
+                      style={{
+                        ...badgeStyle("OK"),
+                        padding: "4px 10px",
+                        borderRadius: 999,
+                        fontWeight: 900,
+                        fontSize: 12,
+                        flexShrink: 0,
+                      }}
+                    >
+                      ✓ Pass
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
 
           <section className="report-mt-28" style={{ marginTop: 28 }}>
             <h2

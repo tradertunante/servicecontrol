@@ -198,6 +198,7 @@ export default function DepartmentsModule({ hotelId }: { hotelId: string }) {
 
         if (err) throw err;
         setMessage("Departamento actualizado.");
+        setTimeout(() => setMessage(""), 3000);
       } else {
         const payload: Record<string, unknown> = { name: n, hotel_id: activeHotelId };
         if (supportsSortOrder) payload.sort_order = so;
@@ -207,6 +208,7 @@ export default function DepartmentsModule({ hotelId }: { hotelId: string }) {
         if (err) throw err;
 
         setMessage("Departamento creado.");
+        setTimeout(() => setMessage(""), 3000);
       }
 
       setOpen(false);
@@ -243,6 +245,7 @@ export default function DepartmentsModule({ hotelId }: { hotelId: string }) {
 
       setItems((prev) => prev.map((x) => (x.id === row.id ? { ...x, active: next } : x)));
       setMessage(next ? "Departamento activado." : "Departamento desactivado.");
+      setTimeout(() => setMessage(""), 3000);
     } catch (e: unknown) {
       console.error("[DepartmentsModule] toggleActive error:", e);
       setError((e instanceof Error ? e.message : null) || "Error actualizando estado.");
@@ -270,6 +273,7 @@ export default function DepartmentsModule({ hotelId }: { hotelId: string }) {
 
       setItems((prev) => prev.filter((x) => x.id !== row.id));
       setMessage("Departamento borrado.");
+      setTimeout(() => setMessage(""), 3000);
     } catch (e: unknown) {
       console.error("[DepartmentsModule] delete error:", e);
       setError((e instanceof Error ? e.message : null) || "Error borrando departamento.");

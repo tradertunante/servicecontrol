@@ -197,6 +197,7 @@ export default function QualityThresholdsCard({ hotelId }: Props) {
     }
 
     setOkMsg("Umbrales guardados correctamente.");
+    setTimeout(() => setOkMsg(null), 3000);
   }
 
   function resetDefaults() {

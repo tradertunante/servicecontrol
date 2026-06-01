@@ -139,8 +139,7 @@ export async function listManagedUsers(actorProfile: Profile) {
   }
 
   const admin = supabaseAdmin();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data, error } = await (admin as any).rpc("list_hotel_users_with_meta", {
+  const { data, error } = await admin.rpc("list_hotel_users_with_meta", {
     p_hotel_id: hotelResult.hotelId,
   });
 

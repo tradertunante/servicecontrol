@@ -3,9 +3,9 @@
 
 import { useEffect, useMemo, useState } from "react";
 import type { CSSProperties } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 
 import DepartmentsModule from "../_modules/departments/DepartmentsModule";
-import UsersModule from "../_modules/users/UsersModule";
 import HotelInfoModule from "../_modules/hotel/HotelInfoModule";
 import AuditTargetsModule from "../_modules/audit-targets/AuditTargetsModule";
 import BuilderModule from "../_modules/builder/BuilderModule";
@@ -14,7 +14,6 @@ import NotificationsModule from "../_modules/notifications/NotificationsModule";
 type ViewMode =
   | "hotel-info"
   | "departments"
-  | "users"
   | "audit-targets"
   | "builder"
   | "notifications";
@@ -77,9 +76,18 @@ export default function AdminShell({
   initialHotelId: string;
   initialViewMode?: ViewMode;
 }) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [activeHotelId] = useState<string | null>(initialHotelId);
   const [viewMode, setViewMode] = useState<ViewMode>(initialViewMode);
   const [isNarrow, setIsNarrow] = useState(false);
+
+  function navigate(tab: ViewMode) {
+    setViewMode(tab);
+    const next = new URLSearchParams(searchParams.toString());
+    next.set("tab", tab);
+    router.replace(`/admin?${next.toString()}`);
+  }
 
   useEffect(() => {
     const onResize = () => setIsNarrow(window.innerWidth < 900);
@@ -108,7 +116,6 @@ export default function AdminShell({
         { key: "hotel-info" as const, label: "Hotel", onboarding: "admin-hotel" },
         { key: "departments" as const, label: "Departamentos", onboarding: "admin-departments" },
         { key: "builder" as const, label: "Biblioteca de estándares", onboarding: "admin-builder" },
-        { key: "users" as const, label: "Usuarios", onboarding: "admin-users" },
         { key: "audit-targets" as const, label: "Objetivos", onboarding: "admin-targets" },
         { key: "notifications" as const, label: "Notificaciones", onboarding: "admin-notifications" },
       ] as const,
@@ -137,7 +144,7 @@ export default function AdminShell({
                   key={it.key}
                   data-onboarding={it.onboarding}
                   style={buildNavItemStyle(active)}
-                  onClick={() => setViewMode(it.key)}
+                  onClick={() => navigate(it.key)}
                   onMouseDown={(e) => {
                     (e.currentTarget as HTMLButtonElement).style.transform = "scale(0.99)";
                   }}
@@ -153,6 +160,15 @@ export default function AdminShell({
               );
             })}
           </div>
+
+          <a
+            href="/users"
+            data-onboarding="admin-users"
+            style={buildNavItemStyle(false)}
+            className="block no-underline"
+          >
+            Usuarios ↗
+          </a>
 
           {!activeHotelId ? (
             <div className="mt-3 text-[12px] opacity-[0.85] leading-[1.35]">
@@ -170,8 +186,6 @@ export default function AdminShell({
             <HotelInfoModule hotelId={activeHotelId} />
           ) : viewMode === "departments" ? (
             <DepartmentsModule hotelId={activeHotelId} />
-          ) : viewMode === "users" ? (
-            <UsersModule />
           ) : viewMode === "builder" ? (
             <BuilderModule hotelId={activeHotelId} />
           ) : viewMode === "audit-targets" ? (

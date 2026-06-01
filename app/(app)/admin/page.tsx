@@ -4,8 +4,10 @@ import { requirePageAccess } from "@/lib/auth/server";
 
 const TAB_TO_VIEW_MODE = {
   hotel: "hotel-info",
-  areas: "departments",
-  users: "users",
+  departments: "departments",
+  builder: "builder",
+  "audit-targets": "audit-targets",
+  notifications: "notifications",
 } as const;
 
 type AdminPageProps = {

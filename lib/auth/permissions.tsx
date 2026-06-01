@@ -160,7 +160,7 @@ export function canAssignRole(
 
 export function getDefaultHotelRouteByRole(
   role: Role | string | null | undefined
-): "/dashboard" | "/team" | "/my" | "/it" | "/engineering" {
+): "/dashboard" | "/team" | "/areas" | "/my" | "/it" | "/engineering" {
   const r = norm(role);
 
   if (
@@ -177,7 +177,7 @@ export function getDefaultHotelRouteByRole(
   }
 
   if (r === "auditor") {
-    return "/my";
+    return "/areas";
   }
 
   if (r === "engineering") {

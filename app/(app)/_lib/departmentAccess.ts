@@ -85,7 +85,7 @@ export function getDepartmentRedirectTarget(role: unknown, assignedDepartmentCod
 
   if (departmentCode === "it") return "/it";
   if (departmentCode === "engineering") return "/engineering";
-  if (normalizedRole === "auditor") return "/my";
+  if (normalizedRole === "auditor") return "/areas";
   if (normalizedRole === "manager") return "/team";
   if (
     normalizedRole === "quality" ||

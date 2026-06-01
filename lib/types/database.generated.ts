@@ -12,8 +12,166 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "14.1"
   }
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
   public: {
     Tables: {
+      admin_audit_log: {
+        Row: {
+          action: string
+          actor_id: string | null
+          actor_name: string | null
+          created_at: string
+          hotel_id: string | null
+          id: string
+          new_value: string | null
+          old_value: string | null
+          target_id: string | null
+          target_name: string | null
+        }
+        Insert: {
+          action: string
+          actor_id?: string | null
+          actor_name?: string | null
+          created_at?: string
+          hotel_id?: string | null
+          id?: string
+          new_value?: string | null
+          old_value?: string | null
+          target_id?: string | null
+          target_name?: string | null
+        }
+        Update: {
+          action?: string
+          actor_id?: string | null
+          actor_name?: string | null
+          created_at?: string
+          hotel_id?: string | null
+          id?: string
+          new_value?: string | null
+          old_value?: string | null
+          target_id?: string | null
+          target_name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "admin_audit_log_hotel_id_fkey"
+            columns: ["hotel_id"]
+            isOneToOne: false
+            referencedRelation: "hotels"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_training_suggestions: {
+        Row: {
+          ai_content: Json
+          approved_at: string | null
+          area_id: string
+          created_at: string
+          hotel_id: string
+          id: string
+          question_id: string | null
+          question_text: string
+          realized_at: string | null
+          review_status: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+          topic_id: string | null
+          trigger_count: number
+          trigger_period_days: number
+          trigger_ratio: number
+        }
+        Insert: {
+          ai_content: Json
+          approved_at?: string | null
+          area_id: string
+          created_at?: string
+          hotel_id: string
+          id?: string
+          question_id?: string | null
+          question_text: string
+          realized_at?: string | null
+          review_status?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          topic_id?: string | null
+          trigger_count: number
+          trigger_period_days: number
+          trigger_ratio: number
+        }
+        Update: {
+          ai_content?: Json
+          approved_at?: string | null
+          area_id?: string
+          created_at?: string
+          hotel_id?: string
+          id?: string
+          question_id?: string | null
+          question_text?: string
+          realized_at?: string | null
+          review_status?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          topic_id?: string | null
+          trigger_count?: number
+          trigger_period_days?: number
+          trigger_ratio?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_training_suggestions_area_id_fkey"
+            columns: ["area_id"]
+            isOneToOne: false
+            referencedRelation: "areas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_training_suggestions_hotel_id_fkey"
+            columns: ["hotel_id"]
+            isOneToOne: false
+            referencedRelation: "hotels"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_training_suggestions_question_id_fkey"
+            columns: ["question_id"]
+            isOneToOne: false
+            referencedRelation: "audit_questions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_training_suggestions_topic_id_fkey"
+            columns: ["topic_id"]
+            isOneToOne: false
+            referencedRelation: "training_topics"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       area_target_assignments: {
         Row: {
           active: boolean
@@ -671,7 +829,14 @@ export type Database = {
             foreignKeyName: "audit_corrective_actions_team_member_id_fkey"
             columns: ["team_member_id"]
             isOneToOne: false
-            referencedRelation: "team_members"
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "audit_corrective_actions_team_member_id_fkey"
+            columns: ["team_member_id"]
+            isOneToOne: false
+            referencedRelation: "users_with_hotel"
             referencedColumns: ["id"]
           },
         ]
@@ -851,7 +1016,7 @@ export type Database = {
           blocking_issue_count: number
           employee_number: string | null
           executed_at: string
-          executed_by: string
+          executed_by: string | null
           hotel_id: string
           id: string
           is_reaudit: boolean
@@ -878,7 +1043,7 @@ export type Database = {
           blocking_issue_count?: number
           employee_number?: string | null
           executed_at?: string
-          executed_by: string
+          executed_by?: string | null
           hotel_id: string
           id?: string
           is_reaudit?: boolean
@@ -905,7 +1070,7 @@ export type Database = {
           blocking_issue_count?: number
           employee_number?: string | null
           executed_at?: string
-          executed_by?: string
+          executed_by?: string | null
           hotel_id?: string
           id?: string
           is_reaudit?: boolean
@@ -1882,6 +2047,7 @@ export type Database = {
           billing_account_id: string | null
           created_at: string | null
           deleted_at: string | null
+          enabled_packs: string[] | null
           id: string
           name: string
           status: string
@@ -1893,6 +2059,7 @@ export type Database = {
           billing_account_id?: string | null
           created_at?: string | null
           deleted_at?: string | null
+          enabled_packs?: string[] | null
           id?: string
           name: string
           status?: string
@@ -1904,6 +2071,7 @@ export type Database = {
           billing_account_id?: string | null
           created_at?: string | null
           deleted_at?: string | null
+          enabled_packs?: string[] | null
           id?: string
           name?: string
           status?: string
@@ -2275,6 +2443,59 @@ export type Database = {
             columns: ["team_member_id"]
             isOneToOne: false
             referencedRelation: "team_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      report_narratives: {
+        Row: {
+          created_at: string
+          hotel_id: string
+          id: string
+          narrative_areas: Json
+          narrative_hotel: string
+          overall_score: number | null
+          period_end: string
+          period_label: string
+          period_start: string
+          period_type: string
+          prev_overall_score: number | null
+          total_audits: number | null
+        }
+        Insert: {
+          created_at?: string
+          hotel_id: string
+          id?: string
+          narrative_areas?: Json
+          narrative_hotel: string
+          overall_score?: number | null
+          period_end: string
+          period_label: string
+          period_start: string
+          period_type: string
+          prev_overall_score?: number | null
+          total_audits?: number | null
+        }
+        Update: {
+          created_at?: string
+          hotel_id?: string
+          id?: string
+          narrative_areas?: Json
+          narrative_hotel?: string
+          overall_score?: number | null
+          period_end?: string
+          period_label?: string
+          period_start?: string
+          period_type?: string
+          prev_overall_score?: number | null
+          total_audits?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "report_narratives_hotel_id_fkey"
+            columns: ["hotel_id"]
+            isOneToOne: false
+            referencedRelation: "hotels"
             referencedColumns: ["id"]
           },
         ]
@@ -2927,108 +3148,6 @@ export type Database = {
           },
         ]
       }
-      ai_training_suggestions: {
-        Row: {
-          id: string
-          hotel_id: string
-          area_id: string
-          question_id: string | null
-          question_text: string
-          trigger_ratio: number
-          trigger_count: number
-          trigger_period_days: number
-          ai_content: Json
-          review_status: string
-          reviewed_by: string | null
-          reviewed_at: string | null
-          approved_at: string | null
-          realized_at: string | null
-          topic_id: string | null
-          created_at: string
-        }
-        Insert: {
-          id?: string
-          hotel_id: string
-          area_id: string
-          question_id?: string | null
-          question_text: string
-          trigger_ratio: number
-          trigger_count: number
-          trigger_period_days: number
-          ai_content: Json
-          review_status?: string
-          reviewed_by?: string | null
-          reviewed_at?: string | null
-          approved_at?: string | null
-          realized_at?: string | null
-          topic_id?: string | null
-          created_at?: string
-        }
-        Update: {
-          id?: string
-          hotel_id?: string
-          area_id?: string
-          question_id?: string | null
-          question_text?: string
-          trigger_ratio?: number
-          trigger_count?: number
-          trigger_period_days?: number
-          ai_content?: Json
-          review_status?: string
-          reviewed_by?: string | null
-          reviewed_at?: string | null
-          approved_at?: string | null
-          realized_at?: string | null
-          topic_id?: string | null
-          created_at?: string
-        }
-        Relationships: []
-      }
-      report_narratives: {
-        Row: {
-          id: string
-          hotel_id: string
-          period_type: string
-          period_label: string
-          period_start: string
-          period_end: string
-          narrative_hotel: string
-          narrative_areas: Json
-          overall_score: number | null
-          prev_overall_score: number | null
-          total_audits: number | null
-          created_at: string
-        }
-        Insert: {
-          id?: string
-          hotel_id: string
-          period_type: string
-          period_label: string
-          period_start: string
-          period_end: string
-          narrative_hotel: string
-          narrative_areas?: Json
-          overall_score?: number | null
-          prev_overall_score?: number | null
-          total_audits?: number | null
-          created_at?: string
-        }
-        Update: {
-          id?: string
-          hotel_id?: string
-          period_type?: string
-          period_label?: string
-          period_start?: string
-          period_end?: string
-          narrative_hotel?: string
-          narrative_areas?: Json
-          overall_score?: number | null
-          prev_overall_score?: number | null
-          total_audits?: number | null
-          created_at?: string
-        }
-        Relationships: []
-      }
       training_sessions: {
         Row: {
           closed_at: string | null
@@ -3185,6 +3304,7 @@ export type Database = {
           email: string
           hotel_name: string
           id: string
+          ip_address: string | null
           name: string
         }
         Insert: {
@@ -3192,6 +3312,7 @@ export type Database = {
           email: string
           hotel_name: string
           id?: string
+          ip_address?: string | null
           name: string
         }
         Update: {
@@ -3199,6 +3320,7 @@ export type Database = {
           email?: string
           hotel_name?: string
           id?: string
+          ip_address?: string | null
           name?: string
         }
         Relationships: []
@@ -3959,6 +4081,21 @@ export type Database = {
           timezone: string
         }[]
       }
+      list_hotel_users_with_meta: {
+        Args: { p_hotel_id: string }
+        Returns: {
+          active: boolean
+          areas: Json
+          audit_run_count: number
+          email: string
+          email_confirmed_at: string
+          full_name: string
+          hotel_id: string
+          id: string
+          last_sign_in_at: string
+          role: string
+        }[]
+      }
       my_hotel_id: { Args: never; Returns: string }
       notify_user: {
         Args: {
@@ -4014,8 +4151,22 @@ export type Database = {
             Args: { p_hotel_id: string; p_period: string; p_user_id: string }
             Returns: Json
           }
+        | {
+            Args: {
+              p_area_id?: string
+              p_hotel_id: string
+              p_period: string
+              p_user_id: string
+            }
+            Returns: Json
+          }
       rpc_team_summary_v2: {
-        Args: { p_hotel_id: string; p_period: string; p_user_id: string }
+        Args: {
+          p_area_id?: string
+          p_hotel_id: string
+          p_period: string
+          p_user_id: string
+        }
         Returns: Json
       }
       sc_can_manage_global_library_assets: { Args: never; Returns: boolean }
@@ -4262,6 +4413,9 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {},
   },

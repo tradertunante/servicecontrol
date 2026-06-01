@@ -1,17 +1,15 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 
 import BackButton from "@/app/components/BackButton";
+import { useToast } from "@/app/providers/ToastProvider";
 import { getAssignableRoles, ROLE_LABELS } from "@/lib/auth/permissions";
 import { supabase } from "@/lib/supabaseClient";
 import type { Profile, Role } from "@/lib/types";
 
-type AreaRow = {
-  id: string;
-  name: string;
-  type: string | null;
-};
+type AreaRow = { id: string; name: string; type: string | null };
 
 export default function NewUserPageClient({
   initialProfile,
@@ -20,18 +18,19 @@ export default function NewUserPageClient({
   initialProfile: Profile;
   hotelId: string;
 }) {
-  const [fullName, setFullName] = useState("");
-  const [email, setEmail] = useState("");
-  const [role, setRole] = useState<Role>("auditor");
+  const router = useRouter();
+  const toast = useToast();
+
+  const [fullName, setFullName]                   = useState("");
+  const [email, setEmail]                         = useState("");
+  const [role, setRole]                           = useState<Role>("auditor");
   const [setPasswordManually, setSetPasswordManually] = useState(false);
-  const [password, setPassword] = useState("");
-  const [password2, setPassword2] = useState("");
-  const [showPasswords, setShowPasswords] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [ok, setOk] = useState<string | null>(null);
-  const [areas, setAreas] = useState<AreaRow[]>([]);
-  const [selectedAreaIds, setSelectedAreaIds] = useState<string[]>([]);
+  const [password, setPassword]                   = useState("");
+  const [password2, setPassword2]                 = useState("");
+  const [showPasswords, setShowPasswords]         = useState(false);
+  const [busy, setBusy]                           = useState(false);
+  const [areas, setAreas]                         = useState<AreaRow[]>([]);
+  const [selectedAreaIds, setSelectedAreaIds]     = useState<string[]>([]);
 
   useEffect(() => {
     supabase
@@ -39,165 +38,226 @@ export default function NewUserPageClient({
       .select("id,name,type")
       .eq("hotel_id", hotelId)
       .eq("active", true)
-      .order("name", { ascending: true })
+      .order("name")
       .then(({ data }) => setAreas((data ?? []) as AreaRow[]));
   }, [hotelId]);
 
-  function toggleArea(areaId: string) {
-    setSelectedAreaIds((prev) =>
-      prev.includes(areaId) ? prev.filter((value) => value !== areaId) : [...prev, areaId]
-    );
-  }
-
   const assignableRoles = useMemo(
-    () => getAssignableRoles(initialProfile.role).filter((candidate) => candidate !== "superadmin"),
+    () => getAssignableRoles(initialProfile.role).filter((r) => r !== "superadmin"),
     [initialProfile.role]
   );
-  const effectiveRole = (assignableRoles as string[]).includes(role) ? role : assignableRoles[0] ?? "auditor";
-  const passwordStrongEnough = password.length >= 8;
-  const passwordsMatch = password.length > 0 && password === password2;
+  const effectiveRole = (assignableRoles as string[]).includes(role)
+    ? role
+    : (assignableRoles[0] ?? "auditor");
+
+  const passwordOk    = password.length >= 8;
+  const passwordMatch = password.length > 0 && password === password2;
   const canSubmit =
     !busy &&
     email.trim().length > 0 &&
-    (!setPasswordManually || (passwordStrongEnough && passwordsMatch));
+    (!setPasswordManually || (passwordOk && passwordMatch));
 
   async function handleCreate() {
-    setError(null);
-    setOk(null);
+    if (!email.trim()) { toast.error("El email es obligatorio."); return; }
+    if (setPasswordManually && !passwordOk) { toast.error("La contraseña debe tener al menos 8 caracteres."); return; }
+    if (setPasswordManually && !passwordMatch) { toast.error("Las contraseñas no coinciden."); return; }
 
-    if (!email.trim()) return setError("El email es obligatorio.");
-    if (setPasswordManually && !passwordStrongEnough) return setError("La contrasena debe tener al menos 8 caracteres.");
-    if (setPasswordManually && !passwordsMatch) return setError("Las contrasenas no coinciden.");
-
+    setBusy(true);
     try {
-      setBusy(true);
       const { data: sessionData } = await supabase.auth.getSession();
-      const accessToken = sessionData?.session?.access_token;
-      if (!accessToken) {
-        setError("Sesion invalida.");
-        return;
-      }
+      const token = sessionData?.session?.access_token;
+      if (!token) throw new Error("Sesión inválida.");
 
       const res = await fetch("/api/admin/users", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${accessToken}`,
-        },
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({
           full_name: fullName.trim() || null,
           email: email.trim().toLowerCase(),
-          ...(setPasswordManually ? { password } : {}),
           role: effectiveRole,
+          ...(setPasswordManually ? { password } : {}),
         }),
       });
-      const text = await res.text();
-      let payload: { ok?: boolean; user_id?: string; error?: string } | null = null;
-      try {
-        payload = JSON.parse(text) as { ok?: boolean; user_id?: string; error?: string };
-      } catch {
-        payload = { error: text?.slice(0, 200) || "Respuesta no-JSON." };
-      }
+      const payload = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(payload?.error ?? "No se pudo crear el usuario.");
 
       if (selectedAreaIds.length > 0 && payload?.user_id) {
         const areaRes = await fetch("/api/admin/user-area-access/set", {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${accessToken}`,
-          },
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
           body: JSON.stringify({ user_id: payload.user_id, area_ids: selectedAreaIds }),
         });
         if (!areaRes.ok) {
-          const areaPayload = await areaRes.json().catch(() => ({})) as { error?: string };
-          throw new Error(areaPayload?.error ?? "Usuario creado, pero no se pudieron asignar las areas.");
+          const ap = await areaRes.json().catch(() => ({}));
+          throw new Error(ap?.error ?? "Usuario creado, pero error asignando áreas.");
         }
       }
 
-      setOk(
+      toast.success(
         setPasswordManually
           ? "Usuario creado correctamente."
-          : "Usuario creado. Se ha enviado un email con el link para que establezca su contraseña."
+          : "Usuario creado. Se ha enviado un email con el enlace de activación."
       );
-      setFullName("");
-      setEmail("");
-      setPassword("");
-      setPassword2("");
-      setSetPasswordManually(false);
-      setRole("auditor");
-      setSelectedAreaIds([]);
-    } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Error creando el usuario.");
+      router.push("/users");
+    } catch (e: any) {
+      toast.error(e?.message ?? "Error creando el usuario.");
     } finally {
       setBusy(false);
     }
   }
 
   return (
-    <div className="p-6">
-      <h1 className="text-[44px] font-[800] m-0">Crear usuario</h1>
-      <p className="mt-2.5 opacity-85">
-        {initialProfile.role}. El usuario se creara dentro del hotel activo {hotelId}.
-      </p>
-      {error ? <div className="text-[#b00020] font-[800] mt-2">{error}</div> : null}
-      {ok ? <div className="text-black/80 font-[800] mt-2">{ok}</div> : null}
-      <div className="grid gap-3 mt-4">
-        <input value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Nombre completo (opcional)" className="p-3" />
-        <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email *" type="email" className="p-3" />
+    <main className="p-4 sm:p-6 max-w-xl">
+      <BackButton fallback="/users" />
 
-        <label className="flex items-center gap-2.5 cursor-pointer select-none">
-          <input
-            type="checkbox"
-            checked={setPasswordManually}
-            onChange={(e) => {
-              setSetPasswordManually(e.target.checked);
-              setPassword("");
-              setPassword2("");
-            }}
-          />
-          <span className="font-[900]">Asignar contraseña ahora</span>
-          <span className="opacity-60 font-normal text-sm">(si no, el usuario recibirá un link para crearla)</span>
-        </label>
+      <h1 className="text-[clamp(28px,8vw,48px)] font-[950] mt-1 mb-6">Crear usuario</h1>
 
-        {setPasswordManually && (
-          <>
-            <input value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Password * (minimo 8)" type={showPasswords ? "text" : "password"} className="p-3" />
-            <input value={password2} onChange={(e) => setPassword2(e.target.value)} placeholder="Repetir password *" type={showPasswords ? "text" : "password"} className="p-3" />
-            <button type="button" onClick={() => setShowPasswords((value) => !value)} className="p-3 font-[900]">
-              {showPasswords ? "Ocultar contrasenas" : "Mostrar contrasenas"}
-            </button>
-          </>
-        )}
-        <select value={effectiveRole} onChange={(e) => setRole(e.target.value as Role)} className="p-3">
-          {assignableRoles.map((candidateRole) => (
-            <option key={candidateRole} value={candidateRole}>
-              {ROLE_LABELS[candidateRole] ?? candidateRole}
-            </option>
-          ))}
-        </select>
-        {areas.length > 0 && (
-          <div className="grid gap-2">
-            <div className="font-[900]">Areas habilitadas</div>
-            {areas.map((area) => (
-              <label key={area.id} className="flex gap-2.5 items-center p-3 rounded-xl border border-[#ddd] cursor-pointer">
-                <input type="checkbox" checked={selectedAreaIds.includes(area.id)} onChange={() => toggleArea(area.id)} />
-                <span className="font-[800]">{area.name}</span>
-                {area.type ? <span className="opacity-60">{area.type}</span> : null}
+      <div className="grid gap-4">
+        {/* Datos básicos */}
+        <div className="rounded-[18px] border border-black/[0.08] bg-white/75 p-5 grid gap-4">
+          <div className="font-[950] text-sm opacity-60 uppercase tracking-wider">Datos básicos</div>
+
+          <label className="grid gap-1.5">
+            <span className="font-[950] text-sm">Nombre completo</span>
+            <input
+              value={fullName}
+              onChange={(e) => setFullName(e.target.value)}
+              placeholder="Nombre y apellidos"
+              className="h-11 px-3 rounded-xl border border-black/20 font-[800] text-sm bg-white"
+            />
+          </label>
+
+          <label className="grid gap-1.5">
+            <span className="font-[950] text-sm">Email <span className="text-[crimson]">*</span></span>
+            <input
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="usuario@hotel.com"
+              type="email"
+              autoComplete="off"
+              className="h-11 px-3 rounded-xl border border-black/20 font-[800] text-sm bg-white"
+            />
+          </label>
+
+          <label className="grid gap-1.5">
+            <span className="font-[950] text-sm">Rol</span>
+            <select
+              value={effectiveRole}
+              onChange={(e) => setRole(e.target.value as Role)}
+              className="h-11 px-3 rounded-xl border border-black/20 font-[950] text-sm bg-white cursor-pointer"
+            >
+              {assignableRoles.map((r) => (
+                <option key={r} value={r}>{ROLE_LABELS[r] ?? r}</option>
+              ))}
+            </select>
+          </label>
+        </div>
+
+        {/* Contraseña */}
+        <div className="rounded-[18px] border border-black/[0.08] bg-white/75 p-5 grid gap-4">
+          <div className="font-[950] text-sm opacity-60 uppercase tracking-wider">Acceso</div>
+
+          <label className="flex items-start gap-3 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={setPasswordManually}
+              onChange={(e) => {
+                setSetPasswordManually(e.target.checked);
+                setPassword("");
+                setPassword2("");
+              }}
+              className="mt-0.5 cursor-pointer"
+            />
+            <div>
+              <div className="font-[950] text-sm">Asignar contraseña ahora</div>
+              <div className="text-xs opacity-60 font-[800] mt-0.5">
+                Si no, el usuario recibirá un email con un enlace para crear su contraseña
+              </div>
+            </div>
+          </label>
+
+          {setPasswordManually && (
+            <div className="grid gap-3">
+              <label className="grid gap-1.5">
+                <span className="font-[950] text-sm">Contraseña <span className="text-[crimson]">*</span></span>
+                <input
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Mínimo 8 caracteres"
+                  type={showPasswords ? "text" : "password"}
+                  autoComplete="new-password"
+                  className={`h-11 px-3 rounded-xl border font-[800] text-sm bg-white ${password.length > 0 && !passwordOk ? "border-[crimson]" : "border-black/20"}`}
+                />
               </label>
-            ))}
+              <label className="grid gap-1.5">
+                <span className="font-[950] text-sm">Repetir contraseña <span className="text-[crimson]">*</span></span>
+                <input
+                  value={password2}
+                  onChange={(e) => setPassword2(e.target.value)}
+                  placeholder="Repite la contraseña"
+                  type={showPasswords ? "text" : "password"}
+                  autoComplete="new-password"
+                  className={`h-11 px-3 rounded-xl border font-[800] text-sm bg-white ${password2.length > 0 && !passwordMatch ? "border-[crimson]" : "border-black/20"}`}
+                />
+              </label>
+              <button
+                type="button"
+                onClick={() => setShowPasswords((v) => !v)}
+                className="text-sm font-[950] opacity-60 cursor-pointer text-left"
+              >
+                {showPasswords ? "Ocultar contraseñas" : "Mostrar contraseñas"}
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Áreas */}
+        {areas.length > 0 && (
+          <div className="rounded-[18px] border border-black/[0.08] bg-white/75 p-5 grid gap-3">
+            <div className="font-[950] text-sm opacity-60 uppercase tracking-wider">Áreas de acceso</div>
+            <div className="grid gap-2">
+              {areas.map((area) => (
+                <label
+                  key={area.id}
+                  className="flex items-center gap-2.5 p-3 rounded-xl border border-black/[0.08] cursor-pointer hover:bg-black/[0.02]"
+                >
+                  <input
+                    type="checkbox"
+                    checked={selectedAreaIds.includes(area.id)}
+                    onChange={() =>
+                      setSelectedAreaIds((prev) =>
+                        prev.includes(area.id)
+                          ? prev.filter((id) => id !== area.id)
+                          : [...prev, area.id]
+                      )
+                    }
+                    className="cursor-pointer"
+                  />
+                  <span className="font-[900] text-sm">{area.name}</span>
+                  {area.type && <span className="opacity-50 text-xs">{area.type}</span>}
+                </label>
+              ))}
+            </div>
           </div>
         )}
-        <button
-          onClick={handleCreate}
-          disabled={!canSubmit}
-          className="p-[14px] font-[900]"
-          style={{ opacity: canSubmit ? 1 : 0.5, cursor: canSubmit ? "pointer" : "not-allowed" }}
-        >
-          {busy ? "Creando..." : "Crear usuario"}
-        </button>
-        <BackButton />
+
+        {/* Acciones */}
+        <div className="flex gap-3">
+          <button
+            onClick={handleCreate}
+            disabled={!canSubmit}
+            className="flex-1 h-12 rounded-xl bg-black text-white font-[950] cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            {busy ? "Creando..." : "Crear usuario"}
+          </button>
+          <button
+            onClick={() => router.push("/users")}
+            className="h-12 px-6 rounded-xl border border-black/20 bg-white font-[950] cursor-pointer"
+          >
+            Cancelar
+          </button>
+        </div>
       </div>
-    </div>
+    </main>
   );
 }

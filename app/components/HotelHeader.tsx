@@ -193,7 +193,7 @@ export default function HotelHeader() {
             <button
               onClick={() => void openAuditArea()}
               disabled={loading}
-              className="px-3 h-8 rounded-lg text-[13px] font-medium text-white/70 hover:text-white hover:bg-white/10 transition-colors disabled:opacity-40"
+              className="ml-0.5 px-3 h-8 rounded-[6px] text-[13px] font-medium text-white bg-emerald-600 hover:bg-emerald-500 transition-colors disabled:opacity-40"
             >
               {t("audit")}
             </button>
@@ -246,7 +246,7 @@ export default function HotelHeader() {
                 <button
                   onClick={() => void openAuditArea()}
                   disabled={loading}
-                  className="w-full text-left px-4 py-2.5 text-[13px] font-medium text-[#0C1F44] hover:bg-[#F4F7FB] transition-colors disabled:opacity-40"
+                  className="w-full text-left px-4 py-2.5 text-[13px] font-semibold text-emerald-700 hover:bg-emerald-50 transition-colors disabled:opacity-40"
                 >
                   {t("audit")}
                 </button>

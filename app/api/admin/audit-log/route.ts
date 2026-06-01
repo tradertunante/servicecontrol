@@ -15,8 +15,7 @@ export async function GET(request: NextRequest) {
     const url = new URL(request.url);
     const limit = Math.min(Number(url.searchParams.get("limit") ?? 100), 200);
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data, error } = await (supabaseAdmin() as any)
+    const { data, error } = await supabaseAdmin()
       .from("admin_audit_log")
       .select("id, actor_name, target_name, action, old_value, new_value, created_at")
       .eq("hotel_id", hotelResult.hotelId)

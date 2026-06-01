@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import { useToast } from "@/app/providers/ToastProvider";
 import { getAssignableRoles, ROLE_LABELS } from "@/lib/auth/permissions";
 import { supabase } from "@/lib/supabaseClient";
 import type { Profile, Role } from "@/lib/types";
@@ -16,12 +17,7 @@ type UserProfile = {
   email?: string | null;
 };
 
-type AreaRow = {
-  id: string;
-  name: string;
-  type: string | null;
-  active: boolean;
-};
+type AreaRow = { id: string; name: string; type: string | null; active: boolean };
 
 export default function UserDetailPageClient({
   userId,
@@ -33,141 +29,99 @@ export default function UserDetailPageClient({
   scopedHotelId: string;
 }) {
   const router = useRouter();
-  const [loading, setLoading] = useState(true);
-  const [userRow, setUserRow] = useState<UserProfile | null>(null);
+  const toast  = useToast();
+
+  const [loading, setLoading]   = useState(true);
+  const [userRow, setUserRow]   = useState<UserProfile | null>(null);
   const [fullName, setFullName] = useState("");
-  const [role, setRole] = useState<Role>("auditor");
-  const [active, setActive] = useState(true);
-  const [areasLoading, setAreasLoading] = useState(true);
-  const [areas, setAreas] = useState<AreaRow[]>([]);
+  const [role, setRole]         = useState<Role>("auditor");
+  const [active, setActive]     = useState(true);
+  const [saving, setSaving]     = useState(false);
+
+  const [areasLoading, setAreasLoading]     = useState(true);
+  const [areas, setAreas]                   = useState<AreaRow[]>([]);
   const [selectedAreaIds, setSelectedAreaIds] = useState<string[]>([]);
-  const [newPassword, setNewPassword] = useState("");
+
+  const [newPassword, setNewPassword]       = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [saving, setSaving] = useState(false);
-  const [msg, setMsg] = useState<string | null>(null);
-  const [showDelete, setShowDelete] = useState(false);
-  const [deleteConfirm, setDeleteConfirm] = useState("");
-  const [deleting, setDeleting] = useState(false);
+  const [showPasswords, setShowPasswords]   = useState(false);
+
+  const [showDelete, setShowDelete]         = useState(false);
+  const [deleteConfirm, setDeleteConfirm]   = useState("");
+  const [deleting, setDeleting]             = useState(false);
 
   const assignableRoles = useMemo(
-    () => getAssignableRoles(initialProfile.role).filter((candidate) => candidate !== "superadmin"),
+    () => getAssignableRoles(initialProfile.role).filter((r) => r !== "superadmin"),
     [initialProfile.role]
   );
   const availableRoleOptions = useMemo(() => {
     if (!userRow) return assignableRoles;
-    return (assignableRoles as Role[]).includes(userRow.role) ? assignableRoles : [userRow.role, ...assignableRoles];
+    return (assignableRoles as Role[]).includes(userRow.role)
+      ? assignableRoles
+      : [userRow.role, ...assignableRoles];
   }, [assignableRoles, userRow]);
 
-  function toggleArea(areaId: string) {
-    setSelectedAreaIds((prev) =>
-      prev.includes(areaId) ? prev.filter((value) => value !== areaId) : [...prev, areaId]
-    );
-  }
-
-  async function loadAreasAndAccess(targetUserId: string, hotelId: string) {
-    setAreasLoading(true);
-    const { data: areasData, error: areasErr } = await supabase
-      .from("areas")
-      .select("id,name,type,active")
-      .eq("hotel_id", hotelId)
-      .eq("active", true)
-      .order("name", { ascending: true });
-    if (areasErr) throw areasErr;
-    setAreas((areasData ?? []) as AreaRow[]);
-
-    const { data: accessData, error: accessErr } = await supabase
-      .from("user_area_access")
-      .select("area_id")
-      .eq("user_id", targetUserId)
-      .eq("hotel_id", hotelId);
-    if (accessErr) throw accessErr;
-    setSelectedAreaIds((accessData ?? []).map((row: { area_id: string }) => row.area_id));
-    setAreasLoading(false);
+  async function getToken() {
+    const { data } = await supabase.auth.getSession();
+    const t = data?.session?.access_token;
+    if (!t) throw new Error("Sesión inválida.");
+    return t;
   }
 
   useEffect(() => {
     const init = async () => {
       setLoading(true);
-      setMsg(null);
-
       try {
-        const { data: sessionData } = await supabase.auth.getSession();
-        const accessToken = sessionData?.session?.access_token;
-        if (!accessToken) {
-          setMsg("Sesion invalida.");
-          setLoading(false);
-          return;
-        }
-
-        const response = await fetch(`/api/admin/users/${userId}`, {
-          headers: { Authorization: `Bearer ${accessToken}` },
+        const token = await getToken();
+        const res = await fetch(`/api/admin/users/${userId}`, {
+          headers: { Authorization: `Bearer ${token}` },
         });
-        const payload = await response.json().catch(() => ({}));
-        if (!response.ok || !payload?.user) {
-          setMsg(payload?.error ?? "No se encontro el usuario.");
-          setLoading(false);
-          return;
-        }
-
-        const targetUser = payload.user as UserProfile;
-        if (targetUser.hotel_id !== scopedHotelId) {
+        const payload = await res.json().catch(() => ({}));
+        if (!res.ok || !payload?.user) {
+          toast.error(payload?.error ?? "No se encontró el usuario.");
           router.push("/users");
           return;
         }
+        const target = payload.user as UserProfile;
+        if (target.hotel_id !== scopedHotelId) { router.push("/users"); return; }
 
-        setUserRow(targetUser);
-        setFullName(targetUser.full_name ?? "");
-        setRole(targetUser.role);
-        setActive(targetUser.active);
+        setUserRow(target);
+        setFullName(target.full_name ?? "");
+        setRole(target.role);
+        setActive(target.active);
 
-        try {
-          await loadAreasAndAccess(targetUser.id, scopedHotelId);
-        } catch (e: unknown) {
-          setMsg(`Error cargando areas: ${e instanceof Error ? e.message : "desconocido"}`);
-        }
+        setAreasLoading(true);
+        const [{ data: areasData }, { data: accessData }] = await Promise.all([
+          supabase.from("areas").select("id,name,type,active").eq("hotel_id", scopedHotelId).eq("active", true).order("name"),
+          supabase.from("user_area_access").select("area_id").eq("user_id", target.id).eq("hotel_id", scopedHotelId),
+        ]);
+        setAreas((areasData ?? []) as AreaRow[]);
+        setSelectedAreaIds((accessData ?? []).map((r: { area_id: string }) => r.area_id));
+        setAreasLoading(false);
+      } catch (e: any) {
+        toast.error(e?.message ?? "Error cargando usuario.");
       } finally {
         setLoading(false);
       }
     };
-
     void init();
-  }, [router, scopedHotelId, userId]);
+  }, [userId, scopedHotelId, router]);
 
-  const save = async () => {
+  async function save() {
     if (!userRow) return;
-    setSaving(true);
-    setMsg(null);
-
     if (userRow.id === initialProfile.id && active === false) {
-      setMsg("No puedes desactivarte a ti mismo.");
-      setSaving(false);
+      toast.error("No puedes desactivarte a ti mismo.");
       return;
     }
+    if (newPassword && newPassword.length < 8) { toast.error("La contraseña debe tener al menos 8 caracteres."); return; }
+    if (newPassword && newPassword !== confirmPassword) { toast.error("Las contraseñas no coinciden."); return; }
 
+    setSaving(true);
     try {
-      const { data: sessionData } = await supabase.auth.getSession();
-      const accessToken = sessionData?.session?.access_token;
-      if (!accessToken) throw new Error("Sesion invalida.");
-
-      if (newPassword) {
-        if (newPassword.length < 8) {
-          setMsg("La contraseña debe tener al menos 8 caracteres.");
-          setSaving(false);
-          return;
-        }
-        if (newPassword !== confirmPassword) {
-          setMsg("Las contraseñas no coinciden.");
-          setSaving(false);
-          return;
-        }
-      }
-
-      const updateRes = await fetch(`/api/admin/users/${userRow.id}`, {
+      const token = await getToken();
+      const res = await fetch(`/api/admin/users/${userRow.id}`, {
         method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${accessToken}`,
-        },
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({
           full_name: fullName.trim() || null,
           role,
@@ -175,231 +129,254 @@ export default function UserDetailPageClient({
           ...(newPassword ? { password: newPassword } : {}),
         }),
       });
-      const updatePayload = await updateRes.json().catch(() => ({}));
-      if (!updateRes.ok) throw new Error(updatePayload?.error ?? "No se pudo guardar el usuario.");
+      const payload = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(payload?.error ?? "No se pudo guardar.");
 
-      const res = await fetch("/api/admin/user-area-access/set", {
+      const areaRes = await fetch("/api/admin/user-area-access/set", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${accessToken}`,
-        },
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({ user_id: userRow.id, area_ids: selectedAreaIds }),
       });
-      const payload = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(payload?.error ?? "No se pudo guardar accesos de areas.");
+      const areaPayload = await areaRes.json().catch(() => ({}));
+      if (!areaRes.ok) throw new Error(areaPayload?.error ?? "No se pudieron guardar las áreas.");
+
       setNewPassword("");
       setConfirmPassword("");
-      setMsg("Guardado.");
-    } catch (e: unknown) {
-      setMsg(`Error guardando areas: ${e instanceof Error ? e.message : "desconocido"}`);
+      toast.success("Cambios guardados.");
+    } catch (e: any) {
+      toast.error(e?.message ?? "Error guardando.");
     } finally {
       setSaving(false);
     }
-  };
+  }
 
-  const deleteUser = async () => {
+  async function deleteUser() {
     if (!userRow) return;
-    setMsg(null);
+    if (userRow.id === initialProfile.id) { toast.error("No puedes borrarte a ti mismo."); return; }
+    if (deleteConfirm.trim().toUpperCase() !== "BORRAR") { toast.error("Escribe BORRAR para confirmar."); return; }
 
-    if (userRow.id === initialProfile.id) {
-      setMsg("No puedes borrarte a ti mismo.");
-      return;
-    }
-
-    if (deleteConfirm.trim().toUpperCase() !== "BORRAR") {
-      setMsg("Para borrar, escribe BORRAR en el campo de confirmacion.");
-      return;
-    }
-
+    setDeleting(true);
     try {
-      setDeleting(true);
-      const { data: sessionData } = await supabase.auth.getSession();
-      const accessToken = sessionData?.session?.access_token;
-      if (!accessToken) throw new Error("Sesion invalida.");
-
+      const token = await getToken();
       const res = await fetch(`/api/admin/users/${userRow.id}`, {
         method: "DELETE",
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
+        headers: { Authorization: `Bearer ${token}` },
       });
-      const text = await res.text();
-      let payload: { error?: string } | null = null;
-      try {
-        payload = JSON.parse(text) as { error?: string };
-      } catch {
-        payload = { error: text?.slice(0, 200) || "Respuesta no-JSON." };
-      }
-      if (!res.ok) throw new Error(payload?.error ?? "No se pudo borrar el usuario.");
+      const payload = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(payload?.error ?? "No se pudo borrar.");
+      toast.success("Usuario eliminado.");
       router.push("/users");
-    } catch (e: unknown) {
-      setMsg(`Error borrando: ${e instanceof Error ? e.message : "desconocido"}`);
+    } catch (e: any) {
+      toast.error(e?.message ?? "Error borrando.");
     } finally {
       setDeleting(false);
       setShowDelete(false);
       setDeleteConfirm("");
     }
-  };
+  }
 
-  if (loading) return <p className="p-6 font-[system-ui]">Cargando...</p>;
-
-  if (!userRow) {
+  if (loading) {
     return (
-      <main className="p-6 font-[system-ui]">
-        <h1 className="text-[22px] font-black">Editar usuario</h1>
-        <p className="mt-3">{msg ?? "No disponible."}</p>
-        <button
-          onClick={() => router.push("/users")}
-          className="mt-3 px-[14px] py-2.5 rounded-[10px] border border-black bg-white cursor-pointer font-extrabold"
-        >
-          Volver
-        </button>
+      <main className="p-6">
+        <div className="opacity-70 font-[800]">Cargando...</div>
       </main>
     );
   }
 
+  if (!userRow) return null;
+
+  const isSelf = userRow.id === initialProfile.id;
+
   return (
-    <main className="p-6 font-[system-ui]">
-      <div className="flex justify-between gap-3 flex-wrap">
+    <main className="p-4 sm:p-6 max-w-xl">
+      {/* Header */}
+      <button
+        onClick={() => router.push("/users")}
+        className="text-sm font-[950] opacity-60 hover:opacity-100 cursor-pointer mb-4"
+      >
+        ← Usuarios
+      </button>
+
+      <div className="flex justify-between items-start gap-3 flex-wrap mb-6">
         <div>
-          <h1 className="text-2xl font-black m-0">Editar usuario</h1>
-          <div className="mt-2 opacity-75"><span className="font-black">Email:</span> {userRow.email ?? "—"}</div>
-          <div className="mt-1.5 opacity-70">ID: <span className="font-mono">{userRow.id}</span></div>
-          <div className="mt-1.5 opacity-70">Hotel: <span className="font-mono">{userRow.hotel_id}</span></div>
+          <h1 className="text-[clamp(24px,6vw,40px)] font-[950] leading-tight">
+            {userRow.full_name?.trim() || "Sin nombre"}
+          </h1>
+          <div className="text-sm opacity-60 font-[800] mt-1">{userRow.email ?? "—"}</div>
         </div>
         <div className="flex gap-2.5 flex-wrap">
           <button
-            onClick={() => router.push("/users")}
-            className="px-[14px] py-2.5 rounded-[10px] border border-[#ddd] bg-white cursor-pointer font-black"
-          >
-            Volver
-          </button>
-          <button
             onClick={save}
             disabled={saving}
-            className={`px-[14px] py-2.5 rounded-[10px] border border-black bg-black text-white cursor-pointer font-black ${saving ? "opacity-60" : "opacity-100"}`}
+            className="h-11 px-5 rounded-xl bg-black text-white font-[950] cursor-pointer disabled:opacity-50"
           >
             {saving ? "Guardando..." : "Guardar"}
           </button>
           <button
-            onClick={() => setShowDelete((value) => !value)}
-            className="px-[14px] py-2.5 rounded-[10px] border border-[rgba(220,20,60,0.6)] bg-[rgba(220,20,60,0.08)] text-[crimson] cursor-pointer font-black"
+            onClick={() => setShowDelete((v) => !v)}
+            className="h-11 px-4 rounded-xl border border-[rgba(220,20,60,0.5)] bg-[rgba(220,20,60,0.07)] text-[crimson] font-[950] cursor-pointer"
           >
-            Borrar usuario
+            Borrar
           </button>
         </div>
       </div>
 
-      {msg ? (
-        <div className="mt-[14px] p-3 rounded-xl border border-black/20 bg-white">{msg}</div>
-      ) : null}
-
-      {showDelete ? (
-        <div className="mt-[14px] p-[14px] rounded-[14px] border border-[rgba(220,20,60,0.35)] bg-[rgba(220,20,60,0.06)]">
-          <div className="font-black text-[crimson]">Borrado permanente</div>
-          <div className="mt-1.5 opacity-85">Para confirmar, escribe <span className="font-black">BORRAR</span>.</div>
-          <div className="flex gap-2.5 flex-wrap mt-2.5">
+      {/* Delete confirmation */}
+      {showDelete && (
+        <div className="mb-4 p-4 rounded-[18px] border border-[rgba(220,20,60,0.3)] bg-[rgba(220,20,60,0.05)]">
+          <div className="font-[950] text-[crimson] mb-2">Borrado permanente</div>
+          <p className="text-sm opacity-80 mb-3">
+            Esta acción no se puede deshacer. Escribe <strong>BORRAR</strong> para confirmar.
+          </p>
+          <div className="flex gap-2.5 flex-wrap">
             <input
               value={deleteConfirm}
               onChange={(e) => setDeleteConfirm(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") void deleteUser(); }}
               placeholder="Escribe BORRAR"
-              className="p-3 rounded-[10px] border border-[rgba(220,20,60,0.4)] min-w-[240px] font-black"
+              className="h-11 px-3 rounded-xl border border-[rgba(220,20,60,0.4)] font-[800] text-sm flex-1 min-w-[160px]"
+              autoFocus
             />
             <button
-              onClick={deleteUser}
-              disabled={deleting}
-              className={`px-[14px] py-3 rounded-[10px] border border-[crimson] bg-[crimson] text-white font-black cursor-pointer ${deleting ? "opacity-60" : "opacity-100"}`}
+              onClick={() => void deleteUser()}
+              disabled={deleting || deleteConfirm.trim().toUpperCase() !== "BORRAR"}
+              className="h-11 px-5 rounded-xl bg-[crimson] text-white font-[950] cursor-pointer disabled:opacity-40"
             >
-              {deleting ? "Borrando..." : "Confirmar borrado"}
+              {deleting ? "Borrando..." : "Confirmar"}
             </button>
             <button
               onClick={() => { setShowDelete(false); setDeleteConfirm(""); }}
-              className="px-[14px] py-3 rounded-[10px] border border-black/20 bg-white font-black cursor-pointer"
+              className="h-11 px-4 rounded-xl border border-black/20 bg-white font-[950] cursor-pointer"
             >
               Cancelar
             </button>
           </div>
         </div>
-      ) : null}
+      )}
 
-      <div className="mt-[18px] grid gap-[14px]">
-        <label className="grid gap-1.5">
-          <span className="font-black">Nombre</span>
-          <input
-            value={fullName}
-            onChange={(e) => setFullName(e.target.value)}
-            placeholder="Nombre y apellidos"
-            className="p-3 rounded-[10px] border border-[#ddd]"
-          />
-        </label>
+      <div className="grid gap-4">
+        {/* Datos básicos */}
+        <div className="rounded-[18px] border border-black/[0.08] bg-white/75 p-5 grid gap-4">
+          <div className="font-[950] text-sm opacity-60 uppercase tracking-wider">Datos básicos</div>
 
-        <label className="grid gap-1.5">
-          <span className="font-black">Rol</span>
-          <select
-            value={role}
-            onChange={(e) => setRole(e.target.value as Role)}
-            className="p-3 rounded-[10px] border border-[#ddd]"
-          >
-            {availableRoleOptions.map((candidateRole) => (
-              <option key={candidateRole} value={candidateRole}>
-                {ROLE_LABELS[candidateRole] ?? candidateRole}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <label className="flex items-center gap-2.5">
-          <input type="checkbox" checked={active} onChange={(e) => setActive(e.target.checked)} />
-          <span className="font-black">Usuario activo</span>
-        </label>
-
-        <div className="mt-[10px] pt-[18px] border-t border-[#eee] grid gap-[14px]">
-          <div className="font-black">Cambiar contraseña <span className="font-normal opacity-60 text-sm">(dejar vacío para no cambiar)</span></div>
           <label className="grid gap-1.5">
-            <span className="font-black text-sm">Nueva contraseña</span>
+            <span className="font-[950] text-sm">Nombre completo</span>
             <input
-              type="password"
-              value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
-              placeholder="Mínimo 8 caracteres"
-              className="p-3 rounded-[10px] border border-[#ddd]"
-              autoComplete="new-password"
+              value={fullName}
+              onChange={(e) => setFullName(e.target.value)}
+              placeholder="Nombre y apellidos"
+              className="h-11 px-3 rounded-xl border border-black/20 font-[800] text-sm bg-white"
             />
           </label>
+
           <label className="grid gap-1.5">
-            <span className="font-black text-sm">Confirmar contraseña</span>
+            <span className="font-[950] text-sm">Rol</span>
+            <select
+              value={role}
+              onChange={(e) => setRole(e.target.value as Role)}
+              className="h-11 px-3 rounded-xl border border-black/20 font-[950] text-sm bg-white cursor-pointer"
+            >
+              {availableRoleOptions.map((r) => (
+                <option key={r} value={r}>{ROLE_LABELS[r as Role] ?? r}</option>
+              ))}
+            </select>
+          </label>
+
+          <label className="flex items-center gap-2.5 cursor-pointer">
             <input
-              type="password"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              placeholder="Repite la nueva contraseña"
-              className="p-3 rounded-[10px] border border-[#ddd]"
-              autoComplete="new-password"
+              type="checkbox"
+              checked={active}
+              onChange={(e) => setActive(e.target.checked)}
+              disabled={isSelf}
+              className="cursor-pointer disabled:cursor-default"
             />
+            <span className="font-[950] text-sm">Usuario activo</span>
+            {isSelf && <span className="text-xs opacity-50 font-[800]">(no puedes desactivarte)</span>}
           </label>
         </div>
-      </div>
 
-      <div className="mt-[22px]">
-        <h2 className="text-lg font-black m-0">Areas habilitadas</h2>
-        <div className="mt-3">
+        {/* Áreas */}
+        <div className="rounded-[18px] border border-black/[0.08] bg-white/75 p-5 grid gap-3">
+          <div className="font-[950] text-sm opacity-60 uppercase tracking-wider">Áreas de acceso</div>
           {areasLoading ? (
-            <div className="opacity-80">Cargando areas...</div>
+            <div className="text-sm opacity-60">Cargando áreas...</div>
           ) : areas.length === 0 ? (
-            <div className="opacity-80">No hay areas activas en este hotel.</div>
+            <div className="text-sm opacity-60">No hay áreas activas en este hotel.</div>
           ) : (
-            <div className="grid gap-2.5">
+            <div className="grid gap-2">
               {areas.map((area) => (
-                <label key={area.id} className="flex gap-2.5 items-center p-3 rounded-xl border border-[#ddd]">
-                  <input type="checkbox" checked={selectedAreaIds.includes(area.id)} onChange={() => toggleArea(area.id)} />
-                  <span className="font-black">{area.name}</span>
-                  <span className="opacity-70">{area.type ?? "Sin tipo"}</span>
+                <label
+                  key={area.id}
+                  className="flex items-center gap-2.5 p-3 rounded-xl border border-black/[0.08] cursor-pointer hover:bg-black/[0.02]"
+                >
+                  <input
+                    type="checkbox"
+                    checked={selectedAreaIds.includes(area.id)}
+                    onChange={() =>
+                      setSelectedAreaIds((prev) =>
+                        prev.includes(area.id)
+                          ? prev.filter((id) => id !== area.id)
+                          : [...prev, area.id]
+                      )
+                    }
+                    className="cursor-pointer"
+                  />
+                  <span className="font-[900] text-sm">{area.name}</span>
+                  {area.type && <span className="opacity-50 text-xs">{area.type}</span>}
                 </label>
               ))}
             </div>
           )}
         </div>
+
+        {/* Contraseña */}
+        <div className="rounded-[18px] border border-black/[0.08] bg-white/75 p-5 grid gap-4">
+          <div className="font-[950] text-sm opacity-60 uppercase tracking-wider">
+            Cambiar contraseña
+            <span className="ml-2 text-xs normal-case font-[800]">(dejar vacío para no cambiar)</span>
+          </div>
+
+          <label className="grid gap-1.5">
+            <span className="font-[950] text-sm">Nueva contraseña</span>
+            <input
+              type={showPasswords ? "text" : "password"}
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              placeholder="Mínimo 8 caracteres"
+              autoComplete="new-password"
+              className="h-11 px-3 rounded-xl border border-black/20 font-[800] text-sm bg-white"
+            />
+          </label>
+
+          <label className="grid gap-1.5">
+            <span className="font-[950] text-sm">Confirmar contraseña</span>
+            <input
+              type={showPasswords ? "text" : "password"}
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              placeholder="Repite la nueva contraseña"
+              autoComplete="new-password"
+              className={`h-11 px-3 rounded-xl border font-[800] text-sm bg-white ${confirmPassword.length > 0 && confirmPassword !== newPassword ? "border-[crimson]" : "border-black/20"}`}
+            />
+          </label>
+
+          <button
+            type="button"
+            onClick={() => setShowPasswords((v) => !v)}
+            className="text-sm font-[950] opacity-60 cursor-pointer text-left"
+          >
+            {showPasswords ? "Ocultar contraseñas" : "Mostrar contraseñas"}
+          </button>
+        </div>
+
+        {/* Guardar */}
+        <button
+          onClick={save}
+          disabled={saving}
+          className="h-12 rounded-xl bg-black text-white font-[950] cursor-pointer disabled:opacity-40"
+        >
+          {saving ? "Guardando..." : "Guardar cambios"}
+        </button>
       </div>
     </main>
   );

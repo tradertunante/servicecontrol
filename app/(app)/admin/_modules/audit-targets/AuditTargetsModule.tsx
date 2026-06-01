@@ -124,33 +124,38 @@ export default function AuditTargetsModule({ hotelId }: { hotelId: string }) {
     setLoading(true);
     setError(null);
 
-    const a = await supabase
-      .from("areas")
-      .select("id,name,active")
-      .eq("hotel_id", hotelId)
-      .eq("active", true)
-      .order("sort_order", { ascending: true })
-      .order("name", { ascending: true });
+    const [a, tpls, tg, ass] = await Promise.all([
+      supabase
+        .from("areas")
+        .select("id,name,active")
+        .eq("hotel_id", hotelId)
+        .eq("active", true)
+        .order("sort_order", { ascending: true })
+        .order("name", { ascending: true }),
+      supabase
+        .from("audit_templates")
+        .select("id,name,area_id")
+        .eq("hotel_id", hotelId)
+        .order("name", { ascending: true }),
+      supabase
+        .from("area_template_targets")
+        .select(`id,hotel_id,area_id,audit_template_id,period,target_count,active,areas(name),audit_templates(name)`)
+        .eq("hotel_id", hotelId)
+        .order("created_at", { ascending: false }),
+      supabase
+        .from("area_template_target_assignments")
+        .select("area_id, audit_template_id, period, target_count, active")
+        .eq("hotel_id", hotelId)
+        .eq("active", true),
+    ]);
 
     if (a.error) { setError(a.error.message); setLoading(false); return; }
-    setAreas((a.data ?? []) as AreaRow[]);
-
-    const tpls = await supabase
-      .from("audit_templates")
-      .select("id,name,area_id")
-      .eq("hotel_id", hotelId)
-      .order("name", { ascending: true });
-
     if (tpls.error) { setError(tpls.error.message); setLoading(false); return; }
-    setTemplates((tpls.data ?? []) as TemplateRow[]);
-
-    const tg = await supabase
-      .from("area_template_targets")
-      .select(`id,hotel_id,area_id,audit_template_id,period,target_count,active,areas(name),audit_templates(name)`)
-      .eq("hotel_id", hotelId)
-      .order("created_at", { ascending: false });
-
     if (tg.error) { setError(tg.error.message); setLoading(false); return; }
+    if (ass.error) { setError(ass.error.message); setLoading(false); return; }
+
+    setAreas((a.data ?? []) as AreaRow[]);
+    setTemplates((tpls.data ?? []) as TemplateRow[]);
 
     const targetRows: AreaTemplateTargetRow[] = ((tg.data ?? []) as AreaTemplateTargetRowRaw[]).map((row) => ({
       id: row.id,
@@ -164,14 +169,6 @@ export default function AuditTargetsModule({ hotelId }: { hotelId: string }) {
       audit_templates: normalizeRelation(row.audit_templates ?? null),
     }));
     setTargets(targetRows);
-
-    const ass = await supabase
-      .from("area_template_target_assignments")
-      .select("area_id, audit_template_id, period, target_count, active")
-      .eq("hotel_id", hotelId)
-      .eq("active", true);
-
-    if (ass.error) { setError(ass.error.message); setLoading(false); return; }
 
     const agg: Record<string, AssignmentAgg> = {};
     for (const row of ass.data ?? []) {

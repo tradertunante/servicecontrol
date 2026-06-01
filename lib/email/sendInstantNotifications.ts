@@ -57,7 +57,9 @@ export async function sendInstantNotifications(runId: string) {
     // Get extra info: hotel name, auditor name, team member name
     const [{ data: hotel }, { data: auditor }, teamMember] = await Promise.all([
       admin.from("hotels").select("name").eq("id", run.hotel_id).single(),
-      admin.from("profiles").select("full_name").eq("id", run.executed_by).single(),
+      run.executed_by
+        ? admin.from("profiles").select("full_name").eq("id", run.executed_by).single()
+        : Promise.resolve({ data: null }),
       run.team_member_id
         ? admin.from("team_members").select("full_name").eq("id", run.team_member_id).single().then((r) => r.data)
         : Promise.resolve(null),
