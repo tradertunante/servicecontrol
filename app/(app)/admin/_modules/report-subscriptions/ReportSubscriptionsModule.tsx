@@ -34,12 +34,16 @@ const CHANNEL_LABELS: Record<string, string> = {
   internal: "Solo internas",
 };
 
+type SendState = { status: "idle" | "sending" | "ok" | "error"; message?: string };
+
 export default function ReportSubscriptionsModule({ hotelId }: { hotelId: string }) {
   const [subs, setSubs] = useState<Subscription[]>([]);
   const [areas, setAreas] = useState<Area[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [sendWeekly, setSendWeekly] = useState<SendState>({ status: "idle" });
+  const [sendMonthly, setSendMonthly] = useState<SendState>({ status: "idle" });
 
   // Form state
   const [email, setEmail] = useState("");
@@ -122,6 +126,36 @@ export default function ReportSubscriptionsModule({ hotelId }: { hotelId: string
       setError("Error de conexión.");
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function handleSendNow(type: "weekly" | "monthly") {
+    const setter = type === "weekly" ? setSendWeekly : setSendMonthly;
+    setter({ status: "sending" });
+    try {
+      const res = await fetch(`/api/reports/send-${type}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ hotel_id: hotelId }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.ok) {
+        setter({ status: "error", message: data.error ?? "No se pudo enviar." });
+        return;
+      }
+      const sent = data.totalSent ?? 0;
+      const resendErrors: string[] = (data.results ?? []).flatMap(
+        (r: { errors?: string[] }) => r.errors ?? []
+      );
+      if (sent === 0 && resendErrors.length > 0) {
+        setter({ status: "error", message: resendErrors[0] });
+      } else if (sent === 0) {
+        setter({ status: "ok", message: "Sin auditorías en el período actual." });
+      } else {
+        setter({ status: "ok", message: `Reporte enviado a ${sent} suscriptor${sent !== 1 ? "es" : ""}.` });
+      }
+    } catch {
+      setter({ status: "error", message: "Error de conexión." });
     }
   }
 
@@ -330,6 +364,60 @@ export default function ReportSubscriptionsModule({ hotelId }: { hotelId: string
           </div>
         </>
       )}
+      {/* Enviar ahora */}
+      <div className="mt-5 rounded-xl border border-gray-100 bg-gray-50/50 p-4">
+        <div className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-3">
+          Enviar reporte ahora
+        </div>
+        <p className="text-xs text-gray-500 mb-4">
+          Envía el reporte del período actual a todos los suscriptores activos de cada frecuencia.
+        </p>
+        <div className="flex flex-wrap gap-3">
+          {/* Weekly */}
+          <div className="flex flex-col gap-1">
+            <button
+              onClick={() => handleSendNow("weekly")}
+              disabled={sendWeekly.status === "sending"}
+              className="px-4 py-2.5 rounded-lg border border-gray-200 bg-white text-sm font-bold text-gray-700 hover:bg-gray-100 disabled:opacity-50 transition-colors min-h-[44px] flex items-center gap-2"
+            >
+              {sendWeekly.status === "sending" ? (
+                <span className="inline-block w-3.5 h-3.5 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <span className="text-base">📅</span>
+              )}
+              Reporte semanal
+            </button>
+            {sendWeekly.status === "ok" && (
+              <p className="text-xs text-green-600 font-semibold">{sendWeekly.message}</p>
+            )}
+            {sendWeekly.status === "error" && (
+              <p className="text-xs text-red-600 font-semibold">{sendWeekly.message}</p>
+            )}
+          </div>
+
+          {/* Monthly */}
+          <div className="flex flex-col gap-1">
+            <button
+              onClick={() => handleSendNow("monthly")}
+              disabled={sendMonthly.status === "sending"}
+              className="px-4 py-2.5 rounded-lg border border-gray-200 bg-white text-sm font-bold text-gray-700 hover:bg-gray-100 disabled:opacity-50 transition-colors min-h-[44px] flex items-center gap-2"
+            >
+              {sendMonthly.status === "sending" ? (
+                <span className="inline-block w-3.5 h-3.5 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <span className="text-base">🗓️</span>
+              )}
+              Reporte mensual
+            </button>
+            {sendMonthly.status === "ok" && (
+              <p className="text-xs text-green-600 font-semibold">{sendMonthly.message}</p>
+            )}
+            {sendMonthly.status === "error" && (
+              <p className="text-xs text-red-600 font-semibold">{sendMonthly.message}</p>
+            )}
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

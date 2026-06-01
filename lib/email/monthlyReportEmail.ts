@@ -93,10 +93,11 @@ export async function sendMonthlyReportEmail(data: MonthlyReportEmailData) {
 
   const fromAddress = process.env.RESEND_FROM_EMAIL || "no-reply@servicecontrol.io";
 
-  return resend.emails.send({
+  const { error } = await resend.emails.send({
     from: `ServiceControl <${fromAddress}>`,
     to: data.to,
     subject: `📊 Reporte mensual · ${data.hotelName} · ${data.monthLabel}`,
     html,
   });
+  if (error) throw new Error(error.message);
 }

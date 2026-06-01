@@ -80,10 +80,11 @@ export async function sendWeeklyReportEmail(data: WeeklyReportEmailData) {
 
   const fromAddress = process.env.RESEND_FROM_EMAIL || "no-reply@servicecontrol.io";
 
-  return resend.emails.send({
+  const { error } = await resend.emails.send({
     from: `ServiceControl <${fromAddress}>`,
     to: data.to,
     subject: `📊 Reporte semanal · ${data.hotelName} · ${data.weekLabel}`,
     html,
   });
+  if (error) throw new Error(error.message);
 }
