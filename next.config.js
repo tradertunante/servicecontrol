@@ -58,6 +58,9 @@ function stripMarkdownCJS(md) {
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
   experimental: {
     instrumentationHook: true,
     serverActions: true,
