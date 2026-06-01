@@ -43,7 +43,7 @@ type RawTemplateRow = {
 };
 
 function toRequirement(value: unknown): RequirementType {
-  if (value === "if_fail" || value === "always") return value;
+  if (value === "if_fail" || value === "always" || value === "optional") return value;
   return "never";
 }
 
@@ -72,6 +72,7 @@ export function makeDraftAnswer(runId: string, questionId: string, current?: Ans
 export function shouldShowField(requirement: RequirementType, isFail: boolean): boolean {
   if (requirement === "always") return true;
   if (requirement === "if_fail") return isFail;
+  if (requirement === "optional") return true;
   return false;
 }
 

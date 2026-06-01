@@ -33,6 +33,7 @@ function RequirementSelect({
       >
         <option value="never">Nunca</option>
         <option value="if_fail">Si es FAIL</option>
+        <option value="optional">Opcional</option>
         <option value="always">Siempre</option>
       </select>
       <button style={smallBtnStyle} onClick={onApply} disabled={saving}>

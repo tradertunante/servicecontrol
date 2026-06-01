@@ -51,6 +51,7 @@ function RequirementCell({
       >
         <option value="never">Nunca</option>
         <option value="if_fail">Si es FAIL</option>
+        <option value="optional">Opcional</option>
         <option value="always">Siempre</option>
       </select>
     </td>

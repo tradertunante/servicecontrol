@@ -33,7 +33,7 @@ type SectionRow = {
   created_at: string | null;
 };
 
-type RequirementType = "never" | "if_fail" | "always";
+type RequirementType = "never" | "if_fail" | "always" | "optional";
 
 type QuestionRow = {
   id: string;
@@ -72,7 +72,7 @@ function normalizeOrder(n: number | null | undefined, fallback: number) {
   return Number.isFinite(x) && x > 0 ? x : fallback;
 }
 function toRequirement(v: any): RequirementType {
-  if (v === "if_fail" || v === "always") return v;
+  if (v === "if_fail" || v === "always" || v === "optional") return v;
   return "never";
 }
 
@@ -502,6 +502,7 @@ export default function SuperadminGlobalTemplateBuilderPage() {
             >
               <option value="never">Nunca</option>
               <option value="if_fail">Si es FAIL</option>
+              <option value="optional">Opcional</option>
               <option value="always">Siempre</option>
             </select>
             <button style={smallBtn} onClick={() => applyQuickRules("comment")} disabled={saving}>
@@ -518,6 +519,7 @@ export default function SuperadminGlobalTemplateBuilderPage() {
             >
               <option value="never">Nunca</option>
               <option value="if_fail">Si es FAIL</option>
+              <option value="optional">Opcional</option>
               <option value="always">Siempre</option>
             </select>
             <button style={smallBtn} onClick={() => applyQuickRules("photo")} disabled={saving}>
@@ -534,6 +536,7 @@ export default function SuperadminGlobalTemplateBuilderPage() {
             >
               <option value="never">Nunca</option>
               <option value="if_fail">Si es FAIL</option>
+              <option value="optional">Opcional</option>
               <option value="always">Siempre</option>
             </select>
             <button style={smallBtn} onClick={() => applyQuickRules("signature")} disabled={saving}>

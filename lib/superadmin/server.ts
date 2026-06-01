@@ -5,7 +5,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { authorizeRouteRequest, type RequestAuthContext } from "@/lib/auth/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
-export type RequirementType = "never" | "if_fail" | "always";
+export type RequirementType = "never" | "if_fail" | "always" | "optional";
 
 type QuestionOrderRow = {
   id: string;
@@ -14,7 +14,7 @@ type QuestionOrderRow = {
   created_at: string | null;
 };
 
-const REQUIREMENT_TYPES = new Set<RequirementType>(["never", "if_fail", "always"]);
+const REQUIREMENT_TYPES = new Set<RequirementType>(["never", "if_fail", "always", "optional"]);
 
 export function jsonError(message: string, status = 400, extra?: Record<string, unknown>) {
   return NextResponse.json({ ok: false, error: message, ...(extra ?? {}) }, { status });

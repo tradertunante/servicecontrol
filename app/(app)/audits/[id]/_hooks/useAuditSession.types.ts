@@ -50,7 +50,7 @@ export type SectionRow = {
   created_at: string | null;
 };
 
-export type RequirementType = "never" | "if_fail" | "always";
+export type RequirementType = "never" | "if_fail" | "always" | "optional";
 export type CorrectiveFlow = "training_only" | "non_operational" | "mixed";
 export type QuestionRow = {
   id: string;

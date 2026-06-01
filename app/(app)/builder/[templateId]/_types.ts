@@ -25,7 +25,7 @@ export type SectionRow = {
   created_at: string | null;
 };
 
-export type RequirementType = "never" | "if_fail" | "always";
+export type RequirementType = "never" | "if_fail" | "always" | "optional";
 export type ResponsibleDepartment = string | null;
 
 export type QuestionRow = {
@@ -85,7 +85,7 @@ export function normalizeOrder(n: number | null | undefined, fallback: number) {
 }
 
 export function toRequirement(v: unknown): RequirementType {
-  if (v === "if_fail" || v === "always") return v;
+  if (v === "if_fail" || v === "always" || v === "optional") return v;
   return "never";
 }
 
