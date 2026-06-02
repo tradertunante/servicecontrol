@@ -5,7 +5,7 @@ import PricingQuiz from "@/app/(marketing)/_components/PricingQuiz";
 function PricingPageContent() {
   return (
     <main className="px-5 pb-20 pt-10 sm:px-8 lg:px-10 lg:pb-28 lg:pt-14">
-      <div className="mx-auto w-full max-w-[860px]">
+      <div className="mx-auto w-full max-w-6xl">
         <SectionIntro
           eyebrow="Pricing"
           title="Control operativo real, en el plan que encaja con tu hotel"
