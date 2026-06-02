@@ -13,17 +13,17 @@ type Tier = {
   name: string;
   tagline: string;
   persona: string;
-  modules: string[];
+  // moduleGroups: rows of badges — keeps IT+Mantenimiento on the same line in Control Total
+  moduleGroups: string[][];
   features: string[];
   popular: boolean;
 };
 
-type QuizStep = "q_formaciones" | "q_it" | "q_manto" | "result";
+type QuizStep = "q_formaciones" | "q_depts" | "result";
 
 type QuizAnswers = {
   formaciones: boolean | null;
-  it: boolean | null;
-  manto: boolean | null;
+  depts: boolean | null; // IT + Mantenimiento always as a pair
 };
 
 // ─── Data ─────────────────────────────────────────────────────────────────────
@@ -34,7 +34,7 @@ const TIERS: Tier[] = [
     name: "Auditorías",
     tagline: "Digitaliza y estandariza tus inspecciones",
     persona: "Hoteles que dan sus primeros pasos en auditoría digital",
-    modules: ["Core"],
+    moduleGroups: [["Core"]],
     features: [
       "Checklists digitales por área y departamento",
       "Detección y seguimiento de incidencias",
@@ -47,14 +47,14 @@ const TIERS: Tier[] = [
   {
     key: "operaciones",
     name: "Operaciones",
-    tagline: "Cierra el ciclo: detecta, forma y resuelve",
-    persona: "Hoteles que quieren que cada fallo genere acción inmediata",
-    modules: ["Core", "Formación", "IT"],
+    tagline: "Vincula cada fallo detectado con formación para el equipo",
+    persona: "Hoteles que quieren cerrar el ciclo auditoría → formación",
+    moduleGroups: [["Core", "Formación"]],
     features: [
       "Todo lo del plan Auditorías",
       "Fallos vinculados a planes de formación del equipo",
-      "IT gestiona su propio backlog de incidencias",
-      "Seguimiento hasta cierre por departamento",
+      "Asignación de formaciones con seguimiento hasta completado",
+      "Reducción de fallos recurrentes por área",
       "−10% por combinar módulos",
     ],
     popular: true,
@@ -64,10 +64,10 @@ const TIERS: Tier[] = [
     name: "Control Total",
     tagline: "Toda la operación bajo un solo sistema",
     persona: "Propiedades con operativa compleja o equipos multidepartamento",
-    modules: ["Core", "Formación", "IT", "Mantenimiento"],
+    moduleGroups: [["Core", "Formación"], ["IT", "Mantenimiento"]],
     features: [
       "Todo lo del plan Operaciones",
-      "Mantenimiento gestiona su backlog de obras y averías",
+      "IT y Mantenimiento gestionan sus propios backlogs",
       "Trazabilidad auditoría → formación → mantenimiento",
       "Dashboard 360° de toda la operación",
       "−20% por bundle completo",
@@ -91,16 +91,9 @@ const QUIZ_STEPS: {
     no: "No por ahora",
   },
   {
-    key: "q_it",
-    question: "¿Quieres que IT gestione su propio backlog de incidencias dentro del sistema?",
-    hint: "IT recibe los fallos que les corresponden, los gestiona desde su vista propia y los cierra cuando están resueltos.",
-    yes: "Sí",
-    no: "No",
-  },
-  {
-    key: "q_manto",
-    question: "¿Quieres incluir a Mantenimiento en el seguimiento de obras y averías?",
-    hint: "Mantenimiento recibe los fallos de su área, gestiona el trabajo y cierra cada incidencia desde su propia vista.",
+    key: "q_depts",
+    question: "¿Quieres que IT y Mantenimiento gestionen sus propios backlogs de incidencias y obras?",
+    hint: "Cada departamento recibe los fallos que le corresponden, los gestiona desde su propia vista y los cierra cuando están resueltos.",
     yes: "Sí",
     no: "No",
   },
@@ -109,20 +102,14 @@ const QUIZ_STEPS: {
 // ─── Logic ────────────────────────────────────────────────────────────────────
 
 function getRecommendedTier(a: QuizAnswers): TierKey {
-  if (a.manto) return "control";
-  if (!a.formaciones && !a.it) return "auditoria";
-  return "operaciones";
+  if (a.depts) return "control";
+  if (a.formaciones) return "operaciones";
+  return "auditoria";
 }
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
-function ModuleBadge({
-  label,
-  inverted = false,
-}: {
-  label: string;
-  inverted?: boolean;
-}) {
+function ModuleBadge({ label, inverted = false }: { label: string; inverted?: boolean }) {
   return (
     <span
       className="rounded-full px-2.5 py-0.5 text-xs font-medium"
@@ -217,26 +204,24 @@ function TierCard({
         >
           Precio / mes
         </div>
-        <div
-          className="mt-0.5 text-lg font-bold"
-          style={{ color: isPop ? "white" : "var(--text)" }}
-        >
+        <div className="mt-0.5 text-lg font-bold" style={{ color: isPop ? "white" : "var(--text)" }}>
           Por definir
         </div>
         {period === "annual" && (
-          <div
-            className="mt-0.5 text-xs"
-            style={{ color: isPop ? "rgba(255,255,255,0.6)" : "var(--text-secondary)" }}
-          >
+          <div className="mt-0.5 text-xs" style={{ color: isPop ? "rgba(255,255,255,0.6)" : "var(--text-secondary)" }}>
             Con pago anual · ~15% de descuento
           </div>
         )}
       </div>
 
-      {/* Module badges */}
-      <div className="mb-5 flex flex-wrap gap-1.5">
-        {tier.modules.map((m) => (
-          <ModuleBadge key={m} label={m} inverted={isPop} />
+      {/* Module badges — each group stays on its own line */}
+      <div className="mb-5 space-y-1.5">
+        {tier.moduleGroups.map((group, gi) => (
+          <div key={gi} className="flex flex-wrap gap-1.5">
+            {group.map((m) => (
+              <ModuleBadge key={m} label={m} inverted={isPop} />
+            ))}
+          </div>
         ))}
       </div>
 
@@ -272,11 +257,7 @@ function TierCard({
       <Link
         href="/demo"
         className="block rounded-[10px] px-5 py-3 text-center text-sm font-semibold transition"
-        style={
-          isPop
-            ? { background: "white", color: "#185FA5" }
-            : { background: "#185FA5", color: "white" }
-        }
+        style={isPop ? { background: "white", color: "#185FA5" } : { background: "#185FA5", color: "white" }}
       >
         Ver demo · 30 min
       </Link>
@@ -352,7 +333,7 @@ export default function PricingQuiz() {
   const [period, setPeriod] = useState<BillingPeriod>("monthly");
   const [showQuiz, setShowQuiz] = useState(false);
   const [quizStep, setQuizStep] = useState<QuizStep>("q_formaciones");
-  const [answers, setAnswers] = useState<QuizAnswers>({ formaciones: null, it: null, manto: null });
+  const [answers, setAnswers] = useState<QuizAnswers>({ formaciones: null, depts: null });
   const [recommendedTier, setRecommendedTier] = useState<TierKey | null>(null);
 
   const currentStepIndex = QUIZ_STEPS.findIndex((s) => s.key === quizStep);
@@ -373,7 +354,7 @@ export default function PricingQuiz() {
 
   function restartQuiz() {
     setQuizStep("q_formaciones");
-    setAnswers({ formaciones: null, it: null, manto: null });
+    setAnswers({ formaciones: null, depts: null });
     setRecommendedTier(null);
   }
 
@@ -433,12 +414,12 @@ export default function PricingQuiz() {
       </div>
 
       {/* ── Quiz ── */}
-      <div className="rounded-[20px] overflow-hidden" style={{ border: "1px solid var(--border)" }}>
+      <div className="overflow-hidden rounded-[20px]" style={{ border: "1px solid var(--border)" }}>
         <button
           onClick={() => setShowQuiz((v) => !v)}
           className="flex w-full items-center justify-between px-6 py-4 text-sm font-semibold text-[var(--text)] transition hover:bg-[var(--row-bg)]"
         >
-          <span>¿No sabes cuál elegir? Responde 3 preguntas y te lo decimos</span>
+          <span>¿No sabes cuál elegir? Responde 2 preguntas y te lo decimos</span>
           <span
             className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs"
             style={{ border: "1px solid var(--border)" }}
@@ -451,7 +432,6 @@ export default function PricingQuiz() {
           <div className="px-6 pb-6 pt-2" style={{ borderTop: "1px solid var(--border)" }}>
             {quizStep !== "result" ? (
               <>
-                {/* Progress bar */}
                 <div className="mb-6 flex items-center gap-2">
                   {QUIZ_STEPS.map((s, i) => (
                     <div
@@ -465,12 +445,8 @@ export default function PricingQuiz() {
                 <div className="text-[11px] font-semibold uppercase tracking-[2px] text-[var(--text-secondary)]">
                   Pregunta {currentStepIndex + 1} de {QUIZ_STEPS.length}
                 </div>
-                <h3 className="mt-2 text-lg font-bold text-[var(--text)]">
-                  {currentStep.question}
-                </h3>
-                <p className="mt-2 text-sm leading-6 text-[var(--text-secondary)]">
-                  {currentStep.hint}
-                </p>
+                <h3 className="mt-2 text-lg font-bold text-[var(--text)]">{currentStep.question}</h3>
+                <p className="mt-2 text-sm leading-6 text-[var(--text-secondary)]">{currentStep.hint}</p>
 
                 <div className="mt-6 grid gap-3 sm:grid-cols-2">
                   <button
@@ -503,14 +479,18 @@ export default function PricingQuiz() {
                       className="rounded-[16px] p-5"
                       style={{ background: "var(--row-bg)", border: "2px solid #185FA5" }}
                     >
-                      <div className="flex flex-wrap items-start justify-between gap-3 mb-3">
+                      <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
                         <div>
                           <div className="text-xl font-extrabold text-[var(--text)]">{tier.name}</div>
                           <div className="mt-0.5 text-sm text-[var(--text-secondary)]">{tier.tagline}</div>
                         </div>
-                        <div className="flex flex-wrap gap-1.5">
-                          {tier.modules.map((m) => (
-                            <ModuleBadge key={m} label={m} />
+                        <div className="space-y-1.5">
+                          {tier.moduleGroups.map((group, gi) => (
+                            <div key={gi} className="flex flex-wrap gap-1.5">
+                              {group.map((m) => (
+                                <ModuleBadge key={m} label={m} />
+                              ))}
+                            </div>
                           ))}
                         </div>
                       </div>
