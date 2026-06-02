@@ -27,54 +27,14 @@ type PlanDef = {
 };
 
 const PLANS: Record<PlanKey, PlanDef> = {
-  P1: {
-    id: "#P1",
-    name: "Esencial",
-    modules: ["Core"],
-    highlight: false,
-  },
-  P2: {
-    id: "#P2",
-    name: "Operativo",
-    modules: ["Core", "Formación"],
-    highlight: false,
-  },
-  P3: {
-    id: "#P3",
-    name: "Técnico IT",
-    modules: ["Core", "IT"],
-    highlight: false,
-  },
-  P4: {
-    id: "#P4",
-    name: "Técnico Manto",
-    modules: ["Core", "Engineering"],
-    highlight: false,
-  },
-  P5: {
-    id: "#P5",
-    name: "Completo",
-    modules: ["Core", "Formación", "IT"],
-    highlight: true,
-  },
-  P6: {
-    id: "#P6",
-    name: "Operativo+",
-    modules: ["Core", "Formación", "Engineering"],
-    highlight: false,
-  },
-  P7: {
-    id: "#P7",
-    name: "Técnico Total",
-    modules: ["Core", "IT", "Engineering"],
-    highlight: false,
-  },
-  P8: {
-    id: "#P8",
-    name: "Total",
-    modules: ["Core", "Formación", "IT", "Engineering"],
-    highlight: true,
-  },
+  P1: { id: "#P1", name: "Esencial",   modules: ["Core"],                              highlight: false },
+  P2: { id: "#P2", name: "Equipo",     modules: ["Core", "Formación"],                highlight: false },
+  P3: { id: "#P3", name: "Digital",    modules: ["Core", "IT"],                       highlight: false },
+  P4: { id: "#P4", name: "Facilities", modules: ["Core", "Engineering"],              highlight: false },
+  P5: { id: "#P5", name: "Operativo",  modules: ["Core", "Formación", "IT"],          highlight: true  },
+  P6: { id: "#P6", name: "Operativo+", modules: ["Core", "Formación", "Engineering"], highlight: false },
+  P7: { id: "#P7", name: "Técnico",    modules: ["Core", "IT", "Engineering"],        highlight: false },
+  P8: { id: "#P8", name: "Total",      modules: ["Core", "Formación", "IT", "Engineering"], highlight: true },
 };
 
 function getPlan(a: Answers): PlanDef {
@@ -132,14 +92,14 @@ const STEPS: { key: Step; question: string; hint: string; yes: string; no: strin
 // ─── Combination table data ────────────────────────────────────────────────────
 
 const COMBO_TABLE = [
-  { id: "#P1", name: "Esencial",        form: false, it: false, manto: false, addons: 0, descuento: "—"    },
-  { id: "#P2", name: "Operativo",       form: true,  it: false, manto: false, addons: 1, descuento: "—"    },
-  { id: "#P3", name: "Técnico IT",      form: false, it: true,  manto: false, addons: 1, descuento: "—"    },
-  { id: "#P4", name: "Técnico Manto",   form: false, it: false, manto: true,  addons: 1, descuento: "—"    },
-  { id: "#P5", name: "Completo",        form: true,  it: true,  manto: false, addons: 2, descuento: "-10%" },
-  { id: "#P6", name: "Operativo+",      form: true,  it: false, manto: true,  addons: 2, descuento: "-10%" },
-  { id: "#P7", name: "Técnico Total",   form: false, it: true,  manto: true,  addons: 2, descuento: "-10%" },
-  { id: "#P8", name: "Total",           form: true,  it: true,  manto: true,  addons: 3, descuento: "-20%" },
+  { id: "#P1", name: "Esencial",   form: false, it: false, manto: false, addons: 0, descuento: "—"    },
+  { id: "#P2", name: "Equipo",     form: true,  it: false, manto: false, addons: 1, descuento: "—"    },
+  { id: "#P3", name: "Digital",    form: false, it: true,  manto: false, addons: 1, descuento: "—"    },
+  { id: "#P4", name: "Facilities", form: false, it: false, manto: true,  addons: 1, descuento: "—"    },
+  { id: "#P5", name: "Operativo",  form: true,  it: true,  manto: false, addons: 2, descuento: "-10%" },
+  { id: "#P6", name: "Operativo+", form: true,  it: false, manto: true,  addons: 2, descuento: "-10%" },
+  { id: "#P7", name: "Técnico",    form: false, it: true,  manto: true,  addons: 2, descuento: "-10%" },
+  { id: "#P8", name: "Total",      form: true,  it: true,  manto: true,  addons: 3, descuento: "-20%" },
 ];
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -351,7 +311,6 @@ export default function PricingQuiz() {
                   <th className="px-5 py-3 text-left text-[10px] font-semibold uppercase tracking-[1.5px] text-[var(--text-secondary)]">ID</th>
                   <th className="px-5 py-3 text-left text-[10px] font-semibold uppercase tracking-[1.5px] text-[var(--text-secondary)]">Plan</th>
                   <th className="px-4 py-3 text-center text-[10px] font-semibold uppercase tracking-[1.5px] text-[var(--text-secondary)]">Core</th>
-                  <th className="px-4 py-3 text-center text-[10px] font-semibold uppercase tracking-[1.5px] text-[var(--text-secondary)]">Analítica</th>
                   <th className="px-4 py-3 text-center text-[10px] font-semibold uppercase tracking-[1.5px] text-[var(--text-secondary)]">Formación</th>
                   <th className="px-4 py-3 text-center text-[10px] font-semibold uppercase tracking-[1.5px] text-[var(--text-secondary)]">IT</th>
                   <th className="px-4 py-3 text-center text-[10px] font-semibold uppercase tracking-[1.5px] text-[var(--text-secondary)]">Engineering</th>
@@ -371,7 +330,6 @@ export default function PricingQuiz() {
                     <td className="px-5 py-3 font-mono text-xs font-semibold text-[#185FA5]">{row.id}</td>
                     <td className="px-5 py-3 font-semibold text-[var(--text)]">{row.name}</td>
                     <td className="px-4 py-3 text-center"><Check active={true} /></td>
-                    <td className="px-4 py-3 text-center"><span className="text-[10px] font-semibold text-[var(--text-secondary)] opacity-60">add-on</span></td>
                     <td className="px-4 py-3 text-center"><Check active={row.form} /></td>
                     <td className="px-4 py-3 text-center"><Check active={row.it} /></td>
                     <td className="px-4 py-3 text-center"><Check active={row.manto} /></td>
@@ -385,7 +343,7 @@ export default function PricingQuiz() {
                 <tr style={{ background: "var(--row-bg)", borderTop: "1px solid var(--border)" }}>
                   <td className="px-5 py-3 font-mono text-xs font-semibold text-[#15803D]">#Pn-M</td>
                   <td className="px-5 py-3 text-sm font-semibold text-[var(--text)]">Cadena / Multihotel</td>
-                  <td colSpan={6} className="px-4 py-3 text-xs text-[var(--text-secondary)]">
+                  <td colSpan={5} className="px-4 py-3 text-xs text-[var(--text-secondary)]">
                     Cualquier plan (#P1–#P8) con tarifa por propiedad adicional
                   </td>
                   <td className="px-5 py-3 text-right font-mono text-xs text-[var(--text-secondary)]">Por definir</td>
@@ -398,7 +356,7 @@ export default function PricingQuiz() {
               className="px-5 py-4 text-xs text-[var(--text-secondary)]"
               style={{ borderTop: "1px solid var(--border)" }}
             >
-              Descuento bundle: 2 módulos add-on → −10% por módulo · 3 módulos add-on → −20% por módulo · El precio final depende también del nº de áreas, usuarios y nivel de acompañamiento.
+              <strong>Analítica</strong> (dashboards avanzados, tendencias, exportes) está disponible como add-on en cualquier plan · Descuento bundle: 2 módulos add-on → −10% por módulo · 3 módulos add-on → −20% por módulo · El precio final depende también del nº de áreas, usuarios y nivel de acompañamiento.
             </div>
           </div>
         )}
