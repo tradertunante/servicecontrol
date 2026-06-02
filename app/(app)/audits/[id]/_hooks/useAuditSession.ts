@@ -213,7 +213,7 @@ export function useAuditSession(runId: string | undefined) {
           : prev,
       );
 
-      router.push(`/audits/${run.id}/view`);
+      router.push(`/reports/audit/${run.id}`);
     } catch (submitError: unknown) {
       setError(getErrorMessage(submitError, "No se pudo enviar la auditoría."));
     } finally {

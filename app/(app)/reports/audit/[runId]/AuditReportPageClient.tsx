@@ -282,6 +282,17 @@ export default function AuditReportPageClient({
         }
 
         @media print {
+          [data-no-print] {
+            display: none !important;
+          }
+
+          main {
+            padding-top: 0 !important;
+            padding-left: 0 !important;
+            padding-right: 0 !important;
+            max-width: 100% !important;
+          }
+
           html,
           body {
             background: #fff !important;
@@ -292,8 +303,8 @@ export default function AuditReportPageClient({
           }
 
           body {
-            font-size: 11px !important;
-            line-height: 1.35 !important;
+            font-size: 9px !important;
+            line-height: 1.3 !important;
           }
 
           .report-no-print {
@@ -318,76 +329,80 @@ export default function AuditReportPageClient({
           .report-header-grid {
             display: grid !important;
             grid-template-columns: 1.5fr 0.9fr !important;
-            gap: 12px !important;
+            gap: 8px !important;
             align-items: start !important;
           }
 
           .report-kpi-grid {
             display: grid !important;
             grid-template-columns: repeat(4, 1fr) !important;
-            gap: 8px !important;
+            gap: 6px !important;
           }
 
           .report-section-row {
-            padding: 10px 12px !important;
-            border-radius: 10px !important;
+            padding: 6px 10px !important;
+            border-radius: 6px !important;
           }
 
           .report-card {
-            padding: 10px 12px !important;
-            border-radius: 10px !important;
+            padding: 7px 10px !important;
+            border-radius: 6px !important;
           }
 
           .report-title-xl {
-            font-size: 24px !important;
+            font-size: 17px !important;
             line-height: 1.1 !important;
             margin: 0 !important;
           }
 
           .report-title-lg {
-            font-size: 18px !important;
+            font-size: 13px !important;
             line-height: 1.15 !important;
-            margin: 0 0 8px 0 !important;
+            margin: 0 0 5px 0 !important;
           }
 
           .report-score-box {
-            padding: 14px !important;
-            border-radius: 12px !important;
+            padding: 8px 10px !important;
+            border-radius: 8px !important;
           }
 
           .report-score-value {
-            font-size: 34px !important;
-            line-height: 1 !important;
-            margin-top: 6px !important;
-          }
-
-          .report-kpi-value {
-            font-size: 22px !important;
+            font-size: 24px !important;
             line-height: 1 !important;
             margin-top: 4px !important;
           }
 
+          .report-kpi-value {
+            font-size: 16px !important;
+            line-height: 1 !important;
+            margin-top: 3px !important;
+          }
+
           .report-body-padding {
-            padding: 16px !important;
+            padding: 10px !important;
           }
 
           .report-mt-24 {
-            margin-top: 16px !important;
+            margin-top: 10px !important;
           }
 
           .report-mt-28 {
-            margin-top: 18px !important;
+            margin-top: 12px !important;
           }
 
           .report-badge {
-            padding: 3px 8px !important;
+            padding: 2px 6px !important;
             border-radius: 999px !important;
-            font-size: 10px !important;
+            font-size: 8px !important;
             font-weight: 900 !important;
           }
 
+          .audit-report-main {
+            padding: 0 !important;
+          }
+
           .training-signature-box {
-            min-height: 110px !important;
+            min-height: 70px !important;
           }
 
           .editable-training-input,
@@ -400,7 +415,7 @@ export default function AuditReportPageClient({
           }
 
           .editable-training-textarea {
-            min-height: 120px !important;
+            min-height: 80px !important;
             resize: none !important;
           }
         }
@@ -521,7 +536,7 @@ export default function AuditReportPageClient({
                 <div>
                   <strong>Ejecutada:</strong>{" "}
                   {report.run.executed_at
-                    ? new Date(report.run.executed_at).toLocaleString()
+                    ? new Date(report.run.executed_at).toLocaleString("es-ES")
                     : "No ejecutada"}
                 </div>
               </div>
@@ -742,10 +757,7 @@ export default function AuditReportPageClient({
           </section>
 
           <section className="report-mt-28" style={{ marginTop: 28 }}>
-            <h2
-              className="report-title-lg"
-              style={{ margin: "0 0 14px 0", fontSize: 24 }}
-            >
+            <h2 className="report-title-lg" style={{ margin: "0 0 10px 0", fontSize: 24 }}>
               Hallazgos críticos
             </h2>
 
@@ -754,62 +766,169 @@ export default function AuditReportPageClient({
                 No hay preguntas en FAIL.
               </div>
             ) : (
-              <div style={{ display: "grid", gap: 12 }}>
+              <div style={{ display: "grid", gap: 6 }}>
                 {failedItems.map((item, idx) => (
                   <div
                     key={item.question_id}
-                    className="report-break-avoid report-card"
-                    style={sectionCardStyle()}
+                    className="report-break-avoid"
+                    style={{
+                      border: "1px solid rgba(220,38,38,0.15)",
+                      borderRadius: 10,
+                      background: "rgba(220,38,38,0.03)",
+                      overflow: "hidden",
+                    }}
                   >
                     <div
                       style={{
                         display: "flex",
                         justifyContent: "space-between",
-                        gap: 12,
-                        alignItems: "flex-start",
+                        alignItems: "center",
+                        gap: 10,
+                        padding: "10px 14px",
                         flexWrap: "wrap",
                       }}
                     >
-                      <div style={{ flex: "1 1 600px" }}>
-                        <div
+                      <div style={{ display: "flex", alignItems: "baseline", gap: 8, flex: 1, minWidth: 0 }}>
+                        <span
                           style={{
-                            fontSize: 12,
+                            fontSize: 10,
                             fontWeight: 900,
-                            opacity: 0.55,
-                            marginBottom: 6,
+                            opacity: 0.45,
+                            textTransform: "uppercase",
+                            letterSpacing: 0.3,
+                            whiteSpace: "nowrap",
+                            flexShrink: 0,
+                            minWidth: 108,
                           }}
                         >
-                          {item.section_name}
-                        </div>
-                        <div style={{ fontWeight: 900, fontSize: 17 }}>
-                          {idx + 1}. {item.question_text}
-                        </div>
+                          {idx + 1}. {item.section_name}
+                        </span>
+                        <span style={{ fontSize: 14, fontWeight: 600, color: "#111" }}>
+                          {item.question_text}
+                        </span>
                       </div>
-
                       <span
                         className="report-badge"
                         style={{
                           ...badgeStyle(item.status),
-                          padding: "5px 10px",
+                          padding: "3px 9px",
                           borderRadius: 999,
                           fontWeight: 900,
-                          fontSize: 12,
+                          fontSize: 11,
+                          flexShrink: 0,
                         }}
                       >
                         {item.status}
                       </span>
                     </div>
 
-                    <div
+                    {item.comment ? (
+                      <div
+                        style={{
+                          padding: "7px 14px 10px",
+                          borderTop: "1px solid rgba(220,38,38,0.10)",
+                          fontSize: 13,
+                          color: "#7f1d1d",
+                          lineHeight: 1.5,
+                        }}
+                      >
+                        {item.comment}
+                      </div>
+                    ) : null}
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+
+          <section className="report-mt-28" style={{ marginTop: 28 }}>
+            <h2 className="report-title-lg" style={{ margin: "0 0 10px 0", fontSize: 24 }}>
+              Estándares aprobados
+            </h2>
+
+            {passedItems.length === 0 ? (
+              <div className="report-card" style={sectionCardStyle()}>
+                No hay ítems en Pass.
+              </div>
+            ) : (
+              <div style={{ display: "grid", gap: 6 }}>
+                {passedItems.map((item) => (
+                  <div
+                    key={item.question_id}
+                    className="report-break-avoid"
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      gap: 10,
+                      padding: "10px 14px",
+                      borderRadius: 10,
+                      border: "1px solid rgba(22,163,74,0.15)",
+                      background: "rgba(22,163,74,0.03)",
+                      flexWrap: "wrap",
+                    }}
+                  >
+                    <div style={{ display: "flex", alignItems: "baseline", gap: 8, flex: 1, minWidth: 0 }}>
+                      <span
+                        style={{
+                          fontSize: 10,
+                          fontWeight: 900,
+                          opacity: 0.45,
+                          textTransform: "uppercase",
+                          letterSpacing: 0.3,
+                          whiteSpace: "nowrap",
+                          flexShrink: 0,
+                          minWidth: 108,
+                        }}
+                      >
+                        {item.section_name}
+                      </span>
+                      <span style={{ fontSize: 14, fontWeight: 600, color: "#111" }}>
+                        {item.question_text}
+                      </span>
+                    </div>
+                    <span
+                      className="report-badge"
                       style={{
-                        marginTop: 10,
-                        padding: 12,
-                        borderRadius: 12,
-                        background: "rgba(0,0,0,0.03)",
-                        lineHeight: 1.6,
+                        ...badgeStyle("OK"),
+                        padding: "3px 9px",
+                        borderRadius: 999,
+                        fontWeight: 900,
+                        fontSize: 11,
+                        flexShrink: 0,
                       }}
                     >
-                      <strong>Comentario:</strong> {item.comment ?? "Sin comentario."}
+                      Pass
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+
+          <section className="report-mt-28" style={{ marginTop: 28 }}>
+            <h2
+              className="report-title-lg"
+              style={{ margin: "0 0 14px 0", fontSize: 24 }}
+            >
+              Timeline
+            </h2>
+
+            {report.timeline.length === 0 ? (
+              <div className="report-card" style={sectionCardStyle()}>
+                Sin eventos registrados.
+              </div>
+            ) : (
+              <div style={{ display: "grid", gap: 10 }}>
+                {report.timeline.map((event, idx) => (
+                  <div
+                    key={`${event.type}-${idx}`}
+                    className="report-break-avoid report-card"
+                    style={sectionCardStyle()}
+                  >
+                    <div style={{ fontWeight: 900 }}>{event.label}</div>
+                    <div style={{ marginTop: 6, opacity: 0.8 }}>
+                      {event.date ? new Date(event.date).toLocaleString("es-ES") : "-"}
                     </div>
                   </div>
                 ))}
@@ -968,101 +1087,6 @@ export default function AuditReportPageClient({
               </div>
             </section>
           ) : null}
-
-          <section className="report-mt-28" style={{ marginTop: 28 }}>
-            <h2
-              className="report-title-lg"
-              style={{ margin: "0 0 14px 0", fontSize: 24 }}
-            >
-              Estándares aprobados
-            </h2>
-
-            {passedItems.length === 0 ? (
-              <div className="report-card" style={sectionCardStyle()}>
-                No hay ítems en Pass.
-              </div>
-            ) : (
-              <div style={{ display: "grid", gap: 8 }}>
-                {passedItems.map((item) => (
-                  <div
-                    key={item.question_id}
-                    className="report-break-avoid report-card"
-                    style={{
-                      ...sectionCardStyle(),
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                      gap: 12,
-                      flexWrap: "wrap",
-                      padding: "12px 16px",
-                    }}
-                  >
-                    <div style={{ flex: "1 1 500px" }}>
-                      <div
-                        style={{
-                          fontSize: 11,
-                          fontWeight: 900,
-                          opacity: 0.5,
-                          marginBottom: 4,
-                          textTransform: "uppercase",
-                          letterSpacing: 0.4,
-                        }}
-                      >
-                        {item.section_name}
-                      </div>
-                      <div style={{ fontWeight: 700, fontSize: 15 }}>
-                        {item.question_text}
-                      </div>
-                    </div>
-
-                    <span
-                      className="report-badge"
-                      style={{
-                        ...badgeStyle("OK"),
-                        padding: "4px 10px",
-                        borderRadius: 999,
-                        fontWeight: 900,
-                        fontSize: 12,
-                        flexShrink: 0,
-                      }}
-                    >
-                      ✓ Pass
-                    </span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </section>
-
-          <section className="report-mt-28" style={{ marginTop: 28 }}>
-            <h2
-              className="report-title-lg"
-              style={{ margin: "0 0 14px 0", fontSize: 24 }}
-            >
-              Timeline
-            </h2>
-
-            {report.timeline.length === 0 ? (
-              <div className="report-card" style={sectionCardStyle()}>
-                Sin eventos registrados.
-              </div>
-            ) : (
-              <div style={{ display: "grid", gap: 10 }}>
-                {report.timeline.map((event, idx) => (
-                  <div
-                    key={`${event.type}-${idx}`}
-                    className="report-break-avoid report-card"
-                    style={sectionCardStyle()}
-                  >
-                    <div style={{ fontWeight: 900 }}>{event.label}</div>
-                    <div style={{ marginTop: 6, opacity: 0.8 }}>
-                      {event.date ? new Date(event.date).toLocaleString() : "-"}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </section>
         </div>
       </div>
     </main>

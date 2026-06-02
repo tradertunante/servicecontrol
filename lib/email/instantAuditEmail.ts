@@ -135,7 +135,7 @@ export async function sendInstantAuditEmail(data: InstantAuditEmailData) {
   const areaName = report.area?.name ?? "Área";
   const templateName = report.template?.name ?? "Auditoría";
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://app.servicecontrol.io";
-  const reportUrl = `${appUrl}/audits/${report.run.id}/view`;
+  const reportUrl = `${appUrl}/reports/audit/${report.run.id}`;
 
   const dateStr = report.run.executed_at
     ? new Date(report.run.executed_at).toLocaleDateString("es-ES", {
