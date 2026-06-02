@@ -47,14 +47,14 @@ const TIERS: Tier[] = [
   {
     key: "operaciones",
     name: "Operaciones",
-    tagline: "Vincula cada fallo detectado con formación para el equipo",
+    tagline: "Detecta, forma y analiza en un solo sistema",
     persona: "Hoteles que quieren cerrar el ciclo auditoría → formación",
-    moduleGroups: [["Core", "Formación"]],
+    moduleGroups: [["Core", "Formación", "Analítica"]],
     features: [
       "Todo lo del plan Auditorías",
       "Fallos vinculados a planes de formación del equipo",
       "Asignación de formaciones con seguimiento hasta completado",
-      "Reducción de fallos recurrentes por área",
+      "Dashboards avanzados, tendencias y exportes por área",
       "−10% por combinar módulos",
     ],
     popular: true,
@@ -64,7 +64,7 @@ const TIERS: Tier[] = [
     name: "Control Total",
     tagline: "Toda la operación bajo un solo sistema",
     persona: "Propiedades con operativa compleja o equipos multidepartamento",
-    moduleGroups: [["Core", "Formación"], ["IT", "Mantenimiento"]],
+    moduleGroups: [["Core", "Formación", "Analítica"], ["IT", "Mantenimiento"]],
     features: [
       "Todo lo del plan Operaciones",
       "IT y Mantenimiento gestionan sus propios backlogs",
@@ -265,37 +265,6 @@ function TierCard({
   );
 }
 
-function AnaliticaBanner() {
-  return (
-    <div
-      className="flex flex-wrap items-center justify-between gap-4 rounded-[16px] p-5"
-      style={{ background: "var(--row-bg)", border: "1px solid var(--border)" }}
-    >
-      <div>
-        <div className="mb-1 flex items-center gap-2">
-          <span
-            className="rounded-full px-2.5 py-0.5 text-xs font-semibold"
-            style={{ background: "#F0FDF4", color: "#15803D", border: "1px solid #BBF7D0" }}
-          >
-            Add-on
-          </span>
-          <span className="text-sm font-bold text-[var(--text)]">Analítica avanzada</span>
-        </div>
-        <p className="text-sm text-[var(--text-secondary)]">
-          Disponible en cualquier plan · Tendencias, comparativas entre áreas y exportes detallados. Descuento automático al combinar con otros módulos.
-        </p>
-      </div>
-      <Link
-        href="/demo"
-        className="shrink-0 rounded-[8px] px-4 py-2 text-sm font-semibold text-[var(--text)] transition hover:text-[#185FA5]"
-        style={{ border: "1px solid var(--border)" }}
-      >
-        Preguntar por Analítica
-      </Link>
-    </div>
-  );
-}
-
 function MultihotelBanner() {
   return (
     <div
@@ -409,7 +378,6 @@ export default function PricingQuiz() {
 
       {/* ── Add-ons ── */}
       <div className="space-y-3">
-        <AnaliticaBanner />
         <MultihotelBanner />
       </div>
 
