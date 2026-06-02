@@ -111,6 +111,7 @@ export default function HotelHeader() {
     <header
       ref={headerRef}
       data-onboarding="header"
+      data-no-print
       className="fixed top-0 left-0 right-0 z-[1000] bg-[#0C1F44] border-b border-white/10"
       style={{ height: 56 }}
     >
