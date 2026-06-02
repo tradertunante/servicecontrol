@@ -5,362 +5,539 @@ import { Link } from "@/i18n/navigation";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type Answers = {
-  multihotel: boolean | null;
-  analitica: boolean | null;
+type BillingPeriod = "monthly" | "annual";
+type TierKey = "auditoria" | "operaciones" | "control";
+
+type Tier = {
+  key: TierKey;
+  name: string;
+  tagline: string;
+  persona: string;
+  modules: string[];
+  features: string[];
+  popular: boolean;
+};
+
+type QuizStep = "q_formaciones" | "q_it" | "q_manto" | "result";
+
+type QuizAnswers = {
   formaciones: boolean | null;
   it: boolean | null;
   manto: boolean | null;
 };
 
-type Step = "q_multihotel" | "q_analitica" | "q_formaciones" | "q_it" | "q_manto" | "result";
+// ─── Data ─────────────────────────────────────────────────────────────────────
 
-// ─── Plan logic ───────────────────────────────────────────────────────────────
-
-type PlanKey = "P1" | "P2" | "P3" | "P4" | "P5" | "P6" | "P7" | "P8";
-
-type PlanDef = {
-  id: string;
-  name: string;
-  modules: string[];
-  highlight: boolean;
-};
-
-const PLANS: Record<PlanKey, PlanDef> = {
-  P1: { id: "#P1", name: "Esencial",   modules: ["Core"],                              highlight: false },
-  P2: { id: "#P2", name: "Equipo",     modules: ["Core", "Formación"],                highlight: false },
-  P3: { id: "#P3", name: "Digital",    modules: ["Core", "IT"],                       highlight: false },
-  P4: { id: "#P4", name: "Facilities", modules: ["Core", "Engineering"],              highlight: false },
-  P5: { id: "#P5", name: "Operativo",  modules: ["Core", "Formación", "IT"],          highlight: true  },
-  P6: { id: "#P6", name: "Operativo+", modules: ["Core", "Formación", "Engineering"], highlight: false },
-  P7: { id: "#P7", name: "Técnico",    modules: ["Core", "IT", "Engineering"],        highlight: false },
-  P8: { id: "#P8", name: "Total",      modules: ["Core", "Formación", "IT", "Engineering"], highlight: true },
-};
-
-function getPlan(a: Answers): PlanDef {
-  const { formaciones: f, it, manto: m } = a;
-  if (!f && !it && !m) return PLANS.P1;
-  if (f && !it && !m) return PLANS.P2;
-  if (!f && it && !m) return PLANS.P3;
-  if (!f && !it && m) return PLANS.P4;
-  if (f && it && !m) return PLANS.P5;
-  if (f && !it && m) return PLANS.P6;
-  if (!f && it && m) return PLANS.P7;
-  return PLANS.P8;
-}
-
-// ─── Quiz steps ───────────────────────────────────────────────────────────────
-
-const STEPS: { key: Step; question: string; hint: string; yes: string; no: string }[] = [
+const TIERS: Tier[] = [
   {
-    key: "q_multihotel",
-    question: "¿Gestionas varios hoteles o propiedades?",
-    hint: "Cadena hotelera, grupo o varias propiedades bajo una misma operación.",
-    yes: "Sí, varios hoteles",
-    no: "No, un solo hotel",
+    key: "auditoria",
+    name: "Auditorías",
+    tagline: "Digitaliza y estandariza tus inspecciones",
+    persona: "Hoteles que dan sus primeros pasos en auditoría digital",
+    modules: ["Core"],
+    features: [
+      "Checklists digitales por área y departamento",
+      "Detección y seguimiento de incidencias",
+      "Puntuación automática por auditoría",
+      "Histórico y comparativas por periodo",
+      "Reauditorías para verificar correcciones",
+    ],
+    popular: false,
   },
   {
-    key: "q_analitica",
-    question: "¿Quieres dashboards avanzados con tendencias y comparativas por área?",
-    hint: "Analítica profundiza en tus datos de auditoría: evolución de scores, áreas con más fallos recurrentes, comparativas entre periodos y exportes detallados.",
-    yes: "Sí, quiero analítica avanzada",
-    no: "Con los scores básicos es suficiente",
+    key: "operaciones",
+    name: "Operaciones",
+    tagline: "Cierra el ciclo: detecta, forma y resuelve",
+    persona: "Hoteles que quieren que cada fallo genere acción inmediata",
+    modules: ["Core", "Formación", "IT"],
+    features: [
+      "Todo lo del plan Auditorías",
+      "Fallos vinculados a planes de formación del equipo",
+      "IT gestiona su propio backlog de incidencias",
+      "Seguimiento hasta cierre por departamento",
+      "−10% por combinar módulos",
+    ],
+    popular: true,
   },
+  {
+    key: "control",
+    name: "Control Total",
+    tagline: "Toda la operación bajo un solo sistema",
+    persona: "Propiedades con operativa compleja o equipos multidepartamento",
+    modules: ["Core", "Formación", "IT", "Mantenimiento"],
+    features: [
+      "Todo lo del plan Operaciones",
+      "Mantenimiento gestiona su backlog de obras y averías",
+      "Trazabilidad auditoría → formación → mantenimiento",
+      "Dashboard 360° de toda la operación",
+      "−20% por bundle completo",
+    ],
+    popular: false,
+  },
+];
+
+const QUIZ_STEPS: {
+  key: QuizStep;
+  question: string;
+  hint: string;
+  yes: string;
+  no: string;
+}[] = [
   {
     key: "q_formaciones",
-    question: "¿Quieres que las desviaciones detectadas generen planes de formación para el equipo?",
-    hint: "El módulo de formación vincula los fallos recurrentes con acciones formativas: asigna formaciones al equipo y verifica que se completan.",
+    question: "¿Quieres que los fallos detectados generen planes de formación para el equipo?",
+    hint: "Cuando la auditoría detecta un fallo recurrente, el sistema asigna una formación al responsable y verifica que se completa.",
     yes: "Sí, me interesa",
     no: "No por ahora",
   },
   {
     key: "q_it",
-    question: "¿Quieres que IT gestione su propio backlog de pendientes dentro del sistema?",
-    hint: "IT recibe los FAILs que les corresponden, los gestiona y cierra desde su vista propia.",
+    question: "¿Quieres que IT gestione su propio backlog de incidencias dentro del sistema?",
+    hint: "IT recibe los fallos que les corresponden, los gestiona desde su vista propia y los cierra cuando están resueltos.",
     yes: "Sí",
     no: "No",
   },
   {
     key: "q_manto",
-    question: "¿Quieres incluir a Mantenimiento / Engineering en el seguimiento de pendientes?",
-    hint: "Igual que IT pero para el departamento de mantenimiento e ingeniería.",
+    question: "¿Quieres incluir a Mantenimiento en el seguimiento de obras y averías?",
+    hint: "Mantenimiento recibe los fallos de su área, gestiona el trabajo y cierra cada incidencia desde su propia vista.",
     yes: "Sí",
     no: "No",
   },
 ];
 
-// ─── Combination table data ────────────────────────────────────────────────────
+// ─── Logic ────────────────────────────────────────────────────────────────────
 
-const COMBO_TABLE = [
-  { id: "#P1", name: "Esencial",   form: false, it: false, manto: false, addons: 0, descuento: "—"    },
-  { id: "#P2", name: "Equipo",     form: true,  it: false, manto: false, addons: 1, descuento: "—"    },
-  { id: "#P3", name: "Digital",    form: false, it: true,  manto: false, addons: 1, descuento: "—"    },
-  { id: "#P4", name: "Facilities", form: false, it: false, manto: true,  addons: 1, descuento: "—"    },
-  { id: "#P5", name: "Operativo",  form: true,  it: true,  manto: false, addons: 2, descuento: "-10%" },
-  { id: "#P6", name: "Operativo+", form: true,  it: false, manto: true,  addons: 2, descuento: "-10%" },
-  { id: "#P7", name: "Técnico",    form: false, it: true,  manto: true,  addons: 2, descuento: "-10%" },
-  { id: "#P8", name: "Total",      form: true,  it: true,  manto: true,  addons: 3, descuento: "-20%" },
-];
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-function Check({ active }: { active: boolean }) {
-  if (!active) return <span className="text-[var(--text-secondary)] opacity-30">·</span>;
-  return <span className="text-[#185FA5] font-bold">✓</span>;
+function getRecommendedTier(a: QuizAnswers): TierKey {
+  if (a.manto) return "control";
+  if (!a.formaciones && !a.it) return "auditoria";
+  return "operaciones";
 }
 
-// ─── Main component ───────────────────────────────────────────────────────────
+// ─── Sub-components ───────────────────────────────────────────────────────────
 
-export default function PricingQuiz() {
-  const [step, setStep] = useState<Step>("q_multihotel");
-  const [answers, setAnswers] = useState<Answers>({
-    multihotel: null,
-    analitica: null,
-    formaciones: null,
-    it: null,
-    manto: null,
-  });
-  const [showTable, setShowTable] = useState(false);
+function ModuleBadge({
+  label,
+  inverted = false,
+}: {
+  label: string;
+  inverted?: boolean;
+}) {
+  return (
+    <span
+      className="rounded-full px-2.5 py-0.5 text-xs font-medium"
+      style={
+        inverted
+          ? { background: "rgba(255,255,255,0.18)", color: "white", border: "1px solid rgba(255,255,255,0.28)" }
+          : { background: "#EBF3FC", color: "#185FA5", border: "1px solid #C3DCEE" }
+      }
+    >
+      {label}
+    </span>
+  );
+}
 
-  const currentStepIndex = STEPS.findIndex((s) => s.key === step);
-  const currentStep = STEPS[currentStepIndex];
-
-  function answer(value: boolean) {
-    const key = currentStep.key.replace("q_", "") as keyof Answers;
-    const next = STEPS[currentStepIndex + 1];
-    setAnswers((prev) => ({ ...prev, [key]: value }));
-    if (next) {
-      setStep(next.key);
-    } else {
-      setStep("result");
-    }
-  }
-
-  function restart() {
-    setStep("q_multihotel");
-    setAnswers({ multihotel: null, analitica: null, formaciones: null, it: null, manto: null });
-  }
-
-  const plan = step === "result" ? getPlan(answers) : null;
-  const isMultihotel = answers.multihotel === true;
-  const hasAnalitica = answers.analitica === true;
+function TierCard({
+  tier,
+  period,
+  highlighted,
+}: {
+  tier: Tier;
+  period: BillingPeriod;
+  highlighted: boolean;
+}) {
+  const isPop = tier.popular;
+  const isHighlighted = highlighted && !isPop;
 
   return (
-    <div className="space-y-10">
+    <div
+      className="relative flex flex-col rounded-[24px] p-6 lg:p-7"
+      style={{
+        background: isPop ? "#185FA5" : "var(--card-bg)",
+        border: isPop
+          ? "1px solid #185FA5"
+          : isHighlighted
+          ? "2px solid #185FA5"
+          : "1px solid var(--border)",
+        boxShadow: isPop
+          ? "0 8px 32px rgba(24,95,165,0.25)"
+          : isHighlighted
+          ? "0 4px 20px rgba(24,95,165,0.12)"
+          : "var(--shadow-lg)",
+      }}
+    >
+      {isPop && (
+        <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 whitespace-nowrap">
+          <span className="rounded-full bg-white px-4 py-1 text-xs font-bold text-[#185FA5] shadow-sm">
+            Más popular
+          </span>
+        </div>
+      )}
+      {isHighlighted && (
+        <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 whitespace-nowrap">
+          <span className="rounded-full px-4 py-1 text-xs font-bold" style={{ background: "#185FA5", color: "white" }}>
+            Recomendado para ti
+          </span>
+        </div>
+      )}
 
-      {/* Quiz card */}
+      {/* Persona */}
       <div
-        className="rounded-[28px] p-8 lg:p-10"
-        style={{ background: "var(--card-bg)", border: "1px solid var(--border)", boxShadow: "var(--shadow-lg)" }}
+        className="mb-3 text-[10px] font-semibold uppercase tracking-[1.5px] leading-4"
+        style={{ color: isPop ? "rgba(255,255,255,0.65)" : "var(--text-secondary)" }}
       >
-        {step !== "result" ? (
-          <>
-            {/* Progress */}
-            <div className="mb-8 flex items-center gap-2">
-              {STEPS.map((s, i) => (
-                <div
-                  key={s.key}
-                  className="h-1 flex-1 rounded-full transition-all"
-                  style={{
-                    background: i <= currentStepIndex ? "#185FA5" : "var(--border)",
-                  }}
-                />
-              ))}
-            </div>
-
-            {/* Step label */}
-            <div className="text-[11px] font-semibold uppercase tracking-[2px] text-[var(--text-secondary)]">
-              Pregunta {currentStepIndex + 1} de {STEPS.length}
-            </div>
-
-            {/* Question */}
-            <h2 className="mt-3 text-xl font-bold text-[var(--text)] lg:text-2xl">
-              {currentStep.question}
-            </h2>
-            <p className="mt-3 text-sm leading-6 text-[var(--text-secondary)]">
-              {currentStep.hint}
-            </p>
-
-            {/* Buttons */}
-            <div className="mt-8 grid gap-3 sm:grid-cols-2">
-              <button
-                onClick={() => answer(true)}
-                className="rounded-[12px] px-6 py-4 text-left text-sm font-semibold text-[var(--text)] transition hover:border-[#185FA5]"
-                style={{ background: "var(--row-bg)", border: "1px solid var(--border)" }}
-              >
-                <span className="mr-2 text-[#185FA5]">→</span>
-                {currentStep.yes}
-              </button>
-              <button
-                onClick={() => answer(false)}
-                className="rounded-[12px] px-6 py-4 text-left text-sm font-semibold text-[var(--text)] transition hover:border-[#185FA5]"
-                style={{ background: "var(--row-bg)", border: "1px solid var(--border)" }}
-              >
-                <span className="mr-2 text-[var(--text-secondary)]">→</span>
-                {currentStep.no}
-              </button>
-            </div>
-          </>
-        ) : (
-          // Result
-          plan && (
-            <>
-              <div className="text-[11px] font-semibold uppercase tracking-[2px] text-[#185FA5]">
-                Plan recomendado
-              </div>
-
-              <div className="mt-4 flex flex-wrap items-start justify-between gap-4">
-                <div>
-                  <h2 className="text-3xl font-extrabold tracking-tight text-[var(--text)]">
-                    {plan.name}
-                    {isMultihotel && <span className="ml-3 text-lg font-semibold text-[var(--text-secondary)]">· Cadena</span>}
-                  </h2>
-                  <div className="mt-1 font-mono text-sm text-[var(--text-secondary)]">
-                    {plan.id}{isMultihotel ? "-M" : ""}
-                  </div>
-                </div>
-                <div
-                  className="rounded-[12px] px-5 py-3 text-right"
-                  style={{ background: "var(--row-bg)", border: "1px solid var(--border)" }}
-                >
-                  <div className="text-[10px] font-semibold uppercase tracking-[2px] text-[var(--text-secondary)]">Precio</div>
-                  <div className="mt-1 text-lg font-bold text-[var(--text)]">Por definir</div>
-                </div>
-              </div>
-
-              {/* Modules */}
-              <div className="mt-8 flex flex-wrap gap-2">
-                {plan.modules.map((m) => (
-                  <span
-                    key={m}
-                    className="rounded-full px-4 py-1.5 text-sm font-medium"
-                    style={{ background: "#EBF3FC", color: "#185FA5", border: "1px solid #C3DCEE" }}
-                  >
-                    {m}
-                  </span>
-                ))}
-                {hasAnalitica && (
-                  <span
-                    className="rounded-full px-4 py-1.5 text-sm font-medium"
-                    style={{ background: "#EBF3FC", color: "#185FA5", border: "1px solid #C3DCEE" }}
-                  >
-                    Analítica
-                  </span>
-                )}
-                {isMultihotel && (
-                  <span
-                    className="rounded-full px-4 py-1.5 text-sm font-medium"
-                    style={{ background: "#F0FDF4", color: "#15803D", border: "1px solid #BBF7D0" }}
-                  >
-                    Multihotel / Cadena
-                  </span>
-                )}
-              </div>
-
-              {/* Bundle note */}
-              {plan.modules.length >= 3 && (
-                <div
-                  className="mt-6 rounded-[10px] px-5 py-3 text-sm text-[var(--text-secondary)]"
-                  style={{ background: "var(--row-bg)", border: "1px solid var(--border)" }}
-                >
-                  Con {plan.modules.length - 1} módulos adicionales aplica descuento bundle sobre precio unitario de cada módulo.
-                </div>
-              )}
-
-              {/* CTAs */}
-              <div className="mt-8 flex flex-wrap gap-3">
-                <Link
-                  href="/demo"
-                  className="rounded-[8px] bg-[#185FA5] px-6 py-3 text-sm font-semibold text-white transition hover:bg-[#378ADD]"
-                >
-                  Concertar cita
-                </Link>
-                <button
-                  onClick={restart}
-                  className="rounded-[8px] px-6 py-3 text-sm font-semibold text-[var(--text-secondary)] transition hover:text-[var(--text)]"
-                  style={{ border: "1px solid var(--border)" }}
-                >
-                  Volver a empezar
-                </button>
-              </div>
-            </>
-          )
-        )}
+        {tier.persona}
       </div>
 
-      {/* Combination table */}
-      <div>
-        <button
-          onClick={() => setShowTable((v) => !v)}
-          className="flex items-center gap-2 text-sm font-semibold text-[var(--text-secondary)] transition hover:text-[var(--text)]"
+      {/* Name + tagline */}
+      <h3
+        className="text-2xl font-extrabold tracking-tight"
+        style={{ color: isPop ? "white" : "var(--text)" }}
+      >
+        {tier.name}
+      </h3>
+      <p
+        className="mt-1 text-sm font-medium"
+        style={{ color: isPop ? "rgba(255,255,255,0.8)" : "var(--text-secondary)" }}
+      >
+        {tier.tagline}
+      </p>
+
+      {/* Price box */}
+      <div
+        className="my-5 rounded-[12px] px-4 py-3"
+        style={{
+          background: isPop ? "rgba(255,255,255,0.12)" : "var(--row-bg)",
+          border: isPop ? "1px solid rgba(255,255,255,0.2)" : "1px solid var(--border)",
+        }}
+      >
+        <div
+          className="text-[10px] font-semibold uppercase tracking-[1.5px]"
+          style={{ color: isPop ? "rgba(255,255,255,0.55)" : "var(--text-secondary)" }}
         >
-          <span
-            className="flex h-5 w-5 items-center justify-center rounded-full text-xs transition"
-            style={{ border: "1px solid var(--border)" }}
+          Precio / mes
+        </div>
+        <div
+          className="mt-0.5 text-lg font-bold"
+          style={{ color: isPop ? "white" : "var(--text)" }}
+        >
+          Por definir
+        </div>
+        {period === "annual" && (
+          <div
+            className="mt-0.5 text-xs"
+            style={{ color: isPop ? "rgba(255,255,255,0.6)" : "var(--text-secondary)" }}
           >
-            {showTable ? "−" : "+"}
-          </span>
-          Tabla de combinaciones y precios de referencia
-        </button>
-
-        {showTable && (
-          <div className="mt-5 overflow-x-auto rounded-[20px]" style={{ border: "1px solid var(--border)" }}>
-            <table className="w-full min-w-[640px] text-sm">
-              <thead>
-                <tr style={{ background: "var(--row-bg)", borderBottom: "1px solid var(--border)" }}>
-                  <th className="px-5 py-3 text-left text-[10px] font-semibold uppercase tracking-[1.5px] text-[var(--text-secondary)]">ID</th>
-                  <th className="px-5 py-3 text-left text-[10px] font-semibold uppercase tracking-[1.5px] text-[var(--text-secondary)]">Plan</th>
-                  <th className="px-4 py-3 text-center text-[10px] font-semibold uppercase tracking-[1.5px] text-[var(--text-secondary)]">Core</th>
-                  <th className="px-4 py-3 text-center text-[10px] font-semibold uppercase tracking-[1.5px] text-[var(--text-secondary)]">Formación</th>
-                  <th className="px-4 py-3 text-center text-[10px] font-semibold uppercase tracking-[1.5px] text-[var(--text-secondary)]">IT</th>
-                  <th className="px-4 py-3 text-center text-[10px] font-semibold uppercase tracking-[1.5px] text-[var(--text-secondary)]">Engineering</th>
-                  <th className="px-4 py-3 text-center text-[10px] font-semibold uppercase tracking-[1.5px] text-[var(--text-secondary)]">Descuento</th>
-                  <th className="px-5 py-3 text-right text-[10px] font-semibold uppercase tracking-[1.5px] text-[var(--text-secondary)]">Precio/mes</th>
-                </tr>
-              </thead>
-              <tbody>
-                {COMBO_TABLE.map((row, i) => (
-                  <tr
-                    key={row.id}
-                    style={{
-                      borderBottom: i < COMBO_TABLE.length - 1 ? "1px solid var(--border)" : undefined,
-                      background: row.addons >= 2 ? "rgba(24,95,165,0.03)" : undefined,
-                    }}
-                  >
-                    <td className="px-5 py-3 font-mono text-xs font-semibold text-[#185FA5]">{row.id}</td>
-                    <td className="px-5 py-3 font-semibold text-[var(--text)]">{row.name}</td>
-                    <td className="px-4 py-3 text-center"><Check active={true} /></td>
-                    <td className="px-4 py-3 text-center"><Check active={row.form} /></td>
-                    <td className="px-4 py-3 text-center"><Check active={row.it} /></td>
-                    <td className="px-4 py-3 text-center"><Check active={row.manto} /></td>
-                    <td className="px-4 py-3 text-center text-xs font-semibold" style={{ color: row.descuento !== "—" ? "#15803D" : "var(--text-secondary)" }}>
-                      {row.descuento}
-                    </td>
-                    <td className="px-5 py-3 text-right font-mono text-xs text-[var(--text-secondary)]">Por definir</td>
-                  </tr>
-                ))}
-                {/* Multihotel row note */}
-                <tr style={{ background: "var(--row-bg)", borderTop: "1px solid var(--border)" }}>
-                  <td className="px-5 py-3 font-mono text-xs font-semibold text-[#15803D]">#Pn-M</td>
-                  <td className="px-5 py-3 text-sm font-semibold text-[var(--text)]">Cadena / Multihotel</td>
-                  <td colSpan={5} className="px-4 py-3 text-xs text-[var(--text-secondary)]">
-                    Cualquier plan (#P1–#P8) con tarifa por propiedad adicional
-                  </td>
-                  <td className="px-5 py-3 text-right font-mono text-xs text-[var(--text-secondary)]">Por definir</td>
-                </tr>
-              </tbody>
-            </table>
-
-            {/* Legend */}
-            <div
-              className="px-5 py-4 text-xs text-[var(--text-secondary)]"
-              style={{ borderTop: "1px solid var(--border)" }}
-            >
-              <strong>Analítica</strong> (dashboards avanzados, tendencias, exportes) está disponible como add-on en cualquier plan · Descuento bundle: 2 módulos add-on → −10% por módulo · 3 módulos add-on → −20% por módulo · El precio final depende también del nº de áreas, usuarios y nivel de acompañamiento.
-            </div>
+            Con pago anual · ~15% de descuento
           </div>
         )}
       </div>
+
+      {/* Module badges */}
+      <div className="mb-5 flex flex-wrap gap-1.5">
+        {tier.modules.map((m) => (
+          <ModuleBadge key={m} label={m} inverted={isPop} />
+        ))}
+      </div>
+
+      {/* Feature list */}
+      <ul className="mb-6 flex-1 space-y-2.5">
+        {tier.features.map((f) => (
+          <li key={f} className="flex items-start gap-2">
+            <svg
+              className="mt-0.5 h-4 w-4 shrink-0"
+              viewBox="0 0 16 16"
+              fill="none"
+              style={{ color: isPop ? "rgba(255,255,255,0.85)" : "#185FA5" }}
+            >
+              <path
+                d="M3 8l3.5 3.5L13 4"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+            <span
+              className="text-sm leading-5"
+              style={{ color: isPop ? "rgba(255,255,255,0.88)" : "var(--text-secondary)" }}
+            >
+              {f}
+            </span>
+          </li>
+        ))}
+      </ul>
+
+      {/* CTA */}
+      <Link
+        href="/demo"
+        className="block rounded-[10px] px-5 py-3 text-center text-sm font-semibold transition"
+        style={
+          isPop
+            ? { background: "white", color: "#185FA5" }
+            : { background: "#185FA5", color: "white" }
+        }
+      >
+        Ver demo · 30 min
+      </Link>
+    </div>
+  );
+}
+
+function AnaliticaBanner() {
+  return (
+    <div
+      className="flex flex-wrap items-center justify-between gap-4 rounded-[16px] p-5"
+      style={{ background: "var(--row-bg)", border: "1px solid var(--border)" }}
+    >
+      <div>
+        <div className="mb-1 flex items-center gap-2">
+          <span
+            className="rounded-full px-2.5 py-0.5 text-xs font-semibold"
+            style={{ background: "#F0FDF4", color: "#15803D", border: "1px solid #BBF7D0" }}
+          >
+            Add-on
+          </span>
+          <span className="text-sm font-bold text-[var(--text)]">Analítica avanzada</span>
+        </div>
+        <p className="text-sm text-[var(--text-secondary)]">
+          Disponible en cualquier plan · Tendencias, comparativas entre áreas y exportes detallados. Descuento automático al combinar con otros módulos.
+        </p>
+      </div>
+      <Link
+        href="/demo"
+        className="shrink-0 rounded-[8px] px-4 py-2 text-sm font-semibold text-[var(--text)] transition hover:text-[#185FA5]"
+        style={{ border: "1px solid var(--border)" }}
+      >
+        Preguntar por Analítica
+      </Link>
+    </div>
+  );
+}
+
+function MultihotelBanner() {
+  return (
+    <div
+      className="flex flex-wrap items-center justify-between gap-4 rounded-[16px] p-5"
+      style={{ background: "var(--row-bg)", border: "1px solid var(--border)" }}
+    >
+      <div>
+        <div className="mb-1 flex items-center gap-2">
+          <span
+            className="rounded-full px-2.5 py-0.5 text-xs font-semibold"
+            style={{ background: "#EBF3FC", color: "#185FA5", border: "1px solid #C3DCEE" }}
+          >
+            Cadena / Multihotel
+          </span>
+          <span className="text-sm font-bold text-[var(--text)]">Gestión de varias propiedades</span>
+        </div>
+        <p className="text-sm text-[var(--text-secondary)]">
+          Cualquier plan con tarifa por propiedad adicional · Panel unificado para comparar resultados entre hoteles.
+        </p>
+      </div>
+      <Link
+        href="/demo"
+        className="shrink-0 rounded-[8px] px-4 py-2 text-sm font-semibold text-[var(--text)] transition hover:text-[#185FA5]"
+        style={{ border: "1px solid var(--border)" }}
+      >
+        Hablar con ventas
+      </Link>
+    </div>
+  );
+}
+
+// ─── Main ─────────────────────────────────────────────────────────────────────
+
+export default function PricingQuiz() {
+  const [period, setPeriod] = useState<BillingPeriod>("monthly");
+  const [showQuiz, setShowQuiz] = useState(false);
+  const [quizStep, setQuizStep] = useState<QuizStep>("q_formaciones");
+  const [answers, setAnswers] = useState<QuizAnswers>({ formaciones: null, it: null, manto: null });
+  const [recommendedTier, setRecommendedTier] = useState<TierKey | null>(null);
+
+  const currentStepIndex = QUIZ_STEPS.findIndex((s) => s.key === quizStep);
+  const currentStep = QUIZ_STEPS[currentStepIndex];
+
+  function handleAnswer(value: boolean) {
+    const key = currentStep.key.replace("q_", "") as keyof QuizAnswers;
+    const next = QUIZ_STEPS[currentStepIndex + 1];
+    const updated = { ...answers, [key]: value };
+    setAnswers(updated);
+    if (next) {
+      setQuizStep(next.key);
+    } else {
+      setRecommendedTier(getRecommendedTier(updated));
+      setQuizStep("result");
+    }
+  }
+
+  function restartQuiz() {
+    setQuizStep("q_formaciones");
+    setAnswers({ formaciones: null, it: null, manto: null });
+    setRecommendedTier(null);
+  }
+
+  return (
+    <div className="space-y-6">
+
+      {/* ── Billing toggle ── */}
+      <div className="flex justify-center">
+        <div
+          className="inline-flex items-center rounded-full p-1 text-sm"
+          style={{ background: "var(--row-bg)", border: "1px solid var(--border)" }}
+        >
+          <button
+            onClick={() => setPeriod("monthly")}
+            className="rounded-full px-5 py-1.5 font-semibold transition"
+            style={
+              period === "monthly"
+                ? { background: "var(--card-bg)", color: "var(--text)", boxShadow: "0 1px 4px rgba(0,0,0,0.08)" }
+                : { color: "var(--text-secondary)" }
+            }
+          >
+            Mensual
+          </button>
+          <button
+            onClick={() => setPeriod("annual")}
+            className="flex items-center gap-2 rounded-full px-5 py-1.5 font-semibold transition"
+            style={
+              period === "annual"
+                ? { background: "var(--card-bg)", color: "var(--text)", boxShadow: "0 1px 4px rgba(0,0,0,0.08)" }
+                : { color: "var(--text-secondary)" }
+            }
+          >
+            Anual
+            <span className="rounded-full bg-[#15803D] px-2 py-0.5 text-[10px] font-bold text-white">
+              −15%
+            </span>
+          </button>
+        </div>
+      </div>
+
+      {/* ── Tier cards ── */}
+      <div className="grid gap-6 pt-4 lg:grid-cols-3">
+        {TIERS.map((tier) => (
+          <TierCard
+            key={tier.key}
+            tier={tier}
+            period={period}
+            highlighted={recommendedTier === tier.key}
+          />
+        ))}
+      </div>
+
+      {/* ── Add-ons ── */}
+      <div className="space-y-3">
+        <AnaliticaBanner />
+        <MultihotelBanner />
+      </div>
+
+      {/* ── Quiz ── */}
+      <div className="rounded-[20px] overflow-hidden" style={{ border: "1px solid var(--border)" }}>
+        <button
+          onClick={() => setShowQuiz((v) => !v)}
+          className="flex w-full items-center justify-between px-6 py-4 text-sm font-semibold text-[var(--text)] transition hover:bg-[var(--row-bg)]"
+        >
+          <span>¿No sabes cuál elegir? Responde 3 preguntas y te lo decimos</span>
+          <span
+            className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs"
+            style={{ border: "1px solid var(--border)" }}
+          >
+            {showQuiz ? "−" : "+"}
+          </span>
+        </button>
+
+        {showQuiz && (
+          <div className="px-6 pb-6 pt-2" style={{ borderTop: "1px solid var(--border)" }}>
+            {quizStep !== "result" ? (
+              <>
+                {/* Progress bar */}
+                <div className="mb-6 flex items-center gap-2">
+                  {QUIZ_STEPS.map((s, i) => (
+                    <div
+                      key={s.key}
+                      className="h-1 flex-1 rounded-full transition-all"
+                      style={{ background: i <= currentStepIndex ? "#185FA5" : "var(--border)" }}
+                    />
+                  ))}
+                </div>
+
+                <div className="text-[11px] font-semibold uppercase tracking-[2px] text-[var(--text-secondary)]">
+                  Pregunta {currentStepIndex + 1} de {QUIZ_STEPS.length}
+                </div>
+                <h3 className="mt-2 text-lg font-bold text-[var(--text)]">
+                  {currentStep.question}
+                </h3>
+                <p className="mt-2 text-sm leading-6 text-[var(--text-secondary)]">
+                  {currentStep.hint}
+                </p>
+
+                <div className="mt-6 grid gap-3 sm:grid-cols-2">
+                  <button
+                    onClick={() => handleAnswer(true)}
+                    className="rounded-[12px] px-5 py-3.5 text-left text-sm font-semibold text-[var(--text)] transition hover:border-[#185FA5]"
+                    style={{ background: "var(--row-bg)", border: "1px solid var(--border)" }}
+                  >
+                    <span className="mr-2 text-[#185FA5]">→</span>
+                    {currentStep.yes}
+                  </button>
+                  <button
+                    onClick={() => handleAnswer(false)}
+                    className="rounded-[12px] px-5 py-3.5 text-left text-sm font-semibold text-[var(--text)] transition hover:border-[#185FA5]"
+                    style={{ background: "var(--row-bg)", border: "1px solid var(--border)" }}
+                  >
+                    <span className="mr-2 text-[var(--text-secondary)]">→</span>
+                    {currentStep.no}
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="mb-3 text-[11px] font-semibold uppercase tracking-[2px] text-[#185FA5]">
+                  Plan recomendado
+                </div>
+                {recommendedTier && (() => {
+                  const tier = TIERS.find((t) => t.key === recommendedTier)!;
+                  return (
+                    <div
+                      className="rounded-[16px] p-5"
+                      style={{ background: "var(--row-bg)", border: "2px solid #185FA5" }}
+                    >
+                      <div className="flex flex-wrap items-start justify-between gap-3 mb-3">
+                        <div>
+                          <div className="text-xl font-extrabold text-[var(--text)]">{tier.name}</div>
+                          <div className="mt-0.5 text-sm text-[var(--text-secondary)]">{tier.tagline}</div>
+                        </div>
+                        <div className="flex flex-wrap gap-1.5">
+                          {tier.modules.map((m) => (
+                            <ModuleBadge key={m} label={m} />
+                          ))}
+                        </div>
+                      </div>
+                      <div className="mt-4 flex flex-wrap gap-3">
+                        <Link
+                          href="/demo"
+                          className="rounded-[8px] bg-[#185FA5] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#378ADD]"
+                        >
+                          Ver demo · 30 min
+                        </Link>
+                        <button
+                          onClick={restartQuiz}
+                          className="rounded-[8px] px-5 py-2.5 text-sm font-semibold text-[var(--text-secondary)] transition hover:text-[var(--text)]"
+                          style={{ border: "1px solid var(--border)" }}
+                        >
+                          Repetir
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })()}
+              </>
+            )}
+          </div>
+        )}
+      </div>
+
     </div>
   );
 }

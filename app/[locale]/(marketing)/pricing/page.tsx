@@ -8,8 +8,8 @@ function PricingPageContent() {
       <div className="mx-auto w-full max-w-[860px]">
         <SectionIntro
           eyebrow="Pricing"
-          title="¿Qué necesita tu operación?"
-          description="Responde 4 preguntas y te mostramos el plan que mejor encaja. El precio varía según módulos, número de áreas y nivel de acompañamiento."
+          title="Control operativo real, en el plan que encaja con tu hotel"
+          description="Tres planes pensados para distintos niveles de complejidad. El precio final depende del número de áreas, usuarios y nivel de acompañamiento."
         />
 
         <div className="mt-12">
