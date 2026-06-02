@@ -61,7 +61,7 @@ export default function TeamPageShell({
 
   // Pack access — superadmin resuelto síncronamente, otros esperan el fetch
   const [enabledPacks, setEnabledPacks] = useState<string[] | null>(
-    profile?.role === "superadmin" ? ["base", "pack1", "pack2", "pack3"] : null
+    profile?.role === "superadmin" ? ["base", "pack1", "pack2", "pack_it", "pack_engineering", "pack3"] : null
   );
 
   useEffect(() => {

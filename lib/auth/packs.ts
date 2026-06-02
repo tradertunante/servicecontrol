@@ -5,21 +5,21 @@ import { supabaseAdmin } from "@/lib/supabaseAdmin";
 export type PackCode = "base" | "pack1" | "pack_it" | "pack_engineering" | "pack2" | "pack3";
 
 export const PACK_LABELS: Record<PackCode, string> = {
-  base: "Pack Base",
-  pack1: "Pack 1",
-  pack_it: "Pack IT",
-  pack_engineering: "Pack Engineering",
-  pack2: "Pack 2",
-  pack3: "Pack 3",
+  base: "Core",
+  pack1: "Analítica",
+  pack_it: "IT",
+  pack_engineering: "Engineering",
+  pack2: "Recuperación",
+  pack3: "Formación",
 };
 
 export const PACK_DESCRIPTIONS: Record<PackCode, string> = {
-  base: "General, Progreso, Historial, Members",
-  pack1: "Analítica",
-  pack_it: "IT",
-  pack_engineering: "Engineering / Mantenimiento",
-  pack2: "Recuperación / Reauditorías",
-  pack3: "Formaciones",
+  base: "Auditorías, recuperación, reauditorías, historial, members",
+  pack1: "Dashboards avanzados, tendencias, exportes",
+  pack_it: "Módulo departamental IT",
+  pack_engineering: "Módulo departamental Engineering / Mantenimiento",
+  pack2: "Incluido en Core",
+  pack3: "Gestión de formaciones del equipo",
 };
 
 export const ALL_PACKS: PackCode[] = ["base", "pack1", "pack_it", "pack_engineering", "pack2", "pack3"];
@@ -32,13 +32,16 @@ export async function getHotelEnabledPacks(hotelId: string): Promise<PackCode[]>
     .eq("id", hotelId)
     .maybeSingle();
 
-  if (error || !data) return ["base"];
+  if (error || !data) return ["base", "pack2"];
   const raw = (data as { enabled_packs?: unknown }).enabled_packs;
-  if (!Array.isArray(raw)) return ["base"];
-  return raw as PackCode[];
+  if (!Array.isArray(raw)) return ["base", "pack2"];
+  const packs = raw as PackCode[];
+  // pack2 (recuperación) es parte del Core — siempre incluido
+  if (!packs.includes("pack2")) return [...packs, "pack2"];
+  return packs;
 }
 
 export function hotelHasPack(enabledPacks: PackCode[], pack: PackCode): boolean {
-  if (pack === "base") return true;
+  if (pack === "base" || pack === "pack2") return true;
   return enabledPacks.includes(pack);
 }

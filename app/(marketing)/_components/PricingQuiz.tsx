@@ -7,12 +7,13 @@ import { Link } from "@/i18n/navigation";
 
 type Answers = {
   multihotel: boolean | null;
+  analitica: boolean | null;
   formaciones: boolean | null;
   it: boolean | null;
   manto: boolean | null;
 };
 
-type Step = "q_multihotel" | "q_formaciones" | "q_it" | "q_manto" | "result";
+type Step = "q_multihotel" | "q_analitica" | "q_formaciones" | "q_it" | "q_manto" | "result";
 
 // ─── Plan logic ───────────────────────────────────────────────────────────────
 
@@ -29,49 +30,49 @@ const PLANS: Record<PlanKey, PlanDef> = {
   P1: {
     id: "#P1",
     name: "Esencial",
-    modules: ["Base"],
+    modules: ["Core"],
     highlight: false,
   },
   P2: {
     id: "#P2",
     name: "Operativo",
-    modules: ["Base", "Formaciones"],
+    modules: ["Core", "Formación"],
     highlight: false,
   },
   P3: {
     id: "#P3",
     name: "Técnico IT",
-    modules: ["Base", "IT"],
+    modules: ["Core", "IT"],
     highlight: false,
   },
   P4: {
     id: "#P4",
     name: "Técnico Manto",
-    modules: ["Base", "Mantenimiento"],
+    modules: ["Core", "Engineering"],
     highlight: false,
   },
   P5: {
     id: "#P5",
     name: "Completo",
-    modules: ["Base", "Formaciones", "IT"],
+    modules: ["Core", "Formación", "IT"],
     highlight: true,
   },
   P6: {
     id: "#P6",
     name: "Operativo+",
-    modules: ["Base", "Formaciones", "Mantenimiento"],
+    modules: ["Core", "Formación", "Engineering"],
     highlight: false,
   },
   P7: {
     id: "#P7",
     name: "Técnico Total",
-    modules: ["Base", "IT", "Mantenimiento"],
+    modules: ["Core", "IT", "Engineering"],
     highlight: false,
   },
   P8: {
     id: "#P8",
     name: "Total",
-    modules: ["Base", "Formaciones", "IT", "Mantenimiento"],
+    modules: ["Core", "Formación", "IT", "Engineering"],
     highlight: true,
   },
 };
@@ -99,9 +100,16 @@ const STEPS: { key: Step; question: string; hint: string; yes: string; no: strin
     no: "No, un solo hotel",
   },
   {
+    key: "q_analitica",
+    question: "¿Quieres dashboards avanzados con tendencias y comparativas por área?",
+    hint: "Analítica profundiza en tus datos de auditoría: evolución de scores, áreas con más fallos recurrentes, comparativas entre periodos y exportes detallados.",
+    yes: "Sí, quiero analítica avanzada",
+    no: "Con los scores básicos es suficiente",
+  },
+  {
     key: "q_formaciones",
-    question: "¿Quieres que las desviaciones detectadas en auditorías generen planes de formación para el equipo?",
-    hint: "El módulo de formaciones cierra el loop: FAIL → acción correctiva → formación vinculada → verificación.",
+    question: "¿Quieres que las desviaciones detectadas generen planes de formación para el equipo?",
+    hint: "El módulo de formación vincula los fallos recurrentes con acciones formativas: asigna formaciones al equipo y verifica que se completan.",
     yes: "Sí, me interesa",
     no: "No por ahora",
   },
@@ -124,14 +132,14 @@ const STEPS: { key: Step; question: string; hint: string; yes: string; no: strin
 // ─── Combination table data ────────────────────────────────────────────────────
 
 const COMBO_TABLE = [
-  { id: "#P1", name: "Esencial",        base: true,  form: false, it: false, manto: false, addons: 0, descuento: "—"   },
-  { id: "#P2", name: "Operativo",       base: true,  form: true,  it: false, manto: false, addons: 1, descuento: "—"   },
-  { id: "#P3", name: "Técnico IT",      base: true,  form: false, it: true,  manto: false, addons: 1, descuento: "—"   },
-  { id: "#P4", name: "Técnico Manto",   base: true,  form: false, it: false, manto: true,  addons: 1, descuento: "—"   },
-  { id: "#P5", name: "Completo",        base: true,  form: true,  it: true,  manto: false, addons: 2, descuento: "-10%" },
-  { id: "#P6", name: "Operativo+",      base: true,  form: true,  it: false, manto: true,  addons: 2, descuento: "-10%" },
-  { id: "#P7", name: "Técnico Total",   base: true,  form: false, it: true,  manto: true,  addons: 2, descuento: "-10%" },
-  { id: "#P8", name: "Total",           base: true,  form: true,  it: true,  manto: true,  addons: 3, descuento: "-20%" },
+  { id: "#P1", name: "Esencial",        form: false, it: false, manto: false, addons: 0, descuento: "—"    },
+  { id: "#P2", name: "Operativo",       form: true,  it: false, manto: false, addons: 1, descuento: "—"    },
+  { id: "#P3", name: "Técnico IT",      form: false, it: true,  manto: false, addons: 1, descuento: "—"    },
+  { id: "#P4", name: "Técnico Manto",   form: false, it: false, manto: true,  addons: 1, descuento: "—"    },
+  { id: "#P5", name: "Completo",        form: true,  it: true,  manto: false, addons: 2, descuento: "-10%" },
+  { id: "#P6", name: "Operativo+",      form: true,  it: false, manto: true,  addons: 2, descuento: "-10%" },
+  { id: "#P7", name: "Técnico Total",   form: false, it: true,  manto: true,  addons: 2, descuento: "-10%" },
+  { id: "#P8", name: "Total",           form: true,  it: true,  manto: true,  addons: 3, descuento: "-20%" },
 ];
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -147,6 +155,7 @@ export default function PricingQuiz() {
   const [step, setStep] = useState<Step>("q_multihotel");
   const [answers, setAnswers] = useState<Answers>({
     multihotel: null,
+    analitica: null,
     formaciones: null,
     it: null,
     manto: null,
@@ -169,11 +178,12 @@ export default function PricingQuiz() {
 
   function restart() {
     setStep("q_multihotel");
-    setAnswers({ multihotel: null, formaciones: null, it: null, manto: null });
+    setAnswers({ multihotel: null, analitica: null, formaciones: null, it: null, manto: null });
   }
 
   const plan = step === "result" ? getPlan(answers) : null;
   const isMultihotel = answers.multihotel === true;
+  const hasAnalitica = answers.analitica === true;
 
   return (
     <div className="space-y-10">
@@ -269,6 +279,14 @@ export default function PricingQuiz() {
                     {m}
                   </span>
                 ))}
+                {hasAnalitica && (
+                  <span
+                    className="rounded-full px-4 py-1.5 text-sm font-medium"
+                    style={{ background: "#EBF3FC", color: "#185FA5", border: "1px solid #C3DCEE" }}
+                  >
+                    Analítica
+                  </span>
+                )}
                 {isMultihotel && (
                   <span
                     className="rounded-full px-4 py-1.5 text-sm font-medium"
@@ -332,10 +350,11 @@ export default function PricingQuiz() {
                 <tr style={{ background: "var(--row-bg)", borderBottom: "1px solid var(--border)" }}>
                   <th className="px-5 py-3 text-left text-[10px] font-semibold uppercase tracking-[1.5px] text-[var(--text-secondary)]">ID</th>
                   <th className="px-5 py-3 text-left text-[10px] font-semibold uppercase tracking-[1.5px] text-[var(--text-secondary)]">Plan</th>
-                  <th className="px-4 py-3 text-center text-[10px] font-semibold uppercase tracking-[1.5px] text-[var(--text-secondary)]">Base</th>
-                  <th className="px-4 py-3 text-center text-[10px] font-semibold uppercase tracking-[1.5px] text-[var(--text-secondary)]">Formaciones</th>
+                  <th className="px-4 py-3 text-center text-[10px] font-semibold uppercase tracking-[1.5px] text-[var(--text-secondary)]">Core</th>
+                  <th className="px-4 py-3 text-center text-[10px] font-semibold uppercase tracking-[1.5px] text-[var(--text-secondary)]">Analítica</th>
+                  <th className="px-4 py-3 text-center text-[10px] font-semibold uppercase tracking-[1.5px] text-[var(--text-secondary)]">Formación</th>
                   <th className="px-4 py-3 text-center text-[10px] font-semibold uppercase tracking-[1.5px] text-[var(--text-secondary)]">IT</th>
-                  <th className="px-4 py-3 text-center text-[10px] font-semibold uppercase tracking-[1.5px] text-[var(--text-secondary)]">Manto</th>
+                  <th className="px-4 py-3 text-center text-[10px] font-semibold uppercase tracking-[1.5px] text-[var(--text-secondary)]">Engineering</th>
                   <th className="px-4 py-3 text-center text-[10px] font-semibold uppercase tracking-[1.5px] text-[var(--text-secondary)]">Descuento</th>
                   <th className="px-5 py-3 text-right text-[10px] font-semibold uppercase tracking-[1.5px] text-[var(--text-secondary)]">Precio/mes</th>
                 </tr>
@@ -351,7 +370,8 @@ export default function PricingQuiz() {
                   >
                     <td className="px-5 py-3 font-mono text-xs font-semibold text-[#185FA5]">{row.id}</td>
                     <td className="px-5 py-3 font-semibold text-[var(--text)]">{row.name}</td>
-                    <td className="px-4 py-3 text-center"><Check active={row.base} /></td>
+                    <td className="px-4 py-3 text-center"><Check active={true} /></td>
+                    <td className="px-4 py-3 text-center"><span className="text-[10px] font-semibold text-[var(--text-secondary)] opacity-60">add-on</span></td>
                     <td className="px-4 py-3 text-center"><Check active={row.form} /></td>
                     <td className="px-4 py-3 text-center"><Check active={row.it} /></td>
                     <td className="px-4 py-3 text-center"><Check active={row.manto} /></td>
@@ -365,7 +385,7 @@ export default function PricingQuiz() {
                 <tr style={{ background: "var(--row-bg)", borderTop: "1px solid var(--border)" }}>
                   <td className="px-5 py-3 font-mono text-xs font-semibold text-[#15803D]">#Pn-M</td>
                   <td className="px-5 py-3 text-sm font-semibold text-[var(--text)]">Cadena / Multihotel</td>
-                  <td colSpan={5} className="px-4 py-3 text-xs text-[var(--text-secondary)]">
+                  <td colSpan={6} className="px-4 py-3 text-xs text-[var(--text-secondary)]">
                     Cualquier plan (#P1–#P8) con tarifa por propiedad adicional
                   </td>
                   <td className="px-5 py-3 text-right font-mono text-xs text-[var(--text-secondary)]">Por definir</td>

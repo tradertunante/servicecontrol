@@ -11,7 +11,7 @@ export default async function DashboardPage() {
     nextPath: "/dashboard",
   });
 
-  let enabledPacks: PackCode[] = ["base", "pack1", "pack2", "pack3"];
+  let enabledPacks: PackCode[] = ["base", "pack1", "pack2", "pack_it", "pack_engineering", "pack3"];
   if (profile.role !== "superadmin" && hotelId) {
     enabledPacks = await getHotelEnabledPacks(hotelId);
   }

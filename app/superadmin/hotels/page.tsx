@@ -12,11 +12,10 @@ import type { Profile as LoadedProfile } from "@/lib/types";
 import { fetchJsonOrThrow } from "@/lib/superadmin/clientApi";
 
 const PACKS = [
-  { code: "pack1", label: "Pack 1", desc: "Analítica" },
-  { code: "pack2", label: "Pack 2", desc: "Recuperación / Reauditorías" },
-  { code: "pack_it", label: "Pack 2.1", desc: "IT" },
-  { code: "pack_engineering", label: "Pack 2.2", desc: "Engineering / Mantenimiento" },
-  { code: "pack3", label: "Pack 3", desc: "Formaciones" },
+  { code: "pack1", label: "Analítica", desc: "Dashboards avanzados, tendencias, exportes" },
+  { code: "pack3", label: "Formación", desc: "Gestión de formaciones del equipo" },
+  { code: "pack_it", label: "IT", desc: "Módulo departamental IT" },
+  { code: "pack_engineering", label: "Engineering", desc: "Módulo departamental Engineering / Mantenimiento" },
 ] as const;
 
 type PackCode = "base" | "pack1" | "pack_it" | "pack_engineering" | "pack2" | "pack3";
@@ -410,8 +409,8 @@ export default function SuperadminHotelsPage() {
                           flexShrink: 0,
                         }}
                       />
-                      <span style={{ fontWeight: 950, fontSize: 14 }}>Pack Base</span>
-                      <span style={{ fontSize: 12, opacity: 0.8 }}>General, Progreso, Historial, Members</span>
+                      <span style={{ fontWeight: 950, fontSize: 14 }}>Core</span>
+                      <span style={{ fontSize: 12, opacity: 0.8 }}>Auditorías, recuperación, reauditorías, historial, members</span>
                       <span style={{ fontSize: 11, marginLeft: "auto" }}>siempre incluido</span>
                     </div>
 
