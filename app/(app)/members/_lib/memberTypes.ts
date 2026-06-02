@@ -3,6 +3,12 @@ export type MemberAreaOption = {
   name: string;
 };
 
+export type MemberTemplateOption = {
+  id: string;
+  name: string;
+  area_id: string;
+};
+
 export type MemberRecord = {
   id: string;
   full_name: string;
@@ -11,6 +17,7 @@ export type MemberRecord = {
   hotel_id: string;
   area_ids: string[];
   area_names: string[];
+  template_ids: string[];
 };
 
 export type MembersPagination = {
@@ -24,6 +31,7 @@ export type MembersResponse = {
   ok: boolean;
   members: MemberRecord[];
   available_areas: MemberAreaOption[];
+  available_templates: MemberTemplateOption[];
   hotel_id: string;
   role: string;
   pagination?: MembersPagination;

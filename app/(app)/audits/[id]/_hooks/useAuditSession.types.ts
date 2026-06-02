@@ -40,7 +40,7 @@ export type AreaRow = {
 export type TeamMemberLite = {
   id: string;
   full_name: string;
-  _outOfArea?: boolean;
+  member_affinity?: "template" | "area" | "other";
 };
 
 export type SectionRow = {

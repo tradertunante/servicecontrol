@@ -1,13 +1,14 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import type { MemberAreaOption } from "../_lib/memberTypes";
+import type { MemberAreaOption, MemberTemplateOption } from "../_lib/memberTypes";
 
 type MemberFormValues = {
   full_name: string;
   employee_number: string;
   active: boolean;
   area_ids: string[];
+  template_ids: string[];
 };
 
 const inputClasses =
@@ -31,6 +32,7 @@ export default function MemberForm({
   title,
   values,
   areaOptions,
+  templateOptions,
   busy,
   submitLabel,
   onChange,
@@ -40,6 +42,7 @@ export default function MemberForm({
   title: string;
   values: MemberFormValues;
   areaOptions: MemberAreaOption[];
+  templateOptions: MemberTemplateOption[];
   busy: boolean;
   submitLabel: string;
   onChange: (next: MemberFormValues) => void;
@@ -47,6 +50,10 @@ export default function MemberForm({
   onCancel?: () => void;
 }) {
   const t = useTranslations("app.members.form");
+
+  const templatesForSelectedAreas = templateOptions.filter((t) =>
+    values.area_ids.includes(t.area_id)
+  );
 
   return (
     <div className="border border-[#e5e7eb] bg-white p-4 rounded-[12px] grid gap-3">
@@ -89,7 +96,14 @@ export default function MemberForm({
                     const nextAreaIds = event.target.checked
                       ? [...values.area_ids, area.id]
                       : values.area_ids.filter((areaId) => areaId !== area.id);
-                    onChange({ ...values, area_ids: nextAreaIds });
+                    // Remove template assignments for deselected area
+                    const removedTemplateIds = new Set(
+                      templateOptions.filter((tp) => tp.area_id === area.id).map((tp) => tp.id)
+                    );
+                    const nextTemplateIds = event.target.checked
+                      ? values.template_ids
+                      : values.template_ids.filter((tid) => !removedTemplateIds.has(tid));
+                    onChange({ ...values, area_ids: nextAreaIds, template_ids: nextTemplateIds });
                   }}
                 />
                 {area.name}
@@ -98,6 +112,41 @@ export default function MemberForm({
           })}
         </div>
       </div>
+
+      {templatesForSelectedAreas.length > 0 ? (
+        <div>
+          <div className="font-bold mb-1">Auditorías asignadas</div>
+          <div className="text-[12px] text-[#6b7280] mb-2">
+            Este colaborador aparecerá primero en el selector de estas auditorías.
+          </div>
+          <div className="grid gap-2">
+            {templatesForSelectedAreas.map((tmpl) => {
+              const areaName = areaOptions.find((a) => a.id === tmpl.area_id)?.name;
+              const checked = values.template_ids.includes(tmpl.id);
+              return (
+                <label key={tmpl.id} className="flex items-center gap-2 text-[14px]">
+                  <input
+                    type="checkbox"
+                    checked={checked}
+                    onChange={(event) => {
+                      const nextTemplateIds = event.target.checked
+                        ? [...values.template_ids, tmpl.id]
+                        : values.template_ids.filter((tid) => tid !== tmpl.id);
+                      onChange({ ...values, template_ids: nextTemplateIds });
+                    }}
+                  />
+                  <span>
+                    {tmpl.name}
+                    {areaName ? (
+                      <span className="ml-1.5 text-[11px] text-[#9ca3af]">{areaName}</span>
+                    ) : null}
+                  </span>
+                </label>
+              );
+            })}
+          </div>
+        </div>
+      ) : null}
 
       <div className="flex gap-2 flex-wrap">
         <button onClick={onSubmit} disabled={busy} className={buttonClasses(busy)}>

@@ -5,6 +5,7 @@ import {
   findDuplicateMemberByEmployeeNumber,
   getAllowedAreaIds,
   getHotelAreas,
+  getHotelTemplates,
   getMembersCaller,
   resolveMembersHotelId,
   uniqueStrings,
@@ -51,6 +52,7 @@ export async function GET(request: NextRequest) {
       ok: true,
       members: pagedMembers,
       available_areas: payload.availableAreas,
+      available_templates: payload.availableTemplates,
       hotel_id: hotelResult.hotelId,
       role: callerResult.caller.role,
       pagination: {
@@ -78,6 +80,7 @@ export async function POST(request: NextRequest) {
     const employeeNumber = String(body?.employee_number ?? "").trim();
     const active = body?.active !== false;
     const requestedAreaIds = uniqueStrings(Array.isArray(body?.area_ids) ? body.area_ids : []);
+    const requestedTemplateIds = uniqueStrings(Array.isArray(body?.template_ids) ? body.template_ids : []);
 
     if (!fullName) {
       return jsonError("full_name es obligatorio.");
@@ -138,6 +141,24 @@ export async function POST(request: NextRequest) {
 
     if (linkError) {
       return jsonDbError(linkError);
+    }
+
+    if (requestedTemplateIds.length > 0) {
+      const hotelTemplates = await getHotelTemplates(admin, hotelResult.hotelId);
+      const validTemplateIds = new Set(hotelTemplates.map((t) => t.id));
+      const templateLinkRows = requestedTemplateIds
+        .filter((tid) => validTemplateIds.has(tid))
+        .map((tid) => ({ audit_template_id: tid, team_member_id: member.id }));
+
+      if (templateLinkRows.length > 0) {
+        const { error: templateLinkError } = await admin
+          .from("audit_template_members")
+          .insert(templateLinkRows);
+
+        if (templateLinkError) {
+          return jsonDbError(templateLinkError);
+        }
+      }
     }
 
     return NextResponse.json({ ok: true, member_id: member.id });

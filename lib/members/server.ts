@@ -66,6 +66,24 @@ export function resolveMembersHotelId(caller: MemberCaller) {
   return resolveRouteHotelScope(caller, null);
 }
 
+export async function getHotelTemplates(admin: ReturnType<typeof supabaseAdmin>, hotelId: string) {
+  const { data, error } = await admin
+    .from("audit_templates")
+    .select("id, name, area_id")
+    .eq("hotel_id", hotelId)
+    .order("name", { ascending: true });
+
+  if (error) throw error;
+
+  return (data ?? [])
+    .filter((t) => t.area_id != null)
+    .map((t) => ({
+      id: String(t.id),
+      name: String(t.name ?? ""),
+      area_id: String(t.area_id),
+    }));
+}
+
 export async function getHotelAreas(admin: ReturnType<typeof supabaseAdmin>, hotelId: string) {
   const { data: areas, error } = await admin
     .from("areas")
@@ -88,7 +106,7 @@ export async function getHotelAreas(admin: ReturnType<typeof supabaseAdmin>, hot
 }
 
 export async function getAllowedAreaIds(
-  admin: ReturnType<typeof supabaseAdmin>,
+  _admin: ReturnType<typeof supabaseAdmin>,
   caller: MemberCaller,
   hotelId: string,
   hotelAreaIds: string[]
@@ -188,6 +206,32 @@ export async function buildMembersPayload(
     memberAreaIds.set(memberId, uniqueStrings(current));
   }
 
+  // Load audit template options and per-member template assignments
+  const hotelTemplates = await getHotelTemplates(admin, hotelId);
+  const hotelTemplateIds = hotelTemplates.map((t) => t.id);
+
+  const { data: templateLinks, error: templateLinksError } = hotelTemplateIds.length
+    ? await admin
+        .from("audit_template_members")
+        .select("team_member_id, audit_template_id")
+        .in("audit_template_id", hotelTemplateIds)
+    : { data: [], error: null };
+
+  if (templateLinksError) {
+    throw templateLinksError;
+  }
+
+  const memberTemplateIds = new Map<string, string[]>();
+
+  for (const tlink of templateLinks ?? []) {
+    const memberId = String(tlink.team_member_id ?? "");
+    const templateId = String(tlink.audit_template_id ?? "");
+    if (!memberId || !templateId) continue;
+    const current = memberTemplateIds.get(memberId) ?? [];
+    current.push(templateId);
+    memberTemplateIds.set(memberId, uniqueStrings(current));
+  }
+
   const allowedAreaSet = new Set(allowedAreaIds);
 
   const visibleMembers = (members ?? []).filter((member) => {
@@ -203,6 +247,10 @@ export async function buildMembersPayload(
       name: area.name,
     }));
 
+  const availableTemplates = hotelTemplates.filter(
+    (t) => !managerScoped || allowedAreaSet.has(t.area_id)
+  );
+
   return {
     members: visibleMembers.map((member) => {
       const areaIds = memberAreaIds.get(String(member.id)) ?? [];
@@ -214,9 +262,11 @@ export async function buildMembersPayload(
         hotel_id: String(member.hotel_id ?? hotelId),
         area_ids: areaIds,
         area_names: areaIds.map((areaId) => areaNameById.get(areaId) ?? areaId),
+        template_ids: memberTemplateIds.get(String(member.id)) ?? [],
       };
     }),
     availableAreas,
+    availableTemplates,
     hotelAreas,
     hotelAreaIds,
     memberAreaIds,

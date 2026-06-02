@@ -1308,6 +1308,42 @@ export type Database = {
           },
         ]
       }
+      audit_template_members: {
+        Row: {
+          audit_template_id: string
+          created_at: string
+          id: string
+          team_member_id: string
+        }
+        Insert: {
+          audit_template_id: string
+          created_at?: string
+          id?: string
+          team_member_id: string
+        }
+        Update: {
+          audit_template_id?: string
+          created_at?: string
+          id?: string
+          team_member_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "audit_template_members_audit_template_id_fkey"
+            columns: ["audit_template_id"]
+            isOneToOne: false
+            referencedRelation: "audit_templates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "audit_template_members_team_member_id_fkey"
+            columns: ["team_member_id"]
+            isOneToOne: false
+            referencedRelation: "team_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       audit_templates: {
         Row: {
           active: boolean | null

@@ -116,12 +116,36 @@ export default function AuditPageShell() {
           className="min-h-[48px] w-full rounded-xl border border-slate-200 bg-white px-3.5 text-sm font-semibold text-slate-900 disabled:opacity-60"
         >
           <option value="">Auditoría general (sin colaborador)</option>
-          {teamMembers.map((member) => (
-            <option key={member.id} value={member.id}>
-              {member.full_name}
-              {member._outOfArea ? " (fuera del área)" : ""}
-            </option>
-          ))}
+          {(() => {
+            const templateMembers = teamMembers.filter((m) => m.member_affinity === "template");
+            const areaMembers = teamMembers.filter((m) => m.member_affinity === "area");
+            const otherMembers = teamMembers.filter((m) => m.member_affinity === "other");
+            return (
+              <>
+                {templateMembers.length > 0 && (
+                  <optgroup label="Equipo habitual">
+                    {templateMembers.map((m) => (
+                      <option key={m.id} value={m.id}>{m.full_name}</option>
+                    ))}
+                  </optgroup>
+                )}
+                {areaMembers.length > 0 && (
+                  <optgroup label="Mismo área">
+                    {areaMembers.map((m) => (
+                      <option key={m.id} value={m.id}>{m.full_name}</option>
+                    ))}
+                  </optgroup>
+                )}
+                {otherMembers.length > 0 && (
+                  <optgroup label="Otros">
+                    {otherMembers.map((m) => (
+                      <option key={m.id} value={m.id}>{m.full_name} (fuera del área)</option>
+                    ))}
+                  </optgroup>
+                )}
+              </>
+            );
+          })()}
         </select>
 
         {showRoomNumberField ? (

@@ -8,13 +8,14 @@ import MemberForm from "./MemberForm";
 import MembersImportPanel from "./MembersImportPanel";
 import MembersTable from "./MembersTable";
 import { Pagination } from "@/components/ui/Pagination";
-import type { MemberAreaOption, MemberRecord, MembersPagination, MembersResponse } from "../_lib/memberTypes";
+import type { MemberAreaOption, MemberRecord, MembersPagination, MembersResponse, MemberTemplateOption } from "../_lib/memberTypes";
 
 type FormValues = {
   full_name: string;
   employee_number: string;
   active: boolean;
   area_ids: string[];
+  template_ids: string[];
 };
 
 function emptyForm(): FormValues {
@@ -23,6 +24,7 @@ function emptyForm(): FormValues {
     employee_number: "",
     active: true,
     area_ids: [],
+    template_ids: [],
   };
 }
 
@@ -80,6 +82,7 @@ export default function MembersModule({
   const t = useTranslations("app.members");
   const [members, setMembers] = useState<MemberRecord[]>([]);
   const [areaOptions, setAreaOptions] = useState<MemberAreaOption[]>([]);
+  const [templateOptions, setTemplateOptions] = useState<MemberTemplateOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -150,6 +153,7 @@ export default function MembersModule({
 
       setMembers(payload && "members" in payload ? payload.members : []);
       setAreaOptions(payload && "available_areas" in payload ? payload.available_areas : []);
+      setTemplateOptions(payload && "available_templates" in payload ? payload.available_templates : []);
       setHotelId(payload && "hotel_id" in payload ? payload.hotel_id : hotelId);
       setRole(payload && "role" in payload ? payload.role : "");
       setPagination(payload && "pagination" in payload ? (payload.pagination ?? null) : null);
@@ -182,6 +186,7 @@ export default function MembersModule({
       employee_number: member.employee_number ?? "",
       active: member.active,
       area_ids: [...member.area_ids],
+      template_ids: [...member.template_ids],
     });
   }
 
@@ -201,6 +206,7 @@ export default function MembersModule({
         employee_number: formValues.employee_number,
         active: formValues.active,
         area_ids: formValues.area_ids,
+        template_ids: formValues.template_ids,
       });
 
       const res = await fetch(editingMemberId ? `/api/members/${editingMemberId}` : "/api/members", {
@@ -383,6 +389,7 @@ export default function MembersModule({
         title={editingMember ? t("form.titleEdit", { name: editingMember.full_name }) : t("form.titleCreate")}
         values={formValues}
         areaOptions={areaOptions}
+        templateOptions={templateOptions}
         busy={saving}
         submitLabel={editingMember ? t("form.saveChanges") : t("form.createMember")}
         onChange={setFormValues}

@@ -5,6 +5,7 @@ import {
   findDuplicateMemberByEmployeeNumber,
   getAllowedAreaIds,
   getHotelAreas,
+  getHotelTemplates,
   getMembersCaller,
   resolveMembersHotelId,
   uniqueStrings,
@@ -32,6 +33,7 @@ export async function PATCH(
     const employeeNumber = String(body?.employee_number ?? "").trim();
     const active = body?.active !== false;
     const requestedAreaIds = uniqueStrings(Array.isArray(body?.area_ids) ? body.area_ids : []);
+    const requestedTemplateIds = uniqueStrings(Array.isArray(body?.template_ids) ? body.template_ids : []);
 
     if (!fullName) {
       return jsonError("full_name es obligatorio.");
@@ -201,6 +203,45 @@ export async function PATCH(
       if (deleteLinksError) {
         await logger.error("members_delete_stale_links_error", { error: deleteLinksError.message });
         return jsonError("Error interno al limpiar áreas anteriores.", 500);
+      }
+    }
+
+    // Sync audit template assignments
+    const hotelTemplates = await getHotelTemplates(admin, hotelResult.hotelId);
+    const hotelTemplateIds = hotelTemplates.map((t) => t.id);
+    const validTemplateIds = new Set(hotelTemplateIds);
+    const safeRequestedTemplateIds = requestedTemplateIds.filter((tid) => validTemplateIds.has(tid));
+
+    if (safeRequestedTemplateIds.length > 0) {
+      const templateLinkRows = safeRequestedTemplateIds.map((tid) => ({
+        audit_template_id: tid,
+        team_member_id: memberId,
+      }));
+
+      const { error: upsertTemplatesError } = await admin
+        .from("audit_template_members")
+        .upsert(templateLinkRows, { onConflict: "audit_template_id,team_member_id", ignoreDuplicates: true });
+
+      if (upsertTemplatesError) {
+        await logger.error("members_upsert_templates_error", { error: upsertTemplatesError.message });
+        return jsonError("Error interno al asignar auditorías.", 500);
+      }
+    }
+
+    // Remove stale template links (templates in hotel but not in new set)
+    const safeRequestedTemplateSet = new Set(safeRequestedTemplateIds);
+    const staleTemplateIds = hotelTemplateIds.filter((tid) => !safeRequestedTemplateSet.has(tid));
+
+    if (staleTemplateIds.length > 0) {
+      const { error: deleteTemplatesError } = await admin
+        .from("audit_template_members")
+        .delete()
+        .eq("team_member_id", memberId)
+        .in("audit_template_id", staleTemplateIds);
+
+      if (deleteTemplatesError) {
+        await logger.error("members_delete_stale_templates_error", { error: deleteTemplatesError.message });
+        return jsonError("Error interno al limpiar auditorías anteriores.", 500);
       }
     }
 
