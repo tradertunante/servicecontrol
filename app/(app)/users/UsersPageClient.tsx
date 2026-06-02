@@ -217,8 +217,10 @@ export default function UsersPageClient({
   const [activityRuns, setActivityRuns]       = useState<any[]>([]);
   const [activityLoading, setActivityLoading] = useState(false);
 
-  // Resend invite (feature 16)
+  // Resend invite
   const [resendingId, setResendingId] = useState<string | null>(null);
+  const [bulkSending, setBulkSending] = useState(false);
+  const [bulkSendProgress, setBulkSendProgress] = useState<{ done: number; total: number } | null>(null);
 
   // Audit log modal (feature 18)
   const [logOpen, setLogOpen]           = useState(false);
@@ -420,6 +422,34 @@ export default function UsersPageClient({
     }
   }
 
+  // ── Bulk resend invite ───────────────────────────────────────────────────
+
+  async function bulkResendInvite(ids: string[]) {
+    if (!ids.length) return;
+    setBulkSending(true);
+    setBulkSendProgress({ done: 0, total: ids.length });
+    let ok = 0;
+    let failed = 0;
+    for (const id of ids) {
+      try {
+        const t = await getToken();
+        const res = await fetch(`/api/admin/users/${id}/resend-invite`, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${t}` },
+        });
+        if (res.ok) ok++;
+        else failed++;
+      } catch {
+        failed++;
+      }
+      setBulkSendProgress((p) => p ? { done: p.done + 1, total: p.total } : null);
+    }
+    setBulkSending(false);
+    setBulkSendProgress(null);
+    if (failed === 0) toast.success(`Invitación enviada a ${ok} usuario${ok !== 1 ? "s" : ""}.`);
+    else toast.error(`${ok} enviadas, ${failed} fallaron.`);
+  }
+
   // ── Audit log (18) ───────────────────────────────────────────────────────
 
   async function openLog() {
@@ -520,6 +550,7 @@ export default function UsersPageClient({
   }
 
   const hasFilters = search || filterRole !== "all" || filterStatus !== "all";
+  const pendingUsers = users.filter((u) => !u.last_sign_in_at);
 
   // ── Render ────────────────────────────────────────────────────────────────
 
@@ -557,6 +588,20 @@ export default function UsersPageClient({
           >
             Exportar CSV
           </button>
+          {pendingUsers.length > 0 && (
+            <button
+              onClick={() => {
+                if (!confirm(`Enviar email de bienvenida a ${pendingUsers.length} usuario${pendingUsers.length !== 1 ? "s" : ""} que aún no han accedido?`)) return;
+                void bulkResendInvite(pendingUsers.map((u) => u.id));
+              }}
+              disabled={bulkSending}
+              className="px-4 py-2.5 rounded-xl border border-amber-300 bg-amber-50 text-amber-800 font-[950] cursor-pointer h-11 whitespace-nowrap text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {bulkSending && bulkSendProgress
+                ? `Enviando ${bulkSendProgress.done}/${bulkSendProgress.total}...`
+                : `Enviar a pendientes (${pendingUsers.length})`}
+            </button>
+          )}
           <button
             onClick={() => router.push("/users/new")}
             className="px-4 py-3 rounded-xl border border-black/20 bg-black text-white font-[950] cursor-pointer h-11 whitespace-nowrap"
@@ -626,10 +671,24 @@ export default function UsersPageClient({
 
       {/* Bulk action bar */}
       {selected.size > 0 && (
-        <div className="mt-3 flex items-center gap-3 px-4 py-2.5 rounded-xl bg-black/[0.04] border border-black/10">
+        <div className="mt-3 flex items-center gap-3 px-4 py-2.5 rounded-xl bg-black/[0.04] border border-black/10 flex-wrap">
           <span className="font-[950] text-sm">
             {selected.size} seleccionado{selected.size !== 1 ? "s" : ""}
           </span>
+          <button
+            onClick={() => {
+              const ids = [...selected].filter((id) =>
+                users.find((u) => u.id === id && !u.last_sign_in_at)
+              );
+              if (!ids.length) { toast.error("Ninguno de los seleccionados está pendiente de acceso."); return; }
+              if (!confirm(`Enviar email de bienvenida a ${ids.length} usuario${ids.length !== 1 ? "s" : ""}?`)) return;
+              void bulkResendInvite(ids);
+            }}
+            disabled={bulkSending}
+            className="px-3 py-1.5 rounded-lg border border-amber-300 bg-amber-50 text-amber-800 font-[950] text-sm cursor-pointer disabled:opacity-50"
+          >
+            Enviar invitación
+          </button>
           <button
             onClick={bulkDelete}
             className="px-3 py-1.5 rounded-lg border border-[rgba(220,20,60,0.4)] bg-[rgba(220,20,60,0.08)] text-[crimson] font-[950] text-sm cursor-pointer"

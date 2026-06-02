@@ -25,6 +25,7 @@ export default function NewUserPageClient({
   const [email, setEmail]                         = useState("");
   const [role, setRole]                           = useState<Role>("auditor");
   const [setPasswordManually, setSetPasswordManually] = useState(false);
+  const [sendWelcomeEmail, setSendWelcomeEmail]   = useState(false);
   const [password, setPassword]                   = useState("");
   const [password2, setPassword2]                 = useState("");
   const [showPasswords, setShowPasswords]         = useState(false);
@@ -75,6 +76,7 @@ export default function NewUserPageClient({
           full_name: fullName.trim() || null,
           email: email.trim().toLowerCase(),
           role: effectiveRole,
+          send_welcome_email: sendWelcomeEmail,
           ...(setPasswordManually ? { password } : {}),
         }),
       });
@@ -94,9 +96,9 @@ export default function NewUserPageClient({
       }
 
       toast.success(
-        setPasswordManually
-          ? "Usuario creado correctamente."
-          : "Usuario creado. Se ha enviado un email con el enlace de activación."
+        sendWelcomeEmail
+          ? "Usuario creado. Se ha enviado un email de bienvenida."
+          : "Usuario creado correctamente."
       );
       router.push("/users");
     } catch (e: any) {
@@ -160,6 +162,21 @@ export default function NewUserPageClient({
           <label className="flex items-start gap-3 cursor-pointer">
             <input
               type="checkbox"
+              checked={sendWelcomeEmail}
+              onChange={(e) => setSendWelcomeEmail(e.target.checked)}
+              className="mt-0.5 cursor-pointer"
+            />
+            <div>
+              <div className="font-[950] text-sm">Enviar email de bienvenida</div>
+              <div className="text-xs opacity-60 font-[800] mt-0.5">
+                Se enviará un email al usuario con el enlace de activación y acceso al sistema
+              </div>
+            </div>
+          </label>
+
+          <label className="flex items-start gap-3 cursor-pointer">
+            <input
+              type="checkbox"
               checked={setPasswordManually}
               onChange={(e) => {
                 setSetPasswordManually(e.target.checked);
@@ -171,7 +188,7 @@ export default function NewUserPageClient({
             <div>
               <div className="font-[950] text-sm">Asignar contraseña ahora</div>
               <div className="text-xs opacity-60 font-[800] mt-0.5">
-                Si no, el usuario recibirá un email con un enlace para crear su contraseña
+                Si no, el usuario podrá crear su contraseña mediante el enlace de activación
               </div>
             </div>
           </label>

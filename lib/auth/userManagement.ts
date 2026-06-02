@@ -184,6 +184,7 @@ export async function createManagedUser(
     password?: unknown;
     full_name?: unknown;
     role?: unknown;
+    send_welcome_email?: unknown;
   }
 ) {
   const email = String(payload.email ?? "").trim().toLowerCase();
@@ -273,7 +274,9 @@ export async function createManagedUser(
   }
 
   // Fetch hotel name for the welcome email (fire-and-forget, never blocks creation)
+  const sendEmail = payload.send_welcome_email === true;
   void (async () => {
+    if (!sendEmail) return;
     try {
       const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://app.servicecontrol.io";
       const [{ data: hotel }, enabled] = await Promise.all([
