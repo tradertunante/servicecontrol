@@ -4,6 +4,7 @@ import { randomBytes } from "crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { jsonError } from "@/lib/api/response";
+import { TRIAL_ENABLED_PACKS } from "@/lib/auth/packs";
 import { sendTrialWelcomeEmail } from "@/lib/email/sendTrialWelcomeEmail";
 import { addTrialLeadToBrevo } from "@/lib/brevo";
 import { addTrialLeadToNotion } from "@/lib/notion";
@@ -122,6 +123,12 @@ export async function POST(request: NextRequest) {
     await admin.auth.admin.deleteUser(userId);
     return jsonError("Error al configurar la cuenta. Inténtalo de nuevo.", 500);
   }
+
+  // Asegurar que el hotel demo tiene los packs del plan Operaciones (sandbox)
+  await admin
+    .from("hotels")
+    .update({ enabled_packs: TRIAL_ENABLED_PACKS })
+    .eq("id", DEMO_HOTEL_ID);
 
   // Guardar lead para follow-up
   await admin.from("trial_leads").insert({

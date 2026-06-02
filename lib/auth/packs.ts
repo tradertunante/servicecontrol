@@ -24,6 +24,9 @@ export const PACK_DESCRIPTIONS: Record<PackCode, string> = {
 
 export const ALL_PACKS: PackCode[] = ["base", "pack1", "pack_it", "pack_engineering", "pack2", "pack3"];
 
+// Packs activados en el hotel demo del sandbox — equivale al plan Operaciones
+export const TRIAL_ENABLED_PACKS: PackCode[] = ["base", "pack1", "pack2", "pack3"];
+
 export async function getHotelEnabledPacks(hotelId: string): Promise<PackCode[]> {
   const admin = supabaseAdmin();
   const { data, error } = await admin

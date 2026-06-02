@@ -17,6 +17,8 @@ type Tier = {
   moduleGroups: string[][];
   features: string[];
   popular: boolean;
+  monthlyPrice: number;
+  annualPrice: number;
 };
 
 type QuizStep = "q_formaciones" | "q_depts" | "result";
@@ -43,6 +45,8 @@ const TIERS: Tier[] = [
       "Reauditorías para verificar correcciones",
     ],
     popular: false,
+    monthlyPrice: 195,
+    annualPrice: 165,
   },
   {
     key: "operaciones",
@@ -58,6 +62,8 @@ const TIERS: Tier[] = [
       "−10% por combinar módulos",
     ],
     popular: true,
+    monthlyPrice: 259,
+    annualPrice: 220,
   },
   {
     key: "control",
@@ -73,6 +79,8 @@ const TIERS: Tier[] = [
       "−20% por bundle completo",
     ],
     popular: false,
+    monthlyPrice: 349,
+    annualPrice: 295,
   },
 ];
 
@@ -202,14 +210,22 @@ function TierCard({
           className="text-[10px] font-semibold uppercase tracking-[1.5px]"
           style={{ color: isPop ? "rgba(255,255,255,0.55)" : "var(--text-secondary)" }}
         >
-          Precio / mes
+          {period === "annual" ? "Con pago anual" : "Precio / mes"}
         </div>
-        <div className="mt-0.5 text-lg font-bold" style={{ color: isPop ? "white" : "var(--text)" }}>
-          Por definir
+        <div className="mt-0.5 flex items-baseline gap-1" style={{ color: isPop ? "white" : "var(--text)" }}>
+          <span className="text-2xl font-extrabold">
+            €{period === "annual" ? tier.annualPrice : tier.monthlyPrice}
+          </span>
+          <span className="text-sm font-medium opacity-70">/mes</span>
         </div>
         {period === "annual" && (
           <div className="mt-0.5 text-xs" style={{ color: isPop ? "rgba(255,255,255,0.6)" : "var(--text-secondary)" }}>
-            Con pago anual · ~15% de descuento
+            €{tier.annualPrice * 12}/año · facturado anualmente
+          </div>
+        )}
+        {period === "monthly" && (
+          <div className="mt-0.5 text-xs" style={{ color: isPop ? "rgba(255,255,255,0.6)" : "var(--text-secondary)" }}>
+            Sin contrato anual
           </div>
         )}
       </div>
