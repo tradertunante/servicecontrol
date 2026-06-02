@@ -5,7 +5,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import type { CSSProperties, ReactNode } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import type { Profile } from "@/lib/types";
 import {
@@ -55,8 +55,11 @@ export default function TeamPageShell({
   areaLabel?: string | null;
 }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const queryClient = useQueryClient();
   const t = useTranslations("app.team.shell");
+
+  const currentAreaId = searchParams.get("area") ?? "";
   const btn = useMemo(() => buildBtnStyle(), []);
 
   // Pack access — superadmin resuelto síncronamente, otros esperan el fetch
@@ -249,7 +252,21 @@ export default function TeamPageShell({
                 {item.label}
               </Link>
             ) : (
-              <button key={item.key} style={tabStyle(item.active)} onClick={() => router.push(item.href)}>
+              <button
+                key={item.key}
+                style={tabStyle(item.active)}
+                onClick={() => {
+                  let href = item.href;
+                  if (currentAreaId) {
+                    if (item.href.startsWith("/team/")) {
+                      href = `${item.href}?area=${currentAreaId}`;
+                    } else if (item.href === "/analytics") {
+                      href = `/analytics?areaId=${currentAreaId}`;
+                    }
+                  }
+                  router.push(href);
+                }}
+              >
                 {item.label}
               </button>
             )

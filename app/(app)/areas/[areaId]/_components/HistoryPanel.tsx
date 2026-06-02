@@ -109,9 +109,9 @@ export default function HistoryPanel({
   const now = new Date();
 
   // ✅ filtros "manuales" (mes/año) para el modo clásico
-  const [histTemplateId, setHistTemplateId] = useState<string>("");
+  const [histTemplateId, setHistTemplateId] = useState<string>("ALL");
   const [histYear, setHistYear] = useState<number>(now.getFullYear());
-  const [histMonth, setHistMonth] = useState<number>(now.getMonth());
+  const [histMonth, setHistMonth] = useState<number>(-1);
 
   const [histLoading, setHistLoading] = useState(false);
   const [histError, setHistError] = useState<string | null>(null);
@@ -134,12 +134,6 @@ export default function HistoryPanel({
 
   const isFailMode = Boolean(urlFailQ || urlFailCls);
 
-  // ✅ si no hay histTemplateId, pon el primero
-  useEffect(() => {
-    if (!histTemplateId && templates.length > 0) {
-      setHistTemplateId(templates[0].id);
-    }
-  }, [templates, histTemplateId]);
 
   // -------------------------
   // Query helpers
@@ -291,7 +285,12 @@ export default function HistoryPanel({
     setHistError(null);
 
     try {
-      const { start, end } = monthStartEndISO(histYear, histMonth);
+      const rangeStart = histMonth === -1
+        ? new Date(histYear, 0, 1).toISOString()
+        : monthStartEndISO(histYear, histMonth).start;
+      const rangeEnd = histMonth === -1
+        ? new Date(histYear + 1, 0, 1).toISOString()
+        : monthStartEndISO(histYear, histMonth).end;
 
       let q = supabase
         .from("audit_runs")
@@ -299,15 +298,18 @@ export default function HistoryPanel({
         .eq("hotel_id", activeHotelId)
         .is("archived_at", null)
         .eq("status", "submitted")
-        .gte("executed_at", start)
-        .lt("executed_at", end)
+        .gte("executed_at", rangeStart)
+        .lt("executed_at", rangeEnd)
         .order("executed_at", { ascending: false })
         .limit(100);
 
       if (isAllMode) {
         q = q.in("area_id", allAreaIds!);
       } else {
-        q = q.eq("area_id", areaId).eq("audit_template_id", histTemplateId);
+        q = q.eq("area_id", areaId);
+        if (histTemplateId !== "ALL") {
+          q = q.eq("audit_template_id", histTemplateId);
+        }
       }
 
       const { data, error: rErr } = await q;
@@ -422,6 +424,7 @@ export default function HistoryPanel({
               <div>
                 <div style={{ fontSize: 12, fontWeight: 950, opacity: 0.75, marginBottom: 6 }}>{t("templateLabel")}</div>
                 <select value={histTemplateId} onChange={(e) => setHistTemplateId(e.target.value)} style={inputStyle}>
+                  <option value="ALL">Todas</option>
                   {templates.map((tpl) => (
                     <option key={tpl.id} value={tpl.id}>
                       {tpl.name}
@@ -446,6 +449,7 @@ export default function HistoryPanel({
             <div>
               <div style={{ fontSize: 12, fontWeight: 950, opacity: 0.75, marginBottom: 6 }}>{t("monthLabel")}</div>
               <select value={histMonth} onChange={(e) => setHistMonth(Number(e.target.value))} style={inputStyle}>
+                <option value={-1}>Todos</option>
                 {Array.from({ length: 12 }, (_, m) => (
                   <option key={m} value={m}>
                     {monthLabel(m)}
@@ -455,7 +459,7 @@ export default function HistoryPanel({
             </div>
 
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-              <button onClick={handleSearchHistoryMonthMode} style={{ ...primaryBtn, width: "100%" }} disabled={(!allAreaIds && !histTemplateId) || histLoading}>
+              <button onClick={handleSearchHistoryMonthMode} style={{ ...primaryBtn, width: "100%" }} disabled={histLoading}>
                 {histLoading ? t("searching") : t("search")}
               </button>
               <button
