@@ -105,7 +105,7 @@ export async function PATCH(
     if (newPassword || newEmail) {
       const authUpdates: Parameters<typeof admin.auth.admin.updateUserById>[1] = {};
       if (newPassword) authUpdates.password = newPassword;
-      if (newEmail) authUpdates.email = newEmail;
+      if (newEmail) { authUpdates.email = newEmail; authUpdates.email_confirm = true; }
       const { error: authError } = await admin.auth.admin.updateUserById(userId, authUpdates);
       if (authError) return jsonDbError(authError);
     }
