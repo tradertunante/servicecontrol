@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import BackButton from "@/app/components/BackButton";
 import { btnBlackStyle, btnWhiteStyle, TemplateRow } from "../_types";
 
+
 type Props = {
   templateId: string;
   template: TemplateRow | null;
@@ -48,10 +49,6 @@ export default function BuilderHeader({
         </div>
 
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-          <button onClick={() => router.push("/builder")} style={btnWhiteStyle}>
-            Volver
-          </button>
-
           <button
             onClick={() => router.push(`/builder/${templateId}/import`)}
             style={btnWhiteStyle}

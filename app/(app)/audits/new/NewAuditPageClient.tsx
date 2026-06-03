@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import posthog from "posthog-js";
+import { goBackOrFallback } from "@/lib/navigation/clientBack";
 
 import { supabase } from "@/lib/supabaseClient";
 import type { Profile } from "@/lib/types";
@@ -248,7 +249,7 @@ export default function NewAuditPageClient({
 
         <div style={{ display: "flex", gap: 10, marginTop: 6 }}>
           <button
-            onClick={() => router.back()}
+            onClick={() => goBackOrFallback(router, "/areas")}
             style={{
               padding: "10px 14px",
               borderRadius: 10,

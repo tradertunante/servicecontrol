@@ -527,32 +527,23 @@ export default function UsersPageClient({
     }
   }
 
-  // ── Early returns ─────────────────────────────────────────────────────────
-
-  if (loading) {
-    return (
-      <main className="p-6">
-        <BackButton fallback="/home" />
-        <h1 className="text-[clamp(28px,8vw,56px)] mb-1.5">Usuarios</h1>
-        <div className="opacity-80">Cargando...</div>
-      </main>
-    );
-  }
-
-  if (error) {
-    return (
-      <main className="p-6">
-        <BackButton fallback="/home" />
-        <h1 className="text-[clamp(28px,8vw,56px)] mb-1.5">Usuarios</h1>
-        <div className="text-[crimson] font-[950]">{error}</div>
-      </main>
-    );
-  }
-
   const hasFilters = search || filterRole !== "all" || filterStatus !== "all";
   const pendingUsers = users.filter((u) => !u.last_sign_in_at);
 
   // ── Render ────────────────────────────────────────────────────────────────
+
+  if (loading || error) {
+    return (
+      <main className="p-4 sm:p-6">
+        <BackButton fallback="/home" />
+        <h1 className="text-[clamp(28px,8vw,56px)] mb-1.5">Usuarios</h1>
+        {loading
+          ? <div className="opacity-80">Cargando...</div>
+          : <div className="text-[crimson] font-[950]">{error}</div>
+        }
+      </main>
+    );
+  }
 
   return (
     <main className="p-4 sm:p-6">

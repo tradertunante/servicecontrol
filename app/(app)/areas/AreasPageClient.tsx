@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import HotelHeader from "@/app/components/HotelHeader";
+import { goBackOrFallback } from "@/lib/navigation/clientBack";
 import type { Profile } from "@/lib/types";
 
 type AreaRow = { id: string; name: string; type: string | null; hotel_id: string | null; sort_order: number | null };
@@ -121,7 +122,7 @@ export default function AreasPageClient({
             <div className="meta">Rol: <strong>{profile?.role ?? "—"}</strong> <span className="dot">·</span> Total: <strong>{areas.length}</strong></div>
           </div>
           <div className="topActions">
-            <button type="button" onClick={() => router.back()} className="btn">← Atrás</button>
+            <button type="button" onClick={() => goBackOrFallback(router, "/dashboard")} className="btn">← Atrás</button>
             {canManage && (
               <button type="button" onClick={() => router.push("/admin?tab=areas")} className="btn" title="Gestionar áreas">
                 Gestionar

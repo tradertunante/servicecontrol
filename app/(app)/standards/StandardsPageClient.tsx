@@ -225,25 +225,15 @@ export default function StandardsPageClient({
 
   const areaName = useMemo(() => { const m = new Map<string, string>(); for (const a of areas) m.set(a.id, a.name); return m; }, [areas]);
 
-  if (loading) return (
-    <main className="p-6 pt-20">
-      <HotelHeader />
-      <BackButton fallback="/builder" />
-      <div className="opacity-80">Cargando…</div>
-    </main>
-  );
-  if (error) return (
-    <main className="p-6 pt-20">
-      <HotelHeader />
-      <BackButton fallback="/builder" />
-      <div className="text-[crimson] font-black">{error}</div>
-    </main>
-  );
-
   return (
     <main className="p-6 pt-20">
       <HotelHeader />
       <BackButton fallback="/builder" />
+      {loading ? (
+        <div className="opacity-80">Cargando…</div>
+      ) : error ? (
+        <div className="text-[crimson] font-black">{error}</div>
+      ) : (<>
       <div className="mb-[14px]">
         <div className="text-[30px] font-black tracking-[-0.3px]">📚 Biblioteca de Estándares</div>
         <div className="opacity-75 mt-1.5">Importa packs globales y asigna cada auditoría a un área del hotel.</div>
@@ -355,6 +345,7 @@ export default function StandardsPageClient({
           )}
         </div>
       </div>
+      </>)}
     </main>
   );
 }

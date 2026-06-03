@@ -116,30 +116,15 @@ export default function NewTemplatePageClient({
 
   const disabled = saving || !templateName.trim() || !selectedAreaId || !selectedAreaExists;
 
-  if (loading) {
-    return (
-      <main className="p-6 pt-20">
-        <HotelHeader />
-        <BackButton fallback="/builder" />
-        <div className="opacity-80">Cargando...</div>
-      </main>
-    );
-  }
-
-  if (error && !areas.length) {
-    return (
-      <main className="p-6 pt-20">
-        <HotelHeader />
-        <BackButton fallback="/builder" />
-        <div className="text-[crimson] font-[900]">{error}</div>
-      </main>
-    );
-  }
-
   return (
     <main className="p-6 pt-20">
       <HotelHeader />
       <BackButton fallback="/builder" />
+      {loading ? (
+        <div className="opacity-80">Cargando...</div>
+      ) : error && !areas.length ? (
+        <div className="text-[crimson] font-[900]">{error}</div>
+      ) : (<>
       <div className="mb-5">
         <div className="opacity-70 text-sm">
           Crea una nueva plantilla de auditoria para {initialProfile.full_name ?? "tu hotel"}
@@ -191,6 +176,7 @@ export default function NewTemplatePageClient({
           </div>
         </div>
       </div>
+      </>)}
     </main>
   );
 }
