@@ -42,6 +42,8 @@ export default function UserDetailPageClient({
   const [areas, setAreas]                   = useState<AreaRow[]>([]);
   const [selectedAreaIds, setSelectedAreaIds] = useState<string[]>([]);
 
+  const [email, setEmail]                   = useState("");
+
   const [newPassword, setNewPassword]       = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPasswords, setShowPasswords]   = useState(false);
@@ -87,6 +89,7 @@ export default function UserDetailPageClient({
 
         setUserRow(target);
         setFullName(target.full_name ?? "");
+        setEmail(target.email ?? "");
         setRole(target.role);
         setActive(target.active);
 
@@ -127,6 +130,9 @@ export default function UserDetailPageClient({
           role,
           active,
           ...(newPassword ? { password: newPassword } : {}),
+          ...(initialProfile.role === "superadmin" && email.trim() !== (userRow?.email ?? "")
+            ? { email: email.trim() }
+            : {}),
         }),
       });
       const payload = await res.json().catch(() => ({}));
@@ -272,6 +278,20 @@ export default function UserDetailPageClient({
                 className="h-11 px-3 rounded-xl border border-black/20 font-[800] text-sm bg-white"
               />
             </label>
+
+            {initialProfile.role === "superadmin" && (
+              <label className="grid gap-1.5">
+                <span className="font-[950] text-sm">Email</span>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="correo@ejemplo.com"
+                  autoComplete="off"
+                  className="h-11 px-3 rounded-xl border border-black/20 font-[800] text-sm bg-white"
+                />
+              </label>
+            )}
 
             <label className="grid gap-1.5">
               <span className="font-[950] text-sm">Rol</span>

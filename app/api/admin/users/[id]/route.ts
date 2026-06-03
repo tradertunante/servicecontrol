@@ -83,6 +83,11 @@ export async function PATCH(
       return jsonError("La contraseña debe tener al menos 8 caracteres.", 400);
     }
 
+    const newEmail =
+      caller.profile.role === "superadmin" && typeof body?.email === "string"
+        ? body.email.trim().toLowerCase() || null
+        : null;
+
     const admin = supabaseAdmin();
     const { error } = await admin
       .from("profiles")
@@ -90,16 +95,18 @@ export async function PATCH(
         full_name: fullName,
         role: roleResult.role,
         active,
+        ...(newEmail ? { email: newEmail } : {}),
       })
       .eq("id", userId)
       .eq("hotel_id", hotelResult.hotelId);
 
     if (error) return jsonDbError(error);
 
-    if (newPassword) {
-      const { error: authError } = await admin.auth.admin.updateUserById(userId, {
-        password: newPassword,
-      });
+    if (newPassword || newEmail) {
+      const authUpdates: Parameters<typeof admin.auth.admin.updateUserById>[1] = {};
+      if (newPassword) authUpdates.password = newPassword;
+      if (newEmail) authUpdates.email = newEmail;
+      const { error: authError } = await admin.auth.admin.updateUserById(userId, authUpdates);
       if (authError) return jsonDbError(authError);
     }
 
