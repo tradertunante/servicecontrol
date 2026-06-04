@@ -16,6 +16,7 @@ export type ManagedUserRow = {
   email: string | null;
   last_sign_in_at: string | null;
   email_confirmed_at: string | null;
+  invited_at: string | null;
   areas: { id: string; name: string }[];
   audit_run_count: number;
 };
@@ -89,6 +90,7 @@ export async function loadManagedUser(userId: string, hotelId?: string | null) {
     email: (data.email as string | null) ?? null,
     last_sign_in_at: null,
     email_confirmed_at: null,
+    invited_at: null,
     areas: [],
     audit_run_count: 0,
   } satisfies ManagedUserRow;
@@ -166,6 +168,7 @@ export async function listManagedUsers(actorProfile: Profile) {
     email: (row.email as string | null) ?? null,
     last_sign_in_at: (row.last_sign_in_at as string | null) ?? null,
     email_confirmed_at: (row.email_confirmed_at as string | null) ?? null,
+    invited_at: (row.invited_at as string | null) ?? null,
     areas: Array.isArray(row.areas) ? (row.areas as { id: string; name: string }[]) : [],
     audit_run_count: Number(row.audit_run_count ?? 0),
   }));
@@ -260,6 +263,7 @@ export async function createManagedUser(
       role: roleResult.role,
       hotel_id: hotelResult.hotelId,
       active: true,
+      invited_at: new Date().toISOString(),
     },
     { onConflict: "id" }
   );

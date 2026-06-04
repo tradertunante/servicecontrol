@@ -18,6 +18,7 @@ type UserRow = {
   active: boolean;
   last_sign_in_at: string | null;
   email_confirmed_at: string | null;
+  invited_at: string | null;
   areas: AreaRef[];
   audit_run_count: number;
 };
@@ -71,7 +72,7 @@ function exportCSV(rows: UserRow[]) {
     u.full_name ?? "",
     u.email ?? "",
     ROLE_LABELS[u.role] ?? u.role,
-    (!u.last_sign_in_at || !u.email_confirmed_at) ? "Sin acceso" : u.active ? "Activo" : "Inactivo",
+    u.invited_at ? "Sin acceso" : u.active ? "Activo" : "Inactivo",
     u.areas.map((a) => a.name).join("; "),
     u.last_sign_in_at ? new Date(u.last_sign_in_at).toLocaleDateString("es-ES") : "Nunca",
     String(u.audit_run_count),
@@ -156,7 +157,7 @@ function TreeView({ users, onEditAreas, onEdit, onDelete, rolePill, avatarBg, in
                 <span className={`text-[11px] font-[950] px-2 py-0.5 rounded-full shrink-0 ${rolePill[user.role] ?? "bg-gray-100 text-gray-700"}`}>
                   {ROLE_LABELS[user.role] ?? user.role}
                 </span>
-                {(!user.last_sign_in_at || !user.email_confirmed_at) && (
+                {!!user.invited_at && (
                   <span className="text-[11px] font-[950] px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 shrink-0">
                     Sin acceso
                   </span>
@@ -528,7 +529,7 @@ export default function UsersPageClient({
   }
 
   const hasFilters = search || filterRole !== "all" || filterStatus !== "all";
-  const pendingUsers = users.filter((u) => !u.last_sign_in_at || !u.email_confirmed_at);
+  const pendingUsers = users.filter((u) => !!u.invited_at);
 
   // ── Render ────────────────────────────────────────────────────────────────
 
@@ -740,7 +741,7 @@ export default function UsersPageClient({
           {/* Rows */}
           {paged.map((user) => {
             const isSelf    = user.id === initialProfile.id;
-            const isPending = !user.last_sign_in_at || !user.email_confirmed_at;
+            const isPending = !!user.invited_at;
             const isBusy    = busyId === user.id;
             const roleOptions = (assignableRoles as Role[]).includes(user.role)
               ? (assignableRoles as Role[])

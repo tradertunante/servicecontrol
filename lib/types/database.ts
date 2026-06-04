@@ -2216,6 +2216,7 @@ export type Database = {
           full_name: string | null
           hotel_id: string | null
           id: string
+          invited_at: string | null
           is_trial: boolean
           role: string
           terms_accepted_at: string | null
@@ -2234,6 +2235,7 @@ export type Database = {
           full_name?: string | null
           hotel_id?: string | null
           id: string
+          invited_at?: string | null
           is_trial?: boolean
           role: string
           terms_accepted_at?: string | null
@@ -2252,6 +2254,7 @@ export type Database = {
           full_name?: string | null
           hotel_id?: string | null
           id?: string
+          invited_at?: string | null
           is_trial?: boolean
           role?: string
           terms_accepted_at?: string | null

@@ -59,6 +59,11 @@ export async function POST(
       activationUrl,
     });
 
+    await admin
+      .from("profiles")
+      .update({ invited_at: new Date().toISOString() })
+      .eq("id", userId);
+
     return NextResponse.json({ ok: true });
   } catch (error) {
     return jsonDbError(
