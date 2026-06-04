@@ -15,8 +15,10 @@ where u.id = p.id
   and u.last_sign_in_at is not null
   and u.last_sign_in_at - u.created_at < interval '10 minutes';
 
--- Update the RPC to include invited_at
-create or replace function public.list_hotel_users_with_meta(p_hotel_id uuid)
+-- Drop and recreate RPC to add invited_at column (can't change return type with replace)
+drop function if exists public.list_hotel_users_with_meta(uuid);
+
+create function public.list_hotel_users_with_meta(p_hotel_id uuid)
 returns table (
   id                 uuid,
   full_name          text,
