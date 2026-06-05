@@ -33,6 +33,7 @@ export default function StandardsPageClient({
   const [hotelTemplates, setHotelTemplates] = useState<HotelTemplate[]>([]);
   const [savingTemplateId, setSavingTemplateId] = useState<string | null>(null);
   const [duplicatingTemplateId, setDuplicatingTemplateId] = useState<string | null>(null);
+  const [filterAreaId, setFilterAreaId] = useState<string>("all");
 
   async function loadAll(hotelIdToUse: string) {
     const { data: packs, error: packErr } = await supabase.from("global_audit_packs").select("id, business_type, name, description, active, created_at").eq("active", true).eq("business_type", "hotel").order("created_at", { ascending: false });
@@ -217,11 +218,17 @@ export default function StandardsPageClient({
     finally { setDeletingTemplateId(null); }
   };
 
+  const filteredTemplates = useMemo(() => {
+    if (filterAreaId === "all") return hotelTemplates;
+    if (filterAreaId === "none") return hotelTemplates.filter((t) => !t.area_id);
+    return hotelTemplates.filter((t) => t.area_id === filterAreaId);
+  }, [hotelTemplates, filterAreaId]);
+
   const templatesByPack = useMemo(() => {
     const map = new Map<string, HotelTemplate[]>();
-    for (const t of hotelTemplates) { const k = t.pack_id ?? "—"; if (!map.has(k)) map.set(k, []); map.get(k)!.push(t); }
+    for (const t of filteredTemplates) { const k = t.pack_id ?? "—"; if (!map.has(k)) map.set(k, []); map.get(k)!.push(t); }
     return map;
-  }, [hotelTemplates]);
+  }, [filteredTemplates]);
 
   const areaName = useMemo(() => { const m = new Map<string, string>(); for (const a of areas) m.set(a.id, a.name); return m; }, [areas]);
 
@@ -282,7 +289,21 @@ export default function StandardsPageClient({
         </div>
 
         <div className="rounded-[18px] border border-black/[0.08] bg-white/85 p-5 shadow-[0_10px_30px_rgba(0,0,0,0.06)]">
-          <div className="text-lg font-black mb-2">🏨 En mi hotel</div>
+          <div className="flex items-center justify-between gap-3 flex-wrap mb-2">
+            <div className="text-lg font-black">🏨 En mi hotel</div>
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-black opacity-60">Filtrar por área:</span>
+              <select
+                value={filterAreaId}
+                onChange={(e) => setFilterAreaId(e.target.value)}
+                className="px-3 py-2 rounded-xl border border-black/[0.18] bg-white font-black text-sm h-[38px] min-w-[180px]"
+              >
+                <option value="all">Todas las áreas</option>
+                <option value="none">Sin asignar</option>
+                {areas.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
+              </select>
+            </div>
+          </div>
           <div className="opacity-75 text-[13px] mb-3">
             Aquí ves lo importado. Asigna un área a cada auditoría para que aparezca en el Builder. Usa &quot;Duplicar&quot; si necesitas varias instancias (p. ej. varios restaurantes).
           </div>
