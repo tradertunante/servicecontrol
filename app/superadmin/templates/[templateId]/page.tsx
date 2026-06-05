@@ -351,8 +351,6 @@ export default function SuperadminGlobalTemplateBuilderPage() {
 
   async function applyQuickRules(kind: "comment" | "photo" | "signature") {
     const val = kind === "comment" ? quickComment : kind === "photo" ? quickPhoto : quickSignature;
-    const ok = confirm(`¿Aplicar "${kind}" = "${val}" a TODAS las preguntas?`);
-    if (!ok) return;
 
     setSaving(true);
     setError(null);
