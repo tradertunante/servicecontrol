@@ -7,6 +7,7 @@ export type AuditRunRow = {
   score: number | null;
   notes: string | null;
   room_number: string | null;
+  employee_name: string | null;
   executed_at: string | null;
   executed_by: string | null;
   audit_template_id: string;

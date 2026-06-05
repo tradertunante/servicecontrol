@@ -1014,6 +1014,7 @@ export type Database = {
           audit_template_id: string
           auditor_email: string | null
           blocking_issue_count: number
+          employee_name: string | null
           employee_number: string | null
           executed_at: string
           executed_by: string | null
@@ -1041,6 +1042,7 @@ export type Database = {
           audit_template_id: string
           auditor_email?: string | null
           blocking_issue_count?: number
+          employee_name?: string | null
           employee_number?: string | null
           executed_at?: string
           executed_by?: string | null
@@ -1068,6 +1070,7 @@ export type Database = {
           audit_template_id?: string
           auditor_email?: string | null
           blocking_issue_count?: number
+          employee_name?: string | null
           employee_number?: string | null
           executed_at?: string
           executed_by?: string | null

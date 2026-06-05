@@ -61,6 +61,7 @@ export function useAuditSession(runId: string | undefined) {
     answersByQ, setAnswersByQ,
     selectedMember, setSelectedMember,
     roomNumber, setRoomNumber,
+    employeeName, setEmployeeName,
     submitted,
     requiresAuditedEmployee,
     requiresRoomNumber,
@@ -77,7 +78,7 @@ export function useAuditSession(runId: string | undefined) {
     scheduleSave,
   });
 
-  const { saveTeamMember, saveRoomNumber, savingMember, savingRoomNumber } = useAuditMetadata({
+  const { saveTeamMember, saveRoomNumber, saveEmployeeName, savingMember, savingRoomNumber, savingEmployeeName } = useAuditMetadata({
     run,
     submitted,
     showRoomNumberField,
@@ -85,6 +86,8 @@ export function useAuditSession(runId: string | undefined) {
     setSelectedMember,
     roomNumber,
     setRoomNumber,
+    employeeName,
+    setEmployeeName,
     setError,
     setRun,
   });
@@ -229,6 +232,7 @@ export function useAuditSession(runId: string | undefined) {
     uploading,
     submitting,
     savingMember,
+    savingEmployeeName,
     error,
     submitted,
     run,
@@ -242,6 +246,9 @@ export function useAuditSession(runId: string | undefined) {
     selectedMember,
     roomNumber,
     savingRoomNumber,
+    employeeName,
+    setEmployeeName,
+    saveEmployeeName,
     isHousekeeping: loaderState.isHousekeeping,
     requiresRoomNumber,
     requiresAuditedEmployee,

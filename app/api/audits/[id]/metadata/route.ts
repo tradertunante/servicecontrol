@@ -30,14 +30,12 @@ export async function PATCH(
   const body = await request.json().catch(() => null);
   const teamMemberId = normalizeOptionalString(body?.team_member_id);
   const roomNumber = normalizeOptionalString(body?.room_number);
+  const employeeName = normalizeOptionalString(body?.employee_name);
 
   const updates: Record<string, string | null> = {};
-  if (teamMemberId !== undefined) {
-    updates.team_member_id = teamMemberId;
-  }
-  if (roomNumber !== undefined) {
-    updates.room_number = roomNumber;
-  }
+  if (teamMemberId !== undefined) updates.team_member_id = teamMemberId;
+  if (roomNumber !== undefined) updates.room_number = roomNumber;
+  if (employeeName !== undefined) updates.employee_name = employeeName;
 
   if (Object.keys(updates).length === 0) {
     return jsonError("No hay campos editables para actualizar.");
@@ -68,7 +66,7 @@ export async function PATCH(
     .from("audit_runs")
     .update(updates)
     .eq("id", access.run.id)
-    .select("id, team_member_id, room_number, status")
+    .select("id, team_member_id, room_number, employee_name, status")
     .single();
 
   if (error || !data) {

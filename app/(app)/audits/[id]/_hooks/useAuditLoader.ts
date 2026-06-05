@@ -30,6 +30,7 @@ export function useAuditLoader(runId: string | undefined) {
   const [teamMembers, setTeamMembers] = useState<TeamMemberLite[]>([]);
   const [selectedMember, setSelectedMember] = useState("");
   const [roomNumber, setRoomNumber] = useState("");
+  const [employeeName, setEmployeeName] = useState("");
 
   const submitted = (run?.status ?? "") === "submitted";
   const isHousekeeping = (area?.type ?? "").toUpperCase() === "HK";
@@ -59,6 +60,7 @@ export function useAuditLoader(runId: string | undefined) {
         setTeamMembers(session.teamMembers);
         setSelectedMember(session.run.team_member_id ?? "");
         setRoomNumber(session.run.room_number ?? "");
+        setEmployeeName((session.run as any).employee_name ?? "");
         setLoading(false);
       } catch (sessionError: unknown) {
         if (!alive) return;
@@ -113,6 +115,7 @@ export function useAuditLoader(runId: string | undefined) {
     teamMembers,
     selectedMember, setSelectedMember,
     roomNumber, setRoomNumber,
+    employeeName, setEmployeeName,
     submitted, isHousekeeping, requiresRoomNumber, requiresAuditedEmployee, showRoomNumberField,
     totals, groupedQuestions,
   };

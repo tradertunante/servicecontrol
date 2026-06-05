@@ -19,6 +19,8 @@ export function useAuditMetadata({
   setSelectedMember,
   roomNumber,
   setRoomNumber,
+  employeeName,
+  setEmployeeName,
   setError,
   setRun,
 }: {
@@ -29,11 +31,14 @@ export function useAuditMetadata({
   setSelectedMember: React.Dispatch<React.SetStateAction<string>>;
   roomNumber: string;
   setRoomNumber: React.Dispatch<React.SetStateAction<string>>;
+  employeeName: string;
+  setEmployeeName: React.Dispatch<React.SetStateAction<string>>;
   setError: React.Dispatch<React.SetStateAction<string | null>>;
   setRun: React.Dispatch<React.SetStateAction<AuditRunRow | null>>;
 }) {
   const [savingMember, setSavingMember] = useState(false);
   const [savingRoomNumber, setSavingRoomNumber] = useState(false);
+  const [savingEmployeeName, setSavingEmployeeName] = useState(false);
 
   async function saveTeamMember(nextId: string) {
     if (!run || submitted) return;
@@ -116,5 +121,31 @@ export function useAuditMetadata({
     }
   }
 
-  return { saveTeamMember, saveRoomNumber, savingMember, savingRoomNumber };
+  async function saveEmployeeName(nextValue: string) {
+    if (!run || submitted) return;
+    const prev = employeeName;
+    const trimmed = nextValue.trim();
+    setSavingEmployeeName(true);
+    setError(null);
+    try {
+      const accessToken = await getAccessToken();
+      const response = await fetch(`/api/audits/${run.id}/metadata`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
+        body: JSON.stringify({ employee_name: trimmed || null }),
+      });
+      const payload = (await response.json().catch(() => null)) as MetadataResponse | null;
+      if (!response.ok || !payload?.ok) throw new Error(payload?.error ?? "No se pudo guardar el nombre.");
+      const confirmed = (payload.run as any)?.employee_name ?? null;
+      setEmployeeName(confirmed ?? "");
+      setRun((prev) => (prev ? { ...prev, employee_name: confirmed } : prev));
+    } catch (err: unknown) {
+      setEmployeeName(prev);
+      setError(err instanceof Error ? err.message : "No se pudo guardar el nombre.");
+    } finally {
+      setSavingEmployeeName(false);
+    }
+  }
+
+  return { saveTeamMember, saveRoomNumber, saveEmployeeName, savingMember, savingRoomNumber, savingEmployeeName };
 }

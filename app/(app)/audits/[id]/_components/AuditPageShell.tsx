@@ -32,6 +32,10 @@ export default function AuditPageShell() {
     selectedMember,
     roomNumber,
     savingRoomNumber,
+    employeeName,
+    setEmployeeName,
+    saveEmployeeName,
+    savingEmployeeName,
     requiresRoomNumber,
     requiresAuditedEmployee,
     showRoomNumberField,
@@ -147,6 +151,25 @@ export default function AuditPageShell() {
             );
           })()}
         </select>
+
+        {/* Free-text collaborator name — always visible as an optional complement */}
+        <div className="mt-3">
+          <div className="mb-1.5 text-sm font-extrabold text-slate-900">
+            Nombre del colaborador <span className="font-normal text-slate-400">(opcional)</span>
+          </div>
+          <input
+            type="text"
+            placeholder="Escribe el nombre si no está en la lista"
+            value={employeeName}
+            disabled={submitted || savingEmployeeName}
+            onChange={(e) => setEmployeeName(e.target.value)}
+            onBlur={(e) => saveEmployeeName(e.target.value)}
+            className="min-h-[44px] w-full rounded-xl border border-slate-200 bg-white px-3.5 text-sm font-semibold text-slate-900 placeholder:font-normal placeholder:text-slate-400 disabled:opacity-60"
+          />
+          {savingEmployeeName && (
+            <div className="mt-1 text-[11px] text-slate-400">Guardando…</div>
+          )}
+        </div>
 
         {showRoomNumberField ? (
           <div className="mt-3">
