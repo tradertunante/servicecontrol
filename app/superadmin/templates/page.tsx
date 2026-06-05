@@ -26,6 +26,7 @@ export default function SuperadminTemplatesPage() {
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [busyId, setBusyId] = useState<string | null>(null);
 
   const [templates, setTemplates] = useState<TemplateRow[]>([]);
   const [areasById, setAreasById] = useState<Map<string, AreaRow>>(new Map());
@@ -75,6 +76,48 @@ export default function SuperadminTemplatesPage() {
       mounted = false;
     };
   }, []);
+
+  async function getToken() {
+    const { data } = await supabase.auth.getSession();
+    return data.session?.access_token ?? "";
+  }
+
+  async function duplicateTemplate(t: TemplateRow) {
+    setBusyId(t.id);
+    try {
+      const token = await getToken();
+      const res = await fetch(`/api/superadmin/templates/${t.id}/duplicate`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const payload = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(payload?.error ?? "No se pudo duplicar.");
+      router.push(`/superadmin/templates/${payload.template_id}`);
+    } catch (e: any) {
+      setError(e?.message ?? "Error al duplicar.");
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function deleteTemplate(t: TemplateRow) {
+    if (!window.confirm(`¿Eliminar "${t.name}"? Esta acción borrará todas sus secciones y preguntas y no se puede deshacer.`)) return;
+    setBusyId(t.id);
+    try {
+      const token = await getToken();
+      const res = await fetch(`/api/superadmin/templates/${t.id}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const payload = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(payload?.error ?? "No se pudo eliminar.");
+      setTemplates((prev) => prev.filter((x) => x.id !== t.id));
+    } catch (e: any) {
+      setError(e?.message ?? "Error al eliminar.");
+    } finally {
+      setBusyId(null);
+    }
+  }
 
   const filtered = useMemo(() => {
     const needle = q.trim().toLowerCase();
@@ -187,25 +230,36 @@ export default function SuperadminTemplatesPage() {
             const area = t.area_id ? areasById.get(t.area_id) : null;
             const status = t.active === false ? "INACTIVA" : "ACTIVA";
 
+            const busy = busyId === t.id;
             return (
-              <button
+              <div
                 key={t.id}
-                onClick={() => router.push(`/superadmin/templates/${t.id}`)}
                 style={{
-                  textAlign: "left",
-                  padding: "14px 14px",
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  gap: 10,
+                  padding: "12px 14px",
                   borderRadius: 16,
                   border: "1px solid rgba(0,0,0,0.12)",
                   background: "#fff",
-                  cursor: "pointer",
+                  flexWrap: "wrap",
                 }}
               >
-                <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
-                  <div style={{ fontWeight: 950, fontSize: 16 }}>{t.name ?? "Sin nombre"}</div>
+                <div
+                  style={{ flex: 1, minWidth: 200, cursor: "pointer" }}
+                  onClick={() => router.push(`/superadmin/templates/${t.id}`)}
+                >
+                  <div style={{ fontWeight: 950, fontSize: 15 }}>{t.name ?? "Sin nombre"}</div>
+                  <div style={{ marginTop: 4, opacity: 0.7, fontWeight: 900, fontSize: 12 }}>
+                    Área: {area?.name ?? "—"}{area?.type ? ` · ${area.type}` : ""} · {t.created_at ? new Date(t.created_at).toLocaleString() : "—"}
+                  </div>
+                </div>
 
+                <div style={{ display: "flex", gap: 8, alignItems: "center", flexShrink: 0 }}>
                   <div
                     style={{
-                      padding: "6px 10px",
+                      padding: "4px 10px",
                       borderRadius: 999,
                       background: "rgba(0,0,0,0.06)",
                       border: "1px solid rgba(0,0,0,0.12)",
@@ -215,15 +269,21 @@ export default function SuperadminTemplatesPage() {
                   >
                     {status}
                   </div>
+                  <button style={btnWhite} disabled={busy} onClick={() => router.push(`/superadmin/templates/${t.id}`)}>
+                    Editar
+                  </button>
+                  <button style={btnWhite} disabled={busy} onClick={() => duplicateTemplate(t)}>
+                    {busy ? "…" : "Duplicar"}
+                  </button>
+                  <button
+                    style={{ ...btnWhite, color: "#b91c1c", borderColor: "#fca5a5" }}
+                    disabled={busy}
+                    onClick={() => deleteTemplate(t)}
+                  >
+                    Eliminar
+                  </button>
                 </div>
-
-                <div style={{ marginTop: 6, opacity: 0.75, fontWeight: 900, fontSize: 12 }}>
-                  Área: {area?.name ?? "—"}
-                  {area?.type ? ` · ${area.type}` : ""} ·{" "}
-                  {t.created_at ? new Date(t.created_at).toLocaleString() : "—"}
-                </div>
-
-              </button>
+              </div>
             );
           })}
 
