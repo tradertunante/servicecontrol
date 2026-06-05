@@ -89,7 +89,6 @@ export default function SuperadminGlobalTemplateBuilderPage() {
   const [template, setTemplate] = useState<TemplateRow | null>(null);
   const [area, setArea] = useState<AreaRow | null>(null);
 
-  const [sections, setSections] = useState<SectionRow[]>([]);
   const [rows, setRows] = useState<UiRow[]>([]);
   const [openRowMenuId, setOpenRowMenuId] = useState<string | null>(null);
 
@@ -193,8 +192,6 @@ export default function SuperadminGlobalTemplateBuilderPage() {
 
         setTemplate(tpl);
         setNameDraft(tpl.name ?? "");
-        setSections(secs);
-
         // Area
         if (tpl.area_id) {
           const { data: aData, error: aErr } = await supabase.from("areas").select("id,name,type").eq("id", tpl.area_id).single();
@@ -246,16 +243,7 @@ export default function SuperadminGlobalTemplateBuilderPage() {
           };
         });
 
-        const sectionIndex = new Map<string, number>();
-        secs.forEach((s, idx) => sectionIndex.set(s.id, idx));
-
-        ui.sort((a, b) => {
-          const sa = sectionIndex.get(a.sectionId) ?? 999999;
-          const sb = sectionIndex.get(b.sectionId) ?? 999999;
-          if (sa !== sb) return sa - sb;
-          if (a.order !== b.order) return a.order - b.order;
-          return a.questionId.localeCompare(b.questionId);
-        });
+        ui.sort((a, b) => a.order !== b.order ? a.order - b.order : a.questionId.localeCompare(b.questionId));
 
         if (!mounted) return;
         setRows(ui);
@@ -288,11 +276,10 @@ export default function SuperadminGlobalTemplateBuilderPage() {
         }),
       });
 
-      setRows((prev) =>
-        prev.map((r) => {
+      setRows((prev) => {
+        const updated = prev.map((r) => {
           if (r.questionId !== questionId) return r;
           const next = { ...r };
-
           if (patch.text !== undefined) next.standard = safeStr(patch.text);
           if (patch.tag !== undefined) next.tag = safeStr(patch.tag);
           if (patch.comment_requirement !== undefined) next.comment_requirement = toRequirement(patch.comment_requirement);
@@ -300,10 +287,13 @@ export default function SuperadminGlobalTemplateBuilderPage() {
           if (patch.signature_requirement !== undefined) next.signature_requirement = toRequirement(patch.signature_requirement);
           if (patch.active !== undefined) next.active = toBool(patch.active);
           if (patch.order !== undefined) next.order = normalizeOrder(patch.order, next.order);
-
           return next;
-        })
-      );
+        });
+        if (patch.order !== undefined) {
+          updated.sort((a, b) => a.order !== b.order ? a.order - b.order : a.questionId.localeCompare(b.questionId));
+        }
+        return updated;
+      });
 
       setInfo("Guardado ✅");
     } catch (e: any) {
@@ -712,180 +702,111 @@ export default function SuperadminGlobalTemplateBuilderPage() {
           Esta plantilla no tiene preguntas aún. Usa &quot;Importar catálogo&quot; para añadirlas.
         </div>
       ) : (
-        <div style={{ marginTop: 14, display: "grid", gap: 16 }}>
-          {sections.map((sec) => {
-            const secRows = rows.filter((r) => r.sectionId === sec.id);
-            if (secRows.length === 0) return null;
-            return (
-              <div key={sec.id} style={{ ...card, padding: 0, overflow: "hidden" }}>
-                <div
-                  style={{
-                    padding: "12px 16px",
-                    background: "rgba(0,0,0,0.04)",
-                    borderBottom: "1px solid rgba(0,0,0,0.08)",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 10,
-                  }}
-                >
-                  <span style={{ fontWeight: 950, fontSize: 15 }}>{sec.name}</span>
-                  <span
+        <div style={{ ...card, marginTop: 14, padding: 0, overflow: "hidden" }}>
+          <div style={{ overflowX: "auto" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+              <thead>
+                <tr style={{ background: "rgba(0,0,0,0.03)", borderBottom: "1px solid rgba(0,0,0,0.08)" }}>
+                  <th style={{ padding: "9px 10px", textAlign: "left", fontWeight: 950, width: 56 }}>#</th>
+                  <th style={{ padding: "9px 10px", textAlign: "left", fontWeight: 950, width: 110 }}>Clasificación</th>
+                  <th style={{ padding: "9px 10px", textAlign: "left", fontWeight: 950, width: 80 }}>Tag</th>
+                  <th style={{ padding: "9px 10px", textAlign: "left", fontWeight: 950 }}>Estándar</th>
+                  <th style={{ padding: "9px 10px", textAlign: "center", fontWeight: 950, width: 110 }}>Comentario</th>
+                  <th style={{ padding: "9px 10px", textAlign: "center", fontWeight: 950, width: 90 }}>Foto</th>
+                  <th style={{ padding: "9px 10px", textAlign: "center", fontWeight: 950, width: 90 }}>Firma</th>
+                  <th style={{ padding: "9px 10px", textAlign: "center", fontWeight: 950, width: 60 }}>Activa</th>
+                  <th style={{ width: 36 }} />
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((row) => (
+                  <tr
+                    key={row.questionId}
                     style={{
-                      padding: "2px 8px",
-                      borderRadius: 999,
-                      background: "rgba(0,0,0,0.08)",
-                      fontSize: 12,
-                      fontWeight: 900,
+                      borderBottom: "1px solid rgba(0,0,0,0.05)",
+                      background: row.active ? "transparent" : "rgba(0,0,0,0.025)",
+                      opacity: row.active ? 1 : 0.55,
                     }}
                   >
-                    {secRows.length} preguntas
-                  </span>
-                </div>
-
-                <div style={{ overflowX: "auto" }}>
-                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
-                    <thead>
-                      <tr style={{ background: "rgba(0,0,0,0.02)", borderBottom: "1px solid rgba(0,0,0,0.07)" }}>
-                        <th style={{ padding: "8px 10px", textAlign: "left", fontWeight: 950, width: 50 }}>#</th>
-                        <th style={{ padding: "8px 10px", textAlign: "left", fontWeight: 950, width: 90 }}>Tag</th>
-                        <th style={{ padding: "8px 10px", textAlign: "left", fontWeight: 950 }}>Estándar</th>
-                        <th style={{ padding: "8px 10px", textAlign: "center", fontWeight: 950, width: 110 }}>Comentario</th>
-                        <th style={{ padding: "8px 10px", textAlign: "center", fontWeight: 950, width: 90 }}>Foto</th>
-                        <th style={{ padding: "8px 10px", textAlign: "center", fontWeight: 950, width: 90 }}>Firma</th>
-                        <th style={{ padding: "8px 10px", textAlign: "center", fontWeight: 950, width: 70 }}>Activa</th>
-                        <th style={{ width: 36 }} />
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {secRows.map((row) => (
-                        <tr
-                          key={row.questionId}
-                          style={{
-                            borderBottom: "1px solid rgba(0,0,0,0.05)",
-                            background: row.active ? "transparent" : "rgba(0,0,0,0.025)",
-                            opacity: row.active ? 1 : 0.55,
-                          }}
+                    <td style={{ padding: "6px 10px" }}>
+                      <input
+                        type="number"
+                        defaultValue={row.order}
+                        key={`${row.questionId}-${row.order}`}
+                        onBlur={(e) => {
+                          const val = parseInt(e.target.value, 10);
+                          if (!isNaN(val) && val !== row.order) updateQuestion(row.questionId, { order: val });
+                        }}
+                        style={{ width: 46, padding: "4px 6px", borderRadius: 8, border: "1px solid rgba(0,0,0,0.15)", fontWeight: 900, fontSize: 12, textAlign: "center" }}
+                      />
+                    </td>
+                    <td style={{ padding: "6px 10px" }}>
+                      <span style={{ display: "inline-block", padding: "3px 8px", borderRadius: 6, background: "rgba(0,0,0,0.06)", fontWeight: 900, fontSize: 11, whiteSpace: "nowrap" }}>
+                        {row.classification}
+                      </span>
+                    </td>
+                    <td style={{ padding: "6px 10px" }}>
+                      <input
+                        defaultValue={row.tag}
+                        onBlur={(e) => { if (e.target.value !== row.tag) updateQuestion(row.questionId, { tag: e.target.value }); }}
+                        style={{ width: "100%", padding: "5px 8px", borderRadius: 8, border: "1px solid rgba(0,0,0,0.15)", fontWeight: 900, fontSize: 12 }}
+                      />
+                    </td>
+                    <td style={{ padding: "6px 10px" }}>
+                      <input
+                        defaultValue={row.standard}
+                        onBlur={(e) => { if (e.target.value !== row.standard) updateQuestion(row.questionId, { text: e.target.value }); }}
+                        style={{ width: "100%", padding: "5px 8px", borderRadius: 8, border: "1px solid rgba(0,0,0,0.15)", fontWeight: 700, fontSize: 13 }}
+                      />
+                    </td>
+                    {(["comment_requirement", "photo_requirement", "signature_requirement"] as const).map((field) => (
+                      <td key={field} style={{ padding: "6px 10px", textAlign: "center" }}>
+                        <select
+                          value={row[field]}
+                          onChange={(e) => updateQuestion(row.questionId, { [field]: e.target.value as RequirementType })}
+                          style={{ padding: "5px 6px", borderRadius: 8, border: "1px solid rgba(0,0,0,0.15)", fontWeight: 900, fontSize: 12, width: "100%" }}
                         >
-                          <td style={{ padding: "6px 10px", fontWeight: 900, color: "rgba(0,0,0,0.4)", fontSize: 12 }}>
-                            <input
-                              type="number"
-                              defaultValue={row.order}
-                              onBlur={(e) => {
-                                const val = parseInt(e.target.value, 10);
-                                if (!isNaN(val) && val !== row.order) updateQuestion(row.questionId, { order: val });
-                              }}
-                              style={{
-                                width: 46,
-                                padding: "4px 6px",
-                                borderRadius: 8,
-                                border: "1px solid rgba(0,0,0,0.15)",
-                                fontWeight: 900,
-                                fontSize: 12,
-                                textAlign: "center",
-                              }}
-                            />
-                          </td>
-                          <td style={{ padding: "6px 10px" }}>
-                            <input
-                              defaultValue={row.tag}
-                              onBlur={(e) => {
-                                if (e.target.value !== row.tag) updateQuestion(row.questionId, { tag: e.target.value });
-                              }}
-                              style={{
-                                width: "100%",
-                                padding: "5px 8px",
-                                borderRadius: 8,
-                                border: "1px solid rgba(0,0,0,0.15)",
-                                fontWeight: 900,
-                                fontSize: 12,
-                              }}
-                            />
-                          </td>
-                          <td style={{ padding: "6px 10px" }}>
-                            <input
-                              defaultValue={row.standard}
-                              onBlur={(e) => {
-                                if (e.target.value !== row.standard) updateQuestion(row.questionId, { text: e.target.value });
-                              }}
-                              style={{
-                                width: "100%",
-                                padding: "5px 8px",
-                                borderRadius: 8,
-                                border: "1px solid rgba(0,0,0,0.15)",
-                                fontWeight: 700,
-                                fontSize: 13,
-                              }}
-                            />
-                          </td>
-                          {(["comment_requirement", "photo_requirement", "signature_requirement"] as const).map((field) => (
-                            <td key={field} style={{ padding: "6px 10px", textAlign: "center" }}>
-                              <select
-                                value={row[field]}
-                                onChange={(e) => updateQuestion(row.questionId, { [field]: e.target.value as RequirementType })}
-                                style={{
-                                  padding: "5px 6px",
-                                  borderRadius: 8,
-                                  border: "1px solid rgba(0,0,0,0.15)",
-                                  fontWeight: 900,
-                                  fontSize: 12,
-                                  width: "100%",
-                                }}
-                              >
-                                <option value="never">Nunca</option>
-                                <option value="if_fail">Si FAIL</option>
-                                <option value="optional">Opcional</option>
-                                <option value="always">Siempre</option>
-                              </select>
-                            </td>
-                          ))}
-                          <td style={{ padding: "6px 10px", textAlign: "center" }}>
-                            <input
-                              type="checkbox"
-                              checked={row.active}
-                              onChange={(e) => updateQuestion(row.questionId, { active: e.target.checked })}
-                              style={{ width: 16, height: 16, cursor: "pointer" }}
-                            />
-                          </td>
-                          <td style={{ padding: "6px 6px", textAlign: "center", position: "relative" }}>
-                            <button
-                              onClick={(e) => { e.stopPropagation(); setOpenRowMenuId(openRowMenuId === row.questionId ? null : row.questionId); }}
-                              style={{ background: "none", border: "none", cursor: "pointer", fontWeight: 900, fontSize: 16, padding: "2px 6px", borderRadius: 6, lineHeight: 1 }}
-                              title="Opciones"
-                            >
-                              ⋯
-                            </button>
-                            {openRowMenuId === row.questionId && (
-                              <div style={{
-                                position: "absolute",
-                                top: "calc(100% + 2px)",
-                                right: 0,
-                                background: "#fff",
-                                border: "1px solid rgba(0,0,0,0.12)",
-                                borderRadius: 10,
-                                boxShadow: "0 6px 20px rgba(0,0,0,0.12)",
-                                minWidth: 140,
-                                overflow: "hidden",
-                                zIndex: 100,
-                              }}>
-                                <button
-                                  style={{ display: "block", width: "100%", padding: "10px 14px", textAlign: "left", background: "none", border: "none", fontWeight: 900, fontSize: 13, cursor: "pointer", color: "#b91c1c" }}
-                                  onClick={(e) => { e.stopPropagation(); deleteQuestion(row.questionId); }}
-                                  onMouseEnter={(e) => (e.currentTarget.style.background = "#fef2f2")}
-                                  onMouseLeave={(e) => (e.currentTarget.style.background = "none")}
-                                >
-                                  Eliminar pregunta
-                                </button>
-                              </div>
-                            )}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            );
-          })}
+                          <option value="never">Nunca</option>
+                          <option value="if_fail">Si FAIL</option>
+                          <option value="optional">Opcional</option>
+                          <option value="always">Siempre</option>
+                        </select>
+                      </td>
+                    ))}
+                    <td style={{ padding: "6px 10px", textAlign: "center" }}>
+                      <input
+                        type="checkbox"
+                        checked={row.active}
+                        onChange={(e) => updateQuestion(row.questionId, { active: e.target.checked })}
+                        style={{ width: 16, height: 16, cursor: "pointer" }}
+                      />
+                    </td>
+                    <td style={{ padding: "6px 6px", textAlign: "center", position: "relative" }}>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setOpenRowMenuId(openRowMenuId === row.questionId ? null : row.questionId); }}
+                        style={{ background: "none", border: "none", cursor: "pointer", fontWeight: 900, fontSize: 16, padding: "2px 6px", borderRadius: 6, lineHeight: 1 }}
+                        title="Opciones"
+                      >
+                        ⋯
+                      </button>
+                      {openRowMenuId === row.questionId && (
+                        <div style={{ position: "absolute", top: "calc(100% + 2px)", right: 0, background: "#fff", border: "1px solid rgba(0,0,0,0.12)", borderRadius: 10, boxShadow: "0 6px 20px rgba(0,0,0,0.12)", minWidth: 150, overflow: "hidden", zIndex: 100 }}>
+                          <button
+                            style={{ display: "block", width: "100%", padding: "10px 14px", textAlign: "left", background: "none", border: "none", fontWeight: 900, fontSize: 13, cursor: "pointer", color: "#b91c1c" }}
+                            onClick={(e) => { e.stopPropagation(); deleteQuestion(row.questionId); }}
+                            onMouseEnter={(e) => (e.currentTarget.style.background = "#fef2f2")}
+                            onMouseLeave={(e) => (e.currentTarget.style.background = "none")}
+                          >
+                            Eliminar pregunta
+                          </button>
+                        </div>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
     </main>
