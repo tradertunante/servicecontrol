@@ -8,7 +8,7 @@
  * necesito que pegues el bloque de tu tabla (UI) si quieres que lo deje 100% idéntico al tuyo.
  */
 
-import { useEffect, useState, type CSSProperties } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import HotelHeader from "@/app/components/HotelHeader";
@@ -97,6 +97,58 @@ export default function SuperadminGlobalTemplateBuilderPage() {
   const [quickSignature, setQuickSignature] = useState<RequirementType>("never");
 
   const [nameDraft, setNameDraft] = useState("");
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    function handleClick(e: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenuOpen(false);
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [menuOpen]);
+
+  async function duplicateTemplate() {
+    if (!templateId) return;
+    setSaving(true); setError(null); setInfo(null);
+    try {
+      const { data } = await supabase.auth.getSession();
+      const token = data.session?.access_token ?? "";
+      const res = await fetch(`/api/superadmin/templates/${templateId}/duplicate`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const payload = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(payload?.error ?? "No se pudo duplicar.");
+      router.push(`/superadmin/templates/${payload.template_id}`);
+    } catch (e: any) {
+      setError(e?.message ?? "Error al duplicar.");
+    } finally {
+      setSaving(false); setMenuOpen(false);
+    }
+  }
+
+  async function deleteTemplate() {
+    if (!templateId || !template) return;
+    if (!window.confirm(`¿Eliminar "${template.name}"? Borrará todas sus secciones y preguntas. No se puede deshacer.`)) return;
+    setSaving(true); setError(null); setInfo(null);
+    try {
+      const { data } = await supabase.auth.getSession();
+      const token = data.session?.access_token ?? "";
+      const res = await fetch(`/api/superadmin/templates/${templateId}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const payload = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(payload?.error ?? "No se pudo eliminar.");
+      router.push("/superadmin/templates");
+    } catch (e: any) {
+      setError(e?.message ?? "Error al eliminar.");
+    } finally {
+      setSaving(false); setMenuOpen(false);
+    }
+  }
 
   useEffect(() => {
     let mounted = true;
@@ -419,7 +471,7 @@ export default function SuperadminGlobalTemplateBuilderPage() {
           </div>
         </div>
 
-        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
           <button onClick={() => router.push(`/superadmin/templates/${templateId}/import`)} style={btnWhite}>
             Importar catálogo
           </button>
@@ -427,6 +479,83 @@ export default function SuperadminGlobalTemplateBuilderPage() {
           <button onClick={toggleTemplateActive} style={btnBlack} disabled={saving}>
             {template?.active === false ? "Activar" : "Desactivar"}
           </button>
+
+          {/* three-dot menu */}
+          <div ref={menuRef} style={{ position: "relative" }}>
+            <button
+              onClick={() => setMenuOpen((v) => !v)}
+              disabled={saving}
+              style={{
+                ...btnWhite,
+                width: 42,
+                padding: 0,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontSize: 20,
+                letterSpacing: 1,
+              }}
+              title="Más opciones"
+            >
+              ⋯
+            </button>
+
+            {menuOpen && (
+              <div
+                style={{
+                  position: "absolute",
+                  top: "calc(100% + 6px)",
+                  right: 0,
+                  background: "#fff",
+                  border: "1px solid rgba(0,0,0,0.12)",
+                  borderRadius: 14,
+                  boxShadow: "0 8px 24px rgba(0,0,0,0.12)",
+                  minWidth: 160,
+                  overflow: "hidden",
+                  zIndex: 100,
+                }}
+              >
+                <button
+                  onClick={duplicateTemplate}
+                  style={{
+                    display: "block",
+                    width: "100%",
+                    padding: "12px 16px",
+                    textAlign: "left",
+                    background: "none",
+                    border: "none",
+                    fontWeight: 900,
+                    fontSize: 14,
+                    cursor: "pointer",
+                    borderBottom: "1px solid rgba(0,0,0,0.07)",
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(0,0,0,0.04)")}
+                  onMouseLeave={(e) => (e.currentTarget.style.background = "none")}
+                >
+                  Duplicar plantilla
+                </button>
+                <button
+                  onClick={deleteTemplate}
+                  style={{
+                    display: "block",
+                    width: "100%",
+                    padding: "12px 16px",
+                    textAlign: "left",
+                    background: "none",
+                    border: "none",
+                    fontWeight: 900,
+                    fontSize: 14,
+                    cursor: "pointer",
+                    color: "#b91c1c",
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.background = "#fef2f2")}
+                  onMouseLeave={(e) => (e.currentTarget.style.background = "none")}
+                >
+                  Eliminar plantilla
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
