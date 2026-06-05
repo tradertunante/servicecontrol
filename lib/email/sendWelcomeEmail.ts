@@ -106,7 +106,6 @@ function buildWelcomeHtml(data: WelcomeEmailData & { displayName: string }): str
       <!-- Footer -->
       <div style="border-top:1px solid #f1f5f9;padding-top:20px;text-align:center">
         <div style="font-size:12px;color:#94a3b8;line-height:1.7">
-          <strong style="color:#64748b">${escapeHtml(data.hotelName)}</strong> · ServiceControl<br>
           Este mensaje fue generado automáticamente. Para contactar con soporte escribe a
           <a href="mailto:app@servicecontrol.io" style="color:#64748b">app@servicecontrol.io</a>
         </div>
