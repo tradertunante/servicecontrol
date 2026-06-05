@@ -170,12 +170,7 @@ export async function buildAuditReportData(runId: string, hotelId: string): Prom
       const section_id = q.audit_section_id ?? "no_section";
       const section_name = sectionNameById.get(section_id) ?? "Sin sección";
 
-      const photoPath = (answer?.photo_path ?? "").trim();
-      let photo_url: string | null = null;
-      if (photoPath) {
-        const { data } = admin.storage.from("audit-photos").getPublicUrl(photoPath);
-        photo_url = data.publicUrl;
-      }
+      const photo_url = (answer?.photo_path ?? "").trim() || null;
 
       return {
         question_id: q.id,
