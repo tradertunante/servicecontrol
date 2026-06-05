@@ -30,9 +30,11 @@ export default function AuditQuestionCard({
   const isFail = selected === "FAIL";
   const showComment =
     question.comment_requirement === "always" ||
+    question.comment_requirement === "optional" ||
     (question.comment_requirement === "if_fail" && isFail);
   const showPhoto =
     question.photo_requirement === "always" ||
+    question.photo_requirement === "optional" ||
     (question.photo_requirement === "if_fail" && isFail);
   const requireComment =
     question.comment_requirement === "always" ||
