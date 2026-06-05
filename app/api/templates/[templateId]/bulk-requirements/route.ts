@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { authorizeRouteRequest, resolveRouteHotelScope } from "@/lib/auth/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
-import { jsonError, jsonDbError } from "@/lib/api/response";
+import { jsonError } from "@/lib/api/response";
 import { parseUUID, isErrorResponse } from "@/lib/api/validate";
 import { logger } from "@/lib/logger";
 
@@ -48,7 +48,7 @@ export async function PATCH(
 
     if (sErr) {
       logger.error("bulk_requirements_error", { step: "fetch_sections", templateId, code: sErr.code, message: sErr.message });
-      return jsonDbError(sErr);
+      return NextResponse.json({ ok: false, error: `[paso 1/fetch_sections] ${sErr.code ?? ""}: ${sErr.message}` }, { status: 500 });
     }
 
     const sectionIds = (sections ?? []).map((s) => String(s.id));
@@ -64,7 +64,7 @@ export async function PATCH(
 
     if (qErr) {
       logger.error("bulk_requirements_error", { step: "fetch_questions", templateId, code: qErr.code, message: qErr.message });
-      return jsonDbError(qErr);
+      return NextResponse.json({ ok: false, error: `[paso 2/fetch_questions] ${qErr.code ?? ""}: ${qErr.message}` }, { status: 500 });
     }
 
     const questionIds = (questions ?? []).map((q) => String(q.id));
@@ -89,7 +89,7 @@ export async function PATCH(
         message: uErr.message,
         hint: uErr.hint,
       });
-      return jsonDbError(uErr);
+      return NextResponse.json({ ok: false, error: `[paso 3/update_questions] ${uErr.code ?? ""}: ${uErr.message}` }, { status: 500 });
     }
 
     return NextResponse.json({ ok: true, updated: questionIds.length });
