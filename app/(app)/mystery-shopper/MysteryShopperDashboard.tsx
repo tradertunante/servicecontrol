@@ -53,8 +53,30 @@ export default function MysteryShopperDashboard({
   const [sendResult, setSendResult] = useState<string | null>(null);
   const [sendError, setSendError] = useState<string | null>(null);
   const [expandedArea, setExpandedArea] = useState<string | null>(null);
+  const [startingTemplate, setStartingTemplate] = useState<string | null>(null);
 
   const isShopper = profile.role === "mystery_shopper";
+
+  async function startAudit(areaId: string, templateId: string) {
+    setStartingTemplate(templateId);
+    try {
+      const res = await fetch("/api/audits/start", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ area_id: areaId, audit_template_id: templateId }),
+      });
+      const data = await res.json();
+      if (data.ok && data.run_id) {
+        window.location.href = `/audits/${data.run_id}`;
+      } else {
+        alert(data.error ?? "No se pudo iniciar la auditoría.");
+      }
+    } catch {
+      alert("Error de conexión.");
+    } finally {
+      setStartingTemplate(null);
+    }
+  }
 
   const fetchProgress = useCallback(async () => {
     setLoading(true);
@@ -272,12 +294,13 @@ export default function MysteryShopperDashboard({
                               {t.done ? "Ver reporte" : "Continuar"}
                             </a>
                           ) : (
-                            <a
-                              href={`/areas/${area.area_id}?template=${t.template_id}`}
-                              style={{ fontSize: 12, fontWeight: 600, color: "inherit", opacity: 0.7, textDecoration: "underline" }}
+                            <button
+                              onClick={() => startAudit(area.area_id, t.template_id)}
+                              disabled={startingTemplate === t.template_id}
+                              style={{ fontSize: 12, fontWeight: 600, color: "inherit", opacity: startingTemplate === t.template_id ? 0.4 : 0.7, textDecoration: "underline", background: "none", border: "none", cursor: "pointer", padding: 0 }}
                             >
-                              Iniciar
-                            </a>
+                              {startingTemplate === t.template_id ? "Iniciando..." : "Iniciar"}
+                            </button>
                           )}
                         </div>
                       </div>
@@ -334,9 +357,13 @@ export default function MysteryShopperDashboard({
                             {t.done ? "Ver reporte" : "Continuar"}
                           </a>
                         ) : (
-                          <a href={`/areas/${area.area_id}?template=${t.template_id}`} style={{ fontSize: 12, fontWeight: 600, color: "inherit", textDecoration: "underline", opacity: 0.7 }}>
-                            Iniciar
-                          </a>
+                          <button
+                            onClick={() => startAudit(area.area_id, t.template_id)}
+                            disabled={startingTemplate === t.template_id}
+                            style={{ fontSize: 12, fontWeight: 600, color: "inherit", textDecoration: "underline", opacity: startingTemplate === t.template_id ? 0.4 : 0.7, background: "none", border: "none", cursor: "pointer", padding: 0 }}
+                          >
+                            {startingTemplate === t.template_id ? "Iniciando..." : "Iniciar"}
+                          </button>
                         )}
                       </td>
                     </tr>
