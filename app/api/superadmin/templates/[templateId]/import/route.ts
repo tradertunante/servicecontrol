@@ -127,8 +127,8 @@ export async function POST(
       tag: row.tag,
       order: nextOrder,
       active: true,
-      comment_requirement: "never",
-      photo_requirement: "never",
+      comment_requirement: "optional",
+      photo_requirement: "optional",
       signature_requirement: "never",
     };
   });
