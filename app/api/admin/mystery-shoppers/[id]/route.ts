@@ -85,6 +85,20 @@ export async function PATCH(
 
     if (updateErr) return jsonDbError(updateErr);
 
+    // Re-sync area access (idempotent — ensures shopper can always audit all active areas)
+    const { data: areas } = await admin
+      .from("areas")
+      .select("id")
+      .eq("hotel_id", hotelResult.hotelId)
+      .eq("active", true);
+
+    if (areas && areas.length > 0) {
+      await admin.from("user_area_access").upsert(
+        areas.map((a) => ({ user_id: params.id, hotel_id: hotelResult.hotelId, area_id: a.id })),
+        { onConflict: "user_id,area_id" }
+      );
+    }
+
     void logAdminAction({
       hotelId: hotelResult.hotelId,
       actorId: caller.profile.id,
