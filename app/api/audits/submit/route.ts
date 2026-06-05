@@ -100,7 +100,7 @@ export async function POST(request: NextRequest) {
     }
 
     const caller = await authorizeRouteRequest(request, {
-      roles: ["superadmin", "admin", "general_manager", "manager", "auditor", "quality"],
+      roles: ["superadmin", "admin", "general_manager", "manager", "auditor", "quality", "mystery_shopper"],
     });
 
     if (!caller) {

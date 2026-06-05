@@ -20,7 +20,7 @@ export async function GET(
   if (isErrorResponse(runId)) return runId;
 
   const caller = await authorizeRouteRequest(request, {
-    roles: ["superadmin", "admin", "general_manager", "manager", "auditor", "quality"],
+    roles: ["superadmin", "admin", "general_manager", "manager", "auditor", "quality", "mystery_shopper"],
   });
   if (!caller) return jsonError("No autorizado.", 401);
 
