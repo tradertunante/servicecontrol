@@ -8,7 +8,7 @@
  * necesito que pegues el bloque de tu tabla (UI) si quieres que lo deje 100% idéntico al tuyo.
  */
 
-import { useEffect, useMemo, useState, type CSSProperties } from "react";
+import { useEffect, useState, type CSSProperties } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import HotelHeader from "@/app/components/HotelHeader";
@@ -548,14 +548,154 @@ export default function SuperadminGlobalTemplateBuilderPage() {
         </div>
       </div>
 
-      {/* Aquí va tu tabla completa (la recortaste en el pegado original).
-          El backend ya carga rows/sections; si tu tabla está bien, verás preguntas.
-          Si quieres, pégame TU bloque de tabla y te lo dejo 1:1. */}
-      <div style={{ ...card, marginTop: 14 }}>
-        <div style={{ opacity: 0.8, fontWeight: 900 }}>
-          Tabla UI recortada en tu mensaje. Datos cargados: {rows.length} preguntas · {sections.length} secciones.
+      {rows.length === 0 ? (
+        <div style={{ ...card, marginTop: 14, opacity: 0.7, fontWeight: 900 }}>
+          Esta plantilla no tiene preguntas aún. Usa &quot;Importar catálogo&quot; para añadirlas.
         </div>
-      </div>
+      ) : (
+        <div style={{ marginTop: 14, display: "grid", gap: 16 }}>
+          {sections.map((sec) => {
+            const secRows = rows.filter((r) => r.sectionId === sec.id);
+            if (secRows.length === 0) return null;
+            return (
+              <div key={sec.id} style={{ ...card, padding: 0, overflow: "hidden" }}>
+                <div
+                  style={{
+                    padding: "12px 16px",
+                    background: "rgba(0,0,0,0.04)",
+                    borderBottom: "1px solid rgba(0,0,0,0.08)",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 10,
+                  }}
+                >
+                  <span style={{ fontWeight: 950, fontSize: 15 }}>{sec.name}</span>
+                  <span
+                    style={{
+                      padding: "2px 8px",
+                      borderRadius: 999,
+                      background: "rgba(0,0,0,0.08)",
+                      fontSize: 12,
+                      fontWeight: 900,
+                    }}
+                  >
+                    {secRows.length} preguntas
+                  </span>
+                </div>
+
+                <div style={{ overflowX: "auto" }}>
+                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                    <thead>
+                      <tr style={{ background: "rgba(0,0,0,0.02)", borderBottom: "1px solid rgba(0,0,0,0.07)" }}>
+                        <th style={{ padding: "8px 10px", textAlign: "left", fontWeight: 950, width: 50 }}>#</th>
+                        <th style={{ padding: "8px 10px", textAlign: "left", fontWeight: 950, width: 90 }}>Tag</th>
+                        <th style={{ padding: "8px 10px", textAlign: "left", fontWeight: 950 }}>Estándar</th>
+                        <th style={{ padding: "8px 10px", textAlign: "center", fontWeight: 950, width: 110 }}>Comentario</th>
+                        <th style={{ padding: "8px 10px", textAlign: "center", fontWeight: 950, width: 90 }}>Foto</th>
+                        <th style={{ padding: "8px 10px", textAlign: "center", fontWeight: 950, width: 90 }}>Firma</th>
+                        <th style={{ padding: "8px 10px", textAlign: "center", fontWeight: 950, width: 70 }}>Activa</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {secRows.map((row) => (
+                        <tr
+                          key={row.questionId}
+                          style={{
+                            borderBottom: "1px solid rgba(0,0,0,0.05)",
+                            background: row.active ? "transparent" : "rgba(0,0,0,0.025)",
+                            opacity: row.active ? 1 : 0.55,
+                          }}
+                        >
+                          <td style={{ padding: "6px 10px", fontWeight: 900, color: "rgba(0,0,0,0.4)", fontSize: 12 }}>
+                            <input
+                              type="number"
+                              defaultValue={row.order}
+                              onBlur={(e) => {
+                                const val = parseInt(e.target.value, 10);
+                                if (!isNaN(val) && val !== row.order) updateQuestion(row.questionId, { order: val });
+                              }}
+                              style={{
+                                width: 46,
+                                padding: "4px 6px",
+                                borderRadius: 8,
+                                border: "1px solid rgba(0,0,0,0.15)",
+                                fontWeight: 900,
+                                fontSize: 12,
+                                textAlign: "center",
+                              }}
+                            />
+                          </td>
+                          <td style={{ padding: "6px 10px" }}>
+                            <input
+                              defaultValue={row.tag}
+                              onBlur={(e) => {
+                                if (e.target.value !== row.tag) updateQuestion(row.questionId, { tag: e.target.value });
+                              }}
+                              style={{
+                                width: "100%",
+                                padding: "5px 8px",
+                                borderRadius: 8,
+                                border: "1px solid rgba(0,0,0,0.15)",
+                                fontWeight: 900,
+                                fontSize: 12,
+                              }}
+                            />
+                          </td>
+                          <td style={{ padding: "6px 10px" }}>
+                            <input
+                              defaultValue={row.standard}
+                              onBlur={(e) => {
+                                if (e.target.value !== row.standard) updateQuestion(row.questionId, { text: e.target.value });
+                              }}
+                              style={{
+                                width: "100%",
+                                padding: "5px 8px",
+                                borderRadius: 8,
+                                border: "1px solid rgba(0,0,0,0.15)",
+                                fontWeight: 700,
+                                fontSize: 13,
+                              }}
+                            />
+                          </td>
+                          {(["comment_requirement", "photo_requirement", "signature_requirement"] as const).map((field) => (
+                            <td key={field} style={{ padding: "6px 10px", textAlign: "center" }}>
+                              <select
+                                value={row[field]}
+                                onChange={(e) => updateQuestion(row.questionId, { [field]: e.target.value as RequirementType })}
+                                style={{
+                                  padding: "5px 6px",
+                                  borderRadius: 8,
+                                  border: "1px solid rgba(0,0,0,0.15)",
+                                  fontWeight: 900,
+                                  fontSize: 12,
+                                  width: "100%",
+                                }}
+                              >
+                                <option value="never">Nunca</option>
+                                <option value="if_fail">Si FAIL</option>
+                                <option value="optional">Opcional</option>
+                                <option value="always">Siempre</option>
+                              </select>
+                            </td>
+                          ))}
+                          <td style={{ padding: "6px 10px", textAlign: "center" }}>
+                            <input
+                              type="checkbox"
+                              checked={row.active}
+                              onChange={(e) => updateQuestion(row.questionId, { active: e.target.checked })}
+                              style={{ width: 16, height: 16, cursor: "pointer" }}
+                            />
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </main>
   );
 }
