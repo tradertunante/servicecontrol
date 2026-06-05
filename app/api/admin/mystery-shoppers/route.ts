@@ -15,6 +15,12 @@ function generatePassword(length = 12): string {
   return pw;
 }
 
+function generateLoginEmail(): string {
+  const id = Math.random().toString(36).slice(2, 10);
+  const domain = process.env.MYSTERY_SHOPPER_EMAIL_DOMAIN ?? "servicecontrol.io";
+  return `ms-${id}@${domain}`;
+}
+
 export async function GET(request: NextRequest) {
   try {
     const caller = await authorizeRouteRequest(request, { roles: ["admin", "superadmin"] });
@@ -26,7 +32,7 @@ export async function GET(request: NextRequest) {
     const admin = supabaseAdmin();
     const { data, error } = await admin
       .from("profiles")
-      .select("id, full_name, email, active, invited_at, access_expires_at")
+      .select("id, full_name, email, contact_email, active, invited_at, access_expires_at")
       .eq("hotel_id", hotelResult.hotelId)
       .eq("role", "mystery_shopper")
       .order("invited_at", { ascending: false });
@@ -54,7 +60,8 @@ export async function GET(request: NextRequest) {
     const shoppers = (data ?? []).map((r) => ({
       id: r.id,
       full_name: r.full_name,
-      email: r.email,
+      email: (r as any).contact_email ?? r.email,
+      login_email: r.email,
       active: r.active,
       invited_at: r.invited_at,
       access_expires_at: r.access_expires_at,
@@ -77,20 +84,22 @@ export async function POST(request: NextRequest) {
     if (!hotelResult.ok) return jsonError(hotelResult.error, hotelResult.status);
 
     const body = await request.json().catch(() => null);
-    const email = String(body?.email ?? "").trim().toLowerCase();
+    const contactEmail = String(body?.email ?? "").trim().toLowerCase();
     const fullName = typeof body?.full_name === "string" ? body.full_name.trim() || null : null;
     const daysActive = Math.max(1, Math.min(365, Number(body?.days_active ?? 7)));
 
-    if (!email) return jsonError("El email es obligatorio.");
+    if (!contactEmail) return jsonError("El email es obligatorio.");
 
+    // Generate a unique internal login email to avoid auth conflicts across hotels
+    const loginEmail = generateLoginEmail();
     const password = generatePassword();
     const expiresAt = new Date(Date.now() + daysActive * 24 * 60 * 60 * 1000).toISOString();
 
     const admin = supabaseAdmin();
 
-    // Create Supabase auth user
+    // Create Supabase auth user with generated login email (always unique)
     const { data: authUser, error: authErr } = await admin.auth.admin.createUser({
-      email,
+      email: loginEmail,
       password,
       email_confirm: true,
       user_metadata: {
@@ -105,11 +114,12 @@ export async function POST(request: NextRequest) {
 
     const userId = authUser.user.id;
 
-    // Create profile
+    // Create profile — email = login email, contact_email = real email for correspondence
     const { error: profileErr } = await admin.from("profiles").upsert(
       {
         id: userId,
-        email,
+        email: loginEmail,
+        contact_email: contactEmail,
         full_name: fullName,
         role: "mystery_shopper",
         hotel_id: hotelResult.hotelId,
@@ -147,7 +157,8 @@ export async function POST(request: NextRequest) {
         const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://app.servicecontrol.io";
         const { data: hotel } = await admin.from("hotels").select("name").eq("id", hotelResult.hotelId).single();
         await sendMysteryShopperEmail({
-          to: email,
+          to: contactEmail,
+          loginEmail,
           userName: fullName,
           hotelName: hotel?.name ?? "Su hotel",
           password,
@@ -164,7 +175,7 @@ export async function POST(request: NextRequest) {
       actorId: caller.profile.id,
       actorName: caller.profile.full_name ?? caller.profile.id,
       targetId: userId,
-      targetName: fullName ?? email,
+      targetName: fullName ?? contactEmail,
       action: "mystery_shopper_created",
       newValue: `${daysActive} días`,
     });

@@ -2209,6 +2209,7 @@ export type Database = {
           access_expires_at: string | null
           active: boolean | null
           assigned_department_id: string | null
+          contact_email: string | null
           created_at: string | null
           email: string | null
           employee_number: string | null
@@ -2229,6 +2230,7 @@ export type Database = {
           access_expires_at?: string | null
           active?: boolean | null
           assigned_department_id?: string | null
+          contact_email?: string | null
           created_at?: string | null
           email?: string | null
           employee_number?: string | null
@@ -2249,6 +2251,7 @@ export type Database = {
           access_expires_at?: string | null
           active?: boolean | null
           assigned_department_id?: string | null
+          contact_email?: string | null
           created_at?: string | null
           email?: string | null
           employee_number?: string | null

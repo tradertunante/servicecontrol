@@ -5,7 +5,8 @@ import { useCallback, useEffect, useState } from "react";
 type Shopper = {
   id: string;
   full_name: string | null;
-  email: string | null;
+  email: string | null;       // contact email (real)
+  login_email: string | null; // generated ms-xxx@servicecontrol.io
   active: boolean | null;
   invited_at: string | null;
   access_expires_at: string | null;
@@ -263,7 +264,14 @@ export default function MysteryShoppersModule({ hotelId }: { hotelId: string }) 
                         {badgeLabel}
                       </span>
                     </div>
-                    <div style={{ fontSize: 12, opacity: 0.6, marginTop: 3 }}>{s.email}</div>
+                    <div style={{ fontSize: 12, opacity: 0.6, marginTop: 3 }}>
+                      {s.email && <span title="Email de contacto">{s.email}</span>}
+                      {s.login_email && (
+                        <span title="Email de acceso al sistema" style={{ marginLeft: 8, opacity: 0.5, fontFamily: "monospace" }}>
+                          · acceso: {s.login_email}
+                        </span>
+                      )}
+                    </div>
                     <div style={{ display: "flex", gap: 16, marginTop: 8, flexWrap: "wrap" }}>
                       <div style={{ fontSize: 12, opacity: 0.6 }}>Creado: {formatDate(s.invited_at)}</div>
                       <div style={{ fontSize: 12, opacity: 0.6 }}>Expira: {formatDate(s.access_expires_at)}</div>

@@ -4,6 +4,7 @@ import { getResend } from "./resend";
 
 type MysteryShopperEmailData = {
   to: string;
+  loginEmail: string;
   userName: string | null;
   hotelName: string;
   password: string;
@@ -55,7 +56,7 @@ function buildHtml(data: MysteryShopperEmailData & { displayName: string }): str
       <!-- Credentials -->
       <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:20px 24px;margin-bottom:28px">
         <div style="font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#94a3b8;margin-bottom:14px">Tus credenciales de acceso</div>
-        ${credRow("Email", escapeHtml(data.to))}
+        ${credRow("Email de acceso", escapeHtml(data.loginEmail))}
         ${credRow("Contraseña", escapeHtml(data.password))}
         <div style="margin-top:12px;font-size:12px;color:#94a3b8;line-height:1.5">
           Guarda estos datos. Por seguridad, te recomendamos cambiar la contraseña tras el primer acceso.
