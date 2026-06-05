@@ -40,7 +40,6 @@ export default function BuilderTemplatePage() {
   const [ownerDepartmentAvailable, setOwnerDepartmentAvailable] = useState(true);
 
   const [sections, setSections] = useState<SectionRow[]>([]);
-  const [questions, setQuestions] = useState<QuestionRow[]>([]);
   const [rows, setRows] = useState<UiRow[]>([]);
 
   // Quick rules
@@ -221,8 +220,6 @@ export default function BuilderTemplatePage() {
             qList = (qData ?? []) as QuestionRow[];
           }
         }
-
-        setQuestions(qList);
 
         // Build UI rows
         const secNameById = new Map<string, string>();
@@ -414,19 +411,24 @@ export default function BuilderTemplatePage() {
     setError(null);
     setInfo(null);
     try {
-      const patch =
+      const field =
         kind === "comment"
-          ? { comment_requirement: val }
+          ? "comment_requirement"
           : kind === "photo"
-          ? { photo_requirement: val }
-          : { signature_requirement: val };
-      const ids = rows.map((r) => r.questionId);
-      if (ids.length) {
-        const { error: upErr } = await supabase
-          .from("audit_questions")
-          .update(patch)
-          .in("id", ids);
-        if (upErr) throw upErr;
+          ? "photo_requirement"
+          : "signature_requirement";
+
+      const res = await fetch(`/api/templates/${templateId}/bulk-requirements`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ field, value: val }),
+      });
+      const json = await res.json().catch(() => null);
+      if (!res.ok) {
+        throw new Error(json?.error ?? json?.message ?? `Error ${res.status}`);
+      }
+
+      if (rows.length > 0) {
         setRows((prev) =>
           prev.map((r) => ({
             ...r,
@@ -436,9 +438,15 @@ export default function BuilderTemplatePage() {
           }))
         );
       }
-      setInfo("Reglas aplicadas ✅");
+      setInfo(`Reglas aplicadas ✅ (${json?.updated ?? rows.length} preguntas)`);
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "No se pudo aplicar.");
+      const msg =
+        e instanceof Error
+          ? e.message
+          : typeof (e as { message?: string })?.message === "string"
+          ? (e as { message: string }).message
+          : "No se pudo aplicar.";
+      setError(msg);
     } finally {
       setSaving(false);
     }
@@ -495,7 +503,6 @@ export default function BuilderTemplatePage() {
       if (sDelErr) throw sDelErr;
       setRows([]);
       setSections([]);
-      setQuestions([]);
       setInfo("Borrado completo ✅");
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "No se pudo borrar.");
