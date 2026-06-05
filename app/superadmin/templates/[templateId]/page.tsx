@@ -91,6 +91,7 @@ export default function SuperadminGlobalTemplateBuilderPage() {
 
   const [sections, setSections] = useState<SectionRow[]>([]);
   const [rows, setRows] = useState<UiRow[]>([]);
+  const [openRowMenuId, setOpenRowMenuId] = useState<string | null>(null);
 
   const [quickComment, setQuickComment] = useState<RequirementType>("never");
   const [quickPhoto, setQuickPhoto] = useState<RequirementType>("never");
@@ -403,6 +404,30 @@ export default function SuperadminGlobalTemplateBuilderPage() {
     }
   }
 
+  async function deleteQuestion(questionId: string) {
+    setOpenRowMenuId(null);
+    if (!templateId) return;
+    if (!window.confirm("¿Eliminar esta pregunta? No se puede deshacer.")) return;
+    setSaving(true); setError(null); setInfo(null);
+    try {
+      const { data } = await supabase.auth.getSession();
+      const token = data.session?.access_token ?? "";
+      const res = await fetch(`/api/superadmin/templates/${templateId}/questions`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ question_ids: [questionId] }),
+      });
+      const payload = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(payload?.error ?? "No se pudo eliminar.");
+      setRows((prev) => prev.filter((r) => r.questionId !== questionId));
+      setInfo("Pregunta eliminada ✅");
+    } catch (e: any) {
+      setError(e?.message ?? "Error al eliminar.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
   const card: CSSProperties = {
     borderRadius: 18,
     border: "1px solid rgba(0,0,0,0.08)",
@@ -677,6 +702,11 @@ export default function SuperadminGlobalTemplateBuilderPage() {
         </div>
       </div>
 
+      {/* overlay to close row menus */}
+      {openRowMenuId && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 99 }} onClick={() => setOpenRowMenuId(null)} />
+      )}
+
       {rows.length === 0 ? (
         <div style={{ ...card, marginTop: 14, opacity: 0.7, fontWeight: 900 }}>
           Esta plantilla no tiene preguntas aún. Usa &quot;Importar catálogo&quot; para añadirlas.
@@ -723,6 +753,7 @@ export default function SuperadminGlobalTemplateBuilderPage() {
                         <th style={{ padding: "8px 10px", textAlign: "center", fontWeight: 950, width: 90 }}>Foto</th>
                         <th style={{ padding: "8px 10px", textAlign: "center", fontWeight: 950, width: 90 }}>Firma</th>
                         <th style={{ padding: "8px 10px", textAlign: "center", fontWeight: 950, width: 70 }}>Activa</th>
+                        <th style={{ width: 36 }} />
                       </tr>
                     </thead>
                     <tbody>
@@ -814,6 +845,38 @@ export default function SuperadminGlobalTemplateBuilderPage() {
                               onChange={(e) => updateQuestion(row.questionId, { active: e.target.checked })}
                               style={{ width: 16, height: 16, cursor: "pointer" }}
                             />
+                          </td>
+                          <td style={{ padding: "6px 6px", textAlign: "center", position: "relative" }}>
+                            <button
+                              onClick={(e) => { e.stopPropagation(); setOpenRowMenuId(openRowMenuId === row.questionId ? null : row.questionId); }}
+                              style={{ background: "none", border: "none", cursor: "pointer", fontWeight: 900, fontSize: 16, padding: "2px 6px", borderRadius: 6, lineHeight: 1 }}
+                              title="Opciones"
+                            >
+                              ⋯
+                            </button>
+                            {openRowMenuId === row.questionId && (
+                              <div style={{
+                                position: "absolute",
+                                top: "calc(100% + 2px)",
+                                right: 0,
+                                background: "#fff",
+                                border: "1px solid rgba(0,0,0,0.12)",
+                                borderRadius: 10,
+                                boxShadow: "0 6px 20px rgba(0,0,0,0.12)",
+                                minWidth: 140,
+                                overflow: "hidden",
+                                zIndex: 100,
+                              }}>
+                                <button
+                                  style={{ display: "block", width: "100%", padding: "10px 14px", textAlign: "left", background: "none", border: "none", fontWeight: 900, fontSize: 13, cursor: "pointer", color: "#b91c1c" }}
+                                  onClick={(e) => { e.stopPropagation(); deleteQuestion(row.questionId); }}
+                                  onMouseEnter={(e) => (e.currentTarget.style.background = "#fef2f2")}
+                                  onMouseLeave={(e) => (e.currentTarget.style.background = "none")}
+                                >
+                                  Eliminar pregunta
+                                </button>
+                              </div>
+                            )}
                           </td>
                         </tr>
                       ))}

@@ -21,12 +21,25 @@ function safeStr(v: any): string {
   return (v ?? "").toString();
 }
 
+const menuItemStyle: CSSProperties = {
+  display: "block",
+  width: "100%",
+  padding: "11px 16px",
+  textAlign: "left",
+  background: "none",
+  border: "none",
+  fontWeight: 900,
+  fontSize: 14,
+  cursor: "pointer",
+};
+
 export default function SuperadminTemplatesPage() {
   const router = useRouter();
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
 
   const [templates, setTemplates] = useState<TemplateRow[]>([]);
   const [areasById, setAreasById] = useState<Map<string, AreaRow>>(new Map());
@@ -36,11 +49,9 @@ export default function SuperadminTemplatesPage() {
 
   useEffect(() => {
     let mounted = true;
-
     (async () => {
       setLoading(true);
       setError(null);
-
       try {
         const { data: tData, error: tErr } = await supabase
           .from("audit_templates")
@@ -48,12 +59,10 @@ export default function SuperadminTemplatesPage() {
           .eq("scope", "global")
           .order("created_at", { ascending: false })
           .limit(300);
-
         if (tErr) throw tErr;
         const list = (tData ?? []) as TemplateRow[];
 
         const areaIds = Array.from(new Set(list.map((t) => t.area_id).filter(Boolean))) as string[];
-
         const areaMap = new Map<string, AreaRow>();
         if (areaIds.length) {
           const { data: aData, error: aErr } = await supabase.from("areas").select("id,name,type").in("id", areaIds);
@@ -71,10 +80,7 @@ export default function SuperadminTemplatesPage() {
         if (mounted) setLoading(false);
       }
     })();
-
-    return () => {
-      mounted = false;
-    };
+    return () => { mounted = false; };
   }, []);
 
   async function getToken() {
@@ -83,6 +89,7 @@ export default function SuperadminTemplatesPage() {
   }
 
   async function duplicateTemplate(t: TemplateRow) {
+    setOpenMenuId(null);
     setBusyId(t.id);
     try {
       const token = await getToken();
@@ -101,7 +108,8 @@ export default function SuperadminTemplatesPage() {
   }
 
   async function deleteTemplate(t: TemplateRow) {
-    if (!window.confirm(`¿Eliminar "${t.name}"? Esta acción borrará todas sus secciones y preguntas y no se puede deshacer.`)) return;
+    setOpenMenuId(null);
+    if (!window.confirm(`¿Eliminar "${t.name}"? Borrará todas sus secciones y preguntas. No se puede deshacer.`)) return;
     setBusyId(t.id);
     try {
       const token = await getToken();
@@ -124,12 +132,8 @@ export default function SuperadminTemplatesPage() {
     return templates.filter((t) => {
       if (onlyActive && t.active === false) return false;
       if (!needle) return true;
-
       const area = t.area_id ? areasById.get(t.area_id) : null;
-      const haystack = [safeStr(t.name), safeStr(t.id), safeStr(area?.name), safeStr(area?.type)]
-        .join(" ")
-        .toLowerCase();
-
+      const haystack = [safeStr(t.name), safeStr(t.id), safeStr(area?.name), safeStr(area?.type)].join(" ").toLowerCase();
       return haystack.includes(needle);
     });
   }, [templates, areasById, q, onlyActive]);
@@ -178,6 +182,14 @@ export default function SuperadminTemplatesPage() {
     <main style={{ padding: 24, paddingTop: 80 }}>
       <HotelHeader />
 
+      {/* invisible overlay to close any open menu */}
+      {openMenuId && (
+        <div
+          style={{ position: "fixed", inset: 0, zIndex: 99 }}
+          onClick={() => setOpenMenuId(null)}
+        />
+      )}
+
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexWrap: "wrap" }}>
         <div>
           <h1 style={{ fontSize: 56, margin: "10px 0 6px" }}>Biblioteca Global</h1>
@@ -188,8 +200,6 @@ export default function SuperadminTemplatesPage() {
           <button onClick={() => router.push("/superadmin/global-audits")} style={btnWhite}>
             Ver packs
           </button>
-
-          {/* crear PLANTILLA GLOBAL (no la de hotel) */}
           <button onClick={() => router.push("/superadmin/global-audits")} style={btnBlack}>
             + Crear (desde packs)
           </button>
@@ -216,12 +226,10 @@ export default function SuperadminTemplatesPage() {
               background: "#fff",
             }}
           />
-
           <label style={{ display: "flex", gap: 8, alignItems: "center", fontWeight: 900 }}>
             <input type="checkbox" checked={onlyActive} onChange={(e) => setOnlyActive(e.target.checked)} />
             Solo activas
           </label>
-
           <div style={{ fontWeight: 900, opacity: 0.8 }}>Total: {filtered.length}</div>
         </div>
 
@@ -229,8 +237,9 @@ export default function SuperadminTemplatesPage() {
           {filtered.map((t) => {
             const area = t.area_id ? areasById.get(t.area_id) : null;
             const status = t.active === false ? "INACTIVA" : "ACTIVA";
-
             const busy = busyId === t.id;
+            const menuOpen = openMenuId === t.id;
+
             return (
               <div
                 key={t.id}
@@ -257,31 +266,61 @@ export default function SuperadminTemplatesPage() {
                 </div>
 
                 <div style={{ display: "flex", gap: 8, alignItems: "center", flexShrink: 0 }}>
-                  <div
-                    style={{
-                      padding: "4px 10px",
-                      borderRadius: 999,
-                      background: "rgba(0,0,0,0.06)",
-                      border: "1px solid rgba(0,0,0,0.12)",
-                      fontWeight: 950,
-                      fontSize: 12,
-                    }}
-                  >
+                  <div style={{ padding: "4px 10px", borderRadius: 999, background: "rgba(0,0,0,0.06)", border: "1px solid rgba(0,0,0,0.12)", fontWeight: 950, fontSize: 12 }}>
                     {status}
                   </div>
-                  <button style={btnWhite} disabled={busy} onClick={() => router.push(`/superadmin/templates/${t.id}`)}>
-                    Editar
-                  </button>
-                  <button style={btnWhite} disabled={busy} onClick={() => duplicateTemplate(t)}>
-                    {busy ? "…" : "Duplicar"}
-                  </button>
-                  <button
-                    style={{ ...btnWhite, color: "#b91c1c", borderColor: "#fca5a5" }}
-                    disabled={busy}
-                    onClick={() => deleteTemplate(t)}
-                  >
-                    Eliminar
-                  </button>
+
+                  {/* three-dot menu */}
+                  <div style={{ position: "relative", zIndex: 100 }}>
+                    <button
+                      disabled={busy}
+                      onClick={(e) => { e.stopPropagation(); setOpenMenuId(menuOpen ? null : t.id); }}
+                      style={{ ...btnWhite, width: 38, padding: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}
+                      title="Opciones"
+                    >
+                      {busy ? "…" : "⋯"}
+                    </button>
+
+                    {menuOpen && (
+                      <div style={{
+                        position: "absolute",
+                        top: "calc(100% + 4px)",
+                        right: 0,
+                        background: "#fff",
+                        border: "1px solid rgba(0,0,0,0.12)",
+                        borderRadius: 12,
+                        boxShadow: "0 8px 24px rgba(0,0,0,0.12)",
+                        minWidth: 160,
+                        overflow: "hidden",
+                        zIndex: 101,
+                      }}>
+                        <button
+                          style={menuItemStyle}
+                          onClick={(e) => { e.stopPropagation(); router.push(`/superadmin/templates/${t.id}`); }}
+                          onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(0,0,0,0.04)")}
+                          onMouseLeave={(e) => (e.currentTarget.style.background = "none")}
+                        >
+                          Editar
+                        </button>
+                        <button
+                          style={{ ...menuItemStyle, borderTop: "1px solid rgba(0,0,0,0.06)" }}
+                          onClick={(e) => { e.stopPropagation(); duplicateTemplate(t); }}
+                          onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(0,0,0,0.04)")}
+                          onMouseLeave={(e) => (e.currentTarget.style.background = "none")}
+                        >
+                          Duplicar
+                        </button>
+                        <button
+                          style={{ ...menuItemStyle, borderTop: "1px solid rgba(0,0,0,0.06)", color: "#b91c1c" }}
+                          onClick={(e) => { e.stopPropagation(); deleteTemplate(t); }}
+                          onMouseEnter={(e) => (e.currentTarget.style.background = "#fef2f2")}
+                          onMouseLeave={(e) => (e.currentTarget.style.background = "none")}
+                        >
+                          Eliminar
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             );

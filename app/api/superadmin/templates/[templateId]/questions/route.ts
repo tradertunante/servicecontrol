@@ -124,3 +124,38 @@ export async function PATCH(
     updated_by: caller.profile.id,
   });
 }
+
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: { templateId: string } }
+) {
+  const caller = await requireSuperadminRoute(request);
+  if (!caller) return jsonError("No autorizado.", 401);
+
+  const templateId = parseUUID(params.templateId, "templateId");
+  if (isErrorResponse(templateId)) return templateId;
+
+  const template = await loadGlobalTemplate(templateId);
+  if (!template.ok) return jsonError(template.error, template.status);
+
+  const body = await request.json().catch(() => null);
+  const questionIds = uniqueStrings(
+    Array.isArray(body?.question_ids) ? body.question_ids : body?.question_id ? [body.question_id] : []
+  );
+  if (questionIds.length === 0) return jsonError("question_ids es obligatorio.");
+
+  const admin = supabaseAdmin();
+
+  // Verify questions belong to this template
+  const { data: sections } = await admin.from("audit_sections").select("id").eq("audit_template_id", template.templateId);
+  const sectionIds = (sections ?? []).map((s) => String(s.id));
+  if (!sectionIds.length) return jsonError("La plantilla no tiene secciones.", 409);
+
+  const { data: found } = await admin.from("audit_questions").select("id").in("id", questionIds).in("audit_section_id", sectionIds);
+  if ((found ?? []).length !== questionIds.length) return jsonError("Alguna pregunta no pertenece a esta plantilla.", 403);
+
+  const { error } = await admin.from("audit_questions").delete().in("id", questionIds);
+  if (error) return jsonDbError(error);
+
+  return jsonOk({ deleted: questionIds, deleted_by: caller.profile.id });
+}
