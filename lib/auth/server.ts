@@ -42,6 +42,7 @@ type BasicProfileRow = {
   role: string | null;
   hotel_id: string | null;
   active: boolean | null;
+  access_expires_at: string | null;
 };
 
 function getLoginRedirect(nextPath?: string) {
@@ -70,7 +71,7 @@ async function loadProfileWithToken(token: string): Promise<Profile | null> {
 
   const { data: profile, error: profileError } = await client
     .from("profiles")
-    .select("id, full_name, role, hotel_id, active")
+    .select("id, full_name, role, hotel_id, active, access_expires_at")
     .eq("id", user.id)
     .maybeSingle();
 
@@ -78,6 +79,13 @@ async function loadProfileWithToken(token: string): Promise<Profile | null> {
 
   const normalized = normalizeProfile(profile as BasicProfileRow);
   if (normalized.active === false) return null;
+
+  // Mystery shoppers lose access when their session expires
+  if (normalized.role === "mystery_shopper") {
+    const expiresAt = (profile as BasicProfileRow).access_expires_at;
+    if (expiresAt && new Date(expiresAt) < new Date()) return null;
+  }
+
   return normalized;
 }
 
@@ -331,7 +339,7 @@ export async function hasAreaScopeForProfile(
     return scopedHotel.ok;
   }
 
-  if (profile.role === "manager" || profile.role === "auditor") {
+  if (profile.role === "manager" || profile.role === "auditor" || profile.role === "mystery_shopper") {
     const scopedHotel = resolveRouteHotelScope(profile, hotelId);
     if (!scopedHotel.ok) return false;
     return userHasExplicitAreaAccess(profile.id, scopedHotel.hotelId, areaId);
@@ -377,7 +385,7 @@ export async function requireAreaScope(
     return { ...auth, hotelId: scopedHotelId, areaId };
   }
 
-  if (auth.profile.role === "manager" || auth.profile.role === "auditor") {
+  if (auth.profile.role === "manager" || auth.profile.role === "auditor" || auth.profile.role === "mystery_shopper") {
     const hasAccess = await userHasExplicitAreaAccess(auth.profile.id, scopedHotelId, areaId);
     if (!hasAccess) redirect(options?.redirectTo ?? "/areas");
     return { ...auth, hotelId: scopedHotelId, areaId };

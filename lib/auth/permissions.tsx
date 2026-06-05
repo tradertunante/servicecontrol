@@ -7,7 +7,8 @@ export type Role =
   | "quality"
   | "engineering"
   | "it"
-  | "systems";
+  | "systems"
+  | "mystery_shopper";
 
 export type AuthorizationModule =
   | "areas"
@@ -17,7 +18,8 @@ export type AuthorizationModule =
   | "users"
   | "team"
   | "team_manager"
-  | "members";
+  | "members"
+  | "mystery_shopper";
 
 export type Permission =
   | "areas.view"
@@ -39,6 +41,7 @@ const MODULE_ROLE_MAP: Record<AuthorizationModule, Role[]> = {
   team: ["superadmin", "admin", "general_manager", "manager", "quality", "engineering", "systems", "it"],
   team_manager: ["superadmin", "admin", "general_manager", "manager", "quality"],
   members: ["manager", "quality", "general_manager", "admin", "superadmin"],
+  mystery_shopper: ["mystery_shopper", "admin", "superadmin"],
 };
 
 const PERMISSION_ROLE_MAP: Record<Permission, Role[]> = {
@@ -63,6 +66,7 @@ const ASSIGNABLE_ROLE_MAP: Record<Role, Role[]> = {
     "engineering",
     "it",
     "systems",
+    "mystery_shopper",
   ],
   admin: [
     "admin",
@@ -73,6 +77,7 @@ const ASSIGNABLE_ROLE_MAP: Record<Role, Role[]> = {
     "engineering",
     "it",
     "systems",
+    "mystery_shopper",
   ],
   general_manager: [],
   manager: [],
@@ -81,6 +86,7 @@ const ASSIGNABLE_ROLE_MAP: Record<Role, Role[]> = {
   engineering: [],
   it: [],
   systems: [],
+  mystery_shopper: [],
 };
 
 export const ROLE_LABELS: Record<Role, string> = {
@@ -93,6 +99,7 @@ export const ROLE_LABELS: Record<Role, string> = {
   engineering:     "Engineering",
   it:              "IT",
   systems:         "Systems",
+  mystery_shopper: "Mystery Shopper",
 };
 
 export function normalizeRole(role: any): Role {
@@ -107,6 +114,7 @@ export function normalizeRole(role: any): Role {
   if (r === "engineering") return "engineering";
   if (r === "it") return "it";
   if (r === "systems") return "systems";
+  if (r === "mystery_shopper") return "mystery_shopper";
 
   return "auditor";
 }
@@ -160,7 +168,7 @@ export function canAssignRole(
 
 export function getDefaultHotelRouteByRole(
   role: Role | string | null | undefined
-): "/dashboard" | "/team" | "/areas" | "/my" | "/it" | "/engineering" {
+): "/dashboard" | "/team" | "/areas" | "/my" | "/it" | "/engineering" | "/mystery-shopper" {
   const r = norm(role);
 
   if (
@@ -188,12 +196,16 @@ export function getDefaultHotelRouteByRole(
     return "/it";
   }
 
+  if (r === "mystery_shopper") {
+    return "/mystery-shopper";
+  }
+
   return "/my";
 }
 
 export function canStartAudits(role: Role | string | null | undefined): boolean {
   const r = norm(role);
-  return ["superadmin", "admin", "manager", "auditor", "quality"].includes(r);
+  return ["superadmin", "admin", "manager", "auditor", "quality", "mystery_shopper"].includes(r);
 }
 
 export function canRunAudits(role: Role | string | null | undefined): boolean {
@@ -212,7 +224,7 @@ export function canManageUsers(role: Role | string | null | undefined): boolean 
 
 export function canSubmitAudit(role: Role | string | null | undefined): boolean {
   const r = norm(role);
-  return ["superadmin", "admin", "general_manager", "manager", "auditor", "quality"].includes(r);
+  return ["superadmin", "admin", "general_manager", "manager", "auditor", "quality", "mystery_shopper"].includes(r);
 }
 
 export function canManageSetup(role: Role | string | null | undefined): boolean {
@@ -225,7 +237,8 @@ export function isQualityRole(role: Role | string | null | undefined): boolean {
 }
 
 export function auditChannel(role: Role | string | null | undefined): "quality" | "internal" {
-  return norm(role) === "quality" ? "quality" : "internal";
+  const r = norm(role);
+  return r === "quality" || r === "mystery_shopper" ? "quality" : "internal";
 }
 
 export function isNonOperationalRole(role: Role | string | null | undefined): boolean {

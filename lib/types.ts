@@ -12,7 +12,8 @@ export type Role =
   | "quality"
   | "engineering"
   | "it"
-  | "systems";
+  | "systems"
+  | "mystery_shopper";
 
 /**
  * Lightweight profile subset used across the app.

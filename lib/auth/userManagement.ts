@@ -31,6 +31,7 @@ const KNOWN_ROLES: Role[] = [
   "engineering",
   "it",
   "systems",
+  "mystery_shopper",
 ];
 
 export function resolveManagedHotelId(profile: Profile) {

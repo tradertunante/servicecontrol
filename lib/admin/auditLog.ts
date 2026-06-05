@@ -6,7 +6,9 @@ export type AdminAction =
   | "user_created"
   | "role_changed"
   | "active_changed"
-  | "user_deleted";
+  | "user_deleted"
+  | "mystery_shopper_created"
+  | "mystery_shopper_extended";
 
 type LogEntry = {
   hotelId: string;

@@ -22,7 +22,7 @@ type StartAuditRpcResponse = {
 
 export async function POST(request: NextRequest) {
   const caller = await authorizeRouteRequest(request, {
-    roles: ["superadmin", "admin", "general_manager", "manager", "auditor", "quality"],
+    roles: ["superadmin", "admin", "general_manager", "manager", "auditor", "quality", "mystery_shopper"],
   });
   if (!caller) return jsonError("No autorizado.", 401);
   if (!canStartAudits(caller.profile.role)) {
@@ -77,7 +77,7 @@ export async function POST(request: NextRequest) {
   }
 
   const channel: "quality" | "internal" =
-    caller.profile.role === "quality" ? "quality" : "internal";
+    caller.profile.role === "quality" || caller.profile.role === "mystery_shopper" ? "quality" : "internal";
 
   const { data, error } = await admin.rpc("start_audit_run", {
     p_hotel_id: hotelResult.hotelId,

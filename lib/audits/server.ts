@@ -18,6 +18,7 @@ export const AUDIT_EDIT_ROLES: Role[] = [
   "manager",
   "auditor",
   "quality",
+  "mystery_shopper",
 ];
 
 export type EditableAuditRun = {

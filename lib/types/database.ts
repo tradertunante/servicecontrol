@@ -2206,6 +2206,7 @@ export type Database = {
       }
       profiles: {
         Row: {
+          access_expires_at: string | null
           active: boolean | null
           assigned_department_id: string | null
           created_at: string | null
@@ -2225,6 +2226,7 @@ export type Database = {
           trial_hotel_name: string | null
         }
         Insert: {
+          access_expires_at?: string | null
           active?: boolean | null
           assigned_department_id?: string | null
           created_at?: string | null
@@ -2244,6 +2246,7 @@ export type Database = {
           trial_hotel_name?: string | null
         }
         Update: {
+          access_expires_at?: string | null
           active?: boolean | null
           assigned_department_id?: string | null
           created_at?: string | null
