@@ -256,7 +256,7 @@ export async function sendInstantAuditEmail(data: InstantAuditEmailData) {
 </body>
 </html>`;
 
-  const fromAddress = process.env.RESEND_FROM_EMAIL || "no-reply@servicecontrol.io";
+  const fromAddress = process.env.RESEND_FROM_EMAIL || "app@servicecontrol.io";
 
   return resend.emails.send({
     from: `ServiceControl <${fromAddress}>`,

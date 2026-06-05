@@ -12,7 +12,7 @@
 
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY") ?? "";
 const FROM_EMAIL =
-  Deno.env.get("RESEND_FROM_EMAIL") ?? "no-reply@servicecontrol.io";
+  Deno.env.get("RESEND_FROM_EMAIL") ?? "app@servicecontrol.io";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const HOOK_SECRET = Deno.env.get("SEND_EMAIL_HOOK_SECRET") ?? "";
 

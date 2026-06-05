@@ -15,7 +15,7 @@ type RoleChangeEmailData = {
 
 export async function sendRoleChangeEmail(data: RoleChangeEmailData) {
   const resend = getResend();
-  const from = process.env.RESEND_FROM_EMAIL || "no-reply@servicecontrol.io";
+  const from = process.env.RESEND_FROM_EMAIL || "app@servicecontrol.io";
   const displayName = data.userName?.trim() || data.to.split("@")[0];
   const oldLabel = ROLE_LABELS[data.oldRole] ?? data.oldRole;
   const newLabel = ROLE_LABELS[data.newRole] ?? data.newRole;

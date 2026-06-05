@@ -78,13 +78,19 @@ export async function sendWeeklyReportEmail(data: WeeklyReportEmailData) {
     </div>
   `;
 
-  const fromAddress = process.env.RESEND_FROM_EMAIL || "no-reply@servicecontrol.io";
+  const fromAddress = process.env.RESEND_FROM_EMAIL || "app@servicecontrol.io";
+
+  const text = `${data.hotelName} — Reporte semanal · ${data.weekLabel}\n\nScore general: ${data.overallScore.toFixed(1)}%\nAuditorías: ${data.totalAudits}\n\n${data.areas.sort((a, b) => a.score - b.score).map((a) => `${a.name}: ${a.score.toFixed(1)}% (${a.auditsCount} auditorías)`).join("\n")}${data.narrativeHotel ? `\n\nAnálisis: ${data.narrativeHotel}` : ""}\n\nGenerado automáticamente por ServiceControl`;
 
   const { error } = await resend.emails.send({
     from: `ServiceControl <${fromAddress}>`,
     to: data.to,
-    subject: `📊 Reporte semanal · ${data.hotelName} · ${data.weekLabel}`,
+    subject: `Reporte semanal · ${data.hotelName} · ${data.weekLabel}`,
     html,
+    text,
+    headers: {
+      "List-Unsubscribe": `<mailto:app@servicecontrol.io?subject=Unsubscribe>`,
+    },
   });
   if (error) throw new Error(error.message);
 }

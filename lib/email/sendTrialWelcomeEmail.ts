@@ -14,7 +14,7 @@ type TrialWelcomeEmailData = {
 
 export async function sendTrialWelcomeEmail(data: TrialWelcomeEmailData) {
   const resend = getResend();
-  const fromAddress = process.env.RESEND_FROM_EMAIL ?? "no-reply@servicecontrol.io";
+  const fromAddress = process.env.RESEND_FROM_EMAIL ?? "app@servicecontrol.io";
   const displayName = data.name.trim() || data.email.split("@")[0];
 
   return resend.emails.send({
