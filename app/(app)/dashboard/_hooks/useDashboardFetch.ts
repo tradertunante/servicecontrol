@@ -115,9 +115,9 @@ export function useDashboardFetch({
               method: "GET", credentials: "include", cache: "no-store", signal: controller.signal,
             }).then(async (response) => {
               const payload = (await response.json().catch(() => null)) as DepartmentBacklogResponse | null;
-              if (!response.ok || !payload) throw new Error("No se pudo cargar backlog IT.");
+              if (!response.ok || !payload) return emptyBacklog;
               return payload;
-            })
+            }).catch(() => emptyBacklog)
           : Promise.resolve(emptyBacklog);
 
         const backlogEngineeringPromise = hasPackEngineering
@@ -125,9 +125,9 @@ export function useDashboardFetch({
               method: "GET", credentials: "include", cache: "no-store", signal: controller.signal,
             }).then(async (response) => {
               const payload = (await response.json().catch(() => null)) as DepartmentBacklogResponse | null;
-              if (!response.ok || !payload) throw new Error("No se pudo cargar backlog de Mantenimiento.");
+              if (!response.ok || !payload) return emptyBacklog;
               return payload;
-            })
+            }).catch(() => emptyBacklog)
           : Promise.resolve(emptyBacklog);
 
         const [hotelsRes, selectedHotelRes, areasRes, templatesRes, runsRes, backlogItRes, backlogEngineeringRes] = await Promise.all([

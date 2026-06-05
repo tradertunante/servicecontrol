@@ -176,6 +176,20 @@ export default function AuditReportPageClient({
     );
   }, [report]);
 
+  const photoItems = useMemo(() => {
+    let idx = 0;
+    return (report?.sections ?? [])
+      .flatMap((s) => s.items)
+      .filter((item) => !!item.photo_url)
+      .map((item) => ({ ...item, photoNumber: ++idx }));
+  }, [report]);
+
+  const photoNumberByQuestionId = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const p of photoItems) map.set(p.question_id, p.photoNumber);
+    return map;
+  }, [photoItems]);
+
   const showTrainingSignoff = useMemo(() => {
     return (report?.summary.fail ?? 0) > 0;
   }, [report]);
@@ -417,6 +431,15 @@ export default function AuditReportPageClient({
           .editable-training-textarea {
             min-height: 80px !important;
             resize: none !important;
+          }
+
+          .report-photo-grid {
+            grid-template-columns: repeat(2, 1fr) !important;
+            gap: 8px !important;
+          }
+
+          .report-photo-card img {
+            max-height: 200px !important;
           }
         }
 
@@ -807,19 +830,36 @@ export default function AuditReportPageClient({
                           {item.question_text}
                         </span>
                       </div>
-                      <span
-                        className="report-badge"
-                        style={{
-                          ...badgeStyle(item.status),
-                          padding: "3px 9px",
-                          borderRadius: 999,
-                          fontWeight: 900,
-                          fontSize: 11,
-                          flexShrink: 0,
-                        }}
-                      >
-                        {item.status}
-                      </span>
+                      <div style={{ display: "flex", gap: 6, alignItems: "center", flexShrink: 0 }}>
+                        {photoNumberByQuestionId.has(item.question_id) ? (
+                          <span
+                            className="report-badge"
+                            style={{
+                              padding: "3px 9px",
+                              borderRadius: 999,
+                              fontWeight: 900,
+                              fontSize: 11,
+                              background: "rgba(59,130,246,0.10)",
+                              color: "#1d4ed8",
+                              border: "1px solid rgba(59,130,246,0.18)",
+                            }}
+                          >
+                            📎 Foto {photoNumberByQuestionId.get(item.question_id)}
+                          </span>
+                        ) : null}
+                        <span
+                          className="report-badge"
+                          style={{
+                            ...badgeStyle(item.status),
+                            padding: "3px 9px",
+                            borderRadius: 999,
+                            fontWeight: 900,
+                            fontSize: 11,
+                          }}
+                        >
+                          {item.status}
+                        </span>
+                      </div>
                     </div>
 
                     {item.comment ? (
@@ -887,19 +927,36 @@ export default function AuditReportPageClient({
                         {item.question_text}
                       </span>
                     </div>
-                    <span
-                      className="report-badge"
-                      style={{
-                        ...badgeStyle("OK"),
-                        padding: "3px 9px",
-                        borderRadius: 999,
-                        fontWeight: 900,
-                        fontSize: 11,
-                        flexShrink: 0,
-                      }}
-                    >
-                      Pass
-                    </span>
+                    <div style={{ display: "flex", gap: 6, alignItems: "center", flexShrink: 0 }}>
+                      {photoNumberByQuestionId.has(item.question_id) ? (
+                        <span
+                          className="report-badge"
+                          style={{
+                            padding: "3px 9px",
+                            borderRadius: 999,
+                            fontWeight: 900,
+                            fontSize: 11,
+                            background: "rgba(59,130,246,0.10)",
+                            color: "#1d4ed8",
+                            border: "1px solid rgba(59,130,246,0.18)",
+                          }}
+                        >
+                          📎 Foto {photoNumberByQuestionId.get(item.question_id)}
+                        </span>
+                      ) : null}
+                      <span
+                        className="report-badge"
+                        style={{
+                          ...badgeStyle("OK"),
+                          padding: "3px 9px",
+                          borderRadius: 999,
+                          fontWeight: 900,
+                          fontSize: 11,
+                        }}
+                      >
+                        Pass
+                      </span>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -1084,6 +1141,80 @@ export default function AuditReportPageClient({
                     </div>
                   </div>
                 </div>
+              </div>
+            </section>
+          ) : null}
+
+          {photoItems.length > 0 ? (
+            <section className="report-mt-28" style={{ marginTop: 28 }}>
+              <h2
+                className="report-title-lg"
+                style={{ margin: "0 0 14px 0", fontSize: 24 }}
+              >
+                Anexo Fotográfico
+              </h2>
+
+              <div
+                className="report-photo-grid"
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+                  gap: 14,
+                }}
+              >
+                {photoItems.map((item) => (
+                  <div
+                    key={item.question_id}
+                    className="report-break-avoid report-photo-card"
+                    style={{
+                      border: "1px solid rgba(0,0,0,0.10)",
+                      borderRadius: 12,
+                      overflow: "hidden",
+                      background: "#fafafa",
+                    }}
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={item.photo_url!}
+                      alt={`Foto ${item.photoNumber}`}
+                      style={{
+                        width: "100%",
+                        display: "block",
+                        maxHeight: 260,
+                        objectFit: "cover",
+                      }}
+                    />
+                    <div style={{ padding: "10px 12px" }}>
+                      <div
+                        style={{
+                          fontSize: 11,
+                          fontWeight: 900,
+                          opacity: 0.5,
+                          textTransform: "uppercase",
+                          letterSpacing: 0.4,
+                          marginBottom: 3,
+                        }}
+                      >
+                        Foto {item.photoNumber} · {item.section_name}
+                      </div>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: "#111" }}>
+                        {item.question_text}
+                      </div>
+                      {item.comment ? (
+                        <div
+                          style={{
+                            marginTop: 6,
+                            fontSize: 12,
+                            color: "#555",
+                            lineHeight: 1.45,
+                          }}
+                        >
+                          {item.comment}
+                        </div>
+                      ) : null}
+                    </div>
+                  </div>
+                ))}
               </div>
             </section>
           ) : null}

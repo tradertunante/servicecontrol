@@ -170,6 +170,13 @@ export async function buildAuditReportData(runId: string, hotelId: string): Prom
       const section_id = q.audit_section_id ?? "no_section";
       const section_name = sectionNameById.get(section_id) ?? "Sin sección";
 
+      const photoPath = (answer?.photo_path ?? "").trim();
+      let photo_url: string | null = null;
+      if (photoPath) {
+        const { data } = admin.storage.from("audit-photos").getPublicUrl(photoPath);
+        photo_url = data.publicUrl;
+      }
+
       return {
         question_id: q.id,
         question_text: answer?.question_text || q.text,
@@ -177,7 +184,7 @@ export async function buildAuditReportData(runId: string, hotelId: string): Prom
         section_name,
         status: normalizeStatus(answer),
         comment: (answer?.comment ?? "").trim() || null,
-        photo_url: (answer?.photo_path ?? "").trim() || null,
+        photo_url,
       };
     });
 
