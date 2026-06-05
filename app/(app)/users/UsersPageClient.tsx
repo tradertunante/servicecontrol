@@ -714,7 +714,7 @@ export default function UsersPageClient({
         <div
           className="grid min-w-[780px]"
           style={{
-            gridTemplateColumns: "40px minmax(160px,2fr) minmax(150px,2fr) 150px 90px minmax(90px,1fr) 110px auto",
+            gridTemplateColumns: "40px minmax(200px,2.5fr) minmax(150px,2fr) 150px 90px minmax(90px,1fr) 110px auto",
           }}
         >
           {/* Header */}

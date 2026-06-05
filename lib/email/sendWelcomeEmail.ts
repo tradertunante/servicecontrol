@@ -12,7 +12,7 @@ type WelcomeEmailData = {
 
 export async function sendWelcomeEmail(data: WelcomeEmailData) {
   const resend = getResend();
-  const fromAddress = process.env.RESEND_FROM_EMAIL || "no-reply@servicecontrol.io";
+  const fromAddress = process.env.RESEND_FROM_EMAIL || "app@servicecontrol.io";
   const displayName = data.userName?.trim() || data.to.split("@")[0];
 
   const html = buildWelcomeHtml({ ...data, displayName });
@@ -86,11 +86,29 @@ function buildWelcomeHtml(data: WelcomeEmailData & { displayName: string }): str
         }
       </div>
 
+      <!-- Help & contact -->
+      <div style="background:#f8fafc;border-radius:8px;padding:20px 24px;margin-bottom:28px">
+        <div style="font-size:13px;font-weight:700;color:#1e293b;margin-bottom:8px">¿Necesitas ayuda para empezar?</div>
+        <div style="font-size:13px;color:#64748b;line-height:1.6;margin-bottom:12px">
+          Aquí tienes toda la información necesaria para comenzar a usar ServiceControl:
+        </div>
+        <a href="https://servicecontrol.io/help"
+           style="display:inline-block;font-size:13px;font-weight:600;color:#0f172a;text-decoration:underline;margin-bottom:12px">
+          Consultar guía de inicio →
+        </a>
+        <div style="font-size:13px;color:#64748b;line-height:1.6">
+          Igualmente, estamos a tu disposición para cualquier duda:<br>
+          <a href="mailto:app@servicecontrol.io"
+             style="color:#0f172a;font-weight:600;text-decoration:none">app@servicecontrol.io</a>
+        </div>
+      </div>
+
       <!-- Footer -->
       <div style="border-top:1px solid #f1f5f9;padding-top:20px;text-align:center">
         <div style="font-size:12px;color:#94a3b8;line-height:1.7">
           <strong style="color:#64748b">${escapeHtml(data.hotelName)}</strong> · ServiceControl<br>
-          Este mensaje fue generado automáticamente. No responder a este correo.
+          Este mensaje fue generado automáticamente. Para contactar con soporte escribe a
+          <a href="mailto:app@servicecontrol.io" style="color:#64748b">app@servicecontrol.io</a>
         </div>
       </div>
 
