@@ -224,13 +224,23 @@ export default function StandardsPageClient({
     return hotelTemplates.filter((t) => t.area_id === filterAreaId);
   }, [hotelTemplates, filterAreaId]);
 
-  const templatesByPack = useMemo(() => {
-    const map = new Map<string, HotelTemplate[]>();
-    for (const t of filteredTemplates) { const k = t.pack_id ?? "—"; if (!map.has(k)) map.set(k, []); map.get(k)!.push(t); }
-    return map;
-  }, [filteredTemplates]);
-
   const areaName = useMemo(() => { const m = new Map<string, string>(); for (const a of areas) m.set(a.id, a.name); return m; }, [areas]);
+
+  // Groups: ordered areas with templates, then "Sin asignar" at the end
+  const areaGroups = useMemo((): Array<{ areaId: string | null; label: string; templates: HotelTemplate[] }> => {
+    const assigned = new Map<string, HotelTemplate[]>();
+    const unassigned: HotelTemplate[] = [];
+    for (const t of filteredTemplates) {
+      if (!t.area_id) { unassigned.push(t); continue; }
+      if (!assigned.has(t.area_id)) assigned.set(t.area_id, []);
+      assigned.get(t.area_id)!.push(t);
+    }
+    const groups: Array<{ areaId: string | null; label: string; templates: HotelTemplate[] }> = Array.from(assigned.entries())
+      .map(([id, tpls]) => ({ areaId: id as string | null, label: areaName.get(id) ?? id, templates: tpls }))
+      .sort((a, b) => a.label.localeCompare(b.label));
+    if (unassigned.length > 0) groups.push({ areaId: null, label: "Sin asignar", templates: unassigned });
+    return groups;
+  }, [filteredTemplates, areaName]);
 
   return (
     <main className="p-6 pt-20">
@@ -310,58 +320,56 @@ export default function StandardsPageClient({
           {hotelTemplates.length === 0 ? (
             <div className="opacity-70">Aún no hay auditorías importadas desde packs.</div>
           ) : (
-            <div className="grid gap-[14px]">
-              {Array.from(templatesByPack.entries()).map(([packId, templates]) => {
-                const packName = globalPacks.find((p) => p.id === packId)?.name ?? `Pack ${packId}`;
-                return (
-                  <div key={packId} className="p-[14px] rounded-[14px] border border-black/[0.08] bg-black/[0.02]">
-                    <div className="font-black mb-2.5">{packName}</div>
-                    <div className="grid gap-2">
-                      {templates.map((t) => (
-                        <div key={t.id} className="flex justify-between items-center px-[14px] py-3 bg-black/[0.02] rounded-xl border border-black/[0.06] gap-3 flex-wrap">
-                          <div className="min-w-[260px]">
-                            <div className="font-black">{t.name}</div>
-                            <div className="opacity-75 text-[13px] mt-1.5">Área: {t.area_id ? areaName.get(t.area_id) ?? "—" : "Sin asignar"}</div>
-                          </div>
-                          <div className="flex gap-2.5 items-center flex-wrap">
-                            <select
-                              value={t.area_id ?? ""}
-                              onChange={(e) => setTemplateArea(t.id, e.target.value ? e.target.value : null)}
-                              className="px-3 py-2.5 rounded-xl border border-black/[0.18] bg-white font-black h-[42px] min-w-[220px]"
-                              disabled={savingTemplateId === t.id || duplicatingTemplateId === t.id}
-                            >
-                              <option value="">(Sin área)</option>
-                              {areas.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
-                            </select>
-                            <button
-                              className="px-[14px] py-2.5 rounded-xl border border-black/20 bg-white text-black font-black cursor-pointer text-sm whitespace-nowrap"
-                              onClick={() => duplicateHotelTemplate(t)}
-                              disabled={duplicatingTemplateId === t.id}
-                              title="Crea una copia de esta auditoría para asignarla a otro restaurante/área"
-                            >
-                              {duplicatingTemplateId === t.id ? "Duplicando…" : "Duplicar"}
-                            </button>
-                            <button
-                              className="px-[14px] py-2.5 rounded-xl border border-black/20 bg-white text-black font-black cursor-pointer text-sm whitespace-nowrap"
-                              onClick={() => router.push(`/builder/${t.id}`)}
-                              disabled={duplicatingTemplateId === t.id}
-                            >
-                              Editar
-                            </button>
-                            <button
-                              className="px-[14px] py-2.5 rounded-xl border border-red-200 text-red-700 bg-white font-black cursor-pointer text-sm whitespace-nowrap disabled:opacity-50"
-                              onClick={() => deleteHotelTemplate(t)}
-                              disabled={deletingTemplateId === t.id || duplicatingTemplateId === t.id}
-                            >
-                              {deletingTemplateId === t.id ? "Eliminando…" : "Eliminar"}
-                            </button>
+            <div className="grid gap-5">
+              {areaGroups.map((group) => (
+                <div key={group.areaId ?? "__none__"}>
+                  <div className="text-xs font-black uppercase tracking-widest opacity-50 mb-2 px-1">
+                    {group.label}
+                  </div>
+                  <div className="grid gap-2">
+                    {group.templates.map((t) => (
+                      <div key={t.id} className="flex justify-between items-center px-[14px] py-3 bg-black/[0.02] rounded-xl border border-black/[0.06] gap-3 flex-wrap">
+                        <div className="min-w-[260px]">
+                          <div className="font-black">{t.name}</div>
+                        </div>
+                        <div className="flex gap-2.5 items-center flex-wrap">
+                          <select
+                            value={t.area_id ?? ""}
+                            onChange={(e) => setTemplateArea(t.id, e.target.value ? e.target.value : null)}
+                            className="px-3 py-2.5 rounded-xl border border-black/[0.18] bg-white font-black h-[42px] min-w-[220px]"
+                            disabled={savingTemplateId === t.id || duplicatingTemplateId === t.id}
+                          >
+                            <option value="">(Sin área)</option>
+                            {areas.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
+                          </select>
+                          <button
+                            className="px-[14px] py-2.5 rounded-xl border border-black/20 bg-white text-black font-black cursor-pointer text-sm whitespace-nowrap"
+                            onClick={() => duplicateHotelTemplate(t)}
+                            disabled={duplicatingTemplateId === t.id}
+                            title="Crea una copia de esta auditoría para asignarla a otro restaurante/área"
+                          >
+                            {duplicatingTemplateId === t.id ? "Duplicando…" : "Duplicar"}
+                          </button>
+                          <button
+                            className="px-[14px] py-2.5 rounded-xl border border-black/20 bg-white text-black font-black cursor-pointer text-sm whitespace-nowrap"
+                            onClick={() => router.push(`/builder/${t.id}`)}
+                            disabled={duplicatingTemplateId === t.id}
+                          >
+                            Editar
+                          </button>
+                          <button
+                            className="px-[14px] py-2.5 rounded-xl border border-red-200 text-red-700 bg-white font-black cursor-pointer text-sm whitespace-nowrap disabled:opacity-50"
+                            onClick={() => deleteHotelTemplate(t)}
+                            disabled={deletingTemplateId === t.id || duplicatingTemplateId === t.id}
+                          >
+                            {deletingTemplateId === t.id ? "Eliminando…" : "Eliminar"}
+                          </button>
                           </div>
                         </div>
                       ))}
                     </div>
                   </div>
-                );
-              })}
+              ))}
             </div>
           )}
         </div>
