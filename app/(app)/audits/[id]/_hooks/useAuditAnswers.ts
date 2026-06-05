@@ -154,7 +154,7 @@ export function useAuditAnswers({
 
     const question = questions.find((entry) => entry.id === questionId);
     const selectedValue = ((current.answer ?? current.result) ?? "PASS") as AnswerValue;
-    const allowPhoto = question?.photo_requirement === "always" || selectedValue === "FAIL";
+    const allowPhoto = question?.photo_requirement === "always" || question?.photo_requirement === "optional" || selectedValue === "FAIL";
     if (!allowPhoto) {
       setError("Para subir foto, marca FAIL o usa una pregunta con foto obligatoria.");
       return;
