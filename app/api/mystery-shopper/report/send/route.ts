@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { authorizeRouteRequest, resolveRouteHotelScope } from "@/lib/auth/server";
 import { jsonError, jsonDbError } from "@/lib/api/response";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { generateMysteryShopperNarrative } from "@/lib/reports/generateNarrative";
 import { getResend } from "@/lib/email/resend";
 
 export async function POST(request: NextRequest) {
@@ -79,6 +80,26 @@ export async function POST(request: NextRequest) {
     const hotelName = hotel?.name ?? "Hotel";
     const shopperName = shopper.full_name ?? shopperEmail;
 
+    // Generate AI narrative (non-blocking fallback if it fails)
+    let aiNarrative: string | null = null;
+    try {
+      aiNarrative = await generateMysteryShopperNarrative({
+        hotelName,
+        shopperName,
+        totalRuns,
+        avgScore,
+        runs: runList.map((r) => ({
+          area: (r.areas as any)?.name ?? "-",
+          template: (r.audit_templates as any)?.name ?? "-",
+          score: r.score,
+          date: r.executed_at,
+          room_number: r.room_number,
+        })),
+      });
+    } catch {
+      // AI failure is non-fatal — email sends without analysis
+    }
+
     // Build run rows HTML
     const runRows = runList
       .map((r) => {
@@ -129,6 +150,13 @@ export async function POST(request: NextRequest) {
         <div style="font-size:12px;color:#64748b;margin-top:4px">Puntuación media</div>
       </div>` : ""}
     </div>
+
+    <!-- AI Analysis -->
+    ${aiNarrative ? `
+    <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:20px 24px;margin-bottom:28px">
+      <div style="font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#94a3b8;margin-bottom:10px">Análisis IA</div>
+      <div style="font-size:14px;color:#334155;line-height:1.7">${escapeHtml(aiNarrative)}</div>
+    </div>` : ""}
 
     <!-- Runs table -->
     ${totalRuns > 0 ? `

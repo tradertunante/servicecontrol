@@ -104,3 +104,64 @@ export async function generateReportNarrative(
     return { hotel: textBlock.text.slice(0, 600), areas: {} };
   }
 }
+
+export type MysteryShopperRunData = {
+  area: string;
+  template: string;
+  score: number | null;
+  date: string | null;
+  room_number: string | null;
+};
+
+export async function generateMysteryShopperNarrative(input: {
+  hotelName: string;
+  shopperName: string;
+  totalRuns: number;
+  avgScore: number | null;
+  runs: MysteryShopperRunData[];
+}): Promise<string> {
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) throw new Error("API de IA no configurada.");
+
+  const client = new Anthropic({ apiKey });
+
+  const runsBlock = input.runs
+    .map((r) => {
+      const score = r.score !== null ? `${r.score}%` : "sin score";
+      const room = r.room_number ? ` (habitación ${r.room_number})` : "";
+      const date = r.date
+        ? new Date(r.date).toLocaleDateString("es-ES", { day: "2-digit", month: "2-digit", year: "numeric" })
+        : "fecha desconocida";
+      return `- ${r.area} · ${r.template}${room}: ${score} (${date})`;
+    })
+    .join("\n");
+
+  const prompt = `Eres el sistema de análisis de experiencia de cliente de ServiceControl, una plataforma de calidad hotelera. Analiza el siguiente reporte de un Mystery Shopper en el hotel "${input.hotelName}".
+
+Mystery Shopper: ${input.shopperName}
+Total de áreas auditadas: ${input.totalRuns}
+Score medio: ${input.avgScore !== null ? `${input.avgScore}%` : "no disponible"}
+
+Auditorías realizadas:
+${runsBlock}
+
+Escribe un análisis ejecutivo en español de 4-6 frases dirigido a la dirección del hotel. Debe incluir:
+1. Valoración global de la experiencia del huésped
+2. Las áreas con mejor y peor desempeño
+3. Patrones o puntos de atención detectados
+4. Una recomendación de acción prioritaria
+
+Tono: profesional, directo, orientado a mejora. Sin listas, solo párrafo continuo.
+Devuelve SOLO el texto del análisis, sin explicaciones adicionales.`;
+
+  const message = await client.messages.create({
+    model: "claude-sonnet-4-6",
+    max_tokens: 1024,
+    system: "Eres el sistema de análisis de calidad de ServiceControl. Respondes siempre en español, de forma concisa y orientada a la acción.",
+    messages: [{ role: "user", content: prompt }],
+  });
+
+  const textBlock = message.content.find((b) => b.type === "text");
+  if (!textBlock || textBlock.type !== "text") throw new Error("Respuesta AI inesperada.");
+  return textBlock.text.trim();
+}
