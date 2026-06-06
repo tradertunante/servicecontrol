@@ -22,6 +22,8 @@ export async function sendMysteryShopperEmail(data: MysteryShopperEmailData) {
     to: data.to,
     subject: `Tu acceso Mystery Shopper · ${data.hotelName}`,
     html: buildHtml({ ...data, displayName }),
+    text: buildText({ ...data, displayName }),
+    headers: { "List-Unsubscribe": "<mailto:app@servicecontrol.io?subject=Unsubscribe>" },
   });
 }
 
@@ -134,6 +136,37 @@ function buildHtml(data: MysteryShopperEmailData & { displayName: string }): str
 </div>
 </body>
 </html>`;
+}
+
+function buildText(data: MysteryShopperEmailData & { displayName: string }): string {
+  return [
+    `Tu acceso Mystery Shopper · ${data.hotelName}`,
+    "",
+    `Hola, ${data.displayName}`,
+    "",
+    `Tienes acceso como Mystery Shopper en ${data.hotelName}.`,
+    `Acceso activo durante ${data.daysActive} días.`,
+    "",
+    "--- TUS CREDENCIALES ---",
+    `Email: ${data.loginEmail}`,
+    `Contraseña: ${data.password}`,
+    "",
+    "Guarda estas credenciales. Una vez accedas podrás cambiar la contraseña desde tu perfil.",
+    "",
+    "--- CÓMO FUNCIONA ---",
+    "1. Inicia sesión con el email y contraseña de arriba.",
+    "2. Elige área y auditoría.",
+    "3. Completa el formulario honestamente. Las fotos son opcionales.",
+    "4. Guarda automáticamente. Puedes cerrar y continuar más tarde sin perder nada.",
+    '5. Cuando termines, pulsa "Enviar Reporte" para que el equipo lo reciba.',
+    "",
+    `Acceder al panel: ${data.loginUrl}`,
+    "",
+    `Acceso válido hasta ${expiryDate(data.daysActive)}.`,
+    "¿Dudas? Contacta con el administrador del hotel o escríbenos a app@servicecontrol.io",
+    "",
+    "Este mensaje fue generado automáticamente por ServiceControl.",
+  ].join("\n");
 }
 
 function stepRow(num: string, title: string, text: string): string {

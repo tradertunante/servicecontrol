@@ -30,6 +30,52 @@ function sectionScore(s: AuditReportSection): number {
   return Math.round(((denom - s.fail) / denom) * 1000) / 10;
 }
 
+function buildInsightText(sections: AuditReportSection[], totalFails: number): string {
+  if (totalFails === 0) {
+    return "Resultado destacado: Auditoría completada sin ningún fallo. Todos los estándares fueron superados.";
+  }
+  const worst = sections
+    .filter((s) => s.total - s.na > 0 && s.fail > 0)
+    .map((s) => ({ name: s.section_name, score: sectionScore(s), fail: s.fail }))
+    .sort((a, b) => a.score - b.score)[0];
+  if (!worst) return "";
+  return `Principal oportunidad de mejora: ${worst.name} registró el rendimiento más bajo: ${worst.score.toFixed(1)}% con ${worst.fail} ${worst.fail === 1 ? "fallo" : "fallos"}.`;
+}
+
+function buildSectionsText(sections: AuditReportSection[]): string {
+  if (sections.length === 0) return "";
+  return (
+    "Desglose por sección:\n" +
+    sections
+      .map((s) => {
+        const score = sectionScore(s);
+        return `  ${s.section_name}: ${score.toFixed(1)}%${s.fail > 0 ? ` (${s.fail} fallos)` : ""}`;
+      })
+      .join("\n")
+  );
+}
+
+function buildFailedItemsText(sections: AuditReportSection[]): string {
+  const failedItems: (AuditReportItem & { sectionName: string })[] = [];
+  for (const s of sections) {
+    for (const item of s.items) {
+      if (item.status === "FAIL") failedItems.push({ ...item, sectionName: s.section_name });
+    }
+  }
+  if (failedItems.length === 0) return "";
+  return (
+    `Estándares fallidos (${failedItems.length}):\n` +
+    failedItems
+      .map((item) => {
+        let line = `  - [${item.sectionName}] ${item.question_text}`;
+        if (item.comment) line += `\n    Comentario: ${item.comment}`;
+        if (item.photo_url) line += `\n    Evidencia: ${item.photo_url}`;
+        return line;
+      })
+      .join("\n")
+  );
+}
+
 function buildInsightHtml(sections: AuditReportSection[], totalFails: number): string {
   if (totalFails === 0) {
     return `
@@ -258,10 +304,37 @@ export async function sendInstantAuditEmail(data: InstantAuditEmailData) {
 
   const fromAddress = process.env.RESEND_FROM_EMAIL || "app@servicecontrol.io";
 
+  const textParts: string[] = [
+    `${data.hotelName} · Auditoría ${channelLabel}`,
+    `${templateName} · ${areaName}`,
+    `Score: ${score.toFixed(1)}% — ${status.label}`,
+    "",
+    `Área: ${areaName}`,
+    `Plantilla: ${templateName}`,
+    `Auditor: ${data.auditorName}`,
+    ...(data.teamMemberName ? [`Auditado: ${data.teamMemberName}`] : []),
+    ...(report.run.room_number ? [`Habitación: ${report.run.room_number}`] : []),
+    `Resultado: ${report.summary.fail} ${report.summary.fail === 1 ? "fallo" : "fallos"} de ${report.summary.total} estándares`,
+    `Fecha: ${dateStr}`,
+    "",
+    buildInsightText(report.sections, report.summary.fail),
+    "",
+    buildSectionsText(report.sections),
+    "",
+    buildFailedItemsText(report.sections),
+    "",
+    `Ver informe completo: ${reportUrl}`,
+    "",
+    "ServiceControl · Gestión de calidad operativa para hoteles",
+    "Este mensaje fue generado automáticamente. No responder a este correo.",
+  ];
+
   return resend.emails.send({
     from: `ServiceControl <${fromAddress}>`,
     to: data.to,
     subject,
     html,
+    text: textParts.join("\n"),
+    headers: { "List-Unsubscribe": "<mailto:app@servicecontrol.io?subject=Unsubscribe>" },
   });
 }

@@ -20,10 +20,27 @@ export async function sendRoleChangeEmail(data: RoleChangeEmailData) {
   const oldLabel = ROLE_LABELS[data.oldRole] ?? data.oldRole;
   const newLabel = ROLE_LABELS[data.newRole] ?? data.newRole;
 
+  const text = [
+    `Tu rol ha cambiado en ${data.hotelName}`,
+    "",
+    `Hola, ${displayName}`,
+    "",
+    `Un administrador ha actualizado tu rol en ${data.hotelName}.`,
+    "",
+    `Antes: ${oldLabel}`,
+    `Ahora:  ${newLabel}`,
+    "",
+    `Acceder al panel: ${data.loginUrl}`,
+    "",
+    "Este mensaje fue generado automáticamente. No responder a este correo.",
+  ].join("\n");
+
   return resend.emails.send({
     from: `ServiceControl <${from}>`,
     to: data.to,
     subject: `Tu rol ha cambiado en ${data.hotelName}`,
+    text,
+    headers: { "List-Unsubscribe": "<mailto:app@servicecontrol.io?subject=Unsubscribe>" },
     html: `<!DOCTYPE html>
 <html lang="es">
 <head>

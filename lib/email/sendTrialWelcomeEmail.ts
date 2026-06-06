@@ -22,6 +22,8 @@ export async function sendTrialWelcomeEmail(data: TrialWelcomeEmailData) {
     to: data.to,
     subject: `Tu acceso al sandbox de ServiceControl · ${data.hotelName}`,
     html: buildHtml({ ...data, displayName }),
+    text: buildText({ ...data, displayName }),
+    headers: { "List-Unsubscribe": "<mailto:app@servicecontrol.io?subject=Unsubscribe>" },
   });
 }
 
@@ -114,6 +116,33 @@ function buildHtml(data: TrialWelcomeEmailData & { displayName: string }): strin
   </div>
 </body>
 </html>`;
+}
+
+function buildText(data: TrialWelcomeEmailData & { displayName: string }): string {
+  return [
+    `Tu sandbox de ServiceControl · ${data.hotelName}`,
+    "",
+    `Hola, ${data.displayName}`,
+    "",
+    `Tu sandbox de ServiceControl está listo con datos de demostración para ${data.hotelName}.`,
+    "",
+    "--- TUS CREDENCIALES ---",
+    `Email: ${data.email}`,
+    `Contraseña: ${data.password}`,
+    "",
+    `Entrar al sandbox: ${data.loginUrl}`,
+    "",
+    "NOTA: Estás en modo sandbox. Los datos son de demostración.",
+    "",
+    "--- QUÉ PUEDES EXPLORAR ---",
+    "- Dashboard ejecutivo: Score por área, backlog correctivo y focos rojos.",
+    "- Ejecutar una auditoría: Desde móvil, con evidencia y scoring inmediato.",
+    "- Acciones correctivas: Ve cómo se asignan y se hace seguimiento automáticamente.",
+    "- Reauditorías y formación: El loop completo de cierre de desviaciones.",
+    "",
+    "¿Quieres ver cómo quedaría con tus áreas y estándares reales?",
+    `Solicita una demo guiada: ${data.demoUrl}`,
+  ].join("\n");
 }
 
 function item(title: string, description: string): string {

@@ -22,6 +22,8 @@ export async function sendWelcomeEmail(data: WelcomeEmailData) {
     to: data.to,
     subject: `Bienvenido a ServiceControl · ${data.hotelName}`,
     html,
+    text: buildWelcomeText({ ...data, displayName }),
+    headers: { "List-Unsubscribe": "<mailto:app@servicecontrol.io?subject=Unsubscribe>" },
   });
 }
 
@@ -126,6 +128,31 @@ function valueRow(title: string, description: string): string {
         <div style="font-size:13px;color:#64748b;line-height:1.5">${description}</div>
       </div>
     </div>`;
+}
+
+function buildWelcomeText(data: WelcomeEmailData & { displayName: string }): string {
+  const cta = data.activationUrl
+    ? `Activa tu cuenta y crea tu contraseña en:\n${data.activationUrl}\n\nEste enlace expira en 24 horas. Si caduca, solicita uno nuevo al administrador.`
+    : `Accede al panel en:\n${data.loginUrl}`;
+
+  return [
+    `Bienvenido a ServiceControl, ${data.displayName}`,
+    "",
+    `Tu cuenta en ServiceControl para ${data.hotelName} ha sido creada.`,
+    "Ya puedes acceder a la plataforma de gestión de calidad operativa.",
+    "",
+    "Qué encontrarás:",
+    "- Auditorías operativas: Realiza y gestiona auditorías de calidad en todas las áreas del hotel.",
+    "- Seguimiento en tiempo real: Consulta resultados, tendencias y acciones correctivas al instante.",
+    "- Mejora continua: Identifica oportunidades y eleva los estándares operativos de tu equipo.",
+    "",
+    cta,
+    "",
+    "¿Necesitas ayuda? Consulta la guía en https://servicecontrol.io/help",
+    "o escríbenos a app@servicecontrol.io",
+    "",
+    "Este mensaje fue generado automáticamente por ServiceControl.",
+  ].join("\n");
 }
 
 function escapeHtml(str: string): string {
