@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { CSSProperties } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
+import { useProfile } from "@/hooks/useProfile";
 
 type AuditRun = {
   id: string;
@@ -12,6 +13,7 @@ type AuditRun = {
   status: string | null;
   score: number | null;
   room_number?: string | null;
+  employee_name?: string | null;
   executed_at: string | null;
 };
 
@@ -143,11 +145,18 @@ export default function AuditRunSectionDetailPageClient({
   runId: string;
 }) {
   const router = useRouter();
+  const { data: profile } = useProfile();
+  const canEditName = profile?.role === "admin" || profile?.role === "quality" || profile?.role === "superadmin";
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const [run, setRun] = useState<AuditRun | null>(null);
+
+  const [editingName, setEditingName] = useState(false);
+  const [nameInput, setNameInput] = useState("");
+  const [nameSaving, setNameSaving] = useState(false);
+  const [nameError, setNameError] = useState<string | null>(null);
   const [area, setArea] = useState<Area | null>(null);
   const [template, setTemplate] = useState<Template | null>(null);
 
@@ -166,7 +175,7 @@ export default function AuditRunSectionDetailPageClient({
       try {
         const { data: runData, error: runErr } = await supabase
           .from("audit_runs")
-          .select("id,area_id,audit_template_id,status,score,room_number,executed_at")
+          .select("id,area_id,audit_template_id,status,score,room_number,employee_name,executed_at")
           .eq("id", runId)
           .single();
 
@@ -356,6 +365,30 @@ export default function AuditRunSectionDetailPageClient({
     setOpenSections((prev) => ({ ...prev, ...updated }));
   }
 
+  async function saveEmployeeName() {
+    if (!run) return;
+    setNameSaving(true);
+    setNameError(null);
+    try {
+      const res = await fetch(`/api/audits/${run.id}/employee-name`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ employee_name: nameInput.trim() || null }),
+      });
+      const json = await res.json();
+      if (!res.ok || !json.ok) {
+        setNameError(json.error ?? "Error al guardar.");
+      } else {
+        setRun((prev) => prev ? { ...prev, employee_name: json.employee_name } : prev);
+        setEditingName(false);
+      }
+    } catch {
+      setNameError("Error de red.");
+    } finally {
+      setNameSaving(false);
+    }
+  }
+
   if (loading) {
     return (
       <main style={pageWrapStyle()}>
@@ -449,6 +482,77 @@ export default function AuditRunSectionDetailPageClient({
                   <div style={{ fontWeight: 900 }}>{run.room_number}</div>
                 </div>
               ) : null}
+
+              <div>
+                <div style={{ fontSize: 12, opacity: 0.6, fontWeight: 800, marginBottom: 4 }}>
+                  Nombre colaborador
+                </div>
+                {editingName ? (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                    <input
+                      autoFocus
+                      value={nameInput}
+                      onChange={(e) => setNameInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") saveEmployeeName();
+                        if (e.key === "Escape") setEditingName(false);
+                      }}
+                      placeholder="Nombre o vacío para borrar"
+                      style={{
+                        padding: "6px 10px",
+                        borderRadius: 8,
+                        border: "1px solid rgba(0,0,0,0.20)",
+                        fontWeight: 700,
+                        fontSize: 14,
+                        width: "100%",
+                      }}
+                    />
+                    {nameError && (
+                      <div style={{ color: "#b91c1c", fontSize: 12, fontWeight: 700 }}>{nameError}</div>
+                    )}
+                    <div style={{ display: "flex", gap: 6 }}>
+                      <button
+                        onClick={saveEmployeeName}
+                        disabled={nameSaving}
+                        style={{ ...softBtnStyle(true), fontSize: 12, padding: "5px 10px" }}
+                      >
+                        {nameSaving ? "Guardando…" : "Guardar"}
+                      </button>
+                      <button
+                        onClick={() => setEditingName(false)}
+                        disabled={nameSaving}
+                        style={{ ...softBtnStyle(false), fontSize: 12, padding: "5px 10px" }}
+                      >
+                        Cancelar
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <span style={{ fontWeight: 900 }}>{run?.employee_name ?? "—"}</span>
+                    {canEditName && (
+                      <button
+                        onClick={() => {
+                          setNameInput(run?.employee_name ?? "");
+                          setNameError(null);
+                          setEditingName(true);
+                        }}
+                        style={{
+                          padding: "3px 8px",
+                          borderRadius: 8,
+                          border: "1px solid rgba(0,0,0,0.14)",
+                          background: "#fff",
+                          fontWeight: 800,
+                          fontSize: 11,
+                          cursor: "pointer",
+                        }}
+                      >
+                        Editar
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
 
               <div>
                 <div style={{ fontSize: 12, opacity: 0.6, fontWeight: 800 }}>Score</div>
