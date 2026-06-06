@@ -81,6 +81,47 @@ export async function POST(request: NextRequest) {
     const hotelName = hotel?.name ?? "Hotel";
     const shopperName = shopper.full_name ?? shopperEmail;
 
+    // Load full answers + question metadata for each run
+    const runIds = runList.map((r) => r.id);
+
+    const [{ data: answersRaw }, { data: questionsRaw }] = await Promise.all([
+      runIds.length > 0
+        ? admin
+            .from("audit_answers")
+            .select("audit_run_id, answer, comment, is_na, photo_path, question_id, question_text")
+            .in("audit_run_id", runIds)
+        : Promise.resolve({ data: [] }),
+      runIds.length > 0
+        ? admin
+            .from("audit_questions")
+            .select("id, tag, classification, weight")
+            .in("id", runIds.length > 0
+              ? (await admin.from("audit_answers").select("question_id").in("audit_run_id", runIds)).data?.map((a: any) => a.question_id) ?? []
+              : [])
+        : Promise.resolve({ data: [] }),
+    ]);
+
+    const questionMeta = new Map<string, { tag: string | null; classification: string | null; weight: number }>();
+    for (const q of (questionsRaw ?? []) as Array<{ id: string; tag: string | null; classification: string | null; weight: number }>) {
+      questionMeta.set(q.id, { tag: q.tag, classification: q.classification, weight: q.weight });
+    }
+
+    type AnswerRow = {
+      audit_run_id: string;
+      answer: string;
+      comment: string | null;
+      is_na: boolean;
+      photo_path: string | null;
+      question_id: string;
+      question_text: string | null;
+    };
+
+    const answersByRun = new Map<string, AnswerRow[]>();
+    for (const a of (answersRaw ?? []) as AnswerRow[]) {
+      if (!answersByRun.has(a.audit_run_id)) answersByRun.set(a.audit_run_id, []);
+      answersByRun.get(a.audit_run_id)!.push(a);
+    }
+
     // Generate AI narrative (non-blocking fallback if it fails)
     let aiNarrative: string | null = null;
     try {
@@ -95,6 +136,20 @@ export async function POST(request: NextRequest) {
           score: r.score,
           date: r.executed_at,
           room_number: r.room_number,
+          answers: (answersByRun.get(r.id) ?? []).map((a) => {
+            const meta = questionMeta.get(a.question_id);
+            return {
+              question: a.question_text ?? "-",
+              tag: meta?.tag ?? null,
+              classification: meta?.classification ?? null,
+              weight: meta?.weight ?? 1,
+              answer: a.answer,
+              passed: a.answer === "yes",
+              na: a.is_na,
+              comment: a.comment ?? null,
+              has_photo: !!a.photo_path,
+            };
+          }),
         })),
       });
     } catch {

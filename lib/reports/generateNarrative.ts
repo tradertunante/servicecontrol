@@ -105,12 +105,24 @@ export async function generateReportNarrative(
   }
 }
 
+export type MysteryShopperAnswerData = {
+  question: string;
+  tag: string | null;
+  classification: string | null;
+  weight: number;
+  passed: boolean;
+  na: boolean;
+  comment: string | null;
+  has_photo: boolean;
+};
+
 export type MysteryShopperRunData = {
   area: string;
   template: string;
   score: number | null;
   date: string | null;
   room_number: string | null;
+  answers: MysteryShopperAnswerData[];
 };
 
 export async function generateMysteryShopperNarrative(input: {
@@ -139,9 +151,22 @@ export async function generateMysteryShopperNarrative(input: {
       const date = r.date
         ? new Date(r.date).toLocaleDateString("es-ES", { day: "2-digit", month: "2-digit", year: "numeric" })
         : "fecha desconocida";
-      return `[${date}] ${r.area} — ${r.template}${room}: ${score}`;
+
+      const answersBlock = r.answers
+        .filter((a) => !a.na)
+        .map((a) => {
+          const icon = a.passed ? "✓" : "✗";
+          const tag = a.tag ? `[${a.tag}]` : "";
+          const cls = a.classification ? `[${a.classification}]` : "";
+          const comment = a.comment ? ` → "${a.comment}"` : "";
+          const photo = a.has_photo ? " 📷" : "";
+          return `    ${icon} ${cls}${tag} ${a.question}${comment}${photo}`;
+        })
+        .join("\n");
+
+      return `[${date}] ${r.area} — ${r.template}${room}: ${score}\n${answersBlock}`;
     })
-    .join("\n");
+    .join("\n\n");
 
   const stayDates = sortedRuns
     .filter((r) => r.date)
@@ -150,29 +175,30 @@ export async function generateMysteryShopperNarrative(input: {
     ? stayDates.length > 1 ? `del ${stayDates[0]} al ${stayDates[stayDates.length - 1]}` : stayDates[0]
     : "fechas no disponibles";
 
-  const prompt = `Eres un analista experto en experiencia de huésped en hoteles de lujo. Tu tarea es interpretar el reporte de un Mystery Shopper que se hospedó en "${input.hotelName}" ${stayRange} y auditó distintos puntos de contacto a lo largo de su estancia.
+  const prompt = `Eres un analista experto en experiencia de huésped en hoteles de lujo. Tu tarea es interpretar el reporte completo de un Mystery Shopper que se hospedó en "${input.hotelName}" ${stayRange}.
 
-CONTEXTO IMPORTANTE:
-- Esto NO es un reporte operativo semanal de auditorías múltiples. Es la experiencia COMPLETA de UN huésped real que vivió el hotel de principio a fin.
-- Las puntuaciones reflejan cómo el huésped experimentó cada servicio, no métricas internas de equipo.
-- El análisis debe leer como una evaluación de la experiencia del huésped, no como un control de calidad interno.
+CONTEXTO:
+- Esto es la experiencia COMPLETA de UN huésped real de principio a fin, no un reporte operativo de equipo.
+- Cada línea con ✗ es un estándar que el huésped NO vivió correctamente. Cada ✓ es un estándar cumplido.
+- Los comentarios tras "→" son observaciones directas del shopper en ese momento.
+- Las clasificaciones [Behavioral/Physical/Procedural/etc.] y tags indican el tipo de estándar fallado.
 
-DATOS DE LA ESTANCIA (ordenados cronológicamente):
+DATOS COMPLETOS DE LA ESTANCIA (cronológicos):
 ${runsBlock}
 
-Score medio de la estancia: ${input.avgScore !== null ? `${input.avgScore}%` : "no disponible"}
+Score medio global: ${input.avgScore !== null ? `${input.avgScore}%` : "no disponible"}
 Total de touchpoints evaluados: ${input.totalRuns}
 
-INSTRUCCIONES PARA EL ANÁLISIS:
-Escribe un análisis ejecutivo en español, en 1 párrafo continuo de 5-7 frases, dirigido a la Dirección General y al Director de Calidad del hotel. El análisis debe:
-1. Describir cómo fue la experiencia global del huésped durante la estancia (no solo el número)
-2. Destacar los momentos más destacados del journey (qué sorprendió positivamente)
-3. Identificar las fricciones o caídas de experiencia más relevantes en el journey del huésped (no solo la lista de scores bajos, sino qué impacto tienen en la percepción del huésped)
-4. Señalar si los puntos débiles son puntos de contacto críticos (primera impresión, salida, servicio en habitación) o secundarios
-5. Cerrar con UNA sola acción prioritaria concreta y accionable
+INSTRUCCIONES:
+Escribe un análisis ejecutivo en español, en UN párrafo continuo de 5-7 frases, dirigido a la Dirección General y al Director de Calidad. El análisis debe:
+1. Describir la experiencia global del huésped (más allá del número)
+2. Identificar patrones en los fallos: ¿se concentran en una clasificación (ej. todos Behavioral)? ¿en un momento del journey (llegada, habitación, salida)? ¿en un tag recurrente?
+3. Citar 1-2 fallos concretos con sus comentarios si los hay, para ilustrar el impacto real en el huésped
+4. Distinguir si los puntos débiles son críticos (primera impresión, habitación, salida) o secundarios
+5. Cerrar con UNA acción prioritaria específica y accionable basada en los patrones detectados
 
-Tono: analítico, directo, orientado a decisión. Escribe como si fueras un consultor de experiencia de huésped hablando a un GM. Sin listas, solo texto fluido.
-Devuelve SOLO el texto del análisis, sin títulos ni explicaciones adicionales.`;
+Tono: consultor de experiencia de huésped hablando a un GM. Directo, sin listas, texto fluido.
+Devuelve SOLO el texto del análisis, sin títulos ni explicaciones.`;
 
   const message = await client.messages.create({
     model: "claude-sonnet-4-6",
