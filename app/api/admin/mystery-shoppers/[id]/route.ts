@@ -140,10 +140,14 @@ export async function DELETE(
     if (fetchErr) return jsonDbError(fetchErr);
     if (!shopper) return jsonError("Mystery shopper no encontrado.", 404);
 
-    // 1. Remove area access
-    await admin.from("user_area_access").delete().eq("user_id", params.id);
+    // Clean up all tables with FK constraints to auth.users before deleteUser
+    await Promise.all([
+      admin.from("user_area_access").delete().eq("user_id", params.id),
+      admin.from("notifications").delete().eq("user_id", params.id),
+      admin.from("report_subscriptions").update({ created_by: null }).eq("created_by", params.id),
+    ]);
 
-    // 2. Delete profile row
+    // Delete profile (profiles.id → auth.users FK requires deleting profile before auth user)
     const { error: profileErr } = await admin
       .from("profiles")
       .delete()
@@ -152,7 +156,7 @@ export async function DELETE(
 
     if (profileErr) return jsonDbError(profileErr);
 
-    // 3. Delete auth user
+    // Delete auth user last (no more FK references blocking it)
     const { error: authErr } = await admin.auth.admin.deleteUser(params.id);
     if (authErr) return jsonDbError(authErr);
 
