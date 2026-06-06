@@ -114,3 +114,60 @@ export async function PATCH(
     return jsonDbError(error instanceof Error ? { message: error.message } : null, "Error inesperado.");
   }
 }
+
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const caller = await authorizeRouteRequest(request, { roles: ["admin", "superadmin"] });
+    if (!caller) return jsonError("No autorizado.", 401);
+
+    const hotelResult = resolveRouteHotelScope(caller.profile, null);
+    if (!hotelResult.ok) return jsonError(hotelResult.error, hotelResult.status);
+
+    const admin = supabaseAdmin();
+
+    // Verify the target is actually a mystery_shopper of this hotel
+    const { data: shopper, error: fetchErr } = await admin
+      .from("profiles")
+      .select("id, full_name, email")
+      .eq("id", params.id)
+      .eq("hotel_id", hotelResult.hotelId)
+      .eq("role", "mystery_shopper")
+      .maybeSingle();
+
+    if (fetchErr) return jsonDbError(fetchErr);
+    if (!shopper) return jsonError("Mystery shopper no encontrado.", 404);
+
+    // 1. Remove area access
+    await admin.from("user_area_access").delete().eq("user_id", params.id);
+
+    // 2. Delete profile row
+    const { error: profileErr } = await admin
+      .from("profiles")
+      .delete()
+      .eq("id", params.id)
+      .eq("hotel_id", hotelResult.hotelId);
+
+    if (profileErr) return jsonDbError(profileErr);
+
+    // 3. Delete auth user
+    const { error: authErr } = await admin.auth.admin.deleteUser(params.id);
+    if (authErr) return jsonDbError(authErr);
+
+    void logAdminAction({
+      hotelId: hotelResult.hotelId,
+      actorId: caller.profile.id,
+      actorName: caller.profile.full_name ?? caller.profile.id,
+      targetId: params.id,
+      targetName: shopper.full_name ?? shopper.email ?? params.id,
+      action: "mystery_shopper_deleted",
+      newValue: null,
+    });
+
+    return NextResponse.json({ ok: true });
+  } catch (error) {
+    return jsonDbError(error instanceof Error ? { message: error.message } : null, "Error inesperado.");
+  }
+}

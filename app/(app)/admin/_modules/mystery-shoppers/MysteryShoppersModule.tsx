@@ -44,6 +44,9 @@ export default function MysteryShoppersModule({ hotelId }: { hotelId: string }) 
   const [creating, setCreating] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [extendingId, setExtendingId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
@@ -96,6 +99,27 @@ export default function MysteryShoppersModule({ hotelId }: { hotelId: string }) 
       setError("Error de conexión.");
     } finally {
       setCreating(false);
+    }
+  }
+
+  async function handleDelete(id: string) {
+    setDeletingId(id);
+    setError(null);
+    setSuccess(null);
+    try {
+      const res = await fetch(`/api/admin/mystery-shoppers/${id}`, { method: "DELETE" });
+      const data = await res.json();
+      if (!data.ok) {
+        setError(data.error ?? "Error al eliminar mystery shopper.");
+      } else {
+        setSuccess("Mystery shopper eliminado correctamente.");
+        setConfirmDeleteId(null);
+        fetchShoppers();
+      }
+    } catch {
+      setError("Error de conexión.");
+    } finally {
+      setDeletingId(null);
     }
   }
 
@@ -279,7 +303,7 @@ export default function MysteryShoppersModule({ hotelId }: { hotelId: string }) 
                     </div>
                   </div>
 
-                  {/* Extend access */}
+                  {/* Actions */}
                   <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
                     <input
                       type="number"
@@ -306,6 +330,53 @@ export default function MysteryShoppersModule({ hotelId }: { hotelId: string }) 
                     >
                       Ver panel ↗
                     </a>
+                    {/* Menu "..." */}
+                    <div style={{ position: "relative" }}>
+                      <button
+                        style={{ ...btnGhost, fontSize: 14, padding: "6px 10px", lineHeight: 1 }}
+                        onClick={() => setOpenMenuId(openMenuId === s.id ? null : s.id)}
+                        title="Más opciones"
+                      >
+                        ···
+                      </button>
+                      {openMenuId === s.id && (
+                        <div style={{
+                          position: "absolute", right: 0, top: "calc(100% + 6px)", zIndex: 50,
+                          background: v("--sc-card-bg", "#1e293b"),
+                          border: `1px solid ${v("--sc-border", "rgba(255,255,255,0.12)")}`,
+                          borderRadius: 10, minWidth: 160, boxShadow: "0 8px 24px rgba(0,0,0,0.3)",
+                          overflow: "hidden",
+                        }}>
+                          {confirmDeleteId === s.id ? (
+                            <div style={{ padding: "12px 14px" }}>
+                              <div style={{ fontSize: 12, marginBottom: 10, opacity: 0.8 }}>¿Eliminar a <strong>{s.full_name ?? s.email}</strong>?</div>
+                              <div style={{ display: "flex", gap: 6 }}>
+                                <button
+                                  style={{ ...btnPrimary, background: "#ef4444", fontSize: 12, padding: "6px 12px", flex: 1 }}
+                                  onClick={() => { setOpenMenuId(null); handleDelete(s.id); }}
+                                  disabled={deletingId === s.id}
+                                >
+                                  {deletingId === s.id ? "Eliminando..." : "Sí, eliminar"}
+                                </button>
+                                <button
+                                  style={{ ...btnGhost, fontSize: 12, padding: "6px 10px" }}
+                                  onClick={() => { setConfirmDeleteId(null); setOpenMenuId(null); }}
+                                >
+                                  No
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <button
+                              style={{ display: "block", width: "100%", textAlign: "left", background: "transparent", border: "none", padding: "10px 14px", fontSize: 13, color: "#ef4444", cursor: "pointer" }}
+                              onClick={() => setConfirmDeleteId(s.id)}
+                            >
+                              Eliminar shopper
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>

@@ -8,7 +8,8 @@ export type AdminAction =
   | "active_changed"
   | "user_deleted"
   | "mystery_shopper_created"
-  | "mystery_shopper_extended";
+  | "mystery_shopper_extended"
+  | "mystery_shopper_deleted";
 
 type LogEntry = {
   hotelId: string;
