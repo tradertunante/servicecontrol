@@ -125,39 +125,59 @@ export async function generateMysteryShopperNarrative(input: {
 
   const client = new Anthropic({ apiKey });
 
-  const runsBlock = input.runs
+  // Sort runs chronologically to reconstruct the guest journey
+  const sortedRuns = [...input.runs].sort((a, b) => {
+    if (!a.date) return 1;
+    if (!b.date) return -1;
+    return new Date(a.date).getTime() - new Date(b.date).getTime();
+  });
+
+  const runsBlock = sortedRuns
     .map((r) => {
       const score = r.score !== null ? `${r.score}%` : "sin score";
-      const room = r.room_number ? ` (habitación ${r.room_number})` : "";
+      const room = r.room_number ? ` · habitación ${r.room_number}` : "";
       const date = r.date
         ? new Date(r.date).toLocaleDateString("es-ES", { day: "2-digit", month: "2-digit", year: "numeric" })
         : "fecha desconocida";
-      return `- ${r.area} · ${r.template}${room}: ${score} (${date})`;
+      return `[${date}] ${r.area} — ${r.template}${room}: ${score}`;
     })
     .join("\n");
 
-  const prompt = `Eres el sistema de análisis de experiencia de cliente de ServiceControl, una plataforma de calidad hotelera. Analiza el siguiente reporte de un Mystery Shopper en el hotel "${input.hotelName}".
+  const stayDates = sortedRuns
+    .filter((r) => r.date)
+    .map((r) => new Date(r.date!).toLocaleDateString("es-ES", { day: "2-digit", month: "long", year: "numeric" }));
+  const stayRange = stayDates.length > 0
+    ? stayDates.length > 1 ? `del ${stayDates[0]} al ${stayDates[stayDates.length - 1]}` : stayDates[0]
+    : "fechas no disponibles";
 
-Mystery Shopper: ${input.shopperName}
-Total de áreas auditadas: ${input.totalRuns}
-Score medio: ${input.avgScore !== null ? `${input.avgScore}%` : "no disponible"}
+  const prompt = `Eres un analista experto en experiencia de huésped en hoteles de lujo. Tu tarea es interpretar el reporte de un Mystery Shopper que se hospedó en "${input.hotelName}" ${stayRange} y auditó distintos puntos de contacto a lo largo de su estancia.
 
-Auditorías realizadas:
+CONTEXTO IMPORTANTE:
+- Esto NO es un reporte operativo semanal de auditorías múltiples. Es la experiencia COMPLETA de UN huésped real que vivió el hotel de principio a fin.
+- Las puntuaciones reflejan cómo el huésped experimentó cada servicio, no métricas internas de equipo.
+- El análisis debe leer como una evaluación de la experiencia del huésped, no como un control de calidad interno.
+
+DATOS DE LA ESTANCIA (ordenados cronológicamente):
 ${runsBlock}
 
-Escribe un análisis ejecutivo en español de 4-6 frases dirigido a la dirección del hotel. Debe incluir:
-1. Valoración global de la experiencia del huésped
-2. Las áreas con mejor y peor desempeño
-3. Patrones o puntos de atención detectados
-4. Una recomendación de acción prioritaria
+Score medio de la estancia: ${input.avgScore !== null ? `${input.avgScore}%` : "no disponible"}
+Total de touchpoints evaluados: ${input.totalRuns}
 
-Tono: profesional, directo, orientado a mejora. Sin listas, solo párrafo continuo.
-Devuelve SOLO el texto del análisis, sin explicaciones adicionales.`;
+INSTRUCCIONES PARA EL ANÁLISIS:
+Escribe un análisis ejecutivo en español, en 1 párrafo continuo de 5-7 frases, dirigido a la Dirección General y al Director de Calidad del hotel. El análisis debe:
+1. Describir cómo fue la experiencia global del huésped durante la estancia (no solo el número)
+2. Destacar los momentos más destacados del journey (qué sorprendió positivamente)
+3. Identificar las fricciones o caídas de experiencia más relevantes en el journey del huésped (no solo la lista de scores bajos, sino qué impacto tienen en la percepción del huésped)
+4. Señalar si los puntos débiles son puntos de contacto críticos (primera impresión, salida, servicio en habitación) o secundarios
+5. Cerrar con UNA sola acción prioritaria concreta y accionable
+
+Tono: analítico, directo, orientado a decisión. Escribe como si fueras un consultor de experiencia de huésped hablando a un GM. Sin listas, solo texto fluido.
+Devuelve SOLO el texto del análisis, sin títulos ni explicaciones adicionales.`;
 
   const message = await client.messages.create({
     model: "claude-sonnet-4-6",
     max_tokens: 1024,
-    system: "Eres el sistema de análisis de calidad de ServiceControl. Respondes siempre en español, de forma concisa y orientada a la acción.",
+    system: "Eres un analista experto en experiencia de huésped en hoteles de lujo. Respondes siempre en español. Tu análisis es conciso, accionable y habla desde la perspectiva del huésped, no desde métricas operativas.",
     messages: [{ role: "user", content: prompt }],
   });
 
