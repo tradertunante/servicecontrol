@@ -31,7 +31,7 @@ export async function POST(request: NextRequest) {
     // Load shopper profile
     const { data: shopper, error: shopperErr } = await admin
       .from("profiles")
-      .select("id, full_name, email, access_expires_at")
+      .select("id, full_name, email, contact_email, access_expires_at")
       .eq("id", shopperId)
       .eq("hotel_id", hotelResult.hotelId)
       .eq("role", "mystery_shopper")
@@ -40,7 +40,8 @@ export async function POST(request: NextRequest) {
     if (shopperErr) return jsonDbError(shopperErr);
     if (!shopper) return jsonError("Mystery shopper no encontrado.", 404);
 
-    shopperEmail = shopper.email ?? "";
+    // Prefer contact_email (real person email) over generated login email
+    shopperEmail = (shopper as any).contact_email || shopper.email || "";
 
     // Load all submitted audit runs for this shopper
     const { data: runs, error: runsErr } = await admin
