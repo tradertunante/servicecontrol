@@ -292,53 +292,35 @@ export default function MysteryShopperDashboard({
                   <div style={{ display: "grid", gap: 8 }}>
                     {area.templates.map((t) => (
                       <div key={t.template_id} style={{
-                        display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10,
-                        padding: "10px 14px", borderRadius: 10,
+                        borderRadius: 10,
                         background: t.done ? "rgba(34,197,94,0.06)" : "rgba(255,255,255,0.03)",
                         border: `1px solid ${t.done ? "rgba(34,197,94,0.15)" : "rgba(255,255,255,0.07)"}`,
-                        flexWrap: "wrap",
+                        overflow: "hidden",
                       }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: 10, flex: 1, minWidth: 0 }}>
-                          {/* Status icon */}
-                          {t.done ? (
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                              <polyline points="20 6 9 17 4 12" />
-                            </svg>
-                          ) : (
-                            <div style={{ width: 16, height: 16, borderRadius: "50%", border: "2px solid rgba(255,255,255,0.2)" }} />
-                          )}
-                          <span style={{ fontSize: 13, fontWeight: 600 }}>{t.template_name}</span>
-                          {t.draft_count > 0 && !t.done && (
-                            <span style={{ fontSize: 11, padding: "1px 6px", borderRadius: 10, background: "rgba(245,158,11,0.12)", color: "#f59e0b", fontWeight: 600 }}>
-                              Borrador
-                            </span>
-                          )}
-                        </div>
-                        <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
-                          {t.last_run?.score !== null && t.last_run?.score !== undefined && (
-                            <span style={{ fontSize: 13, fontWeight: 700, color: scoreColor(t.last_run.score) }}>
-                              {t.last_run.score}%
-                            </span>
-                          )}
-                          {t.last_run ? (
-                            <>
-                              <a
-                                href={`/audits/${t.last_run.id}${t.done ? "/report" : ""}`}
-                                style={{ fontSize: 12, fontWeight: 600, color: "inherit", opacity: 0.7, textDecoration: "underline" }}
-                              >
-                                {t.done ? "Ver reporte" : "Continuar"}
-                              </a>
-                              {t.done && periodActive && (
-                                <button
-                                  onClick={() => handleReopen(t.last_run!.id)}
-                                  disabled={reopeningRun === t.last_run.id}
-                                  style={{ fontSize: 12, fontWeight: 600, color: "inherit", opacity: reopeningRun === t.last_run.id ? 0.4 : 0.7, textDecoration: "underline", background: "none", border: "none", cursor: "pointer", padding: 0 }}
-                                >
-                                  {reopeningRun === t.last_run.id ? "Reabriendo..." : "Editar"}
-                                </button>
-                              )}
-                            </>
-                          ) : (
+                        {/* Template header row */}
+                        <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", flexWrap: "wrap" }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 10, flex: 1, minWidth: 0 }}>
+                            {t.done ? (
+                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                <polyline points="20 6 9 17 4 12" />
+                              </svg>
+                            ) : (
+                              <div style={{ width: 16, height: 16, borderRadius: "50%", border: "2px solid rgba(255,255,255,0.2)" }} />
+                            )}
+                            <span style={{ fontSize: 13, fontWeight: 600 }}>{t.template_name}</span>
+                            {t.done && t.submitted_count > 1 && (
+                              <span style={{ fontSize: 11, padding: "1px 6px", borderRadius: 10, background: "rgba(59,130,246,0.12)", color: "#3b82f6", fontWeight: 600 }}>
+                                {t.submitted_count} auditorías
+                              </span>
+                            )}
+                            {t.draft_count > 0 && !t.done && (
+                              <span style={{ fontSize: 11, padding: "1px 6px", borderRadius: 10, background: "rgba(245,158,11,0.12)", color: "#f59e0b", fontWeight: 600 }}>
+                                Borrador
+                              </span>
+                            )}
+                          </div>
+                          {/* Show "Iniciar" only when no runs at all */}
+                          {t.runs.length === 0 && (
                             <button
                               onClick={() => startAudit(area.area_id, t.template_id)}
                               disabled={startingTemplate === t.template_id}
@@ -347,7 +329,51 @@ export default function MysteryShopperDashboard({
                               {startingTemplate === t.template_id ? "Iniciando..." : "Iniciar"}
                             </button>
                           )}
+                          {/* "+ Nueva auditoría" when has completed runs and period active */}
+                          {t.done && periodActive && (
+                            <button
+                              onClick={() => startAudit(area.area_id, t.template_id)}
+                              disabled={startingTemplate === t.template_id}
+                              style={{ fontSize: 12, fontWeight: 600, color: "#3b82f6", opacity: startingTemplate === t.template_id ? 0.4 : 1, background: "none", border: "none", cursor: "pointer", padding: 0 }}
+                            >
+                              {startingTemplate === t.template_id ? "Iniciando..." : "+ Nueva auditoría"}
+                            </button>
+                          )}
                         </div>
+                        {/* Individual runs */}
+                        {t.runs.map((run, idx) => (
+                          <div key={run.id} style={{
+                            display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10,
+                            padding: "7px 14px 7px 40px",
+                            borderTop: `1px solid ${t.done ? "rgba(34,197,94,0.08)" : "rgba(255,255,255,0.05)"}`,
+                            flexWrap: "wrap",
+                          }}>
+                            <span style={{ fontSize: 12, opacity: 0.55 }}>
+                              {t.submitted_count > 1 ? `Auditoría ${t.submitted_count - idx}` : (run.status === "draft" ? "Borrador" : "Auditoría")}
+                              {run.executed_at ? ` · ${new Date(run.executed_at).toLocaleDateString("es-ES", { day: "2-digit", month: "2-digit", year: "numeric" })}` : ""}
+                            </span>
+                            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                              {run.score !== null && run.score !== undefined && (
+                                <span style={{ fontSize: 12, fontWeight: 700, color: scoreColor(run.score) }}>{run.score}%</span>
+                              )}
+                              <a
+                                href={`/audits/${run.id}${run.status === "submitted" ? "/report" : ""}`}
+                                style={{ fontSize: 12, fontWeight: 600, color: "inherit", opacity: 0.7, textDecoration: "underline" }}
+                              >
+                                {run.status === "submitted" ? "Ver reporte" : "Continuar"}
+                              </a>
+                              {run.status === "submitted" && periodActive && (
+                                <button
+                                  onClick={() => handleReopen(run.id)}
+                                  disabled={reopeningRun === run.id}
+                                  style={{ fontSize: 12, fontWeight: 600, color: "inherit", opacity: reopeningRun === run.id ? 0.4 : 0.7, textDecoration: "underline", background: "none", border: "none", cursor: "pointer", padding: 0 }}
+                                >
+                                  {reopeningRun === run.id ? "Reabriendo..." : "Editar"}
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        ))}
                       </div>
                     ))}
                   </div>
@@ -375,55 +401,90 @@ export default function MysteryShopperDashboard({
               </thead>
               <tbody>
                 {(progress?.areas ?? []).flatMap((area) =>
-                  area.templates.map((t) => (
-                    <tr key={t.template_id} style={{ borderBottom: `1px solid ${v("--sc-border", "rgba(255,255,255,0.05)")}` }}>
-                      <td style={{ padding: "10px 12px", opacity: 0.8 }}>{area.area_name}</td>
-                      <td style={{ padding: "10px 12px", fontWeight: 600 }}>{t.template_name}</td>
-                      <td style={{ padding: "10px 12px" }}>
-                        {t.done ? (
-                          <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 20, background: "rgba(34,197,94,0.10)", color: "#22c55e", fontWeight: 700 }}>Completada</span>
-                        ) : t.draft_count > 0 ? (
-                          <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 20, background: "rgba(245,158,11,0.12)", color: "#f59e0b", fontWeight: 700 }}>En progreso</span>
-                        ) : (
-                          <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 20, background: "rgba(255,255,255,0.06)", opacity: 0.6, fontWeight: 600 }}>Pendiente</span>
-                        )}
-                      </td>
-                      <td style={{ padding: "10px 12px", fontWeight: 700, color: scoreColor(t.last_run?.score ?? null) }}>
-                        {t.last_run?.score !== null && t.last_run?.score !== undefined ? `${t.last_run.score}%` : "-"}
-                      </td>
-                      <td style={{ padding: "10px 12px", opacity: 0.6, whiteSpace: "nowrap" }}>
-                        {t.last_run?.executed_at
-                          ? new Date(t.last_run.executed_at).toLocaleDateString("es-ES", { day: "2-digit", month: "2-digit", year: "numeric" })
-                          : "-"}
-                      </td>
-                      <td style={{ padding: "10px 12px" }}>
-                        {t.last_run ? (
-                          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                            <a href={`/audits/${t.last_run.id}${t.done ? "/report" : ""}`} style={{ fontSize: 12, fontWeight: 600, color: "inherit", textDecoration: "underline", opacity: 0.7 }}>
-                              {t.done ? "Ver reporte" : "Continuar"}
-                            </a>
-                            {t.done && periodActive && (
-                              <button
-                                onClick={() => handleReopen(t.last_run!.id)}
-                                disabled={reopeningRun === t.last_run.id}
-                                style={{ fontSize: 12, fontWeight: 600, color: "inherit", textDecoration: "underline", opacity: reopeningRun === t.last_run.id ? 0.4 : 0.7, background: "none", border: "none", cursor: "pointer", padding: 0 }}
-                              >
-                                {reopeningRun === t.last_run.id ? "Reabriendo..." : "Editar"}
-                              </button>
+                  area.templates.flatMap((t) => {
+                    const rows = t.runs.length > 0
+                      ? t.runs.map((run, idx) => (
+                        <tr key={run.id} style={{ borderBottom: `1px solid ${v("--sc-border", "rgba(255,255,255,0.05)")}` }}>
+                          <td style={{ padding: "10px 12px", opacity: 0.8 }}>{idx === 0 ? area.area_name : ""}</td>
+                          <td style={{ padding: "10px 12px", fontWeight: 600 }}>
+                            {idx === 0 ? t.template_name : <span style={{ opacity: 0.4, fontWeight: 400, fontSize: 12 }}>{t.template_name}</span>}
+                          </td>
+                          <td style={{ padding: "10px 12px" }}>
+                            {run.status === "submitted" ? (
+                              <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 20, background: "rgba(34,197,94,0.10)", color: "#22c55e", fontWeight: 700 }}>Completada</span>
+                            ) : (
+                              <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 20, background: "rgba(245,158,11,0.12)", color: "#f59e0b", fontWeight: 700 }}>En progreso</span>
                             )}
-                          </div>
-                        ) : (
-                          <button
-                            onClick={() => startAudit(area.area_id, t.template_id)}
-                            disabled={startingTemplate === t.template_id}
-                            style={{ fontSize: 12, fontWeight: 600, color: "inherit", textDecoration: "underline", opacity: startingTemplate === t.template_id ? 0.4 : 0.7, background: "none", border: "none", cursor: "pointer", padding: 0 }}
-                          >
-                            {startingTemplate === t.template_id ? "Iniciando..." : "Iniciar"}
-                          </button>
-                        )}
-                      </td>
-                    </tr>
-                  ))
+                          </td>
+                          <td style={{ padding: "10px 12px", fontWeight: 700, color: scoreColor(run.score) }}>
+                            {run.score !== null && run.score !== undefined ? `${run.score}%` : "-"}
+                          </td>
+                          <td style={{ padding: "10px 12px", opacity: 0.6, whiteSpace: "nowrap" }}>
+                            {run.executed_at
+                              ? new Date(run.executed_at).toLocaleDateString("es-ES", { day: "2-digit", month: "2-digit", year: "numeric" })
+                              : "-"}
+                          </td>
+                          <td style={{ padding: "10px 12px" }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                              <a href={`/audits/${run.id}${run.status === "submitted" ? "/report" : ""}`} style={{ fontSize: 12, fontWeight: 600, color: "inherit", textDecoration: "underline", opacity: 0.7 }}>
+                                {run.status === "submitted" ? "Ver reporte" : "Continuar"}
+                              </a>
+                              {run.status === "submitted" && periodActive && (
+                                <button
+                                  onClick={() => handleReopen(run.id)}
+                                  disabled={reopeningRun === run.id}
+                                  style={{ fontSize: 12, fontWeight: 600, color: "inherit", textDecoration: "underline", opacity: reopeningRun === run.id ? 0.4 : 0.7, background: "none", border: "none", cursor: "pointer", padding: 0 }}
+                                >
+                                  {reopeningRun === run.id ? "Reabriendo..." : "Editar"}
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      ))
+                      : [
+                        <tr key={t.template_id} style={{ borderBottom: `1px solid ${v("--sc-border", "rgba(255,255,255,0.05)")}` }}>
+                          <td style={{ padding: "10px 12px", opacity: 0.8 }}>{area.area_name}</td>
+                          <td style={{ padding: "10px 12px", fontWeight: 600 }}>{t.template_name}</td>
+                          <td style={{ padding: "10px 12px" }}>
+                            <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 20, background: "rgba(255,255,255,0.06)", opacity: 0.6, fontWeight: 600 }}>Pendiente</span>
+                          </td>
+                          <td style={{ padding: "10px 12px" }}>-</td>
+                          <td style={{ padding: "10px 12px" }}>-</td>
+                          <td style={{ padding: "10px 12px" }}>
+                            <button
+                              onClick={() => startAudit(area.area_id, t.template_id)}
+                              disabled={startingTemplate === t.template_id}
+                              style={{ fontSize: 12, fontWeight: 600, color: "inherit", textDecoration: "underline", opacity: startingTemplate === t.template_id ? 0.4 : 0.7, background: "none", border: "none", cursor: "pointer", padding: 0 }}
+                            >
+                              {startingTemplate === t.template_id ? "Iniciando..." : "Iniciar"}
+                            </button>
+                          </td>
+                        </tr>,
+                      ];
+
+                    // Append "+ Nueva auditoría" row when done and period active
+                    if (t.done && periodActive) {
+                      rows.push(
+                        <tr key={`${t.template_id}_new`} style={{ borderBottom: `1px solid ${v("--sc-border", "rgba(255,255,255,0.05)")}` }}>
+                          <td style={{ padding: "6px 12px", opacity: 0.5 }}>{area.area_name}</td>
+                          <td style={{ padding: "6px 12px", opacity: 0.5, fontSize: 12 }}>{t.template_name}</td>
+                          <td colSpan={3} />
+                          <td style={{ padding: "6px 12px" }}>
+                            <button
+                              onClick={() => startAudit(area.area_id, t.template_id)}
+                              disabled={startingTemplate === t.template_id}
+                              style={{ fontSize: 12, fontWeight: 600, color: "#3b82f6", opacity: startingTemplate === t.template_id ? 0.4 : 1, background: "none", border: "none", cursor: "pointer", padding: 0 }}
+                            >
+                              {startingTemplate === t.template_id ? "Iniciando..." : "+ Nueva auditoría"}
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    }
+
+                    return rows;
+                  })
                 )}
               </tbody>
             </table>
