@@ -41,6 +41,7 @@ export function useAuditAnswers({
     const accessToken = await getAccessToken();
     const response = await fetch(`/api/audits/${runId}/draft`, {
       method: "POST",
+      keepalive: true,
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${accessToken}`,

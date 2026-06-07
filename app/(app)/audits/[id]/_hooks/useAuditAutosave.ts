@@ -115,10 +115,17 @@ export function useAuditAutosave(delayMs = 450) {
     const running = runningRef.current;
 
     return () => {
+      // Cancel timers but fire pending actions immediately so data isn't lost
+      // when the user navigates away before the debounce fires.
+      // persistAnswerDraft uses keepalive:true so requests survive page unload.
       for (const timer of timers.values()) {
         clearTimeout(timer);
       }
       timers.clear();
+
+      for (const action of actions.values()) {
+        void action();
+      }
       actions.clear();
       running.clear();
     };

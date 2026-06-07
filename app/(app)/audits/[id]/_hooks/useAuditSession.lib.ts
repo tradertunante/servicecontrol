@@ -129,6 +129,7 @@ async function seedMissingAnswers(
     result: AnswerValue;
     comment: string | null;
     photo_path: string | null;
+    photo_paths: string[];
   }>,
 ) {
   if (seedPayload.length === 0) return [];
@@ -190,6 +191,7 @@ export async function loadAuditSession(runId: string): Promise<LoadedAuditSessio
       result: (answersByQ[question.id]?.result ?? "PASS") as AnswerValue,
       comment: answersByQ[question.id]?.comment ?? null,
       photo_path: answersByQ[question.id]?.photo_path ?? null,
+      photo_paths: answersByQ[question.id]?.photo_paths ?? [],
     }));
 
   const seededAnswers = await seedMissingAnswers(runId, seedPayload);
