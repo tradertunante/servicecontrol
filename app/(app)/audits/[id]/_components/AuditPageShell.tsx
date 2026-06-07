@@ -232,7 +232,7 @@ export default function AuditPageShell() {
                     onAnswerChange={(value) => onSelectAnswer(question.id, value)}
                     onCommentChange={(value) => onChangeComment(question.id, value)}
                     onPhotoUpload={(file) => onUploadPhoto(question.id, file)}
-                    onPhotoDelete={() => onDeletePhoto(question.id)}
+                    onPhotoDelete={(index) => onDeletePhoto(question.id, index)}
                   />
                 </div>
               ))}

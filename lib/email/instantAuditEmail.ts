@@ -69,7 +69,7 @@ function buildFailedItemsText(sections: AuditReportSection[]): string {
       .map((item) => {
         let line = `  - [${item.sectionName}] ${item.question_text}`;
         if (item.comment) line += `\n    Comentario: ${item.comment}`;
-        if (item.photo_url) line += `\n    Evidencia: ${item.photo_url}`;
+        if (item.photo_urls[0]) line += `\n    Evidencia: ${item.photo_urls[0]}`;
         return line;
       })
       .join("\n")
@@ -143,8 +143,8 @@ function buildFailedItemsHtml(sections: AuditReportSection[]): string {
       const commentHtml = item.comment
         ? `<div style="font-size:12px;color:#6b7280;margin-top:3px;font-style:italic">${item.comment}</div>`
         : "";
-      const photoHtml = item.photo_url
-        ? `<div style="margin-top:4px"><a href="${item.photo_url}" style="font-size:12px;color:#2563eb;text-decoration:none;font-weight:500" target="_blank">Ver evidencia →</a></div>`
+      const photoHtml = item.photo_urls[0]
+        ? `<div style="margin-top:4px"><a href="${item.photo_urls[0]}" style="font-size:12px;color:#2563eb;text-decoration:none;font-weight:500" target="_blank">Ver evidencia →</a></div>`
         : "";
       return `
         <tr>

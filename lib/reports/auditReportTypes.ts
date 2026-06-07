@@ -7,7 +7,7 @@ export type AuditReportItem = {
   section_name: string;
   status: AuditReportStatus;
   comment: string | null;
-  photo_url: string | null;
+  photo_urls: string[];
 };
 
 export type AuditReportSection = {

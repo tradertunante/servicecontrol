@@ -14,6 +14,7 @@ type DraftAnswerInput = {
   result?: unknown;
   comment?: unknown;
   photo_path?: unknown;
+  photo_paths?: unknown;
 };
 
 function normalizeAnswerValue(value: unknown): AnswerValue | null {
@@ -57,6 +58,7 @@ export async function POST(
       result: AnswerValue;
       comment: string | null;
       photo_path: string | null;
+      photo_paths: string[];
     }
   >();
 
@@ -72,13 +74,26 @@ export async function POST(
       return jsonError(`Valor de respuesta inválido para question_id=${questionId}.`);
     }
 
+    // Normalize photo_paths: accept array or fall back to legacy photo_path string
+    const rawPhotoPaths = entry?.photo_paths;
+    const photoPaths: string[] = Array.isArray(rawPhotoPaths)
+      ? (rawPhotoPaths as unknown[])
+          .map((p) => (typeof p === "string" ? p.trim() : ""))
+          .filter(Boolean)
+          .slice(0, 5)
+      : [];
+
+    // Keep photo_path in sync with first element for RPC compat
+    const photoPath = photoPaths[0] ?? normalizeNullableString(entry?.photo_path);
+
     deduped.set(questionId, {
       audit_run_id: access.run.id,
       question_id: questionId,
       answer,
       result,
       comment: normalizeNullableString(entry?.comment),
-      photo_path: normalizeNullableString(entry?.photo_path),
+      photo_path: photoPath,
+      photo_paths: photoPaths,
     });
   }
 
@@ -130,7 +145,7 @@ export async function POST(
   const { data, error } = await admin
     .from("audit_answers")
     .upsert(payload, { onConflict: "audit_run_id,question_id" })
-    .select("id,audit_run_id,question_id,answer,result,comment,photo_path");
+    .select("id,audit_run_id,question_id,answer,result,comment,photo_path,photo_paths");
 
   if (error) {
     await logger.error("draft_upsert_failed", { runId, error: error.message });

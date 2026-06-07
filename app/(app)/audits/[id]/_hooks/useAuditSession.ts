@@ -12,7 +12,6 @@ import { useOnlineStatus } from "@/lib/hooks/useOnlineStatus";
 import {
   getAccessToken,
   getErrorMessage,
-  makeDraftAnswer,
   shouldShowField,
 } from "./useAuditSession.lib";
 import type {
@@ -129,7 +128,7 @@ export function useAuditSession(runId: string | undefined) {
         return;
       }
 
-      if (shouldValidatePhoto && !(answer.photo_path ?? "").trim()) {
+      if (shouldValidatePhoto && !(answer.photo_paths ?? []).length) {
         setError(`Falta foto en: "${question.text}"`);
         return;
       }
@@ -152,19 +151,14 @@ export function useAuditSession(runId: string | undefined) {
 
       const submitAnswersPayload = questions.map((question) => {
         const current = answersByQ[question.id];
-        const draft = {
-          ...makeDraftAnswer(run.id, question.id, current),
+        const photoPaths = current?.photo_paths ?? [];
+        return {
+          question_id: question.id,
           answer: ((current?.answer ?? current?.result) ?? "PASS") as AnswerValue,
           result: ((current?.result ?? current?.answer) ?? "PASS") as AnswerValue,
           comment: current?.comment ?? null,
-          photo_path: current?.photo_path ?? null,
-        };
-        return {
-          question_id: question.id,
-          answer: draft.answer,
-          result: draft.result,
-          comment: draft.comment,
-          photo_path: draft.photo_path,
+          photo_path: photoPaths[0] ?? null,
+          photo_paths: photoPaths,
         };
       });
 

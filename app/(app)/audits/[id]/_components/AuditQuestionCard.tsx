@@ -24,7 +24,7 @@ export default function AuditQuestionCard({
   onAnswerChange: (value: AnswerValue) => void;
   onCommentChange: (value: string) => void;
   onPhotoUpload: (file: File) => void;
-  onPhotoDelete: () => void;
+  onPhotoDelete: (index: number) => void;
 }) {
   const selected = ((answer?.answer ?? answer?.result) ?? "PASS") as AnswerValue;
   const isFail = selected === "FAIL";
@@ -82,7 +82,7 @@ export default function AuditQuestionCard({
 
         {showPhoto ? (
           <AuditPhotoField
-            value={answer?.photo_path ?? null}
+            photos={answer?.photo_paths ?? []}
             disabled={disabled}
             uploading={uploading}
             required={requirePhoto}

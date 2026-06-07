@@ -81,6 +81,7 @@ export type AnswerRow = {
   result: AnswerValue | null;
   comment: string | null;
   photo_path: string | null;
+  photo_paths: string[];
 };
 
 export type SubmitAuditResponse = {

@@ -66,6 +66,7 @@ export function makeDraftAnswer(runId: string, questionId: string, current?: Ans
     result: current?.result ?? "PASS",
     comment: current?.comment ?? null,
     photo_path: current?.photo_path ?? null,
+    photo_paths: current?.photo_paths ?? [],
   };
 }
 
@@ -116,6 +117,7 @@ function normalizeAnswer(row: Partial<AnswerRow> & { question_id?: string | null
     result: (row.result ?? null) as AnswerValue | null,
     comment: row.comment ?? null,
     photo_path: row.photo_path ?? null,
+    photo_paths: row.photo_paths ?? [],
   };
 }
 

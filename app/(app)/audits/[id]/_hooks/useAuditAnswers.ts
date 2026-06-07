@@ -53,6 +53,7 @@ export function useAuditAnswers({
             result: draft.result,
             comment: draft.comment,
             photo_path: draft.photo_path,
+            photo_paths: draft.photo_paths ?? [],
           },
         ],
       }),
@@ -138,6 +139,8 @@ export function useAuditAnswers({
     });
   }
 
+  const MAX_PHOTOS = 5;
+
   async function uploadPhoto(questionId: string, file: File) {
     if (!runId || submitted) return;
 
@@ -149,6 +152,12 @@ export function useAuditAnswers({
     const current = answersByQ[questionId];
     if (!current) {
       setError("No existe respuesta para esta pregunta.");
+      return;
+    }
+
+    const currentPhotos = current.photo_paths ?? [];
+    if (currentPhotos.length >= MAX_PHOTOS) {
+      setError(`Máximo ${MAX_PHOTOS} fotos por pregunta.`);
       return;
     }
 
@@ -177,9 +186,11 @@ export function useAuditAnswers({
       if (uploadError) throw uploadError;
 
       const { data: urlData } = supabase.storage.from("audit-photos").getPublicUrl(fileName);
+      const newPhotos = [...currentPhotos, urlData.publicUrl];
       const nextDraft = {
         ...makeDraftAnswer(runId, questionId, current),
-        photo_path: urlData.publicUrl,
+        photo_paths: newPhotos,
+        photo_path: newPhotos[0],
       };
 
       setAnswersByQ((prev) => ({
@@ -195,7 +206,7 @@ export function useAuditAnswers({
     }
   }
 
-  async function deletePhoto(questionId: string) {
+  async function deletePhoto(questionId: string, index: number) {
     if (!runId || submitted) return;
 
     if (!navigator.onLine) {
@@ -204,11 +215,13 @@ export function useAuditAnswers({
     }
 
     const current = answersByQ[questionId];
-    if (!current?.photo_path) return;
+    const currentPhotos = current?.photo_paths ?? [];
+    const urlToDelete = currentPhotos[index];
+    if (!urlToDelete) return;
 
     setError(null);
     try {
-      const fileName = current.photo_path.split("/").pop() ?? "";
+      const fileName = urlToDelete.split("/").pop() ?? "";
       if (fileName) {
         const { error: storageError } = await supabase.storage.from("audit-photos").remove([fileName]);
         if (storageError) {
@@ -216,9 +229,11 @@ export function useAuditAnswers({
         }
       }
 
+      const newPhotos = currentPhotos.filter((_, i) => i !== index);
       const nextDraft = {
         ...makeDraftAnswer(runId, questionId, current),
-        photo_path: null,
+        photo_paths: newPhotos,
+        photo_path: newPhotos[0] ?? null,
       };
 
       setAnswersByQ((prev) => ({

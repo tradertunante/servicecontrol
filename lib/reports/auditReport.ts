@@ -36,6 +36,7 @@ type AnswerRow = {
   comment: string | null;
   question_text: string | null;
   photo_path: string | null;
+  photo_paths?: string[] | null;
 };
 
 type QuestionRow = {
@@ -96,7 +97,7 @@ export async function buildAuditReportData(runId: string, hotelId: string): Prom
       .single(),
     admin
       .from("audit_answers")
-      .select("question_id,result,answer,comment,question_text,photo_path")
+      .select("question_id,result,answer,comment,question_text,photo_path,photo_paths")
       .eq("audit_run_id", runId),
     admin
       .from("reaudit_training_logs")
@@ -118,7 +119,7 @@ export async function buildAuditReportData(runId: string, hotelId: string): Prom
 
   const area = (areaData as AreaRow | null) ?? null;
   const template = (templateData as TemplateRow | null) ?? null;
-  const answers = (answersData ?? []) as AnswerRow[];
+  const answers = (answersData ?? []) as unknown as AnswerRow[];
 
   const qids = answers.map((a) => a.question_id).filter(Boolean);
 
@@ -170,7 +171,13 @@ export async function buildAuditReportData(runId: string, hotelId: string): Prom
       const section_id = q.audit_section_id ?? "no_section";
       const section_name = sectionNameById.get(section_id) ?? "Sin sección";
 
-      const photo_url = (answer?.photo_path ?? "").trim() || null;
+      // Use photo_paths array if available, fall back to legacy photo_path for old records
+      const photo_urls: string[] =
+        answer?.photo_paths?.length
+          ? answer.photo_paths
+          : answer?.photo_path?.trim()
+            ? [answer.photo_path.trim()]
+            : [];
 
       return {
         question_id: q.id,
@@ -179,7 +186,7 @@ export async function buildAuditReportData(runId: string, hotelId: string): Prom
         section_name,
         status: normalizeStatus(answer),
         comment: (answer?.comment ?? "").trim() || null,
-        photo_url,
+        photo_urls,
       };
     });
 

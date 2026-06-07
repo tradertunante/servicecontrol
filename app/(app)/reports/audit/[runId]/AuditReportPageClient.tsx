@@ -176,17 +176,28 @@ export default function AuditReportPageClient({
     );
   }, [report]);
 
+  // Flat list: one entry per photo (questions can have up to 5 photos each)
   const photoItems = useMemo(() => {
     let idx = 0;
     return (report?.sections ?? [])
       .flatMap((s) => s.items)
-      .filter((item) => !!item.photo_url)
-      .map((item) => ({ ...item, photoNumber: ++idx }));
+      .filter((item) => item.photo_urls.length > 0)
+      .flatMap((item) =>
+        item.photo_urls.map((url) => ({ ...item, photo_url: url, photoNumber: ++idx }))
+      );
   }, [report]);
 
   const photoNumberByQuestionId = useMemo(() => {
     const map = new Map<string, number>();
-    for (const p of photoItems) map.set(p.question_id, p.photoNumber);
+    for (const p of photoItems) {
+      if (!map.has(p.question_id)) map.set(p.question_id, p.photoNumber);
+    }
+    return map;
+  }, [photoItems]);
+
+  const photoCountByQuestionId = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const p of photoItems) map.set(p.question_id, (map.get(p.question_id) ?? 0) + 1);
     return map;
   }, [photoItems]);
 
@@ -844,7 +855,7 @@ export default function AuditReportPageClient({
                               border: "1px solid rgba(59,130,246,0.18)",
                             }}
                           >
-                            📎 Foto {photoNumberByQuestionId.get(item.question_id)}
+                            📎 {(photoCountByQuestionId.get(item.question_id) ?? 1) > 1 ? `${photoCountByQuestionId.get(item.question_id)} fotos` : `Foto ${photoNumberByQuestionId.get(item.question_id)}`}
                           </span>
                         ) : null}
                         <span
