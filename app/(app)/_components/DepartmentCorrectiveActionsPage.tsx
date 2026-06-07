@@ -80,7 +80,7 @@ export default function DepartmentCorrectiveActionsPage({
   const warningMessage = data?.warningMessage ?? null;
   const loading = isLoading;
   const errorMessage = error instanceof Error ? error.message : "";
-  const departmentLabel = department === "it" ? "IT" : "Engineering";
+  const departmentLabel = department === "it" ? "IT" : department === "otros" ? "Otros" : "Engineering";
   const headerContext =
     viewMode === "department"
       ? `Hola, ${userName ?? "—"} · Vista departamental de ${departmentLabel}`

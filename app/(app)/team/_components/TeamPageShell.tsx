@@ -85,6 +85,7 @@ export default function TeamPageShell({
   useEffect(() => {
     router.prefetch("/it");
     router.prefetch("/engineering");
+    router.prefetch("/otros");
   }, [router]);
 
   useEffect(() => {
@@ -99,6 +100,12 @@ export default function TeamPageShell({
     void queryClient.prefetchQuery({
       queryKey: getDepartmentCorrectiveActionsQueryKey(profile.id, "engineering"),
       queryFn: () => fetchDepartmentCorrectiveActions(profile.id, "engineering"),
+      staleTime: 5 * 60 * 1000,
+    });
+
+    void queryClient.prefetchQuery({
+      queryKey: getDepartmentCorrectiveActionsQueryKey(profile.id, "otros"),
+      queryFn: () => fetchDepartmentCorrectiveActions(profile.id, "otros"),
       staleTime: 5 * 60 * 1000,
     });
   }, [profile?.id, queryClient]);
@@ -188,6 +195,13 @@ export default function TeamPageShell({
       active: false,
       visible: !!showDepartmentNav && enabledPacks?.includes("pack_engineering") === true,
     },
+    {
+      key: "otros",
+      label: t("nav.otros"),
+      href: "/otros",
+      active: false,
+      visible: !!showDepartmentNav,
+    },
   ];
 
   const tabStyle = (isActive: boolean): CSSProperties => ({
@@ -247,7 +261,7 @@ export default function TeamPageShell({
         {navItems
           .filter((item) => item.visible)
           .map((item) =>
-            item.href === "/it" || item.href === "/engineering" ? (
+            item.href === "/it" || item.href === "/engineering" || item.href === "/otros" ? (
               <Link key={item.key} href={item.href} prefetch style={tabStyle(item.active)}>
                 {item.label}
               </Link>

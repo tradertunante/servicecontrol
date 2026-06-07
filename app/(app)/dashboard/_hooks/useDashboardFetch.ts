@@ -12,7 +12,7 @@ type TemplateRow = { id: string; name: string; hotel_id: string | null };
 type DepartmentBacklogResponse = { rows?: unknown[] };
 
 export type PendingTeamItem = {
-  teamKey: "it" | "maintenance";
+  teamKey: "it" | "maintenance" | "otros";
   teamLabel: string;
   pendingCount: number;
 };
@@ -127,8 +127,16 @@ export function useDashboardFetch({
             }).catch(() => emptyBacklog)
           : Promise.resolve(emptyBacklog);
 
-        const [hotelsRes, selectedHotelRes, areasRes, templatesRes, runsRes, backlogItRes, backlogEngineeringRes] = await Promise.all([
-          hotelsPromise, selectedHotelPromise, areasPromise, templatesPromise, runsPromise, backlogItPromise, backlogEngineeringPromise,
+        const backlogOtrosPromise = fetch(`/api/departments/backlog?department=otros&hotel_id=${activeHotelId}`, {
+          method: "GET", credentials: "include", cache: "no-store", signal: controller.signal,
+        }).then(async (response) => {
+          const payload = (await response.json().catch(() => null)) as DepartmentBacklogResponse | null;
+          if (!response.ok || !payload) return emptyBacklog;
+          return payload;
+        }).catch(() => emptyBacklog);
+
+        const [hotelsRes, selectedHotelRes, areasRes, templatesRes, runsRes, backlogItRes, backlogEngineeringRes, backlogOtrosRes] = await Promise.all([
+          hotelsPromise, selectedHotelPromise, areasPromise, templatesPromise, runsPromise, backlogItPromise, backlogEngineeringPromise, backlogOtrosPromise,
         ]);
 
         if (hotelsRes.error) throw hotelsRes.error;
@@ -161,6 +169,11 @@ export function useDashboardFetch({
             teamLabel: "Mantenimiento",
             pendingCount: Array.isArray(backlogEngineeringRes.rows) ? backlogEngineeringRes.rows.length : 0,
           }] : []),
+          {
+            teamKey: "otros" as const,
+            teamLabel: "Otros",
+            pendingCount: Array.isArray(backlogOtrosRes.rows) ? backlogOtrosRes.rows.length : 0,
+          },
         ]);
       } catch (e: unknown) {
         if (e instanceof DOMException && e.name === "AbortError") return;

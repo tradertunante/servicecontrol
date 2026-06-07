@@ -83,8 +83,8 @@ export default function DashboardPageClient({
   const goAreaDetail = (areaId: string) => router.push(`/team/general?area=${areaId}`);
   const goWorstAuditDetail = (areaId: string, templateId: string) =>
     router.push(`/team/historial?area=${areaId}&template=${templateId}&period=THIS_MONTH`);
-  const goPendingTeamDetail = (teamKey: "it" | "maintenance") =>
-    router.push(teamKey === "it" ? "/it" : "/engineering");
+  const goPendingTeamDetail = (teamKey: "it" | "maintenance" | "otros") =>
+    router.push(teamKey === "it" ? "/it" : teamKey === "otros" ? "/otros" : "/engineering");
 
   const handleChangeHotel = () => {
     void (async () => {

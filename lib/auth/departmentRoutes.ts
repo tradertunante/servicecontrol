@@ -83,8 +83,8 @@ export async function requireDepartmentRouteAccess(
     redirect(getDepartmentRedirectTarget(auth.profile.role, assignedDepartmentCode));
   }
 
-  // IT requiere pack_it, Engineering requiere pack_engineering
-  if (auth.profile.role !== "superadmin" && hotelId) {
+  // IT requiere pack_it, Engineering requiere pack_engineering; Otros no requiere pack
+  if (auth.profile.role !== "superadmin" && hotelId && routeDepartment !== "otros") {
     const packs = await getHotelEnabledPacks(hotelId);
     const requiredPack = routeDepartment === "it" ? "pack_it" : "pack_engineering";
     if (!packs.includes(requiredPack)) {

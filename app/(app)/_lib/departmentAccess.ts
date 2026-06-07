@@ -1,6 +1,6 @@
 import { normalizeRole, type Role } from "@/lib/auth/permissions";
 
-export type DepartmentCode = "it" | "engineering" | null;
+export type DepartmentCode = "it" | "engineering" | "otros" | null;
 export type DepartmentRouteScope = "department" | "area" | "none";
 
 function canOpenDepartmentRouteAsHotelReader(role: unknown): boolean {
@@ -21,6 +21,7 @@ export function normalizeDepartmentCode(input: unknown): DepartmentCode {
   const value = String(input ?? "").trim().toLowerCase();
   if (value === "engineering") return "engineering";
   if (value === "it" || value === "systems") return "it";
+  if (value === "otros") return "otros";
   return null;
 }
 

@@ -289,7 +289,8 @@
           "analytics": "Analytics",
           "members": "Members",
           "it": "IT",
-          "engineering": "Engineering"
+          "engineering": "Engineering",
+          "otros": "Others"
         }
       },
       "reaudits": {

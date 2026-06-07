@@ -2,7 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 
-export type DepartmentCode = "it" | "engineering";
+export type DepartmentCode = "it" | "engineering" | "otros";
 
 export type DepartmentActionRow = {
   backlog_item_id: string;

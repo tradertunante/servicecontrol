@@ -72,11 +72,13 @@ type TemplateRow = {
 
 function parseDepartment(value: string | null): DepartmentCode {
   const normalized = normalizeDepartmentCode(value);
-  return normalized === "it" || normalized === "engineering" ? normalized : null;
+  return normalized === "it" || normalized === "engineering" || normalized === "otros" ? normalized : null;
 }
 
 function getOwnerDepartmentValues(department: DepartmentCode) {
-  return department === "it" ? ["it", "systems"] : ["engineering"];
+  if (department === "it") return ["it", "systems"];
+  if (department === "otros") return ["otros"];
+  return ["engineering"];
 }
 
 function buildScopeLabel(routeScope: "department" | "area", isOwnDepartmentView: boolean) {
