@@ -1353,11 +1353,13 @@ export type Database = {
           area_id: string | null
           audit_type: string | null
           base_template_id: string | null
+          category: string | null
           created_at: string | null
           department: string | null
           hotel_id: string | null
           id: string
           is_global: boolean
+          language: string
           name: string
           pack_id: string | null
           require_audited_employee: boolean
@@ -1371,11 +1373,13 @@ export type Database = {
           area_id?: string | null
           audit_type?: string | null
           base_template_id?: string | null
+          category?: string | null
           created_at?: string | null
           department?: string | null
           hotel_id?: string | null
           id?: string
           is_global?: boolean
+          language?: string
           name: string
           pack_id?: string | null
           require_audited_employee?: boolean
@@ -1389,11 +1393,13 @@ export type Database = {
           area_id?: string | null
           audit_type?: string | null
           base_template_id?: string | null
+          category?: string | null
           created_at?: string | null
           department?: string | null
           hotel_id?: string | null
           id?: string
           is_global?: boolean
+          language?: string
           name?: string
           pack_id?: string | null
           require_audited_employee?: boolean

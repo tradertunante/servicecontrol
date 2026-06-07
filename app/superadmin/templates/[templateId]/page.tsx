@@ -21,6 +21,8 @@ type TemplateRow = {
   area_id: string | null;
   created_at: string | null;
   scope: string | null;
+  category: string | null;
+  language: string;
 };
 
 type AreaRow = { id: string; name: string; type: string | null };
@@ -97,6 +99,8 @@ export default function SuperadminGlobalTemplateBuilderPage() {
   const [quickSignature, setQuickSignature] = useState<RequirementType>("never");
 
   const [nameDraft, setNameDraft] = useState("");
+  const [categoryDraft, setCategoryDraft] = useState("");
+  const [languageDraft, setLanguageDraft] = useState("es");
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -169,7 +173,7 @@ export default function SuperadminGlobalTemplateBuilderPage() {
 
       try {
         const [templateRes, sectionsRes] = await Promise.all([
-          supabase.from("audit_templates").select("id,name,active,area_id,created_at,scope").eq("id", templateId).single(),
+          supabase.from("audit_templates").select("id,name,active,area_id,created_at,scope,category,language").eq("id", templateId).single(),
           supabase
             .from("audit_sections")
             .select("id,audit_template_id,name,active,created_at")
@@ -192,6 +196,8 @@ export default function SuperadminGlobalTemplateBuilderPage() {
 
         setTemplate(tpl);
         setNameDraft(tpl.name ?? "");
+        setCategoryDraft(tpl.category ?? "");
+        setLanguageDraft(tpl.language ?? "es");
         // Area
         if (tpl.area_id) {
           const { data: aData, error: aErr } = await supabase.from("areas").select("id,name,type").eq("id", tpl.area_id).single();
@@ -321,6 +327,28 @@ export default function SuperadminGlobalTemplateBuilderPage() {
       setInfo("Nombre guardado ✅");
     } catch (e: any) {
       setError(e?.message ?? "No se pudo guardar el nombre.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function saveTemplateMeta() {
+    if (!templateId) return;
+    setSaving(true);
+    setError(null);
+    setInfo(null);
+    try {
+      await fetchJsonOrThrow(`/api/superadmin/templates/${templateId}`, {
+        method: "PATCH",
+        body: JSON.stringify({
+          category: categoryDraft.trim() || null,
+          language: languageDraft || "es",
+        }),
+      });
+      setTemplate((t) => t ? { ...t, category: categoryDraft.trim() || null, language: languageDraft || "es" } : t);
+      setInfo("Metadatos guardados ✅");
+    } catch (e: any) {
+      setError(e?.message ?? "No se pudo guardar.");
     } finally {
       setSaving(false);
     }
@@ -598,6 +626,57 @@ export default function SuperadminGlobalTemplateBuilderPage() {
 
           <button onClick={saveTemplateName} style={{ ...btnBlack, marginTop: 24 }} disabled={saving}>
             Guardar nombre
+          </button>
+        </div>
+
+        <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center", marginTop: 12 }}>
+          <div style={{ minWidth: 260, flex: 1 }}>
+            <div style={{ fontWeight: 900, marginBottom: 6 }}>Categoría</div>
+            <input
+              value={categoryDraft}
+              onChange={(e) => setCategoryDraft(e.target.value)}
+              placeholder="Ej: Housekeeping, F&B, Front Office…"
+              style={{
+                width: "100%",
+                padding: "10px 14px",
+                borderRadius: 12,
+                border: "1px solid rgba(0,0,0,0.18)",
+                outline: "none",
+                fontWeight: 900,
+                fontSize: 14,
+              }}
+            />
+          </div>
+
+          <div style={{ minWidth: 160 }}>
+            <div style={{ fontWeight: 900, marginBottom: 6 }}>Idioma</div>
+            <select
+              value={languageDraft}
+              onChange={(e) => setLanguageDraft(e.target.value)}
+              style={{
+                width: "100%",
+                padding: "10px 14px",
+                borderRadius: 12,
+                border: "1px solid rgba(0,0,0,0.18)",
+                outline: "none",
+                fontWeight: 900,
+                fontSize: 14,
+                height: 42,
+              }}
+            >
+              <option value="es">🇪🇸 Español</option>
+              <option value="en">🇬🇧 English</option>
+              <option value="fr">🇫🇷 Français</option>
+              <option value="de">🇩🇪 Deutsch</option>
+              <option value="it">🇮🇹 Italiano</option>
+              <option value="pt">🇵🇹 Português</option>
+              <option value="zh">🇨🇳 中文</option>
+              <option value="ar">🇸🇦 العربية</option>
+            </select>
+          </div>
+
+          <button onClick={saveTemplateMeta} style={{ ...btnBlack, marginTop: 24 }} disabled={saving}>
+            Guardar metadatos
           </button>
         </div>
 

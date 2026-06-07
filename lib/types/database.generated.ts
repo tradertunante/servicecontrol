@@ -533,6 +533,7 @@ export type Database = {
           id: string
           is_na: boolean
           photo_path: string | null
+          photo_paths: string[]
           question_id: string
           question_text: string | null
           result: string | null
@@ -546,6 +547,7 @@ export type Database = {
           id?: string
           is_na?: boolean
           photo_path?: string | null
+          photo_paths?: string[]
           question_id: string
           question_text?: string | null
           result?: string | null
@@ -559,6 +561,7 @@ export type Database = {
           id?: string
           is_na?: boolean
           photo_path?: string | null
+          photo_paths?: string[]
           question_id?: string
           question_text?: string | null
           result?: string | null
@@ -1014,6 +1017,7 @@ export type Database = {
           audit_template_id: string
           auditor_email: string | null
           blocking_issue_count: number
+          employee_name: string | null
           employee_number: string | null
           executed_at: string
           executed_by: string | null
@@ -1041,6 +1045,7 @@ export type Database = {
           audit_template_id: string
           auditor_email?: string | null
           blocking_issue_count?: number
+          employee_name?: string | null
           employee_number?: string | null
           executed_at?: string
           executed_by?: string | null
@@ -1068,6 +1073,7 @@ export type Database = {
           audit_template_id?: string
           auditor_email?: string | null
           blocking_issue_count?: number
+          employee_name?: string | null
           employee_number?: string | null
           executed_at?: string
           executed_by?: string | null
@@ -1350,11 +1356,13 @@ export type Database = {
           area_id: string | null
           audit_type: string | null
           base_template_id: string | null
+          category: string | null
           created_at: string | null
           department: string | null
           hotel_id: string | null
           id: string
           is_global: boolean
+          language: string
           name: string
           pack_id: string | null
           require_audited_employee: boolean
@@ -1368,11 +1376,13 @@ export type Database = {
           area_id?: string | null
           audit_type?: string | null
           base_template_id?: string | null
+          category?: string | null
           created_at?: string | null
           department?: string | null
           hotel_id?: string | null
           id?: string
           is_global?: boolean
+          language?: string
           name: string
           pack_id?: string | null
           require_audited_employee?: boolean
@@ -1386,11 +1396,13 @@ export type Database = {
           area_id?: string | null
           audit_type?: string | null
           base_template_id?: string | null
+          category?: string | null
           created_at?: string | null
           department?: string | null
           hotel_id?: string | null
           id?: string
           is_global?: boolean
+          language?: string
           name?: string
           pack_id?: string | null
           require_audited_employee?: boolean
@@ -2206,8 +2218,10 @@ export type Database = {
       }
       profiles: {
         Row: {
+          access_expires_at: string | null
           active: boolean | null
           assigned_department_id: string | null
+          contact_email: string | null
           created_at: string | null
           email: string | null
           employee_number: string | null
@@ -2225,8 +2239,10 @@ export type Database = {
           trial_hotel_name: string | null
         }
         Insert: {
+          access_expires_at?: string | null
           active?: boolean | null
           assigned_department_id?: string | null
+          contact_email?: string | null
           created_at?: string | null
           email?: string | null
           employee_number?: string | null
@@ -2244,8 +2260,10 @@ export type Database = {
           trial_hotel_name?: string | null
         }
         Update: {
+          access_expires_at?: string | null
           active?: boolean | null
           assigned_department_id?: string | null
+          contact_email?: string | null
           created_at?: string | null
           email?: string | null
           employee_number?: string | null
@@ -4131,6 +4149,7 @@ export type Database = {
           full_name: string
           hotel_id: string
           id: string
+          invited_at: string
           last_sign_in_at: string
           role: string
         }[]

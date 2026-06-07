@@ -32,6 +32,16 @@ export async function PATCH(
     updates.active = body.active;
   }
 
+  if (body && Object.prototype.hasOwnProperty.call(body, "category")) {
+    updates.category = body.category === null || body.category === "" ? null : String(body.category).trim();
+  }
+
+  if (body && Object.prototype.hasOwnProperty.call(body, "language")) {
+    const lang = String(body.language ?? "es").trim();
+    if (!lang) return jsonError("El idioma no puede estar vacío.");
+    updates.language = lang;
+  }
+
   if (Object.keys(updates).length === 0) {
     return jsonError("No hay cambios permitidos para aplicar.");
   }

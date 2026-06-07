@@ -22,6 +22,8 @@ type TemplateRow = {
   created_at: string | null;
   active?: boolean | null;
   area_id?: string | null;
+  category: string | null;
+  language: string;
 };
 
 type PackTemplateRow = {
@@ -49,6 +51,8 @@ export default function PackDetailPage() {
 
   const [globalTemplates, setGlobalTemplates] = useState<TemplateRow[]>([]);
   const [packTemplates, setPackTemplates] = useState<PackTemplateRow[]>([]);
+  const [search, setSearch] = useState("");
+  const [filterLanguage, setFilterLanguage] = useState("");
 
   // edición pack
   const [bt, setBt] = useState("hotel");
@@ -125,8 +129,15 @@ export default function PackDetailPage() {
 
   const templatesNotInPack = useMemo(() => {
     const set = new Set(packTemplates.map((x) => x.audit_template_id));
-    return globalTemplates.filter((t) => !set.has(t.id)).sort((a, b) => a.name.localeCompare(b.name));
-  }, [globalTemplates, packTemplates]);
+    const q = search.trim().toLowerCase();
+    return globalTemplates
+      .filter((t) =>
+        !set.has(t.id) &&
+        (!q || t.name.toLowerCase().includes(q)) &&
+        (!filterLanguage || t.language === filterLanguage)
+      )
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [globalTemplates, packTemplates, search, filterLanguage]);
 
   async function load() {
     setLoading(true);
@@ -164,7 +175,7 @@ export default function PackDetailPage() {
     // plantillas globales
     const { data: tData, error: tErr } = await supabase
       .from("audit_templates")
-      .select("id, name, scope, created_at, active, area_id")
+      .select("id, name, scope, created_at, active, area_id, category, language")
       .eq("scope", "global")
       .order("name", { ascending: true });
 
@@ -417,7 +428,16 @@ export default function PackDetailPage() {
                 <div key={t.id} style={styles.row}>
                   <div style={{ minWidth: 240 }}>
                     <div style={{ fontWeight: 950 }}>{t.name}</div>
-                    <div style={{ fontSize: 12, opacity: 0.7 }}>ID: {t.id}</div>
+                    <div style={{ display: "flex", gap: 6, marginTop: 4, flexWrap: "wrap" }}>
+                      {t.category && (
+                        <span style={{ fontSize: 11, fontWeight: 900, padding: "2px 8px", borderRadius: 999, background: "rgba(0,0,0,0.06)", border: "1px solid rgba(0,0,0,0.1)" }}>
+                          {t.category}
+                        </span>
+                      )}
+                      <span style={{ fontSize: 11, fontWeight: 900, padding: "2px 8px", borderRadius: 999, background: "rgba(0,0,0,0.04)", border: "1px solid rgba(0,0,0,0.08)", opacity: 0.7 }}>
+                        {t.language ?? "es"}
+                      </span>
+                    </div>
                   </div>
 
                   <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
@@ -453,6 +473,27 @@ export default function PackDetailPage() {
             <button style={styles.btnDark} disabled={saving} onClick={createGlobalTemplateAndOpenEditor}>
               + Crear plantilla global
             </button>
+            <input
+              style={{ ...styles.input, flex: 1, minWidth: 160 }}
+              placeholder="Buscar por nombre…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+            <select
+              value={filterLanguage}
+              onChange={(e) => setFilterLanguage(e.target.value)}
+              style={{ ...styles.input, width: 140 }}
+            >
+              <option value="">Todos los idiomas</option>
+              <option value="es">🇪🇸 Español</option>
+              <option value="en">🇬🇧 English</option>
+              <option value="fr">🇫🇷 Français</option>
+              <option value="de">🇩🇪 Deutsch</option>
+              <option value="it">🇮🇹 Italiano</option>
+              <option value="pt">🇵🇹 Português</option>
+              <option value="zh">🇨🇳 中文</option>
+              <option value="ar">🇸🇦 العربية</option>
+            </select>
           </div>
 
           {templatesNotInPack.length === 0 ? (
@@ -463,7 +504,16 @@ export default function PackDetailPage() {
                 <div key={t.id} style={styles.row}>
                   <div style={{ minWidth: 240 }}>
                     <div style={{ fontWeight: 950 }}>{t.name}</div>
-                    <div style={{ fontSize: 12, opacity: 0.7 }}>ID: {t.id}</div>
+                    <div style={{ display: "flex", gap: 6, marginTop: 4, flexWrap: "wrap" }}>
+                      {t.category && (
+                        <span style={{ fontSize: 11, fontWeight: 900, padding: "2px 8px", borderRadius: 999, background: "rgba(0,0,0,0.06)", border: "1px solid rgba(0,0,0,0.1)" }}>
+                          {t.category}
+                        </span>
+                      )}
+                      <span style={{ fontSize: 11, fontWeight: 900, padding: "2px 8px", borderRadius: 999, background: "rgba(0,0,0,0.04)", border: "1px solid rgba(0,0,0,0.08)", opacity: 0.7 }}>
+                        {t.language ?? "es"}
+                      </span>
+                    </div>
                   </div>
 
                   <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>

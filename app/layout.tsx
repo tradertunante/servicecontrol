@@ -6,16 +6,11 @@ import AuthSessionSync from "./components/AuthSessionSync";
 import ToastProvider from "./providers/ToastProvider";
 import PostHogProvider from "./providers/PostHogProvider";
 
-export const viewport = {
-  width: "device-width",
-  initialScale: 1,
-  maximumScale: 1,
-};
-
 export const metadata: Metadata = {
   title: "ServiceControl",
   description: "Control operativo y calidad hotelera en una sola plataforma.",
   metadataBase: new URL("https://servicecontrol.com"),
+  viewport: "width=device-width, initial-scale=1, maximum-scale=1",
   openGraph: {
     title: "ServiceControl",
     description: "Control operativo y calidad hotelera en una sola plataforma.",
