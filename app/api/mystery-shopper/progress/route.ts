@@ -67,12 +67,17 @@ export async function GET(request: NextRequest) {
         const areaRuns = runsByTemplate[t.id] ?? [];
         const submitted = areaRuns.filter((r) => r.status === "submitted");
         const draft = areaRuns.filter((r) => r.status === "draft");
+        // All runs: submitted (newest first) then drafts
+        const allRuns = [
+          ...submitted.sort((a, b) => (b.executed_at ?? "").localeCompare(a.executed_at ?? "")),
+          ...draft,
+        ];
         return {
           template_id: t.id,
           template_name: t.name,
           submitted_count: submitted.length,
           draft_count: draft.length,
-          last_run: submitted[0] ?? draft[0] ?? null,
+          runs: allRuns,
           done: submitted.length > 0,
         };
       });

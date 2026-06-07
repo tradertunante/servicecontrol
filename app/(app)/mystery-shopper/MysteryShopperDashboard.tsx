@@ -3,12 +3,19 @@
 import { useCallback, useEffect, useState } from "react";
 import type { Profile } from "@/lib/types";
 
+type RunInfo = {
+  id: string;
+  status: string;
+  score: number | null;
+  executed_at: string | null;
+};
+
 type TemplateProgress = {
   template_id: string;
   template_name: string;
   submitted_count: number;
   draft_count: number;
-  last_run: { id: string; status: string; score: number | null; executed_at: string | null } | null;
+  runs: RunInfo[];
   done: boolean;
 };
 
