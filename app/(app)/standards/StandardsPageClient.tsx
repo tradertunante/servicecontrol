@@ -10,7 +10,7 @@ import HotelHeader from "@/app/components/HotelHeader";
 import BackButton from "@/app/components/BackButton";
 import type { Profile } from "@/lib/types";
 
-type GlobalPack = { id: string; business_type: string; name: string; description: string | null; active: boolean; created_at?: string | null };
+type GlobalPack = { id: string; business_type: string; name: string; description: string | null; active: boolean; created_at?: string | null; default_area_name?: string | null };
 type Area = { id: string; name: string; type: string | null };
 type HotelTemplate = { id: string; name: string; active: boolean | null; hotel_id: string | null; pack_id: string | null; area_id: string | null; source_template_id: string | null };
 
@@ -36,7 +36,7 @@ export default function StandardsPageClient({
   const [filterAreaId, setFilterAreaId] = useState<string>("all");
 
   async function loadAll(hotelIdToUse: string) {
-    const { data: packs, error: packErr } = await supabase.from("global_audit_packs").select("id, business_type, name, description, active, created_at").eq("active", true).eq("business_type", "hotel").order("created_at", { ascending: false });
+    const { data: packs, error: packErr } = await supabase.from("global_audit_packs").select("id, business_type, name, description, active, created_at, default_area_name").eq("active", true).eq("business_type", "hotel").order("created_at", { ascending: false });
     if (packErr) throw packErr;
     setGlobalPacks((packs ?? []) as GlobalPack[]);
 
@@ -266,9 +266,18 @@ export default function StandardsPageClient({
               {globalPacks.map((p) => (
                 <div key={p.id} className="flex justify-between items-center px-[14px] py-3 bg-black/[0.02] rounded-xl border border-black/[0.06] gap-3 flex-wrap">
                   <div className="min-w-[260px]">
-                    <div className="font-black">{p.name}</div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <div className="font-black">{p.name}</div>
+                      {p.default_area_name && (
+                        <span className="px-2 py-0.5 rounded-full bg-black text-white text-[11px] font-black">
+                          Crea área automáticamente
+                        </span>
+                      )}
+                    </div>
                     <div className="opacity-75 text-[13px] mt-1.5">Tipo: {p.business_type} {p.description ? `· ${p.description}` : ""}</div>
-                    <div className="text-xs opacity-65 mt-1.5">ID: {p.id}</div>
+                    {p.default_area_name && (
+                      <div className="text-xs mt-1 font-black opacity-60">Área: {p.default_area_name}</div>
+                    )}
                   </div>
                   <div className="flex gap-2.5 items-center flex-wrap">
                     <button

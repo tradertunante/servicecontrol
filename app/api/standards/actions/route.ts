@@ -4,6 +4,47 @@ import { authorizeRouteRequest } from "@/lib/auth/server";
 import { resolveManagedHotelId } from "@/lib/auth/userManagement";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { jsonError, jsonDbError } from "@/lib/api/response";
+import type { SupabaseClient } from "@supabase/supabase-js";
+
+async function autoAssignPackArea(admin: SupabaseClient, packId: string, hotelId: string) {
+  const { data: pack } = await admin
+    .from("global_audit_packs")
+    .select("default_area_name")
+    .eq("id", packId)
+    .maybeSingle();
+
+  const areaName = pack?.default_area_name;
+  if (!areaName) return;
+
+  // Find or create the area
+  let areaId: string;
+  const { data: existing } = await admin
+    .from("areas")
+    .select("id")
+    .eq("hotel_id", hotelId)
+    .eq("name", areaName)
+    .maybeSingle();
+
+  if (existing?.id) {
+    areaId = existing.id;
+  } else {
+    const { data: created, error: createErr } = await admin
+      .from("areas")
+      .insert({ hotel_id: hotelId, name: areaName, type: "standards" })
+      .select("id")
+      .single();
+    if (createErr || !created) return;
+    areaId = created.id;
+  }
+
+  // Assign all hotel templates from this pack to the area
+  await admin
+    .from("audit_templates")
+    .update({ area_id: areaId })
+    .eq("hotel_id", hotelId)
+    .eq("pack_id", packId)
+    .is("area_id", null);
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -30,6 +71,9 @@ export async function POST(request: NextRequest) {
       });
 
       if (error) return jsonDbError(error);
+
+      await autoAssignPackArea(admin, packId, hotelResult.hotelId);
+
       return NextResponse.json({ ok: true });
     }
 
@@ -43,6 +87,9 @@ export async function POST(request: NextRequest) {
       });
 
       if (error) return jsonDbError(error);
+
+      await autoAssignPackArea(admin, packId, hotelResult.hotelId);
+
       return NextResponse.json({ ok: true, added: data });
     }
 

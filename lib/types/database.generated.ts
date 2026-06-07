@@ -1758,6 +1758,7 @@ export type Database = {
           active: boolean
           business_type: string
           created_at: string
+          default_area_name: string | null
           description: string | null
           id: string
           name: string
@@ -1766,6 +1767,7 @@ export type Database = {
           active?: boolean
           business_type: string
           created_at?: string
+          default_area_name?: string | null
           description?: string | null
           id?: string
           name: string
@@ -1774,6 +1776,7 @@ export type Database = {
           active?: boolean
           business_type?: string
           created_at?: string
+          default_area_name?: string | null
           description?: string | null
           id?: string
           name?: string
