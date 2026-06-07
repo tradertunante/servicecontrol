@@ -17,10 +17,7 @@ export type PendingTeamItem = {
   pendingCount: number;
 };
 
-const DEFAULT_PENDING: PendingTeamItem[] = [
-  { teamKey: "it", teamLabel: "IT", pendingCount: 0 },
-  { teamKey: "maintenance", teamLabel: "Mantenimiento", pendingCount: 0 },
-];
+const DEFAULT_PENDING: PendingTeamItem[] = [];
 
 export function useDashboardFetch({
   profile,
@@ -154,16 +151,16 @@ export function useDashboardFetch({
         setTemplates((templatesRes.data ?? []) as TemplateRow[]);
         setRuns((runsRes.data ?? []) as AuditRunRow[]);
         setPendingByTeam([
-          {
-            teamKey: "it",
+          ...(hasPackIt ? [{
+            teamKey: "it" as const,
             teamLabel: "IT",
             pendingCount: Array.isArray(backlogItRes.rows) ? backlogItRes.rows.length : 0,
-          },
-          {
-            teamKey: "maintenance",
+          }] : []),
+          ...(hasPackEngineering ? [{
+            teamKey: "maintenance" as const,
             teamLabel: "Mantenimiento",
             pendingCount: Array.isArray(backlogEngineeringRes.rows) ? backlogEngineeringRes.rows.length : 0,
-          },
+          }] : []),
         ]);
       } catch (e: unknown) {
         if (e instanceof DOMException && e.name === "AbortError") return;
