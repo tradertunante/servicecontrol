@@ -26,7 +26,7 @@ export async function GET(request: NextRequest) {
     const admin = supabaseAdmin();
 
     // Get all active areas + their active templates for this hotel
-    const [{ data: areas, error: areasErr }, { data: runs, error: runsErr }] = await Promise.all([
+    const [{ data: areas, error: areasErr }, { data: runs, error: runsErr }, { data: shopperProfile }] = await Promise.all([
       admin
         .from("areas")
         .select("id, name, audit_templates(id, name, active)")
@@ -37,6 +37,11 @@ export async function GET(request: NextRequest) {
         .select("id, area_id, audit_template_id, status, score, executed_at")
         .eq("hotel_id", hotelResult.hotelId)
         .eq("executed_by", shopperId),
+      admin
+        .from("profiles")
+        .select("access_expires_at")
+        .eq("id", shopperId)
+        .maybeSingle(),
     ]);
 
     if (areasErr) return jsonDbError(areasErr);
@@ -92,6 +97,7 @@ export async function GET(request: NextRequest) {
       shopper_id: shopperId,
       total_templates: totalTemplates,
       done_templates: doneTemplates,
+      access_expires_at: shopperProfile?.access_expires_at ?? null,
       areas: progress,
     });
   } catch (error) {

@@ -24,6 +24,7 @@ type Progress = {
   shopper_id: string;
   total_templates: number;
   done_templates: number;
+  access_expires_at: string | null;
   areas: AreaProgress[];
 };
 
@@ -54,6 +55,32 @@ export default function MysteryShopperDashboard({
   const [sendError, setSendError] = useState<string | null>(null);
   const [expandedArea, setExpandedArea] = useState<string | null>(null);
   const [startingTemplate, setStartingTemplate] = useState<string | null>(null);
+  const [reopeningRun, setReopeningRun] = useState<string | null>(null);
+
+  const periodActive =
+    !progress?.access_expires_at ||
+    new Date(progress.access_expires_at) > new Date();
+
+  async function handleReopen(runId: string) {
+    setReopeningRun(runId);
+    try {
+      const res = await fetch("/api/audits/reopen", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ run_id: runId }),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        window.location.href = `/audits/${runId}`;
+      } else {
+        alert(data.error ?? "No se pudo reabrir la auditoría.");
+        setReopeningRun(null);
+      }
+    } catch {
+      alert("Error de conexión.");
+      setReopeningRun(null);
+    }
+  }
 
   const isShopper = profile.role === "mystery_shopper";
 
@@ -287,12 +314,23 @@ export default function MysteryShopperDashboard({
                             </span>
                           )}
                           {t.last_run ? (
-                            <a
-                              href={`/audits/${t.last_run.id}${t.done ? "/report" : ""}`}
-                              style={{ fontSize: 12, fontWeight: 600, color: "inherit", opacity: 0.7, textDecoration: "underline" }}
-                            >
-                              {t.done ? "Ver reporte" : "Continuar"}
-                            </a>
+                            <>
+                              <a
+                                href={`/audits/${t.last_run.id}${t.done ? "/report" : ""}`}
+                                style={{ fontSize: 12, fontWeight: 600, color: "inherit", opacity: 0.7, textDecoration: "underline" }}
+                              >
+                                {t.done ? "Ver reporte" : "Continuar"}
+                              </a>
+                              {t.done && periodActive && (
+                                <button
+                                  onClick={() => handleReopen(t.last_run!.id)}
+                                  disabled={reopeningRun === t.last_run.id}
+                                  style={{ fontSize: 12, fontWeight: 600, color: "inherit", opacity: reopeningRun === t.last_run.id ? 0.4 : 0.7, textDecoration: "underline", background: "none", border: "none", cursor: "pointer", padding: 0 }}
+                                >
+                                  {reopeningRun === t.last_run.id ? "Reabriendo..." : "Editar"}
+                                </button>
+                              )}
+                            </>
                           ) : (
                             <button
                               onClick={() => startAudit(area.area_id, t.template_id)}
@@ -353,9 +391,20 @@ export default function MysteryShopperDashboard({
                       </td>
                       <td style={{ padding: "10px 12px" }}>
                         {t.last_run ? (
-                          <a href={`/audits/${t.last_run.id}${t.done ? "/report" : ""}`} style={{ fontSize: 12, fontWeight: 600, color: "inherit", textDecoration: "underline", opacity: 0.7 }}>
-                            {t.done ? "Ver reporte" : "Continuar"}
-                          </a>
+                          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                            <a href={`/audits/${t.last_run.id}${t.done ? "/report" : ""}`} style={{ fontSize: 12, fontWeight: 600, color: "inherit", textDecoration: "underline", opacity: 0.7 }}>
+                              {t.done ? "Ver reporte" : "Continuar"}
+                            </a>
+                            {t.done && periodActive && (
+                              <button
+                                onClick={() => handleReopen(t.last_run!.id)}
+                                disabled={reopeningRun === t.last_run.id}
+                                style={{ fontSize: 12, fontWeight: 600, color: "inherit", textDecoration: "underline", opacity: reopeningRun === t.last_run.id ? 0.4 : 0.7, background: "none", border: "none", cursor: "pointer", padding: 0 }}
+                              >
+                                {reopeningRun === t.last_run.id ? "Reabriendo..." : "Editar"}
+                              </button>
+                            )}
+                          </div>
                         ) : (
                           <button
                             onClick={() => startAudit(area.area_id, t.template_id)}
