@@ -182,7 +182,7 @@ export async function POST(request: NextRequest) {
           prevOverallScore,
           totalAudits: allScores.length,
           areas: areaDataForNarrative,
-        });
+        }, hotelId);
 
         await admin.from("report_narratives").insert({
           hotel_id: hotelId,

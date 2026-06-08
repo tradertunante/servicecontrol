@@ -1,6 +1,7 @@
 import "server-only";
 
 import Anthropic from "@anthropic-ai/sdk";
+import { logApiCost } from "@/lib/ai/costLogger";
 
 export type AreaReportData = {
   name: string;
@@ -72,7 +73,8 @@ Sin texto adicional, sin markdown, solo el JSON.`;
 }
 
 export async function generateReportNarrative(
-  input: ReportNarrativeInput
+  input: ReportNarrativeInput,
+  hotelId?: string
 ): Promise<ReportNarrativeOutput> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) throw new Error("API de IA no configurada.");
@@ -85,6 +87,7 @@ export async function generateReportNarrative(
     system: "Eres el sistema de análisis de calidad de ServiceControl. Respondes siempre en español, de forma concisa y orientada a la acción.",
     messages: [{ role: "user", content: buildPrompt(input) }],
   });
+  logApiCost(message.model, message.usage.input_tokens, message.usage.output_tokens, "report-narrative", hotelId);
 
   const textBlock = message.content.find(b => b.type === "text");
   if (!textBlock || textBlock.type !== "text") {
@@ -125,13 +128,16 @@ export type MysteryShopperRunData = {
   answers: MysteryShopperAnswerData[];
 };
 
-export async function generateMysteryShopperNarrative(input: {
-  hotelName: string;
-  shopperName: string;
-  totalRuns: number;
-  avgScore: number | null;
-  runs: MysteryShopperRunData[];
-}): Promise<string> {
+export async function generateMysteryShopperNarrative(
+  input: {
+    hotelName: string;
+    shopperName: string;
+    totalRuns: number;
+    avgScore: number | null;
+    runs: MysteryShopperRunData[];
+  },
+  hotelId?: string
+): Promise<string> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) throw new Error("API de IA no configurada.");
 
@@ -148,9 +154,6 @@ export async function generateMysteryShopperNarrative(input: {
     .map((r) => {
       const score = r.score !== null ? `${r.score}%` : "sin score";
       const room = r.room_number ? ` · habitación ${r.room_number}` : "";
-      const date = r.date
-        ? new Date(r.date).toLocaleDateString("es-ES", { day: "2-digit", month: "2-digit", year: "numeric" })
-        : "fecha desconocida";
 
       const answersBlock = r.answers
         .filter((a) => !a.na)
@@ -164,18 +167,11 @@ export async function generateMysteryShopperNarrative(input: {
         })
         .join("\n");
 
-      return `[${date}] ${r.area} — ${r.template}${room}: ${score}\n${answersBlock}`;
+      return `${r.area} — ${r.template}${room}: ${score}\n${answersBlock}`;
     })
     .join("\n\n");
 
-  const stayDates = sortedRuns
-    .filter((r) => r.date)
-    .map((r) => new Date(r.date!).toLocaleDateString("es-ES", { day: "2-digit", month: "long", year: "numeric" }));
-  const stayRange = stayDates.length > 0
-    ? stayDates.length > 1 ? `del ${stayDates[0]} al ${stayDates[stayDates.length - 1]}` : stayDates[0]
-    : "fechas no disponibles";
-
-  const prompt = `Eres un analista experto en experiencia de huésped en hoteles de lujo. Tu tarea es interpretar el reporte completo de un Mystery Shopper que se hospedó en "${input.hotelName}" ${stayRange}.
+  const prompt = `Eres un analista experto en experiencia de huésped en hoteles de lujo. Tu tarea es interpretar el reporte completo de un Mystery Shopper que se hospedó en "${input.hotelName}".
 
 CONTEXTO:
 - Esto es la experiencia COMPLETA de UN huésped real de principio a fin, no un reporte operativo de equipo.
@@ -190,12 +186,16 @@ Score medio global: ${input.avgScore !== null ? `${input.avgScore}%` : "no dispo
 Total de touchpoints evaluados: ${input.totalRuns}
 
 INSTRUCCIONES:
-Escribe un análisis ejecutivo en español, en UN párrafo continuo de 5-7 frases, dirigido a la Dirección General y al Director de Calidad. El análisis debe:
-1. Describir la experiencia global del huésped (más allá del número)
-2. Identificar patrones en los fallos: ¿se concentran en una clasificación (ej. todos Behavioral)? ¿en un momento del journey (llegada, habitación, salida)? ¿en un tag recurrente?
-3. Citar 1-2 fallos concretos con sus comentarios si los hay, para ilustrar el impacto real en el huésped
-4. Distinguir si los puntos débiles son críticos (primera impresión, habitación, salida) o secundarios
-5. Cerrar con UNA acción prioritaria específica y accionable basada en los patrones detectados
+Escribe un análisis ejecutivo en español, en UN párrafo continuo de 5-7 frases, dirigido a la Dirección General y al Director de Calidad. Usa la estructura de feedback sandwich:
+
+1. APERTURA POSITIVA: Empieza reconociendo lo que funcionó bien —estándares cumplidos, momentos del journey que sí estuvieron a la altura, comportamientos del equipo que destacaron—. Si hay poco positivo, menciona al menos la base funcional o los touchpoints sin incidencias.
+2. CUERPO CRÍTICO: Desarrolla los fallos y sus patrones. ¿Se concentran en una clasificación (Behavioral, Physical, Procedural)? ¿En un momento del journey (llegada, habitación, salida)? Cita 1-2 fallos concretos con sus comentarios para ilustrar el impacto real. Distingue fallos críticos de secundarios.
+3. CIERRE POSITIVO: Cierra reconociendo el potencial del hotel, los momentos que demuestran que el nivel de lujo es alcanzable, o que la base para mejorar existe. Tono esperanzador pero honesto.
+
+RESTRICCIONES — NO NEGOCIABLES:
+- NO menciones fechas ni rangos de fechas en ningún momento.
+- NO asumas consecuencias que no estén explícitamente descritas en los comentarios. Si un fallo menciona "almohada extra sucia", no inferas que el huésped durmió sobre ella. Describe solo lo que el shopper observó o reportó literalmente, sin extrapolaciones.
+- NO des recomendaciones, planes de acción, ni acciones prioritarias. Ni al final ni en medio del párrafo. Tu único trabajo es describir lo que ocurrió y los patrones que se observan. Si terminas con una frase que empiece por "La acción", "El siguiente paso", "Es necesario", "Se debe", "Hay que" o similar, elimínala.
 
 Tono: consultor de experiencia de huésped hablando a un GM. Directo, sin listas, texto fluido.
 Devuelve SOLO el texto del análisis, sin títulos ni explicaciones.`;
@@ -206,8 +206,40 @@ Devuelve SOLO el texto del análisis, sin títulos ni explicaciones.`;
     system: "Eres un analista experto en experiencia de huésped en hoteles de lujo. Respondes siempre en español. Tu análisis es conciso, accionable y habla desde la perspectiva del huésped, no desde métricas operativas.",
     messages: [{ role: "user", content: prompt }],
   });
+  logApiCost(message.model, message.usage.input_tokens, message.usage.output_tokens, "mystery-shopper", hotelId);
 
   const textBlock = message.content.find((b) => b.type === "text");
   if (!textBlock || textBlock.type !== "text") throw new Error("Respuesta AI inesperada.");
-  return textBlock.text.trim();
+  return stripRecommendationSentence(textBlock.text.trim());
+}
+
+const RECOMMENDATION_PATTERNS = [
+  /^la acci[oó]n prioritaria/i,
+  /^la acci[oó]n inmediata/i,
+  /^el siguiente paso/i,
+  /^es necesario/i,
+  /^es prioritario/i,
+  /^es imprescindible/i,
+  /^es innegociable/i,
+  /^urge /i,
+  /^resulta imprescindible/i,
+  /^la prioridad/i,
+  /^se debe /i,
+  /^hay que /i,
+  /^para revertir/i,
+  /^el paso inmediato/i,
+];
+
+function stripRecommendationSentence(text: string): string {
+  // Split into sentences on ". " boundaries, keeping the delimiter
+  const sentences = text.match(/[^.!?]+[.!?]+/g) ?? [text];
+  if (sentences.length <= 1) return text;
+
+  const last = sentences[sentences.length - 1].trim();
+  const isRecommendation = RECOMMENDATION_PATTERNS.some((re) => re.test(last));
+
+  if (isRecommendation) {
+    return sentences.slice(0, -1).join("").trim();
+  }
+  return text;
 }

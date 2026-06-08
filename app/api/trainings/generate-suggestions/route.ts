@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import Anthropic from "@anthropic-ai/sdk";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { logApiCost } from "@/lib/ai/costLogger";
 import { authorizeRouteRequest, resolveRouteHotelScope } from "@/lib/auth/server";
 import { jsonError, jsonDbError } from "@/lib/api/response";
 
@@ -156,7 +157,8 @@ async function getFailureDataForHotel(hotelId: string): Promise<FailureRow[]> {
 
 async function callAiForSuggestions(
   hotelName: string,
-  failureData: FailureRow[]
+  failureData: FailureRow[],
+  hotelId: string
 ): Promise<AiSuggestion[]> {
   const envKey = "ANTHROPIC" + "_API_KEY";
   const apiKey = process.env[envKey];
@@ -196,6 +198,7 @@ Devuelve SOLO un array JSON válido (puede ser vacío []). Sin texto adicional, 
     max_tokens: 4096,
     messages: [{ role: "user", content: prompt }],
   });
+  logApiCost(message.model, message.usage.input_tokens, message.usage.output_tokens, "generate-suggestions", hotelId);
 
   const textBlock = message.content.find((b) => b.type === "text");
   if (!textBlock || textBlock.type !== "text") return [];
@@ -252,7 +255,7 @@ async function processSuggestionsForHotel(
   const failureData = await getFailureDataForHotel(hotelId);
   if (failureData.length === 0) return { created: 0, skipped: 0 };
 
-  const suggestions = await callAiForSuggestions(hotelName, failureData);
+  const suggestions = await callAiForSuggestions(hotelName, failureData, hotelId);
   if (suggestions.length === 0) return { created: 0, skipped: 0 };
 
   // Skip questions already with a pending/approved suggestion in the last 30 days

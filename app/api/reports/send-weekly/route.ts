@@ -190,7 +190,7 @@ export async function POST(request: NextRequest) {
           prevOverallScore,
           totalAudits: allScores.length,
           areas: areaDataForNarrative,
-        });
+        }, hotelId);
 
         // Cache narrative in DB
         await admin.from("report_narratives").insert({

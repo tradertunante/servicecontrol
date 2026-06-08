@@ -151,7 +151,7 @@ export async function POST(request: NextRequest) {
             };
           }),
         })),
-      });
+      }, hotelResult.hotelId);
     } catch {
       // AI failure is non-fatal — email sends without analysis
     }
