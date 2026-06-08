@@ -30,7 +30,6 @@ function paperStyle(): CSSProperties {
     borderRadius: 20,
     boxShadow: "0 14px 40px rgba(0,0,0,0.10)",
     border: "1px solid rgba(0,0,0,0.08)",
-    overflow: "hidden",
   };
 }
 
@@ -318,10 +317,6 @@ export default function AuditReportPageClient({
             max-width: 100% !important;
           }
 
-          html {
-            zoom: 0.65;
-          }
-
           html,
           body {
             background: #fff !important;
@@ -329,6 +324,10 @@ export default function AuditReportPageClient({
             padding: 0 !important;
             -webkit-print-color-adjust: exact;
             print-color-adjust: exact;
+          }
+
+          body {
+            zoom: 0.65;
           }
 
           body {
