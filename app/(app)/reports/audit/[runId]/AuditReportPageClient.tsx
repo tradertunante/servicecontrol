@@ -323,6 +323,8 @@ export default function AuditReportPageClient({
 
           html,
           body {
+            height: auto !important;
+            overflow: visible !important;
             background: #fff !important;
             margin: 0 !important;
             padding: 0 !important;
