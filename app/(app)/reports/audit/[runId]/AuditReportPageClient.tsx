@@ -335,6 +335,11 @@ export default function AuditReportPageClient({
             line-height: 1.3 !important;
           }
 
+          /* neutralize app shell wrapper that forces 100vh → blank page */
+          .min-h-screen {
+            min-height: 0 !important;
+          }
+
           .report-no-print {
             display: none !important;
           }
