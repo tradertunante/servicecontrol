@@ -126,6 +126,34 @@ export default function HistoryPanel({
 
   const showDelete = canDeleteAudits(profileRole);
 
+  const templateNameById = useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const t of templates) map[t.id] = t.name;
+    return map;
+  }, [templates]);
+
+  const [profileNameById, setProfileNameById] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    const ids = Array.from(new Set(histRuns.map((r) => r.executed_by).filter(Boolean))) as string[];
+    if (ids.length === 0) return;
+    const missing = ids.filter((id) => !profileNameById[id]);
+    if (missing.length === 0) return;
+    supabase
+      .from("profiles")
+      .select("id,full_name")
+      .in("id", missing)
+      .then(({ data }) => {
+        if (!data) return;
+        setProfileNameById((prev) => {
+          const next = { ...prev };
+          for (const p of data) next[p.id] = p.full_name ?? p.id;
+          return next;
+        });
+      });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [histRuns]);
+
   // ✅ params desde dashboard
   const urlTemplate = embeddedTemplateFilter ?? searchParams.get("template") ?? "ALL";
   const urlPeriod = embeddedPeriod ?? safePeriod(searchParams.get("period"));
@@ -532,6 +560,16 @@ export default function HistoryPanel({
               >
                 <div style={{ minWidth: 0, flex: "1 1 auto" }}>
                   <div style={{ fontWeight: 950 }}>{fmtDate(r.executed_at)}</div>
+                  {templateNameById[r.audit_template_id] ? (
+                    <div style={{ marginTop: 3, fontSize: 12, fontWeight: 900, opacity: 0.65 }}>
+                      {templateNameById[r.audit_template_id]}
+                    </div>
+                  ) : null}
+                  {r.executed_by ? (
+                    <div style={{ marginTop: 2, fontSize: 12, fontWeight: 900, opacity: 0.65 }}>
+                      {profileNameById[r.executed_by] ?? "…"}
+                    </div>
+                  ) : null}
                   <div style={{ marginTop: 4, fontSize: 13, opacity: 0.75 }}>
                     Score:{" "}
                     <span style={{ fontWeight: 950, color: scoreColor(r.score) }}>
