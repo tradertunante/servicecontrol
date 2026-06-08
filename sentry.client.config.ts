@@ -7,9 +7,9 @@ Sentry.init({
   // Performance — sample 10% of transactions in prod
   tracesSampleRate: process.env.NODE_ENV === "production" ? 0.1 : 1.0,
 
-  // Session replay — capture 1% normally, 100% on error
-  replaysSessionSampleRate: 0.01,
-  replaysOnErrorSampleRate: 1.0,
+  // Session replay — skip if developer cookie is set (document.cookie = "sentry_skip_replay=1; max-age=31536000; path=/")
+  replaysSessionSampleRate: typeof document !== "undefined" && document.cookie.includes("sentry_skip_replay=1") ? 0 : 0.01,
+  replaysOnErrorSampleRate: typeof document !== "undefined" && document.cookie.includes("sentry_skip_replay=1") ? 0 : 1.0,
 
   integrations: [
     Sentry.replayIntegration(),
