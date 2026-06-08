@@ -428,6 +428,7 @@ export default function AuditReportPageClient({
 
           .audit-report-main {
             padding: 0 !important;
+            min-height: 0 !important;
           }
 
           .training-signature-box {
