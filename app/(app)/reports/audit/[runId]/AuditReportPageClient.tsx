@@ -317,6 +317,10 @@ export default function AuditReportPageClient({
             max-width: 100% !important;
           }
 
+          html {
+            zoom: 0.65;
+          }
+
           html,
           body {
             background: #fff !important;
@@ -336,7 +340,6 @@ export default function AuditReportPageClient({
           }
 
           .report-paper {
-            zoom: 0.65;
             box-shadow: none !important;
             border: none !important;
             border-radius: 0 !important;
