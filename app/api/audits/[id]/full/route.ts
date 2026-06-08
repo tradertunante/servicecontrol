@@ -33,10 +33,20 @@ export async function GET(
 
   if (error) return jsonDbError(error, "Error al cargar la auditoría.");
 
-  const payload = data as { ok: boolean; code?: string; message?: string; data?: unknown };
+  const payload = data as { ok: boolean; code?: string; message?: string; data?: Record<string, unknown> & { run?: Record<string, unknown> } };
   if (!payload?.ok) {
     const status = payload?.code === "FORBIDDEN" ? 403 : payload?.code === "RUN_NOT_FOUND" ? 404 : 500;
     return jsonError(payload?.message ?? "Error desconocido.", status);
+  }
+
+  // employee_name is not included in the RPC result — fetch it separately
+  if (payload.data?.run && typeof payload.data.run === "object") {
+    const { data: runRow } = await admin
+      .from("audit_runs")
+      .select("employee_name")
+      .eq("id", runId)
+      .maybeSingle();
+    payload.data.run.employee_name = runRow?.employee_name ?? null;
   }
 
   return NextResponse.json(payload);
