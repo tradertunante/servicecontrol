@@ -21,8 +21,7 @@ export function logApiCost(
   );
 
   // Fire-and-forget — no bloquea la respuesta
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  (supabaseAdmin() as any)
+  supabaseAdmin()
     .from("api_cost_logs")
     .insert({
       hotel_id: hotelId ?? null,

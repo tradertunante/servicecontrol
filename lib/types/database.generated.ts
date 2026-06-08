@@ -1,3 +1,4 @@
+Initialising login role...
 export type Json =
   | string
   | number
@@ -168,6 +169,47 @@ export type Database = {
             columns: ["topic_id"]
             isOneToOne: false
             referencedRelation: "training_topics"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      api_cost_logs: {
+        Row: {
+          cost_usd: number
+          created_at: string
+          function_name: string
+          hotel_id: string | null
+          id: string
+          input_tokens: number
+          model: string
+          output_tokens: number
+        }
+        Insert: {
+          cost_usd: number
+          created_at?: string
+          function_name: string
+          hotel_id?: string | null
+          id?: string
+          input_tokens: number
+          model: string
+          output_tokens: number
+        }
+        Update: {
+          cost_usd?: number
+          created_at?: string
+          function_name?: string
+          hotel_id?: string | null
+          id?: string
+          input_tokens?: number
+          model?: string
+          output_tokens?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "api_cost_logs_hotel_id_fkey"
+            columns: ["hotel_id"]
+            isOneToOne: false
+            referencedRelation: "hotels"
             referencedColumns: ["id"]
           },
         ]
@@ -4481,3 +4523,5 @@ export const Constants = {
     Enums: {},
   },
 } as const
+A new version of Supabase CLI is available: v2.105.0 (currently installed v2.75.0)
+We recommend updating regularly for new features and bug fixes: https://supabase.com/docs/guides/cli/getting-started#updating-the-supabase-cli

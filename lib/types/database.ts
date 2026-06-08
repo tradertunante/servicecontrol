@@ -172,6 +172,47 @@ export type Database = {
           },
         ]
       }
+      api_cost_logs: {
+        Row: {
+          cost_usd: number
+          created_at: string
+          function_name: string
+          hotel_id: string | null
+          id: string
+          input_tokens: number
+          model: string
+          output_tokens: number
+        }
+        Insert: {
+          cost_usd: number
+          created_at?: string
+          function_name: string
+          hotel_id?: string | null
+          id?: string
+          input_tokens: number
+          model: string
+          output_tokens: number
+        }
+        Update: {
+          cost_usd?: number
+          created_at?: string
+          function_name?: string
+          hotel_id?: string | null
+          id?: string
+          input_tokens?: number
+          model?: string
+          output_tokens?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "api_cost_logs_hotel_id_fkey"
+            columns: ["hotel_id"]
+            isOneToOne: false
+            referencedRelation: "hotels"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       area_target_assignments: {
         Row: {
           active: boolean
@@ -533,6 +574,7 @@ export type Database = {
           id: string
           is_na: boolean
           photo_path: string | null
+          photo_paths: string[]
           question_id: string
           question_text: string | null
           result: string | null
@@ -546,6 +588,7 @@ export type Database = {
           id?: string
           is_na?: boolean
           photo_path?: string | null
+          photo_paths?: string[]
           question_id: string
           question_text?: string | null
           result?: string | null
@@ -559,6 +602,7 @@ export type Database = {
           id?: string
           is_na?: boolean
           photo_path?: string | null
+          photo_paths?: string[]
           question_id?: string
           question_text?: string | null
           result?: string | null
@@ -4149,6 +4193,7 @@ export type Database = {
           full_name: string
           hotel_id: string
           id: string
+          invited_at: string
           last_sign_in_at: string
           role: string
         }[]
