@@ -136,7 +136,8 @@ export async function generateMysteryShopperNarrative(
     avgScore: number | null;
     runs: MysteryShopperRunData[];
   },
-  hotelId?: string
+  hotelId?: string,
+  signal?: AbortSignal
 ): Promise<string> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) throw new Error("API de IA no configurada.");
@@ -205,7 +206,7 @@ Devuelve SOLO el texto del análisis, sin títulos ni explicaciones.`;
     max_tokens: 1024,
     system: "Eres un analista experto en experiencia de huésped en hoteles de lujo. Respondes siempre en español. Tu análisis es conciso, accionable y habla desde la perspectiva del huésped, no desde métricas operativas.",
     messages: [{ role: "user", content: prompt }],
-  });
+  }, { signal });
   logApiCost(message.model, message.usage.input_tokens, message.usage.output_tokens, "mystery-shopper", hotelId);
 
   const textBlock = message.content.find((b) => b.type === "text");

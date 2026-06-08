@@ -126,41 +126,40 @@ export async function POST(request: NextRequest) {
 
     // Generate AI narrative (non-blocking fallback if it fails or times out)
     let aiNarrative: string | null = null;
+    const aiAbort = new AbortController();
+    const aiTimeout = setTimeout(() => aiAbort.abort(), 15_000);
     try {
-      aiNarrative = await Promise.race([
-        generateMysteryShopperNarrative({
-          hotelName,
-          shopperName,
-          totalRuns,
-          avgScore,
-          runs: runList.map((r) => ({
-            area: (r.areas as any)?.name ?? "-",
-            template: (r.audit_templates as any)?.name ?? "-",
-            score: r.score,
-            date: r.executed_at,
-            room_number: r.room_number,
-            answers: (answersByRun.get(r.id) ?? []).map((a) => {
-              const meta = questionMeta.get(a.question_id);
-              return {
-                question: a.question_text ?? "-",
-                tag: meta?.tag ?? null,
-                classification: meta?.classification ?? null,
-                weight: meta?.weight ?? 1,
-                answer: a.answer,
-                passed: a.answer === "yes",
-                na: a.is_na,
-                comment: a.comment ?? null,
-                has_photo: !!a.photo_path,
-              };
-            }),
-          })),
-        }, hotelResult.hotelId),
-        new Promise<never>((_, reject) =>
-          setTimeout(() => reject(new Error("AI timeout")), 20_000)
-        ),
-      ]);
+      aiNarrative = await generateMysteryShopperNarrative({
+        hotelName,
+        shopperName,
+        totalRuns,
+        avgScore,
+        runs: runList.map((r) => ({
+          area: (r.areas as any)?.name ?? "-",
+          template: (r.audit_templates as any)?.name ?? "-",
+          score: r.score,
+          date: r.executed_at,
+          room_number: r.room_number,
+          answers: (answersByRun.get(r.id) ?? []).map((a) => {
+            const meta = questionMeta.get(a.question_id);
+            return {
+              question: a.question_text ?? "-",
+              tag: meta?.tag ?? null,
+              classification: meta?.classification ?? null,
+              weight: meta?.weight ?? 1,
+              answer: a.answer,
+              passed: a.answer === "yes",
+              na: a.is_na,
+              comment: a.comment ?? null,
+              has_photo: !!a.photo_path,
+            };
+          }),
+        })),
+      }, hotelResult.hotelId, aiAbort.signal);
     } catch {
       // AI failure or timeout is non-fatal — email sends without analysis
+    } finally {
+      clearTimeout(aiTimeout);
     }
 
     // Build run rows HTML
