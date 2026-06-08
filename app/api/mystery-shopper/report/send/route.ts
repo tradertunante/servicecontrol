@@ -165,7 +165,7 @@ export async function POST(request: NextRequest) {
         const date = r.executed_at
           ? new Date(r.executed_at).toLocaleDateString("es-ES", { day: "2-digit", month: "2-digit", year: "numeric" })
           : "-";
-        const link = `${appUrl}/audits/${r.id}/report`;
+        const link = `${appUrl}/reports/audit/${r.id}`;
         return `<tr>
           <td style="padding:10px 14px;border-bottom:1px solid #f1f5f9;font-size:13px;color:#334155">${escapeHtml(area)}</td>
           <td style="padding:10px 14px;border-bottom:1px solid #f1f5f9;font-size:13px;color:#334155">${escapeHtml(template)}</td>

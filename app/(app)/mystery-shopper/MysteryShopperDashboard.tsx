@@ -357,7 +357,7 @@ export default function MysteryShopperDashboard({
                                 <span style={{ fontSize: 12, fontWeight: 700, color: scoreColor(run.score) }}>{run.score}%</span>
                               )}
                               <a
-                                href={`/audits/${run.id}${run.status === "submitted" ? "/report" : ""}`}
+                                href={run.status === "submitted" ? `/reports/audit/${run.id}` : `/audits/${run.id}`}
                                 style={{ fontSize: 12, fontWeight: 600, color: "inherit", opacity: 0.7, textDecoration: "underline" }}
                               >
                                 {run.status === "submitted" ? "Ver reporte" : "Continuar"}
@@ -426,7 +426,7 @@ export default function MysteryShopperDashboard({
                           </td>
                           <td style={{ padding: "10px 12px" }}>
                             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                              <a href={`/audits/${run.id}${run.status === "submitted" ? "/report" : ""}`} style={{ fontSize: 12, fontWeight: 600, color: "inherit", textDecoration: "underline", opacity: 0.7 }}>
+                              <a href={run.status === "submitted" ? `/reports/audit/${run.id}` : `/audits/${run.id}`} style={{ fontSize: 12, fontWeight: 600, color: "inherit", textDecoration: "underline", opacity: 0.7 }}>
                                 {run.status === "submitted" ? "Ver reporte" : "Continuar"}
                               </a>
                               {run.status === "submitted" && periodActive && (
