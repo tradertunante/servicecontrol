@@ -318,6 +318,10 @@ export default function AuditReportPageClient({
             max-width: 100% !important;
           }
 
+          html {
+            zoom: 0.65;
+          }
+
           html,
           body {
             background: #fff !important;
