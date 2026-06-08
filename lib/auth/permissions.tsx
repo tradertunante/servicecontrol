@@ -34,7 +34,7 @@ export type Permission =
 
 const MODULE_ROLE_MAP: Record<AuthorizationModule, Role[]> = {
   areas: ["admin", "general_manager", "manager", "auditor", "superadmin", "quality"],
-  reports: ["admin", "general_manager", "manager", "auditor", "quality", "superadmin"],
+  reports: ["admin", "general_manager", "manager", "auditor", "quality", "superadmin", "mystery_shopper"],
   admin: ["admin", "superadmin"],
   builder: ["admin", "superadmin"],
   users: ["admin", "superadmin"],
