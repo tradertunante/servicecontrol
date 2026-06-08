@@ -327,10 +327,6 @@ export default function AuditReportPageClient({
           }
 
           body {
-            zoom: 0.65;
-          }
-
-          body {
             font-size: 9px !important;
             line-height: 1.3 !important;
           }
@@ -340,6 +336,7 @@ export default function AuditReportPageClient({
           }
 
           .report-paper {
+            zoom: 0.65;
             box-shadow: none !important;
             border: none !important;
             border-radius: 0 !important;
