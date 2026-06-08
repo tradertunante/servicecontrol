@@ -132,28 +132,6 @@ export default function HistoryPanel({
     return map;
   }, [templates]);
 
-  const [profileNameById, setProfileNameById] = useState<Record<string, string>>({});
-
-  useEffect(() => {
-    const ids = Array.from(new Set(histRuns.map((r) => r.executed_by).filter(Boolean))) as string[];
-    if (ids.length === 0) return;
-    const missing = ids.filter((id) => !profileNameById[id]);
-    if (missing.length === 0) return;
-    supabase
-      .from("profiles")
-      .select("id,full_name")
-      .in("id", missing)
-      .then(({ data }) => {
-        if (!data) return;
-        setProfileNameById((prev) => {
-          const next = { ...prev };
-          for (const p of data) next[p.id] = p.full_name ?? p.id;
-          return next;
-        });
-      });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [histRuns]);
-
   // ✅ params desde dashboard
   const urlTemplate = embeddedTemplateFilter ?? searchParams.get("template") ?? "ALL";
   const urlPeriod = embeddedPeriod ?? safePeriod(searchParams.get("period"));
@@ -186,7 +164,7 @@ export default function HistoryPanel({
       // 1) Runs base (submitted + area + rango + (vista opcional))
       let q = supabase
         .from("audit_runs")
-        .select("id,status,score,notes,executed_at,executed_by,audit_template_id,area_id")
+        .select("id,status,score,notes,executed_at,executed_by,audit_template_id,area_id,employee_name")
         .eq("hotel_id", activeHotelId)
         .is("archived_at", null)
         .eq("status", "submitted")
@@ -322,7 +300,7 @@ export default function HistoryPanel({
 
       let q = supabase
         .from("audit_runs")
-        .select("id,status,score,notes,executed_at,executed_by,audit_template_id,area_id")
+        .select("id,status,score,notes,executed_at,executed_by,audit_template_id,area_id,employee_name")
         .eq("hotel_id", activeHotelId)
         .is("archived_at", null)
         .eq("status", "submitted")
@@ -565,9 +543,9 @@ export default function HistoryPanel({
                       {templateNameById[r.audit_template_id]}
                     </div>
                   ) : null}
-                  {r.executed_by ? (
+                  {r.employee_name ? (
                     <div style={{ marginTop: 2, fontSize: 12, fontWeight: 900, opacity: 0.65 }}>
-                      {profileNameById[r.executed_by] ?? "…"}
+                      {r.employee_name}
                     </div>
                   ) : null}
                   <div style={{ marginTop: 4, fontSize: 13, opacity: 0.75 }}>

@@ -32,6 +32,7 @@ export type AuditRunRow = {
   executed_by: string | null;
   audit_template_id: string;
   area_id: string;
+  employee_name: string | null;
 };
 
 export type AnswerRow = {
