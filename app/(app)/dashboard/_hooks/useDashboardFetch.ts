@@ -8,7 +8,7 @@ import type { HeatMode } from "../_lib/dashboardUtils";
 
 type HotelRow = { id: string; name: string; active: boolean | null; status: string | null };
 type AreaRow = { id: string; name: string; type: string | null; hotel_id: string | null; active?: boolean | null; sort_order?: number | null };
-type TemplateRow = { id: string; name: string; hotel_id: string | null };
+type TemplateRow = { id: string; name: string; hotel_id: string | null; area_id: string | null };
 type DepartmentBacklogResponse = { rows?: unknown[] };
 
 export type PendingTeamItem = {
@@ -85,7 +85,7 @@ export function useDashboardFetch({
 
         const templatesPromise = supabase
           .from("audit_templates")
-          .select("id,name,hotel_id")
+          .select("id,name,hotel_id,area_id")
           .or(`hotel_id.eq.${activeHotelId},hotel_id.is.null`)
           .order("name");
 
@@ -155,8 +155,17 @@ export function useDashboardFetch({
             ? hotelsData.find((hotel) => hotel.id === activeHotelId)?.name ?? ""
             : selectedHotelData?.name ?? ""
         );
-        setAreas((areasRes.data ?? []) as AreaRow[]);
-        setTemplates((templatesRes.data ?? []) as TemplateRow[]);
+        const fetchedTemplates = (templatesRes.data ?? []) as TemplateRow[];
+        const templateAreaIds = new Set(fetchedTemplates.map((t) => t.area_id).filter(Boolean));
+
+        // Ocultar áreas tipo "otros" si no tienen ningún template asignado
+        const fetchedAreas = (areasRes.data ?? []) as AreaRow[];
+        const visibleAreas = fetchedAreas.filter(
+          (a) => a.type !== "otros" || templateAreaIds.has(a.id)
+        );
+
+        setAreas(visibleAreas);
+        setTemplates(fetchedTemplates);
         setRuns((runsRes.data ?? []) as AuditRunRow[]);
         setPendingByTeam([
           ...(hasPackIt ? [{

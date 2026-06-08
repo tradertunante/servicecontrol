@@ -13,12 +13,19 @@ export async function POST(request: NextRequest) {
 
   if (!name) return jsonError("name es obligatorio.");
 
-  const { data, error } = await supabaseAdmin()
+  const admin = supabaseAdmin();
+  const { data, error } = await admin
     .from("hotels")
     .insert([{ name, active: true }])
     .select("id, name, active, created_at");
 
   if (error) return jsonDbError(error);
+
+  // Auto-crear área "Otros" en el hotel recién creado
+  const newHotelId = data?.[0]?.id;
+  if (newHotelId) {
+    await admin.from("areas").insert({ hotel_id: newHotelId, name: "Otros", type: "otros", active: true });
+  }
 
   return jsonOk({
     hotels: (data ?? []).map((row) => ({
