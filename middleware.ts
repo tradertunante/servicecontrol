@@ -177,6 +177,8 @@ export const config = {
     "/it/:path*",
     "/members/:path*",
     "/my/:path*",
+    "/mystery-shopper/:path*",
+    "/otros/:path*",
     "/profile/:path*",
     "/reports/:path*",
     "/standards/:path*",

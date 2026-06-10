@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { AUTH_TOKEN_COOKIE } from "@/lib/auth/cookies";
+import { supabaseWithToken } from "@/lib/supabaseServer";
 
 function buildCookieOptions() {
   return {
@@ -31,6 +32,12 @@ export async function POST(request: NextRequest) {
       maxAge: 0,
     });
     return response;
+  }
+
+  // Only persist tokens that Supabase recognizes — rejects garbage/forged values
+  const { data, error } = await supabaseWithToken(token).auth.getUser(token);
+  if (error || !data?.user) {
+    return NextResponse.json({ ok: false, error: "Token inválido." }, { status: 401 });
   }
 
   response.cookies.set(AUTH_TOKEN_COOKIE, token, {
