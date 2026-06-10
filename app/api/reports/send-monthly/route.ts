@@ -7,28 +7,49 @@ import { generateReportNarrative } from "@/lib/reports/generateNarrative";
 import type { AreaReportData } from "@/lib/reports/generateNarrative";
 import { jsonError, jsonDbError } from "@/lib/api/response";
 
+// Vercel cron invokes with GET + Authorization: Bearer ${CRON_SECRET};
+// x-cron-secret is kept for manual server-to-server triggers.
+function isAuthorizedCronRequest(request: NextRequest) {
+  const secret = process.env.CRON_SECRET;
+  if (!secret) return false;
+  if (request.headers.get("authorization") === `Bearer ${secret}`) return true;
+  return request.headers.get("x-cron-secret") === secret;
+}
+
+async function resolveSubscribedHotelIds(): Promise<string[] | NextResponse> {
+  const admin = supabaseAdmin();
+  const { data: subs, error } = await admin
+    .from("report_subscriptions")
+    .select("hotel_id")
+    .eq("frequency", "monthly")
+    .eq("active", true);
+
+  if (error) return jsonDbError(error);
+  return Array.from(new Set((subs ?? []).map((s) => s.hotel_id)));
+}
+
+/**
+ * GET /api/reports/send-monthly
+ * Entry point for Vercel cron (1st of month 8am UTC).
+ */
+export async function GET(request: NextRequest) {
+  if (!isAuthorizedCronRequest(request)) return jsonError("No autorizado.", 401);
+  const hotelIds = await resolveSubscribedHotelIds();
+  if (hotelIds instanceof NextResponse) return hotelIds;
+  return sendMonthlyReports(hotelIds);
+}
+
 /**
  * POST /api/reports/send-monthly
- * Sends monthly report emails with AI narrative to subscribers (frequency='monthly').
- * Called by Vercel cron (1st of month 8am UTC) or manually by admin with { hotel_id }.
+ * Manual trigger: admin with { hotel_id }, or server-to-server with x-cron-secret.
  */
 export async function POST(request: NextRequest) {
-  const cronSecret = request.headers.get("x-cron-secret");
-  const isAuthorizedCron =
-    cronSecret && process.env.CRON_SECRET && cronSecret === process.env.CRON_SECRET;
-
   let hotelIds: string[] = [];
 
-  if (isAuthorizedCron) {
-    const admin = supabaseAdmin();
-    const { data: subs, error } = await admin
-      .from("report_subscriptions")
-      .select("hotel_id")
-      .eq("frequency", "monthly")
-      .eq("active", true);
-
-    if (error) return jsonDbError(error);
-    hotelIds = Array.from(new Set((subs ?? []).map((s) => s.hotel_id)));
+  if (isAuthorizedCronRequest(request)) {
+    const resolved = await resolveSubscribedHotelIds();
+    if (resolved instanceof NextResponse) return resolved;
+    hotelIds = resolved;
   } else {
     const caller = await authorizeRouteRequest(request, { roles: ["superadmin", "admin"] });
     if (!caller) return jsonError("No autorizado.", 401);
@@ -38,6 +59,10 @@ export async function POST(request: NextRequest) {
     hotelIds = [hotelId];
   }
 
+  return sendMonthlyReports(hotelIds);
+}
+
+async function sendMonthlyReports(hotelIds: string[]) {
   const admin = supabaseAdmin();
   const results: { hotel: string; sent: number; errors: string[] }[] = [];
 

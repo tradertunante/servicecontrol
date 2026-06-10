@@ -330,21 +330,39 @@ async function processSuggestionsForHotel(
   return { created, skipped };
 }
 
+// Vercel cron invokes with GET + Authorization: Bearer ${CRON_SECRET};
+// x-cron-secret is kept for manual server-to-server triggers.
+function isAuthorizedCronRequest(request: NextRequest) {
+  const secret = process.env.CRON_SECRET;
+  if (!secret) return false;
+  if (request.headers.get("authorization") === `Bearer ${secret}`) return true;
+  return request.headers.get("x-cron-secret") === secret;
+}
+
+/**
+ * GET /api/trainings/generate-suggestions
+ * Entry point for Vercel cron (Monday 9am UTC) — all active hotels.
+ */
+export async function GET(request: NextRequest) {
+  if (!isAuthorizedCronRequest(request)) return jsonError("No autorizado.", 401);
+  return generateSuggestions(request, { viaCron: true });
+}
+
 /**
  * POST /api/trainings/generate-suggestions
- * Vercel cron (Monday 8am UTC) or manual admin/gm trigger with { hotel_id }.
+ * Manual admin/gm trigger, or server-to-server with x-cron-secret.
  * Analyzes audit failure ratios and generates AI training suggestions for managers to review.
  */
 export async function POST(request: NextRequest) {
-  try {
-    const cronSecret = request.headers.get("x-cron-secret");
-    const isAuthorizedCron =
-      cronSecret && process.env.CRON_SECRET && cronSecret === process.env.CRON_SECRET;
+  return generateSuggestions(request, { viaCron: isAuthorizedCronRequest(request) });
+}
 
+async function generateSuggestions(request: NextRequest, { viaCron }: { viaCron: boolean }) {
+  try {
     const admin = supabaseAdmin();
     let hotelIds: string[] = [];
 
-    if (isAuthorizedCron) {
+    if (viaCron) {
       const { data: hotels, error } = await admin
         .from("hotels")
         .select("id")
