@@ -9,6 +9,7 @@
     "lint": "next lint",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:integration": "RUN_SUPABASE_INTEGRATION=1 vitest run --config vitest.integration.config.ts",
     "notion:post": "node scripts/notion-post.js"
   },
   "dependencies": {

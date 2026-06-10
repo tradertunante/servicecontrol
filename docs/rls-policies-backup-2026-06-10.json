@@ -1,0 +1,2356 @@
+[
+  {
+    "cmd": "ALL",
+    "qual": "(auth.role() = 'service_role'::text)",
+    "roles": [
+      "public"
+    ],
+    "tablename": "ai_training_suggestions",
+    "permissive": "PERMISSIVE",
+    "policyname": "Service role manages suggestions",
+    "with_check": "(auth.role() = 'service_role'::text)"
+  },
+  {
+    "cmd": "SELECT",
+    "qual": "(EXISTS ( SELECT 1\n   FROM profiles p\n  WHERE ((p.id = auth.uid()) AND (p.hotel_id = ai_training_suggestions.hotel_id) AND (p.role = ANY (ARRAY['admin'::text, 'quality'::text, 'general_manager'::text, 'manager'::text])))))",
+    "roles": [
+      "public"
+    ],
+    "tablename": "ai_training_suggestions",
+    "permissive": "PERMISSIVE",
+    "policyname": "Training suggestions visible to hotel staff",
+    "with_check": null
+  },
+  {
+    "cmd": "DELETE",
+    "qual": "sc_has_hotel_role(hotel_id, ARRAY['superadmin'::text, 'admin'::text])",
+    "roles": [
+      "authenticated"
+    ],
+    "tablename": "area_template_target_assignments",
+    "permissive": "PERMISSIVE",
+    "policyname": "area_template_target_assignments_delete_admin_scoped",
+    "with_check": null
+  },
+  {
+    "cmd": "INSERT",
+    "qual": null,
+    "roles": [
+      "authenticated"
+    ],
+    "tablename": "area_template_target_assignments",
+    "permissive": "PERMISSIVE",
+    "policyname": "area_template_target_assignments_insert_admin_scoped",
+    "with_check": "sc_has_hotel_role(hotel_id, ARRAY['superadmin'::text, 'admin'::text])"
+  },
+  {
+    "cmd": "SELECT",
+    "qual": "sc_has_hotel_role(hotel_id, ARRAY['superadmin'::text, 'admin'::text, 'general_manager'::text, 'manager'::text, 'quality'::text, 'auditor'::text])",
+    "roles": [
+      "authenticated"
+    ],
+    "tablename": "area_template_target_assignments",
+    "permissive": "PERMISSIVE",
+    "policyname": "area_template_target_assignments_select_scoped",
+    "with_check": null
+  },
+  {
+    "cmd": "UPDATE",
+    "qual": "sc_has_hotel_role(hotel_id, ARRAY['superadmin'::text, 'admin'::text])",
+    "roles": [
+      "authenticated"
+    ],
+    "tablename": "area_template_target_assignments",
+    "permissive": "PERMISSIVE",
+    "policyname": "area_template_target_assignments_update_admin_scoped",
+    "with_check": "sc_has_hotel_role(hotel_id, ARRAY['superadmin'::text, 'admin'::text])"
+  },
+  {
+    "cmd": "DELETE",
+    "qual": "sc_has_hotel_role(hotel_id, ARRAY['superadmin'::text, 'admin'::text])",
+    "roles": [
+      "authenticated"
+    ],
+    "tablename": "area_template_targets",
+    "permissive": "PERMISSIVE",
+    "policyname": "area_template_targets_delete_admin_scoped",
+    "with_check": null
+  },
+  {
+    "cmd": "INSERT",
+    "qual": null,
+    "roles": [
+      "authenticated"
+    ],
+    "tablename": "area_template_targets",
+    "permissive": "PERMISSIVE",
+    "policyname": "area_template_targets_insert_admin_scoped",
+    "with_check": "sc_has_hotel_role(hotel_id, ARRAY['superadmin'::text, 'admin'::text])"
+  },
+  {
+    "cmd": "SELECT",
+    "qual": "sc_has_hotel_role(hotel_id, ARRAY['superadmin'::text, 'admin'::text, 'general_manager'::text, 'manager'::text, 'quality'::text, 'auditor'::text])",
+    "roles": [
+      "authenticated"
+    ],
+    "tablename": "area_template_targets",
+    "permissive": "PERMISSIVE",
+    "policyname": "area_template_targets_select_scoped",
+    "with_check": null
+  },
+  {
+    "cmd": "UPDATE",
+    "qual": "sc_has_hotel_role(hotel_id, ARRAY['superadmin'::text, 'admin'::text])",
+    "roles": [
+      "authenticated"
+    ],
+    "tablename": "area_template_targets",
+    "permissive": "PERMISSIVE",
+    "policyname": "area_template_targets_update_admin_scoped",
+    "with_check": "sc_has_hotel_role(hotel_id, ARRAY['superadmin'::text, 'admin'::text])"
+  },
+  {
+    "cmd": "DELETE",
+    "qual": "(can_manage_areas() AND (hotel_id = current_hotel_id()))",
+    "roles": [
+      "authenticated"
+    ],
+    "tablename": "areas",
+    "permissive": "PERMISSIVE",
+    "policyname": "areas_delete_admin_manager",
+    "with_check": null
+  },
+  {
+    "cmd": "DELETE",
+    "qual": "sc_has_hotel_role(hotel_id, ARRAY['superadmin'::text, 'admin'::text])",
+    "roles": [
+      "authenticated"
+    ],
+    "tablename": "areas",
+    "permissive": "PERMISSIVE",
+    "policyname": "areas_delete_admin_scoped",
+    "with_check": null
+  },
+  {
+    "cmd": "DELETE",
+    "qual": "(EXISTS ( SELECT 1\n   FROM profiles p\n  WHERE ((p.id = auth.uid()) AND (p.hotel_id = areas.hotel_id) AND (p.role = ANY (ARRAY['admin'::text, 'manager'::text])))))",
+    "roles": [
+      "authenticated"
+    ],
+    "tablename": "areas",
+    "permissive": "PERMISSIVE",
+    "policyname": "areas_delete_same_hotel",
+    "with_check": null
+  },
+  {
+    "cmd": "INSERT",
+    "qual": null,
+    "roles": [
+      "authenticated"
+    ],
+    "tablename": "areas",
+    "permissive": "PERMISSIVE",
+    "policyname": "areas_insert_admin_manager",
+    "with_check": "(can_manage_areas() AND (hotel_id = current_hotel_id()))"
+  },
+  {
+    "cmd": "INSERT",
+    "qual": null,
+    "roles": [
+      "authenticated"
+    ],
+    "tablename": "areas",
+    "permissive": "PERMISSIVE",
+    "policyname": "areas_insert_admin_scoped",
+    "with_check": "sc_has_hotel_role(hotel_id, ARRAY['superadmin'::text, 'admin'::text])"
+  },
+  {
+    "cmd": "ALL",
+    "qual": "has_hotel_access(hotel_id)",
+    "roles": [
+      "public"
+    ],
+    "tablename": "areas",
+    "permissive": "PERMISSIVE",
+    "policyname": "areas_modify_admin",
+    "with_check": "has_hotel_access(hotel_id)"
+  },
+  {
+    "cmd": "SELECT",
+    "qual": "has_hotel_access(hotel_id)",
+    "roles": [
+      "public"
+    ],
+    "tablename": "areas",
+    "permissive": "PERMISSIVE",
+    "policyname": "areas_select_by_hotel",
+    "with_check": null
+  },
+  {
+    "cmd": "SELECT",
+    "qual": "((hotel_id = current_hotel_id()) AND ((active = true) OR can_manage_areas()))",
+    "roles": [
+      "authenticated"
+    ],
+    "tablename": "areas",
+    "permissive": "PERMISSIVE",
+    "policyname": "areas_select_own_hotel",
+    "with_check": null
+  },
+  {
+    "cmd": "SELECT",
+    "qual": "sc_can_view_area(id)",
+    "roles": [
+      "authenticated"
+    ],
+    "tablename": "areas",
+    "permissive": "PERMISSIVE",
+    "policyname": "areas_select_scoped",
+    "with_check": null
+  },
+  {
+    "cmd": "UPDATE",
+    "qual": "(can_manage_areas() AND (hotel_id = current_hotel_id()))",
+    "roles": [
+      "authenticated"
+    ],
+    "tablename": "areas",
+    "permissive": "PERMISSIVE",
+    "policyname": "areas_update_admin_manager",
+    "with_check": "(can_manage_areas() AND (hotel_id = current_hotel_id()))"
+  },
+  {
+    "cmd": "UPDATE",
+    "qual": "sc_has_hotel_role(hotel_id, ARRAY['superadmin'::text, 'admin'::text])",
+    "roles": [
+      "authenticated"
+    ],
+    "tablename": "areas",
+    "permissive": "PERMISSIVE",
+    "policyname": "areas_update_admin_scoped",
+    "with_check": "sc_has_hotel_role(hotel_id, ARRAY['superadmin'::text, 'admin'::text])"
+  },
+  {
+    "cmd": "DELETE",
+    "qual": "(sc_has_role(ARRAY['superadmin'::text, 'admin'::text]) AND sc_can_mutate_run(audit_run_id))",
+    "roles": [
+      "authenticated"
+    ],
+    "tablename": "audit_answers",
+    "permissive": "PERMISSIVE",
+    "policyname": "audit_answers_delete_scoped",
+    "with_check": null
+  },
+  {
+    "cmd": "INSERT",
+    "qual": null,
+    "roles": [
+      "authenticated"
+    ],
+    "tablename": "audit_answers",
+    "permissive": "PERMISSIVE",
+    "policyname": "audit_answers_insert_auth",
+    "with_check": "true"
+  },
+  {
+    "cmd": "INSERT",
+    "qual": null,
+    "roles": [
+      "public"
+    ],
+    "tablename": "audit_answers",
+    "permissive": "PERMISSIVE",
+    "policyname": "audit_answers_insert_by_run_hotel",
+    "with_check": "(EXISTS ( SELECT 1\n   FROM (audit_runs r\n     JOIN profiles p ON ((p.id = auth.uid())))\n  WHERE ((r.id = audit_answers.audit_run_id) AND (p.active = true) AND (p.hotel_id = r.hotel_id) AND (p.role = ANY (ARRAY['admin'::text, 'manager'::text, 'auditor'::text])))))"
+  },
+  {
+    "cmd": "INSERT",
+    "qual": null,
+    "roles": [
+      "authenticated"
+    ],
+    "tablename": "audit_answers",
+    "permissive": "PERMISSIVE",
+    "policyname": "audit_answers_insert_scoped",
+    "with_check": "sc_can_mutate_run(audit_run_id)"
+  },
+  {
+    "cmd": "ALL",
+    "qual": "(EXISTS ( SELECT 1\n   FROM audit_runs r\n  WHERE ((r.id = audit_answers.audit_run_id) AND has_hotel_access(r.hotel_id))))",
+    "roles": [
+      "public"
+    ],
+    "tablename": "audit_answers",
+    "permissive": "PERMISSIVE",
+    "policyname": "audit_answers_modify_by_hotel",
+    "with_check": "(EXISTS ( SELECT 1\n   FROM audit_runs r\n  WHERE ((r.id = audit_answers.audit_run_id) AND has_hotel_access(r.hotel_id))))"
+  },
+  {
+    "cmd": "SELECT",
+    "qual": "true",
+    "roles": [
+      "authenticated"
+    ],
+    "tablename": "audit_answers",
+    "permissive": "PERMISSIVE",
+    "policyname": "audit_answers_select_auth",
+    "with_check": null
+  },
+  {
+    "cmd": "SELECT",
+    "qual": "(EXISTS ( SELECT 1\n   FROM audit_runs r\n  WHERE ((r.id = audit_answers.audit_run_id) AND has_hotel_access(r.hotel_id))))",
+    "roles": [
+      "public"
+    ],
+    "tablename": "audit_answers",
+    "permissive": "PERMISSIVE",
+    "policyname": "audit_answers_select_by_hotel",
+    "with_check": null
+  },
+  {
+    "cmd": "SELECT",
+    "qual": "(EXISTS ( SELECT 1\n   FROM (audit_runs r\n     JOIN profiles p ON ((p.id = auth.uid())))\n  WHERE ((r.id = audit_answers.audit_run_id) AND (p.active = true) AND (p.hotel_id = r.hotel_id))))",
+    "roles": [
+      "public"
+    ],
+    "tablename": "audit_answers",
+    "permissive": "PERMISSIVE",
+    "policyname": "audit_answers_select_by_run_hotel",
+    "with_check": null
+  },
+  {
+    "cmd": "SELECT",
+    "qual": "sc_can_view_run(audit_run_id)",
+    "roles": [
+      "authenticated"
+    ],
+    "tablename": "audit_answers",
+    "permissive": "PERMISSIVE",
+    "policyname": "audit_answers_select_scoped",
+    "with_check": null
+  },
+  {
+    "cmd": "UPDATE",
+    "qual": "true",
+    "roles": [
+      "authenticated"
+    ],
+    "tablename": "audit_answers",
+    "permissive": "PERMISSIVE",
+    "policyname": "audit_answers_update_auth",
+    "with_check": "true"
+  },
+  {
+    "cmd": "UPDATE",
+    "qual": "(EXISTS ( SELECT 1\n   FROM (audit_runs r\n     JOIN profiles p ON ((p.id = auth.uid())))\n  WHERE ((r.id = audit_answers.audit_run_id) AND (p.active = true) AND (p.hotel_id = r.hotel_id) AND (p.role = ANY (ARRAY['admin'::text, 'manager'::text, 'auditor'::text])))))",
+    "roles": [
+      "public"
+    ],
+    "tablename": "audit_answers",
+    "permissive": "PERMISSIVE",
+    "policyname": "audit_answers_update_by_run_hotel",
+    "with_check": "(EXISTS ( SELECT 1\n   FROM (audit_runs r\n     JOIN profiles p ON ((p.id = auth.uid())))\n  WHERE ((r.id = audit_answers.audit_run_id) AND (p.active = true) AND (p.hotel_id = r.hotel_id) AND (p.role = ANY (ARRAY['admin'::text, 'manager'::text, 'auditor'::text])))))"
+  },
+  {
+    "cmd": "UPDATE",
+    "qual": "sc_can_mutate_run(audit_run_id)",
+    "roles": [
+      "authenticated"
+    ],
+    "tablename": "audit_answers",
+    "permissive": "PERMISSIVE",
+    "policyname": "audit_answers_update_scoped",
+    "with_check": "sc_can_mutate_run(audit_run_id)"
+  },
+  {
+    "cmd": "SELECT",
+    "qual": "sc_can_read_corrective_action(id)",
+    "roles": [
+      "authenticated"
+    ],
+    "tablename": "audit_corrective_actions",
+    "permissive": "PERMISSIVE",
+    "policyname": "audit_corrective_actions_select_scoped",
+    "with_check": null
+  },
+  {
+    "cmd": "UPDATE",
+    "qual": "sc_can_read_corrective_action(id)",
+    "roles": [
+      "authenticated"
+    ],
+    "tablename": "audit_corrective_actions",
+    "permissive": "PERMISSIVE",
+    "policyname": "audit_corrective_actions_update_scoped",
+    "with_check": "sc_can_read_corrective_action(id)"
+  },
+  {
+    "cmd": "INSERT",
+    "qual": null,
+    "roles": [
+      "public"
+    ],
+    "tablename": "audit_evidence",
+    "permissive": "PERMISSIVE",
+    "policyname": "audit_evidence_insert_owner_or_admin",
+    "with_check": "(EXISTS ( SELECT 1\n   FROM (audit_answers a\n     JOIN audit_runs r ON ((r.id = a.audit_run_id)))\n  WHERE ((a.id = audit_evidence.audit_answer_id) AND (r.hotel_id = current_hotel_id()) AND (is_admin() OR (r.executed_by = auth.uid())))))"
+  },
+  {
+    "cmd": "SELECT",
+    "qual": "(EXISTS ( SELECT 1\n   FROM (audit_answers a\n     JOIN audit_runs r ON ((r.id = a.audit_run_id)))\n  WHERE ((a.id = audit_evidence.audit_answer_id) AND (r.hotel_id = current_hotel_id()))))",
+    "roles": [
+      "public"
+    ],
+    "tablename": "audit_evidence",
+    "permissive": "PERMISSIVE",
+    "policyname": "audit_evidence_select_own_hotel",
+    "with_check": null
+  },
+  {
+    "cmd": "SELECT",
+    "qual": "(sc_is_same_hotel(hotel_id) AND sc_has_role(ARRAY['superadmin'::text, 'admin'::text, 'manager'::text, 'quality'::text]))",
+    "roles": [
+      "authenticated"
+    ],
+    "tablename": "audit_logs",
+    "permissive": "PERMISSIVE",
+    "policyname": "audit_logs_select_managers",
+    "with_check": null
+  },
+  {
+    "cmd": "INSERT",
+    "qual": null,
+    "roles": [
+      "authenticated"
+    ],
+    "tablename": "audit_questions",
+    "permissive": "PERMISSIVE",
+    "policyname": "allow insert audit_questions",
+    "with_check": "true"
+  },
+  {
+    "cmd": "DELETE",
+    "qual": "(EXISTS ( SELECT 1\n   FROM (audit_sections s\n     JOIN audit_templates t ON ((t.id = s.audit_template_id)))\n  WHERE ((s.id = audit_questions.audit_section_id) AND sc_can_mutate_template(t.hotel_id))))",
+    "roles": [
+      "authenticated"
+    ],
+    "tablename": "audit_questions",
+    "permissive": "PERMISSIVE",
+    "policyname": "audit_questions_delete_admin_scoped",
+    "with_check": null
+  },
+  {
+    "cmd": "DELETE",
+    "qual": "(EXISTS ( SELECT 1\n   FROM ((audit_sections s\n     JOIN audit_templates t ON ((t.id = s.audit_template_id)))\n     JOIN profiles p ON ((p.id = auth.uid())))\n  WHERE ((s.id = audit_questions.audit_section_id) AND (t.hotel_id = p.hotel_id) AND (p.role = ANY (ARRAY['admin'::text, 'manager'::text])))))",
+    "roles": [
+      "authenticated"
+    ],
+    "tablename": "audit_questions",
+    "permissive": "PERMISSIVE",
+    "policyname": "audit_questions_delete_same_hotel",
+    "with_check": null
+  },
+  {
+    "cmd": "INSERT",
+    "qual": null,
+    "roles": [
+      "authenticated"
+    ],
+    "tablename": "audit_questions",
+    "permissive": "PERMISSIVE",
+    "policyname": "audit_questions_insert_admin_manager",
+    "with_check": "(EXISTS ( SELECT 1\n   FROM profiles\n  WHERE ((profiles.id = auth.uid()) AND (profiles.role = ANY (ARRAY['admin'::text, 'manager'::text])))))"
+  },
+  {
+    "cmd": "INSERT",
+    "qual": null,
+    "roles": [
+      "authenticated"
+    ],
+    "tablename": "audit_questions",
+    "permissive": "PERMISSIVE",
+    "policyname": "audit_questions_insert_admin_scoped",
+    "with_check": "(EXISTS ( SELECT 1\n   FROM (audit_sections s\n     JOIN audit_templates t ON ((t.id = s.audit_template_id)))\n  WHERE ((s.id = audit_questions.audit_section_id) AND sc_can_mutate_template(t.hotel_id))))"
+  },
+  {
+    "cmd": "INSERT",
+    "qual": null,
+    "roles": [
+      "authenticated"
+    ],
+    "tablename": "audit_questions",
+    "permissive": "PERMISSIVE",
+    "policyname": "audit_questions_insert_authenticated",
+    "with_check": "true"
+  },
+  {
+    "cmd": "INSERT",
+    "qual": null,
+    "roles": [
+      "authenticated"
+    ],
+    "tablename": "audit_questions",
+    "permissive": "PERMISSIVE",
+    "policyname": "audit_questions_insert_same_hotel",
+    "with_check": "(EXISTS ( SELECT 1\n   FROM ((audit_sections s\n     JOIN audit_templates t ON ((t.id = s.audit_template_id)))\n     JOIN profiles p ON ((p.id = auth.uid())))\n  WHERE ((s.id = audit_questions.audit_section_id) AND (t.hotel_id = p.hotel_id) AND (p.role = ANY (ARRAY['admin'::text, 'manager'::text])))))"
+  },
+  {
+    "cmd": "ALL",
+    "qual": "(EXISTS ( SELECT 1\n   FROM (audit_sections s\n     JOIN audit_templates t ON ((t.id = s.audit_template_id)))\n  WHERE ((s.id = audit_questions.audit_section_id) AND has_hotel_access(t.hotel_id))))",
+    "roles": [
+      "public"
+    ],
+    "tablename": "audit_questions",
+    "permissive": "PERMISSIVE",
+    "policyname": "audit_questions_modify_admin",
+    "with_check": "(EXISTS ( SELECT 1\n   FROM (audit_sections s\n     JOIN audit_templates t ON ((t.id = s.audit_template_id)))\n  WHERE ((s.id = audit_questions.audit_section_id) AND has_hotel_access(t.hotel_id))))"
+  },
+  {
+    "cmd": "SELECT",
+    "qual": "true",
+    "roles": [
+      "authenticated"
+    ],
+    "tablename": "audit_questions",
+    "permissive": "PERMISSIVE",
+    "policyname": "audit_questions_select_auth",
+    "with_check": null
+  },
+  {
+    "cmd": "SELECT",
+    "qual": "(EXISTS ( SELECT 1\n   FROM (audit_sections s\n     JOIN audit_templates t ON ((t.id = s.audit_template_id)))\n  WHERE ((s.id = audit_questions.audit_section_id) AND has_hotel_access(t.hotel_id))))",
+    "roles": [
+      "public"
+    ],
+    "tablename": "audit_questions",
+    "permissive": "PERMISSIVE",
+    "policyname": "audit_questions_select_by_hotel",
+    "with_check": null
+  },
+  {
+    "cmd": "SELECT",
+    "qual": "(EXISTS ( SELECT 1\n   FROM ((audit_sections s\n     JOIN audit_templates t ON ((t.id = s.audit_template_id)))\n     JOIN profiles p ON ((p.id = auth.uid())))\n  WHERE ((s.id = audit_questions.audit_section_id) AND (t.hotel_id = p.hotel_id) AND (p.role = ANY (ARRAY['admin'::text, 'manager'::text, 'auditor'::text])))))",
+    "roles": [
+      "authenticated"
+    ],
+    "tablename": "audit_questions",
+    "permissive": "PERMISSIVE",
+    "policyname": "audit_questions_select_same_hotel",
+    "with_check": null
+  },
+  {
+    "cmd": "SELECT",
+    "qual": "(EXISTS ( SELECT 1\n   FROM (audit_sections s\n     JOIN audit_templates t ON ((t.id = s.audit_template_id)))\n  WHERE (s.id = audit_questions.audit_section_id)))",
+    "roles": [
+      "authenticated"
+    ],
+    "tablename": "audit_questions",
+    "permissive": "PERMISSIVE",
+    "policyname": "audit_questions_select_scoped",
+    "with_check": null
+  },
+  {
+    "cmd": "UPDATE",
+    "qual": "(EXISTS ( SELECT 1\n   FROM (audit_sections s\n     JOIN audit_templates t ON ((t.id = s.audit_template_id)))\n  WHERE ((s.id = audit_questions.audit_section_id) AND sc_can_mutate_template(t.hotel_id))))",
+    "roles": [
+      "authenticated"
+    ],
+    "tablename": "audit_questions",
+    "permissive": "PERMISSIVE",
+    "policyname": "audit_questions_update_admin_scoped",
+    "with_check": "(EXISTS ( SELECT 1\n   FROM (audit_sections s\n     JOIN audit_templates t ON ((t.id = s.audit_template_id)))\n  WHERE ((s.id = audit_questions.audit_section_id) AND sc_can_mutate_template(t.hotel_id))))"
+  },
+  {
+    "cmd": "UPDATE",
+    "qual": "(EXISTS ( SELECT 1\n   FROM ((audit_sections s\n     JOIN audit_templates t ON ((t.id = s.audit_template_id)))\n     JOIN profiles p ON ((p.id = auth.uid())))\n  WHERE ((s.id = audit_questions.audit_section_id) AND (t.hotel_id = p.hotel_id) AND (p.role = ANY (ARRAY['admin'::text, 'manager'::text])))))",
+    "roles": [
+      "authenticated"
+    ],
+    "tablename": "audit_questions",
+    "permissive": "PERMISSIVE",
+    "policyname": "audit_questions_update_same_hotel",
+    "with_check": "(EXISTS ( SELECT 1\n   FROM ((audit_sections s\n     JOIN audit_templates t ON ((t.id = s.audit_template_id)))\n     JOIN profiles p ON ((p.id = auth.uid())))\n  WHERE ((s.id = audit_questions.audit_section_id) AND (t.hotel_id = p.hotel_id) AND (p.role = ANY (ARRAY['admin'::text, 'manager'::text])))))"
+  },
+  {
+    "cmd": "DELETE",
+    "qual": "(sc_has_role(ARRAY['superadmin'::text, 'admin'::text]) AND sc_can_view_area(area_id))",
+    "roles": [
+      "authenticated"
+    ],
+    "tablename": "audit_runs",
+    "permissive": "PERMISSIVE",
+    "policyname": "audit_runs_delete_scoped",
+    "with_check": null
+  },
+  {
+    "cmd": "INSERT",
+    "qual": null,
+    "roles": [
+      "public"
+    ],
+    "tablename": "audit_runs",
+    "permissive": "PERMISSIVE",
+    "policyname": "audit_runs_insert",
+    "with_check": "(executed_by = auth.uid())"
+  },
+  {
+    "cmd": "INSERT",
+    "qual": null,
+    "roles": [
+      "public"
+    ],
+    "tablename": "audit_runs",
+    "permissive": "PERMISSIVE",
+    "policyname": "audit_runs_insert_by_role_and_hotel",
+    "with_check": "(EXISTS ( SELECT 1\n   FROM profiles p\n  WHERE ((p.id = auth.uid()) AND (p.active = true) AND (p.hotel_id = audit_runs.hotel_id) AND (p.role = ANY (ARRAY['admin'::text, 'manager'::text, 'auditor'::text])))))"
+  },
+  {
+    "cmd": "INSERT",
+    "qual": null,
+    "roles": [
+      "authenticated"
+    ],
+    "tablename": "audit_runs",
+    "permissive": "PERMISSIVE",
+    "policyname": "audit_runs_insert_scoped",
+    "with_check": "(sc_has_role(ARRAY['superadmin'::text, 'admin'::text, 'manager'::text, 'auditor'::text, 'quality'::text, 'mystery_shopper'::text]) AND sc_can_view_area(area_id))"
+  },
+  {
+    "cmd": "ALL",
+    "qual": "has_hotel_access(hotel_id)",
+    "roles": [
+      "public"
+    ],
+    "tablename": "audit_runs",
+    "permissive": "PERMISSIVE",
+    "policyname": "audit_runs_modify_admin",
+    "with_check": "has_hotel_access(hotel_id)"
+  },
+  {
+    "cmd": "SELECT",
+    "qual": "(executed_by = auth.uid())",
+    "roles": [
+      "public"
+    ],
+    "tablename": "audit_runs",
+    "permissive": "PERMISSIVE",
+    "policyname": "audit_runs_select",
+    "with_check": null
+  },
+  {
+    "cmd": "SELECT",
+    "qual": "(EXISTS ( SELECT 1\n   FROM (profiles p\n     JOIN areas a ON ((a.id = audit_runs.area_id)))\n  WHERE ((p.id = auth.uid()) AND (p.active = true) AND (p.role = ANY (ARRAY['admin'::text, 'manager'::text])) AND (p.hotel_id = a.hotel_id))))",
+    "roles": [
+      "authenticated"
+    ],
+    "tablename": "audit_runs",
+    "permissive": "PERMISSIVE",
+    "policyname": "audit_runs_select_admin_manager_same_hotel",
+    "with_check": null
+  },
+  {
+    "cmd": "SELECT",
+    "qual": "has_hotel_access(hotel_id)",
+    "roles": [
+      "public"
+    ],
+    "tablename": "audit_runs",
+    "permissive": "PERMISSIVE",
+    "policyname": "audit_runs_select_by_hotel",
+    "with_check": null
+  },
+  {
+    "cmd": "SELECT",
+    "qual": "(EXISTS ( SELECT 1\n   FROM profiles p\n  WHERE ((p.id = auth.uid()) AND (COALESCE(p.active, true) = true) AND ((p.role = 'superadmin'::text) OR ((p.hotel_id = audit_runs.hotel_id) AND (p.role = ANY (ARRAY['admin'::text, 'manager'::text, 'quality'::text, 'engineering'::text, 'systems'::text, 'auditor'::text])))))))",
+    "roles": [
+      "authenticated"
+    ],
+    "tablename": "audit_runs",
+    "permissive": "PERMISSIVE",
+    "policyname": "audit_runs_select_policy",
+    "with_check": null
+  },
+  {
+    "cmd": "SELECT",
+    "qual": "sc_can_view_run(id)",
+    "roles": [
+      "authenticated"
+    ],
+    "tablename": "audit_runs",
+    "permissive": "PERMISSIVE",
+    "policyname": "audit_runs_select_scoped",
+    "with_check": null
+  },
+  {
+    "cmd": "UPDATE",
+    "qual": "(executed_by = auth.uid())",
+    "roles": [
+      "public"
+    ],
+    "tablename": "audit_runs",
+    "permissive": "PERMISSIVE",
+    "policyname": "audit_runs_update",
+    "with_check": null
+  },
+  {
+    "cmd": "UPDATE",
+    "qual": "(EXISTS ( SELECT 1\n   FROM profiles p\n  WHERE ((p.id = auth.uid()) AND (p.active = true) AND (p.hotel_id = audit_runs.hotel_id) AND (p.role = ANY (ARRAY['admin'::text, 'manager'::text, 'auditor'::text])))))",
+    "roles": [
+      "public"
+    ],
+    "tablename": "audit_runs",
+    "permissive": "PERMISSIVE",
+    "policyname": "audit_runs_update_by_role_and_hotel",
+    "with_check": "(EXISTS ( SELECT 1\n   FROM profiles p\n  WHERE ((p.id = auth.uid()) AND (p.active = true) AND (p.hotel_id = audit_runs.hotel_id) AND (p.role = ANY (ARRAY['admin'::text, 'manager'::text, 'auditor'::text])))))"
+  },
+  {
+    "cmd": "UPDATE",
+    "qual": "sc_can_mutate_run(id)",
+    "roles": [
+      "authenticated"
+    ],
+    "tablename": "audit_runs",
+    "permissive": "PERMISSIVE",
+    "policyname": "audit_runs_update_scoped",
+    "with_check": "sc_can_mutate_run(id)"
+  },
+  {
+    "cmd": "INSERT",
+    "qual": null,
+    "roles": [
+      "authenticated"
+    ],
+    "tablename": "audit_sections",
+    "permissive": "PERMISSIVE",
+    "policyname": "allow insert audit_sections",
+    "with_check": "true"
+  },
+  {
+    "cmd": "ALL",
+    "qual": "(is_admin() AND (EXISTS ( SELECT 1\n   FROM audit_templates t\n  WHERE ((t.id = audit_sections.audit_template_id) AND (t.hotel_id = current_hotel_id())))))",
+    "roles": [
+      "public"
+    ],
+    "tablename": "audit_sections",
+    "permissive": "PERMISSIVE",
+    "policyname": "audit_sections_admin_write",
+    "with_check": "(is_admin() AND (EXISTS ( SELECT 1\n   FROM audit_templates t\n  WHERE ((t.id = audit_sections.audit_template_id) AND (t.hotel_id = current_hotel_id())))))"
+  },
+  {
+    "cmd": "DELETE",
+    "qual": "(EXISTS ( SELECT 1\n   FROM audit_templates t\n  WHERE ((t.id = audit_sections.audit_template_id) AND sc_can_mutate_template(t.hotel_id))))",
+    "roles": [
+      "authenticated"
+    ],
+    "tablename": "audit_sections",
+    "permissive": "PERMISSIVE",
+    "policyname": "audit_sections_delete_admin_scoped",
+    "with_check": null
+  },
+  {
+    "cmd": "DELETE",
+    "qual": "(EXISTS ( SELECT 1\n   FROM (audit_templates t\n     JOIN profiles p ON ((p.id = auth.uid())))\n  WHERE ((t.id = audit_sections.audit_template_id) AND (t.hotel_id = p.hotel_id) AND (p.role = ANY (ARRAY['admin'::text, 'manager'::text])))))",
+    "roles": [
+      "authenticated"
+    ],
+    "tablename": "audit_sections",
+    "permissive": "PERMISSIVE",
+    "policyname": "audit_sections_delete_same_hotel",
+    "with_check": null
+  },
+  {
+    "cmd": "INSERT",
+    "qual": null,
+    "roles": [
+      "authenticated"
+    ],
+    "tablename": "audit_sections",
+    "permissive": "PERMISSIVE",
+    "policyname": "audit_sections_insert_admin_scoped",
+    "with_check": "(EXISTS ( SELECT 1\n   FROM audit_templates t\n  WHERE ((t.id = audit_sections.audit_template_id) AND sc_can_mutate_template(t.hotel_id))))"
+  },
+  {
+    "cmd": "ALL",
+    "qual": "(EXISTS ( SELECT 1\n   FROM audit_templates t\n  WHERE ((t.id = audit_sections.audit_template_id) AND has_hotel_access(t.hotel_id))))",
+    "roles": [
+      "public"
+    ],
+    "tablename": "audit_sections",
+    "permissive": "PERMISSIVE",
+    "policyname": "audit_sections_modify_admin",
+    "with_check": "(EXISTS ( SELECT 1\n   FROM audit_templates t\n  WHERE ((t.id = audit_sections.audit_template_id) AND has_hotel_access(t.hotel_id))))"
+  },
+  {
+    "cmd": "SELECT",
+    "qual": "true",
+    "roles": [
+      "authenticated"
+    ],
+    "tablename": "audit_sections",
+    "permissive": "PERMISSIVE",
+    "policyname": "audit_sections_select_auth",
+    "with_check": null
+  },
+  {
+    "cmd": "SELECT",
+    "qual": "(EXISTS ( SELECT 1\n   FROM audit_templates t\n  WHERE ((t.id = audit_sections.audit_template_id) AND has_hotel_access(t.hotel_id))))",
+    "roles": [
+      "public"
+    ],
+    "tablename": "audit_sections",
+    "permissive": "PERMISSIVE",
+    "policyname": "audit_sections_select_by_hotel",
+    "with_check": null
+  },
+  {
+    "cmd": "SELECT",
+    "qual": "(EXISTS ( SELECT 1\n   FROM audit_templates t\n  WHERE ((t.id = audit_sections.audit_template_id) AND (t.hotel_id = current_hotel_id()))))",
+    "roles": [
+      "public"
+    ],
+    "tablename": "audit_sections",
+    "permissive": "PERMISSIVE",
+    "policyname": "audit_sections_select_own_hotel",
+    "with_check": null
+  },
+  {
+    "cmd": "SELECT",
+    "qual": "(EXISTS ( SELECT 1\n   FROM audit_templates t\n  WHERE (t.id = audit_sections.audit_template_id)))",
+    "roles": [
+      "authenticated"
+    ],
+    "tablename": "audit_sections",
+    "permissive": "PERMISSIVE",
+    "policyname": "audit_sections_select_scoped",
+    "with_check": null
+  },
+  {
+    "cmd": "UPDATE",
+    "qual": "(EXISTS ( SELECT 1\n   FROM audit_templates t\n  WHERE ((t.id = audit_sections.audit_template_id) AND sc_can_mutate_template(t.hotel_id))))",
+    "roles": [
+      "authenticated"
+    ],
+    "tablename": "audit_sections",
+    "permissive": "PERMISSIVE",
+    "policyname": "audit_sections_update_admin_scoped",
+    "with_check": "(EXISTS ( SELECT 1\n   FROM audit_templates t\n  WHERE ((t.id = audit_sections.audit_template_id) AND sc_can_mutate_template(t.hotel_id))))"
+  },
+  {
+    "cmd": "DELETE",
+    "qual": "(EXISTS ( SELECT 1\n   FROM profiles p\n  WHERE ((p.id = auth.uid()) AND (p.role = ANY (ARRAY['admin'::text, 'quality'::text])) AND (COALESCE(p.active, true) = true))))",
+    "roles": [
+      "authenticated"
+    ],
+    "tablename": "audit_targets",
+    "permissive": "PERMISSIVE",
+    "policyname": "audit_targets_delete_admin_quality",
+    "with_check": null
+  },
+  {
+    "cmd": "DELETE",
+    "qual": "(EXISTS ( SELECT 1\n   FROM profiles p\n  WHERE ((p.id = auth.uid()) AND (p.hotel_id = audit_targets.hotel_id) AND (p.role = ANY (ARRAY['admin'::text, 'quality'::text, 'superadmin'::text])) AND (COALESCE(p.active, true) = true))))",
+    "roles": [
+      "authenticated"
+    ],
+    "tablename": "audit_targets",
+    "permissive": "PERMISSIVE",
+    "policyname": "audit_targets_delete_staff",
+    "with_check": null
+  },
+  {
+    "cmd": "INSERT",
+    "qual": null,
+    "roles": [
+      "authenticated"
+    ],
+    "tablename": "audit_targets",
+    "permissive": "PERMISSIVE",
+    "policyname": "audit_targets_insert_admin_quality",
+    "with_check": "(EXISTS ( SELECT 1\n   FROM profiles p\n  WHERE ((p.id = auth.uid()) AND (p.role = ANY (ARRAY['admin'::text, 'quality'::text])) AND (COALESCE(p.active, true) = true))))"
+  },
+  {
+    "cmd": "INSERT",
+    "qual": null,
+    "roles": [
+      "authenticated"
+    ],
+    "tablename": "audit_targets",
+    "permissive": "PERMISSIVE",
+    "policyname": "audit_targets_insert_staff",
+    "with_check": "(EXISTS ( SELECT 1\n   FROM profiles p\n  WHERE ((p.id = auth.uid()) AND (p.hotel_id = audit_targets.hotel_id) AND (p.role = ANY (ARRAY['admin'::text, 'quality'::text, 'superadmin'::text])) AND (COALESCE(p.active, true) = true))))"
+  },
+  {
+    "cmd": "SELECT",
+    "qual": "true",
+    "roles": [
+      "authenticated"
+    ],
+    "tablename": "audit_targets",
+    "permissive": "PERMISSIVE",
+    "policyname": "audit_targets_select",
+    "with_check": null
+  },
+  {
+    "cmd": "SELECT",
+    "qual": "(EXISTS ( SELECT 1\n   FROM profiles p\n  WHERE ((p.id = auth.uid()) AND (p.hotel_id = audit_targets.hotel_id) AND (p.role = ANY (ARRAY['admin'::text, 'quality'::text, 'superadmin'::text])) AND (COALESCE(p.active, true) = true))))",
+    "roles": [
+      "authenticated"
+    ],
+    "tablename": "audit_targets",
+    "permissive": "PERMISSIVE",
+    "policyname": "audit_targets_select_staff",
+    "with_check": null
+  },
+  {
+    "cmd": "UPDATE",
+    "qual": "(EXISTS ( SELECT 1\n   FROM profiles p\n  WHERE ((p.id = auth.uid()) AND (p.role = ANY (ARRAY['admin'::text, 'quality'::text])) AND (COALESCE(p.active, true) = true))))",
+    "roles": [
+      "authenticated"
+    ],
+    "tablename": "audit_targets",
+    "permissive": "PERMISSIVE",
+    "policyname": "audit_targets_update_admin_quality",
+    "with_check": "(EXISTS ( SELECT 1\n   FROM profiles p\n  WHERE ((p.id = auth.uid()) AND (p.role = ANY (ARRAY['admin'::text, 'quality'::text])) AND (COALESCE(p.active, true) = true))))"
+  },
+  {
+    "cmd": "UPDATE",
+    "qual": "(EXISTS ( SELECT 1\n   FROM profiles p\n  WHERE ((p.id = auth.uid()) AND (p.hotel_id = audit_targets.hotel_id) AND (p.role = ANY (ARRAY['admin'::text, 'quality'::text, 'superadmin'::text])) AND (COALESCE(p.active, true) = true))))",
+    "roles": [
+      "authenticated"
+    ],
+    "tablename": "audit_targets",
+    "permissive": "PERMISSIVE",
+    "policyname": "audit_targets_update_staff",
+    "with_check": "true"
+  },
+  {
+    "cmd": "INSERT",
+    "qual": null,
+    "roles": [
+      "authenticated"
+    ],
+    "tablename": "audit_templates",
+    "permissive": "PERMISSIVE",
+    "policyname": "Insert audit_templates same hotel",
+    "with_check": "(hotel_id = ( SELECT profiles.hotel_id\n   FROM profiles\n  WHERE (profiles.id = auth.uid())))"
+  },
+  {
+    "cmd": "ALL",
+    "qual": "(is_admin() AND (hotel_id = current_hotel_id()))",
+    "roles": [
+      "public"
+    ],
+    "tablename": "audit_templates",
+    "permissive": "PERMISSIVE",
+    "policyname": "audit_templates_admin_write",
+    "with_check": "(is_admin() AND (hotel_id = current_hotel_id()))"
+  },
+  {
+    "cmd": "DELETE",
+    "qual": "(EXISTS ( SELECT 1\n   FROM (profiles p\n     JOIN areas a ON ((a.id = audit_templates.area_id)))\n  WHERE ((p.id = auth.uid()) AND (p.role = ANY (ARRAY['admin'::text, 'manager'::text])) AND (p.hotel_id = a.hotel_id))))",
+    "roles": [
+      "authenticated"
+    ],
+    "tablename": "audit_templates",
+    "permissive": "PERMISSIVE",
+    "policyname": "audit_templates_delete_admin_manager_same_hotel",
+    "with_check": null
+  },
+  {
+    "cmd": "DELETE",
+    "qual": "sc_can_mutate_template(hotel_id)",
+    "roles": [
+      "authenticated"
+    ],
+    "tablename": "audit_templates",
+    "permissive": "PERMISSIVE",
+    "policyname": "audit_templates_delete_admin_scoped",
+    "with_check": null
+  },
+  {
+    "cmd": "DELETE",
+    "qual": "(EXISTS ( SELECT 1\n   FROM profiles p\n  WHERE ((p.id = auth.uid()) AND (p.hotel_id = audit_templates.hotel_id) AND (p.role = ANY (ARRAY['admin'::text, 'manager'::text])))))",
+    "roles": [
+      "authenticated"
+    ],
+    "tablename": "audit_templates",
+    "permissive": "PERMISSIVE",
+    "policyname": "audit_templates_delete_same_hotel",
+    "with_check": null
+  },
+  {
+    "cmd": "INSERT",
+    "qual": null,
+    "roles": [
+      "authenticated"
+    ],
+    "tablename": "audit_templates",
+    "permissive": "PERMISSIVE",
+    "policyname": "audit_templates_insert_admin_manager_same_hotel",
+    "with_check": "(EXISTS ( SELECT 1\n   FROM (profiles p\n     JOIN areas a ON ((a.id = audit_templates.area_id)))\n  WHERE ((p.id = auth.uid()) AND (p.role = ANY (ARRAY['admin'::text, 'manager'::text])) AND (p.hotel_id = a.hotel_id))))"
+  },
+  {
+    "cmd": "INSERT",
+    "qual": null,
+    "roles": [
+      "authenticated"
+    ],
+    "tablename": "audit_templates",
+    "permissive": "PERMISSIVE",
+    "policyname": "audit_templates_insert_admin_scoped",
+    "with_check": "sc_can_mutate_template(hotel_id)"
+  },
+  {
+    "cmd": "ALL",
+    "qual": "has_hotel_access(hotel_id)",
+    "roles": [
+      "public"
+    ],
+    "tablename": "audit_templates",
+    "permissive": "PERMISSIVE",
+    "policyname": "audit_templates_modify_admin",
+    "with_check": "has_hotel_access(hotel_id)"
+  },
+  {
+    "cmd": "SELECT",
+    "qual": "has_hotel_access(hotel_id)",
+    "roles": [
+      "public"
+    ],
+    "tablename": "audit_templates",
+    "permissive": "PERMISSIVE",
+    "policyname": "audit_templates_select_by_hotel",
+    "with_check": null
+  },
+  {
+    "cmd": "SELECT",
+    "qual": "((is_global = true) OR (hotel_id = ( SELECT p.hotel_id\n   FROM profiles p\n  WHERE (p.id = auth.uid()))))",
+    "roles": [
+      "authenticated"
+    ],
+    "tablename": "audit_templates",
+    "permissive": "PERMISSIVE",
+    "policyname": "audit_templates_select_global_or_hotel",
+    "with_check": null
+  },
+  {
+    "cmd": "SELECT",
+    "qual": "(hotel_id = current_hotel_id())",
+    "roles": [
+      "public"
+    ],
+    "tablename": "audit_templates",
+    "permissive": "PERMISSIVE",
+    "policyname": "audit_templates_select_own_hotel",
+    "with_check": null
+  },
+  {
+    "cmd": "SELECT",
+    "qual": "(EXISTS ( SELECT 1\n   FROM (profiles p\n     JOIN areas a ON ((a.id = audit_templates.area_id)))\n  WHERE ((p.id = auth.uid()) AND (p.hotel_id = a.hotel_id))))",
+    "roles": [
+      "authenticated"
+    ],
+    "tablename": "audit_templates",
+    "permissive": "PERMISSIVE",
+    "policyname": "audit_templates_select_same_hotel",
+    "with_check": null
+  },
+  {
+    "cmd": "SELECT",
+    "qual": "((hotel_id IS NULL) OR sc_is_same_hotel(hotel_id))",
+    "roles": [
+      "authenticated"
+    ],
+    "tablename": "audit_templates",
+    "permissive": "PERMISSIVE",
+    "policyname": "audit_templates_select_scoped",
+    "with_check": null
+  },
+  {
+    "cmd": "UPDATE",
+    "qual": "(EXISTS ( SELECT 1\n   FROM (profiles p\n     JOIN areas a ON ((a.id = audit_templates.area_id)))\n  WHERE ((p.id = auth.uid()) AND (p.role = ANY (ARRAY['admin'::text, 'manager'::text])) AND (p.hotel_id = a.hotel_id))))",
+    "roles": [
+      "authenticated"
+    ],
+    "tablename": "audit_templates",
+    "permissive": "PERMISSIVE",
+    "policyname": "audit_templates_update_admin_manager_same_hotel",
+    "with_check": "(EXISTS ( SELECT 1\n   FROM (profiles p\n     JOIN areas a ON ((a.id = audit_templates.area_id)))\n  WHERE ((p.id = auth.uid()) AND (p.role = ANY (ARRAY['admin'::text, 'manager'::text])) AND (p.hotel_id = a.hotel_id))))"
+  },
+  {
+    "cmd": "UPDATE",
+    "qual": "sc_can_mutate_template(hotel_id)",
+    "roles": [
+      "authenticated"
+    ],
+    "tablename": "audit_templates",
+    "permissive": "PERMISSIVE",
+    "policyname": "audit_templates_update_admin_scoped",
+    "with_check": "sc_can_mutate_template(hotel_id)"
+  },
+  {
+    "cmd": "ALL",
+    "qual": "((is_global = false) AND (hotel_id = ( SELECT p.hotel_id\n   FROM profiles p\n  WHERE (p.id = auth.uid()))))",
+    "roles": [
+      "authenticated"
+    ],
+    "tablename": "audit_templates",
+    "permissive": "PERMISSIVE",
+    "policyname": "audit_templates_write_only_hotel",
+    "with_check": "((is_global = false) AND (hotel_id = ( SELECT p.hotel_id\n   FROM profiles p\n  WHERE (p.id = auth.uid()))))"
+  },
+  {
+    "cmd": "SELECT",
+    "qual": "(EXISTS ( SELECT 1\n   FROM (areas a\n     JOIN profiles p ON ((p.hotel_id = a.hotel_id)))\n  WHERE ((a.id = audit_templates.area_id) AND (p.id = auth.uid()) AND (p.active = true))))",
+    "roles": [
+      "authenticated"
+    ],
+    "tablename": "audit_templates",
+    "permissive": "PERMISSIVE",
+    "policyname": "templates_select_own_hotel",
+    "with_check": null
+  },
+  {
+    "cmd": "SELECT",
+    "qual": "(owner_user_id = auth.uid())",
+    "roles": [
+      "public"
+    ],
+    "tablename": "billing_accounts",
+    "permissive": "PERMISSIVE",
+    "policyname": "billing_accounts_owner_select",
+    "with_check": null
+  },
+  {
+    "cmd": "UPDATE",
+    "qual": "(owner_user_id = auth.uid())",
+    "roles": [
+      "public"
+    ],
+    "tablename": "billing_accounts",
+    "permissive": "PERMISSIVE",
+    "policyname": "billing_accounts_owner_update",
+    "with_check": null
+  },
+  {
+    "cmd": "SELECT",
+    "qual": "(billing_account_id IN ( SELECT billing_accounts.id\n   FROM billing_accounts\n  WHERE (billing_accounts.owner_user_id = auth.uid())))",
+    "roles": [
+      "public"
+    ],
+    "tablename": "billing_subscriptions",
+    "permissive": "PERMISSIVE",
+    "policyname": "billing_subs_owner_select",
+    "with_check": null
+  },
+  {
+    "cmd": "SELECT",
+    "qual": "sc_is_same_hotel(hotel_id)",
+    "roles": [
+      "authenticated"
+    ],
+    "tablename": "department_backlog_items",
+    "permissive": "PERMISSIVE",
+    "policyname": "backlog_items_select_same_hotel",
+    "with_check": null
+  },
+  {
+    "cmd": "DELETE",
+    "qual": "(EXISTS ( SELECT 1\n   FROM profiles p\n  WHERE ((p.id = auth.uid()) AND ((p.role = 'superadmin'::text) OR (p.hotel_id = departments.hotel_id)))))",
+    "roles": [
+      "authenticated"
+    ],
+    "tablename": "departments",
+    "permissive": "PERMISSIVE",
+    "policyname": "departments_delete",
+    "with_check": null
+  },
+  {
+    "cmd": "INSERT",
+    "qual": null,
+    "roles": [
+      "authenticated"
+    ],
+    "tablename": "departments",
+    "permissive": "PERMISSIVE",
+    "policyname": "departments_insert",
+    "with_check": "(EXISTS ( SELECT 1\n   FROM profiles p\n  WHERE ((p.id = auth.uid()) AND ((p.role = 'superadmin'::text) OR (p.hotel_id = departments.hotel_id)))))"
+  },
+  {
+    "cmd": "SELECT",
+    "qual": "(EXISTS ( SELECT 1\n   FROM profiles p\n  WHERE ((p.id = auth.uid()) AND ((p.role = 'superadmin'::text) OR (p.hotel_id = departments.hotel_id)))))",
+    "roles": [
+      "authenticated"
+    ],
+    "tablename": "departments",
+    "permissive": "PERMISSIVE",
+    "policyname": "departments_select",
+    "with_check": null
+  },
+  {
+    "cmd": "UPDATE",
+    "qual": "(EXISTS ( SELECT 1\n   FROM profiles p\n  WHERE ((p.id = auth.uid()) AND ((p.role = 'superadmin'::text) OR (p.hotel_id = departments.hotel_id)))))",
+    "roles": [
+      "authenticated"
+    ],
+    "tablename": "departments",
+    "permissive": "PERMISSIVE",
+    "policyname": "departments_update",
+    "with_check": "(EXISTS ( SELECT 1\n   FROM profiles p\n  WHERE ((p.id = auth.uid()) AND ((p.role = 'superadmin'::text) OR (p.hotel_id = departments.hotel_id)))))"
+  },
+  {
+    "cmd": "ALL",
+    "qual": "sc_can_manage_global_library_assets()",
+    "roles": [
+      "authenticated"
+    ],
+    "tablename": "global_audit_pack_templates",
+    "permissive": "PERMISSIVE",
+    "policyname": "global_audit_pack_templates_mutate_superadmin",
+    "with_check": "sc_can_manage_global_library_assets()"
+  },
+  {
+    "cmd": "SELECT",
+    "qual": "sc_can_view_global_library_assets()",
+    "roles": [
+      "authenticated"
+    ],
+    "tablename": "global_audit_pack_templates",
+    "permissive": "PERMISSIVE",
+    "policyname": "global_audit_pack_templates_select_scoped",
+    "with_check": null
+  },
+  {
+    "cmd": "ALL",
+    "qual": "sc_can_manage_global_library_assets()",
+    "roles": [
+      "authenticated"
+    ],
+    "tablename": "global_audit_packs",
+    "permissive": "PERMISSIVE",
+    "policyname": "global_audit_packs_mutate_superadmin",
+    "with_check": "sc_can_manage_global_library_assets()"
+  },
+  {
+    "cmd": "SELECT",
+    "qual": "sc_can_view_global_library_assets()",
+    "roles": [
+      "authenticated"
+    ],
+    "tablename": "global_audit_packs",
+    "permissive": "PERMISSIVE",
+    "policyname": "global_audit_packs_select_scoped",
+    "with_check": null
+  },
+  {
+    "cmd": "INSERT",
+    "qual": null,
+    "roles": [
+      "authenticated"
+    ],
+    "tablename": "hotel_audit_rules",
+    "permissive": "PERMISSIVE",
+    "policyname": "hotel_audit_rules_insert",
+    "with_check": "(EXISTS ( SELECT 1\n   FROM profiles p\n  WHERE ((p.id = auth.uid()) AND (COALESCE(p.active, true) = true) AND ((p.role = 'superadmin'::text) OR ((p.hotel_id = hotel_audit_rules.hotel_id) AND (p.role = 'admin'::text))))))"
+  },
+  {
+    "cmd": "SELECT",
+    "qual": "(EXISTS ( SELECT 1\n   FROM profiles p\n  WHERE ((p.id = auth.uid()) AND (COALESCE(p.active, true) = true) AND ((p.role = 'superadmin'::text) OR ((p.hotel_id = hotel_audit_rules.hotel_id) AND (p.role = ANY (ARRAY['admin'::text, 'manager'::text, 'quality'::text, 'auditor'::text])))))))",
+    "roles": [
+      "authenticated"
+    ],
+    "tablename": "hotel_audit_rules",
+    "permissive": "PERMISSIVE",
+    "policyname": "hotel_audit_rules_select",
+    "with_check": null
+  },
+  {
+    "cmd": "UPDATE",
+    "qual": "(EXISTS ( SELECT 1\n   FROM profiles p\n  WHERE ((p.id = auth.uid()) AND (COALESCE(p.active, true) = true) AND ((p.role = 'superadmin'::text) OR ((p.hotel_id = hotel_audit_rules.hotel_id) AND (p.role = 'admin'::text))))))",
+    "roles": [
+      "authenticated"
+    ],
+    "tablename": "hotel_audit_rules",
+    "permissive": "PERMISSIVE",
+    "policyname": "hotel_audit_rules_update",
+    "with_check": "(EXISTS ( SELECT 1\n   FROM profiles p\n  WHERE ((p.id = auth.uid()) AND (COALESCE(p.active, true) = true) AND ((p.role = 'superadmin'::text) OR ((p.hotel_id = hotel_audit_rules.hotel_id) AND (p.role = 'admin'::text))))))"
+  },
+  {
+    "cmd": "SELECT",
+    "qual": "sc_is_same_hotel(hotel_id)",
+    "roles": [
+      "authenticated"
+    ],
+    "tablename": "hotel_departments",
+    "permissive": "PERMISSIVE",
+    "policyname": "hotel_departments_select_same_hotel",
+    "with_check": null
+  },
+  {
+    "cmd": "SELECT",
+    "qual": "((user_id = auth.uid()) OR is_superadmin())",
+    "roles": [
+      "authenticated"
+    ],
+    "tablename": "hotel_memberships",
+    "permissive": "PERMISSIVE",
+    "policyname": "hm_select_own_or_superadmin",
+    "with_check": null
+  },
+  {
+    "cmd": "ALL",
+    "qual": "is_superadmin()",
+    "roles": [
+      "authenticated"
+    ],
+    "tablename": "hotel_memberships",
+    "permissive": "PERMISSIVE",
+    "policyname": "hm_superadmin_manage",
+    "with_check": "is_superadmin()"
+  },
+  {
+    "cmd": "DELETE",
+    "qual": "is_superadmin()",
+    "roles": [
+      "authenticated"
+    ],
+    "tablename": "hotel_memberships",
+    "permissive": "PERMISSIVE",
+    "policyname": "memberships_delete",
+    "with_check": null
+  },
+  {
+    "cmd": "INSERT",
+    "qual": null,
+    "roles": [
+      "authenticated"
+    ],
+    "tablename": "hotel_memberships",
+    "permissive": "PERMISSIVE",
+    "policyname": "memberships_insert",
+    "with_check": "(is_superadmin() OR (is_hotel_member(hotel_id) AND (hotel_role(hotel_id) = 'admin'::text)))"
+  },
+  {
+    "cmd": "SELECT",
+    "qual": "(is_superadmin() OR (user_id = auth.uid()) OR (is_hotel_member(hotel_id) AND (hotel_role(hotel_id) = 'admin'::text)))",
+    "roles": [
+      "authenticated"
+    ],
+    "tablename": "hotel_memberships",
+    "permissive": "PERMISSIVE",
+    "policyname": "memberships_select",
+    "with_check": null
+  },
+  {
+    "cmd": "UPDATE",
+    "qual": "(is_superadmin() OR (is_hotel_member(hotel_id) AND (hotel_role(hotel_id) = 'admin'::text)))",
+    "roles": [
+      "authenticated"
+    ],
+    "tablename": "hotel_memberships",
+    "permissive": "PERMISSIVE",
+    "policyname": "memberships_update",
+    "with_check": "(is_superadmin() OR (is_hotel_member(hotel_id) AND (hotel_role(hotel_id) = 'admin'::text)))"
+  },
+  {
+    "cmd": "INSERT",
+    "qual": null,
+    "roles": [
+      "authenticated"
+    ],
+    "tablename": "hotel_memberships",
+    "permissive": "PERMISSIVE",
+    "policyname": "memberships_write",
+    "with_check": "(is_superadmin() OR (is_hotel_member(hotel_id) AND (hotel_role(hotel_id) = 'admin'::text)))"
+  },
+  {
+    "cmd": "ALL",
+    "qual": "(EXISTS ( SELECT 1\n   FROM profiles p\n  WHERE ((p.id = auth.uid()) AND (p.hotel_id = hotel_notification_settings.hotel_id) AND (p.role = ANY (ARRAY['superadmin'::text, 'admin'::text, 'general_manager'::text])))))",
+    "roles": [
+      "public"
+    ],
+    "tablename": "hotel_notification_settings",
+    "permissive": "PERMISSIVE",
+    "policyname": "Hotel admins can manage notification settings",
+    "with_check": null
+  },
+  {
+    "cmd": "INSERT",
+    "qual": null,
+    "roles": [
+      "public"
+    ],
+    "tablename": "hotel_settings",
+    "permissive": "PERMISSIVE",
+    "policyname": "Authenticated users can insert hotel settings",
+    "with_check": "(auth.uid() IS NOT NULL)"
+  },
+  {
+    "cmd": "UPDATE",
+    "qual": "(auth.uid() IS NOT NULL)",
+    "roles": [
+      "public"
+    ],
+    "tablename": "hotel_settings",
+    "permissive": "PERMISSIVE",
+    "policyname": "Authenticated users can update hotel settings",
+    "with_check": null
+  },
+  {
+    "cmd": "SELECT",
+    "qual": "(auth.uid() IS NOT NULL)",
+    "roles": [
+      "public"
+    ],
+    "tablename": "hotel_settings",
+    "permissive": "PERMISSIVE",
+    "policyname": "Authenticated users can view hotel settings",
+    "with_check": null
+  },
+  {
+    "cmd": "SELECT",
+    "qual": "(is_superadmin() OR is_hotel_member(id))",
+    "roles": [
+      "authenticated"
+    ],
+    "tablename": "hotels",
+    "permissive": "PERMISSIVE",
+    "policyname": "hotels_select",
+    "with_check": null
+  },
+  {
+    "cmd": "SELECT",
+    "qual": "true",
+    "roles": [
+      "authenticated"
+    ],
+    "tablename": "hotels",
+    "permissive": "PERMISSIVE",
+    "policyname": "hotels_select_authenticated",
+    "with_check": null
+  },
+  {
+    "cmd": "SELECT",
+    "qual": "(is_superadmin() OR (EXISTS ( SELECT 1\n   FROM hotel_memberships hm\n  WHERE ((hm.hotel_id = hotels.id) AND (hm.user_id = auth.uid()) AND (hm.active = true)))))",
+    "roles": [
+      "authenticated"
+    ],
+    "tablename": "hotels",
+    "permissive": "PERMISSIVE",
+    "policyname": "hotels_select_if_member_or_superadmin",
+    "with_check": null
+  },
+  {
+    "cmd": "SELECT",
+    "qual": "sc_is_same_hotel(id)",
+    "roles": [
+      "authenticated"
+    ],
+    "tablename": "hotels",
+    "permissive": "PERMISSIVE",
+    "policyname": "hotels_select_scoped",
+    "with_check": null
+  },
+  {
+    "cmd": "SELECT",
+    "qual": "(EXISTS ( SELECT 1\n   FROM profiles me\n  WHERE ((me.id = auth.uid()) AND (me.role = 'superadmin'::text) AND (COALESCE(me.active, true) = true))))",
+    "roles": [
+      "public"
+    ],
+    "tablename": "hotels",
+    "permissive": "PERMISSIVE",
+    "policyname": "hotels_select_superadmin",
+    "with_check": null
+  },
+  {
+    "cmd": "ALL",
+    "qual": "is_superadmin()",
+    "roles": [
+      "authenticated"
+    ],
+    "tablename": "hotels",
+    "permissive": "PERMISSIVE",
+    "policyname": "hotels_superadmin_manage",
+    "with_check": "is_superadmin()"
+  },
+  {
+    "cmd": "ALL",
+    "qual": "is_superadmin()",
+    "roles": [
+      "authenticated"
+    ],
+    "tablename": "hotels",
+    "permissive": "PERMISSIVE",
+    "policyname": "hotels_write_superadmin",
+    "with_check": "is_superadmin()"
+  },
+  {
+    "cmd": "ALL",
+    "qual": "(EXISTS ( SELECT 1\n   FROM profiles p\n  WHERE ((p.id = auth.uid()) AND (p.role = 'superadmin'::text) AND (p.active = true))))",
+    "roles": [
+      "public"
+    ],
+    "tablename": "hotels",
+    "permissive": "PERMISSIVE",
+    "policyname": "superadmin_manage_hotels",
+    "with_check": "(EXISTS ( SELECT 1\n   FROM profiles p\n  WHERE ((p.id = auth.uid()) AND (p.role = 'superadmin'::text) AND (p.active = true))))"
+  },
+  {
+    "cmd": "SELECT",
+    "qual": "(auth.uid() = user_id)",
+    "roles": [
+      "public"
+    ],
+    "tablename": "notifications",
+    "permissive": "PERMISSIVE",
+    "policyname": "Users can read own notifications",
+    "with_check": null
+  },
+  {
+    "cmd": "UPDATE",
+    "qual": "(auth.uid() = user_id)",
+    "roles": [
+      "public"
+    ],
+    "tablename": "notifications",
+    "permissive": "PERMISSIVE",
+    "policyname": "Users can update own notifications",
+    "with_check": "(auth.uid() = user_id)"
+  },
+  {
+    "cmd": "SELECT",
+    "qual": "true",
+    "roles": [
+      "public"
+    ],
+    "tablename": "plan_entitlements",
+    "permissive": "PERMISSIVE",
+    "policyname": "plan_entitlements_public_select",
+    "with_check": null
+  },
+  {
+    "cmd": "DELETE",
+    "qual": "sc_can_manage_profile(id, hotel_id, role)",
+    "roles": [
+      "authenticated"
+    ],
+    "tablename": "profiles",
+    "permissive": "PERMISSIVE",
+    "policyname": "profiles_delete_admin_scoped",
+    "with_check": null
+  },
+  {
+    "cmd": "INSERT",
+    "qual": null,
+    "roles": [
+      "authenticated"
+    ],
+    "tablename": "profiles",
+    "permissive": "PERMISSIVE",
+    "policyname": "profiles_insert_admin_scoped",
+    "with_check": "sc_can_write_profile(hotel_id, role)"
+  },
+  {
+    "cmd": "INSERT",
+    "qual": null,
+    "roles": [
+      "authenticated"
+    ],
+    "tablename": "profiles",
+    "permissive": "PERMISSIVE",
+    "policyname": "profiles_insert_own",
+    "with_check": "(id = auth.uid())"
+  },
+  {
+    "cmd": "SELECT",
+    "qual": "(hotel_id = my_hotel_id())",
+    "roles": [
+      "public"
+    ],
+    "tablename": "profiles",
+    "permissive": "PERMISSIVE",
+    "policyname": "profiles_select_same_hotel",
+    "with_check": null
+  },
+  {
+    "cmd": "SELECT",
+    "qual": "sc_can_read_profile(id)",
+    "roles": [
+      "authenticated"
+    ],
+    "tablename": "profiles",
+    "permissive": "PERMISSIVE",
+    "policyname": "profiles_select_scoped",
+    "with_check": null
+  },
+  {
+    "cmd": "SELECT",
+    "qual": "(id = auth.uid())",
+    "roles": [
+      "public"
+    ],
+    "tablename": "profiles",
+    "permissive": "PERMISSIVE",
+    "policyname": "profiles_select_self",
+    "with_check": null
+  },
+  {
+    "cmd": "SELECT",
+    "qual": "is_superadmin()",
+    "roles": [
+      "public"
+    ],
+    "tablename": "profiles",
+    "permissive": "PERMISSIVE",
+    "policyname": "profiles_select_superadmin",
+    "with_check": null
+  },
+  {
+    "cmd": "UPDATE",
+    "qual": "sc_can_manage_profile(id, hotel_id, role)",
+    "roles": [
+      "authenticated"
+    ],
+    "tablename": "profiles",
+    "permissive": "PERMISSIVE",
+    "policyname": "profiles_update_admin_scoped",
+    "with_check": "sc_can_write_profile(hotel_id, role)"
+  },
+  {
+    "cmd": "UPDATE",
+    "qual": "(id = auth.uid())",
+    "roles": [
+      "authenticated"
+    ],
+    "tablename": "profiles",
+    "permissive": "PERMISSIVE",
+    "policyname": "profiles_update_own",
+    "with_check": "(id = auth.uid())"
+  },
+  {
+    "cmd": "INSERT",
+    "qual": null,
+    "roles": [
+      "public"
+    ],
+    "tablename": "reaudit_assignment_logs",
+    "permissive": "PERMISSIVE",
+    "policyname": "insert reaudit assignment logs by hotel roles",
+    "with_check": "(hotel_id IN ( SELECT p.hotel_id\n   FROM profiles p\n  WHERE ((p.id = auth.uid()) AND (p.role = ANY (ARRAY['manager'::text, 'quality'::text, 'admin'::text, 'superadmin'::text])))))"
+  },
+  {
+    "cmd": "SELECT",
+    "qual": "(hotel_id IN ( SELECT p.hotel_id\n   FROM profiles p\n  WHERE (p.id = auth.uid())))",
+    "roles": [
+      "public"
+    ],
+    "tablename": "reaudit_assignment_logs",
+    "permissive": "PERMISSIVE",
+    "policyname": "read reaudit assignment logs by hotel",
+    "with_check": null
+  },
+  {
+    "cmd": "INSERT",
+    "qual": null,
+    "roles": [
+      "authenticated"
+    ],
+    "tablename": "reaudit_assignment_logs",
+    "permissive": "PERMISSIVE",
+    "policyname": "reaudit_assignment_logs_insert_scoped",
+    "with_check": "sc_has_hotel_role(hotel_id, ARRAY['superadmin'::text, 'admin'::text, 'general_manager'::text, 'manager'::text, 'quality'::text])"
+  },
+  {
+    "cmd": "SELECT",
+    "qual": "sc_has_hotel_role(hotel_id, ARRAY['superadmin'::text, 'admin'::text, 'general_manager'::text, 'manager'::text, 'quality'::text])",
+    "roles": [
+      "authenticated"
+    ],
+    "tablename": "reaudit_assignment_logs",
+    "permissive": "PERMISSIVE",
+    "policyname": "reaudit_assignment_logs_select_scoped",
+    "with_check": null
+  },
+  {
+    "cmd": "INSERT",
+    "qual": null,
+    "roles": [
+      "public"
+    ],
+    "tablename": "reaudit_training_logs",
+    "permissive": "PERMISSIVE",
+    "policyname": "insert reaudit training logs by hotel roles",
+    "with_check": "(hotel_id IN ( SELECT p.hotel_id\n   FROM profiles p\n  WHERE ((p.id = auth.uid()) AND (p.role = ANY (ARRAY['manager'::text, 'quality'::text, 'admin'::text, 'superadmin'::text])))))"
+  },
+  {
+    "cmd": "SELECT",
+    "qual": "(hotel_id IN ( SELECT p.hotel_id\n   FROM profiles p\n  WHERE (p.id = auth.uid())))",
+    "roles": [
+      "public"
+    ],
+    "tablename": "reaudit_training_logs",
+    "permissive": "PERMISSIVE",
+    "policyname": "read reaudit training logs by hotel",
+    "with_check": null
+  },
+  {
+    "cmd": "INSERT",
+    "qual": null,
+    "roles": [
+      "authenticated"
+    ],
+    "tablename": "reaudit_training_logs",
+    "permissive": "PERMISSIVE",
+    "policyname": "reaudit_training_logs_insert_scoped",
+    "with_check": "sc_has_hotel_role(hotel_id, ARRAY['superadmin'::text, 'admin'::text, 'general_manager'::text, 'manager'::text, 'quality'::text])"
+  },
+  {
+    "cmd": "SELECT",
+    "qual": "sc_has_hotel_role(hotel_id, ARRAY['superadmin'::text, 'admin'::text, 'general_manager'::text, 'manager'::text, 'quality'::text])",
+    "roles": [
+      "authenticated"
+    ],
+    "tablename": "reaudit_training_logs",
+    "permissive": "PERMISSIVE",
+    "policyname": "reaudit_training_logs_select_scoped",
+    "with_check": null
+  },
+  {
+    "cmd": "SELECT",
+    "qual": "(EXISTS ( SELECT 1\n   FROM profiles p\n  WHERE ((p.id = auth.uid()) AND (p.hotel_id = report_narratives.hotel_id) AND (p.role = ANY (ARRAY['admin'::text, 'quality'::text, 'general_manager'::text, 'manager'::text])))))",
+    "roles": [
+      "public"
+    ],
+    "tablename": "report_narratives",
+    "permissive": "PERMISSIVE",
+    "policyname": "Report narratives visible to hotel staff",
+    "with_check": null
+  },
+  {
+    "cmd": "ALL",
+    "qual": "(auth.role() = 'service_role'::text)",
+    "roles": [
+      "public"
+    ],
+    "tablename": "report_narratives",
+    "permissive": "PERMISSIVE",
+    "policyname": "Service role manages report narratives",
+    "with_check": "(auth.role() = 'service_role'::text)"
+  },
+  {
+    "cmd": "ALL",
+    "qual": "(EXISTS ( SELECT 1\n   FROM profiles p\n  WHERE ((p.id = auth.uid()) AND (p.hotel_id = report_subscriptions.hotel_id) AND (p.role = ANY (ARRAY['superadmin'::text, 'admin'::text, 'general_manager'::text, 'quality'::text])))))",
+    "roles": [
+      "public"
+    ],
+    "tablename": "report_subscriptions",
+    "permissive": "PERMISSIVE",
+    "policyname": "Admins can manage subscriptions",
+    "with_check": null
+  },
+  {
+    "cmd": "SELECT",
+    "qual": "((hotel_id IN ( SELECT profiles.hotel_id\n   FROM profiles\n  WHERE ((profiles.id = auth.uid()) AND (profiles.hotel_id IS NOT NULL)))) OR (EXISTS ( SELECT 1\n   FROM profiles\n  WHERE ((profiles.id = auth.uid()) AND (profiles.role = 'superadmin'::text)))))",
+    "roles": [
+      "authenticated"
+    ],
+    "tablename": "score_events",
+    "permissive": "PERMISSIVE",
+    "policyname": "score_events_select",
+    "with_check": null
+  },
+  {
+    "cmd": "ALL",
+    "qual": "((( SELECT profiles.role\n   FROM profiles\n  WHERE (profiles.id = auth.uid())) = 'superadmin'::text) OR ((scope = 'hotel'::text) AND (hotel_id = ( SELECT profiles.hotel_id\n   FROM profiles\n  WHERE (profiles.id = auth.uid()))) AND (( SELECT profiles.role\n   FROM profiles\n  WHERE (profiles.id = auth.uid())) = 'admin'::text)))",
+    "roles": [
+      "public"
+    ],
+    "tablename": "standard_libraries",
+    "permissive": "PERMISSIVE",
+    "policyname": "admin manage standards",
+    "with_check": null
+  },
+  {
+    "cmd": "DELETE",
+    "qual": "(((scope = 'global'::text) AND is_superadmin()) OR ((scope = 'hotel'::text) AND can_admin_hotel(hotel_id)))",
+    "roles": [
+      "authenticated"
+    ],
+    "tablename": "standard_libraries",
+    "permissive": "PERMISSIVE",
+    "policyname": "libraries_delete",
+    "with_check": null
+  },
+  {
+    "cmd": "INSERT",
+    "qual": null,
+    "roles": [
+      "authenticated"
+    ],
+    "tablename": "standard_libraries",
+    "permissive": "PERMISSIVE",
+    "policyname": "libraries_insert",
+    "with_check": "(((scope = 'global'::text) AND is_superadmin()) OR ((scope = 'hotel'::text) AND can_admin_hotel(hotel_id)))"
+  },
+  {
+    "cmd": "SELECT",
+    "qual": "((scope = 'global'::text) OR ((scope = 'hotel'::text) AND (hotel_id = current_hotel_id())))",
+    "roles": [
+      "authenticated"
+    ],
+    "tablename": "standard_libraries",
+    "permissive": "PERMISSIVE",
+    "policyname": "libraries_select",
+    "with_check": null
+  },
+  {
+    "cmd": "UPDATE",
+    "qual": "(((scope = 'global'::text) AND is_superadmin()) OR ((scope = 'hotel'::text) AND can_admin_hotel(hotel_id)))",
+    "roles": [
+      "authenticated"
+    ],
+    "tablename": "standard_libraries",
+    "permissive": "PERMISSIVE",
+    "policyname": "libraries_update",
+    "with_check": "(((scope = 'global'::text) AND is_superadmin()) OR ((scope = 'hotel'::text) AND can_admin_hotel(hotel_id)))"
+  },
+  {
+    "cmd": "SELECT",
+    "qual": "((scope = 'global'::text) OR ((scope = 'hotel'::text) AND (hotel_id = ( SELECT profiles.hotel_id\n   FROM profiles\n  WHERE (profiles.id = auth.uid())))))",
+    "roles": [
+      "public"
+    ],
+    "tablename": "standard_libraries",
+    "permissive": "PERMISSIVE",
+    "policyname": "read standards",
+    "with_check": null
+  },
+  {
+    "cmd": "ALL",
+    "qual": "sc_can_manage_global_library_assets()",
+    "roles": [
+      "authenticated"
+    ],
+    "tablename": "standard_libraries",
+    "permissive": "PERMISSIVE",
+    "policyname": "standard_libraries_mutate_superadmin",
+    "with_check": "sc_can_manage_global_library_assets()"
+  },
+  {
+    "cmd": "SELECT",
+    "qual": "sc_can_view_global_library_assets()",
+    "roles": [
+      "authenticated"
+    ],
+    "tablename": "standard_libraries",
+    "permissive": "PERMISSIVE",
+    "policyname": "standard_libraries_select_scoped",
+    "with_check": null
+  },
+  {
+    "cmd": "SELECT",
+    "qual": "(EXISTS ( SELECT 1\n   FROM (standard_sections s\n     JOIN standard_templates t ON ((t.id = s.template_id)))\n  WHERE ((s.id = standard_questions.section_id) AND ((t.scope = 'global'::text) OR ((t.scope = 'hotel'::text) AND (t.hotel_id = current_hotel_id()))))))",
+    "roles": [
+      "authenticated"
+    ],
+    "tablename": "standard_questions",
+    "permissive": "PERMISSIVE",
+    "policyname": "questions_select",
+    "with_check": null
+  },
+  {
+    "cmd": "ALL",
+    "qual": "sc_can_manage_global_library_assets()",
+    "roles": [
+      "authenticated"
+    ],
+    "tablename": "standard_questions",
+    "permissive": "PERMISSIVE",
+    "policyname": "standard_questions_mutate_superadmin",
+    "with_check": "sc_can_manage_global_library_assets()"
+  },
+  {
+    "cmd": "SELECT",
+    "qual": "sc_can_view_global_library_assets()",
+    "roles": [
+      "authenticated"
+    ],
+    "tablename": "standard_questions",
+    "permissive": "PERMISSIVE",
+    "policyname": "standard_questions_select_scoped",
+    "with_check": null
+  },
+  {
+    "cmd": "SELECT",
+    "qual": "(EXISTS ( SELECT 1\n   FROM standard_templates t\n  WHERE ((t.id = standard_sections.template_id) AND ((t.scope = 'global'::text) OR ((t.scope = 'hotel'::text) AND (t.hotel_id = current_hotel_id()))))))",
+    "roles": [
+      "authenticated"
+    ],
+    "tablename": "standard_sections",
+    "permissive": "PERMISSIVE",
+    "policyname": "sections_select",
+    "with_check": null
+  },
+  {
+    "cmd": "ALL",
+    "qual": "sc_can_manage_global_library_assets()",
+    "roles": [
+      "authenticated"
+    ],
+    "tablename": "standard_sections",
+    "permissive": "PERMISSIVE",
+    "policyname": "standard_sections_mutate_superadmin",
+    "with_check": "sc_can_manage_global_library_assets()"
+  },
+  {
+    "cmd": "SELECT",
+    "qual": "sc_can_view_global_library_assets()",
+    "roles": [
+      "authenticated"
+    ],
+    "tablename": "standard_sections",
+    "permissive": "PERMISSIVE",
+    "policyname": "standard_sections_select_scoped",
+    "with_check": null
+  },
+  {
+    "cmd": "ALL",
+    "qual": "sc_can_manage_global_library_assets()",
+    "roles": [
+      "authenticated"
+    ],
+    "tablename": "standard_templates",
+    "permissive": "PERMISSIVE",
+    "policyname": "standard_templates_mutate_superadmin",
+    "with_check": "sc_can_manage_global_library_assets()"
+  },
+  {
+    "cmd": "SELECT",
+    "qual": "sc_can_view_global_library_assets()",
+    "roles": [
+      "authenticated"
+    ],
+    "tablename": "standard_templates",
+    "permissive": "PERMISSIVE",
+    "policyname": "standard_templates_select_scoped",
+    "with_check": null
+  },
+  {
+    "cmd": "DELETE",
+    "qual": "(((scope = 'global'::text) AND is_superadmin()) OR ((scope = 'hotel'::text) AND can_admin_hotel(hotel_id)))",
+    "roles": [
+      "authenticated"
+    ],
+    "tablename": "standard_templates",
+    "permissive": "PERMISSIVE",
+    "policyname": "templates_delete",
+    "with_check": null
+  },
+  {
+    "cmd": "INSERT",
+    "qual": null,
+    "roles": [
+      "authenticated"
+    ],
+    "tablename": "standard_templates",
+    "permissive": "PERMISSIVE",
+    "policyname": "templates_insert",
+    "with_check": "(((scope = 'global'::text) AND is_superadmin()) OR ((scope = 'hotel'::text) AND can_admin_hotel(hotel_id)))"
+  },
+  {
+    "cmd": "SELECT",
+    "qual": "((scope = 'global'::text) OR ((scope = 'hotel'::text) AND (hotel_id = current_hotel_id())))",
+    "roles": [
+      "authenticated"
+    ],
+    "tablename": "standard_templates",
+    "permissive": "PERMISSIVE",
+    "policyname": "templates_select",
+    "with_check": null
+  },
+  {
+    "cmd": "UPDATE",
+    "qual": "(((scope = 'global'::text) AND is_superadmin()) OR ((scope = 'hotel'::text) AND can_admin_hotel(hotel_id)))",
+    "roles": [
+      "authenticated"
+    ],
+    "tablename": "standard_templates",
+    "permissive": "PERMISSIVE",
+    "policyname": "templates_update",
+    "with_check": "(((scope = 'global'::text) AND is_superadmin()) OR ((scope = 'hotel'::text) AND can_admin_hotel(hotel_id)))"
+  },
+  {
+    "cmd": "ALL",
+    "qual": "(is_admin() AND (hotel_id = current_hotel_id()))",
+    "roles": [
+      "public"
+    ],
+    "tablename": "standards",
+    "permissive": "PERMISSIVE",
+    "policyname": "standards_admin_write",
+    "with_check": "(is_admin() AND (hotel_id = current_hotel_id()))"
+  },
+  {
+    "cmd": "ALL",
+    "qual": "has_hotel_access(hotel_id)",
+    "roles": [
+      "public"
+    ],
+    "tablename": "standards",
+    "permissive": "PERMISSIVE",
+    "policyname": "standards_modify_admin",
+    "with_check": "has_hotel_access(hotel_id)"
+  },
+  {
+    "cmd": "SELECT",
+    "qual": "has_hotel_access(hotel_id)",
+    "roles": [
+      "public"
+    ],
+    "tablename": "standards",
+    "permissive": "PERMISSIVE",
+    "policyname": "standards_select_by_hotel",
+    "with_check": null
+  },
+  {
+    "cmd": "SELECT",
+    "qual": "(hotel_id = current_hotel_id())",
+    "roles": [
+      "public"
+    ],
+    "tablename": "standards",
+    "permissive": "PERMISSIVE",
+    "policyname": "standards_select_own_hotel",
+    "with_check": null
+  },
+  {
+    "cmd": "ALL",
+    "qual": "is_superadmin()",
+    "roles": [
+      "public"
+    ],
+    "tablename": "superadmins",
+    "permissive": "PERMISSIVE",
+    "policyname": "superadmins can manage superadmins",
+    "with_check": "is_superadmin()"
+  },
+  {
+    "cmd": "SELECT",
+    "qual": "(user_id = auth.uid())",
+    "roles": [
+      "authenticated"
+    ],
+    "tablename": "task_assignments",
+    "permissive": "PERMISSIVE",
+    "policyname": "task_assignments_select_self",
+    "with_check": null
+  },
+  {
+    "cmd": "SELECT",
+    "qual": "(EXISTS ( SELECT 1\n   FROM task_assignments ta\n  WHERE ((ta.task_id = tasks.id) AND (ta.user_id = auth.uid()))))",
+    "roles": [
+      "authenticated"
+    ],
+    "tablename": "tasks",
+    "permissive": "PERMISSIVE",
+    "policyname": "tasks_select_assigned_only",
+    "with_check": null
+  },
+  {
+    "cmd": "DELETE",
+    "qual": "(EXISTS ( SELECT 1\n   FROM team_members tm\n  WHERE ((tm.id = team_member_areas.team_member_id) AND sc_can_write_team_member(tm.hotel_id))))",
+    "roles": [
+      "authenticated"
+    ],
+    "tablename": "team_member_areas",
+    "permissive": "PERMISSIVE",
+    "policyname": "team_member_areas_delete_scoped",
+    "with_check": null
+  },
+  {
+    "cmd": "INSERT",
+    "qual": null,
+    "roles": [
+      "authenticated"
+    ],
+    "tablename": "team_member_areas",
+    "permissive": "PERMISSIVE",
+    "policyname": "team_member_areas_insert_scoped",
+    "with_check": "(EXISTS ( SELECT 1\n   FROM team_members tm\n  WHERE ((tm.id = team_member_areas.team_member_id) AND sc_can_write_team_member(tm.hotel_id))))"
+  },
+  {
+    "cmd": "SELECT",
+    "qual": "sc_can_read_team_member_area(team_member_id, area_id)",
+    "roles": [
+      "authenticated"
+    ],
+    "tablename": "team_member_areas",
+    "permissive": "PERMISSIVE",
+    "policyname": "team_member_areas_select_scoped",
+    "with_check": null
+  },
+  {
+    "cmd": "DELETE",
+    "qual": "(EXISTS ( SELECT 1\n   FROM (team_members tm\n     JOIN profiles p ON ((p.id = auth.uid())))\n  WHERE ((tm.id = team_member_areas.team_member_id) AND ((p.role = 'superadmin'::text) OR (p.hotel_id = tm.hotel_id)))))",
+    "roles": [
+      "authenticated"
+    ],
+    "tablename": "team_member_areas",
+    "permissive": "PERMISSIVE",
+    "policyname": "tma_delete",
+    "with_check": null
+  },
+  {
+    "cmd": "INSERT",
+    "qual": null,
+    "roles": [
+      "authenticated"
+    ],
+    "tablename": "team_member_areas",
+    "permissive": "PERMISSIVE",
+    "policyname": "tma_insert",
+    "with_check": "(EXISTS ( SELECT 1\n   FROM (team_members tm\n     JOIN profiles p ON ((p.id = auth.uid())))\n  WHERE ((tm.id = team_member_areas.team_member_id) AND ((p.role = 'superadmin'::text) OR (p.hotel_id = tm.hotel_id)))))"
+  },
+  {
+    "cmd": "SELECT",
+    "qual": "(EXISTS ( SELECT 1\n   FROM (team_members tm\n     JOIN profiles p ON ((p.id = auth.uid())))\n  WHERE ((tm.id = team_member_areas.team_member_id) AND ((p.role = 'superadmin'::text) OR (p.hotel_id = tm.hotel_id)))))",
+    "roles": [
+      "authenticated"
+    ],
+    "tablename": "team_member_areas",
+    "permissive": "PERMISSIVE",
+    "policyname": "tma_select",
+    "with_check": null
+  },
+  {
+    "cmd": "DELETE",
+    "qual": "(EXISTS ( SELECT 1\n   FROM profiles p\n  WHERE ((p.id = auth.uid()) AND ((p.role = 'superadmin'::text) OR (p.hotel_id = team_members.hotel_id)))))",
+    "roles": [
+      "authenticated"
+    ],
+    "tablename": "team_members",
+    "permissive": "PERMISSIVE",
+    "policyname": "team_members_delete",
+    "with_check": null
+  },
+  {
+    "cmd": "DELETE",
+    "qual": "sc_can_write_team_member(hotel_id)",
+    "roles": [
+      "authenticated"
+    ],
+    "tablename": "team_members",
+    "permissive": "PERMISSIVE",
+    "policyname": "team_members_delete_scoped",
+    "with_check": null
+  },
+  {
+    "cmd": "INSERT",
+    "qual": null,
+    "roles": [
+      "authenticated"
+    ],
+    "tablename": "team_members",
+    "permissive": "PERMISSIVE",
+    "policyname": "team_members_insert",
+    "with_check": "(EXISTS ( SELECT 1\n   FROM profiles p\n  WHERE ((p.id = auth.uid()) AND ((p.role = 'superadmin'::text) OR (p.hotel_id = team_members.hotel_id)))))"
+  },
+  {
+    "cmd": "INSERT",
+    "qual": null,
+    "roles": [
+      "authenticated"
+    ],
+    "tablename": "team_members",
+    "permissive": "PERMISSIVE",
+    "policyname": "team_members_insert_scoped",
+    "with_check": "sc_can_write_team_member(hotel_id)"
+  },
+  {
+    "cmd": "SELECT",
+    "qual": "(EXISTS ( SELECT 1\n   FROM profiles p\n  WHERE ((p.id = auth.uid()) AND ((p.role = 'superadmin'::text) OR (p.hotel_id = team_members.hotel_id)))))",
+    "roles": [
+      "authenticated"
+    ],
+    "tablename": "team_members",
+    "permissive": "PERMISSIVE",
+    "policyname": "team_members_select",
+    "with_check": null
+  },
+  {
+    "cmd": "SELECT",
+    "qual": "sc_can_read_team_member(id, hotel_id)",
+    "roles": [
+      "authenticated"
+    ],
+    "tablename": "team_members",
+    "permissive": "PERMISSIVE",
+    "policyname": "team_members_select_scoped",
+    "with_check": null
+  },
+  {
+    "cmd": "UPDATE",
+    "qual": "(EXISTS ( SELECT 1\n   FROM profiles p\n  WHERE ((p.id = auth.uid()) AND ((p.role = 'superadmin'::text) OR (p.hotel_id = team_members.hotel_id)))))",
+    "roles": [
+      "authenticated"
+    ],
+    "tablename": "team_members",
+    "permissive": "PERMISSIVE",
+    "policyname": "team_members_update",
+    "with_check": "(EXISTS ( SELECT 1\n   FROM profiles p\n  WHERE ((p.id = auth.uid()) AND ((p.role = 'superadmin'::text) OR (p.hotel_id = team_members.hotel_id)))))"
+  },
+  {
+    "cmd": "UPDATE",
+    "qual": "sc_can_write_team_member(hotel_id)",
+    "roles": [
+      "authenticated"
+    ],
+    "tablename": "team_members",
+    "permissive": "PERMISSIVE",
+    "policyname": "team_members_update_scoped",
+    "with_check": "sc_can_write_team_member(hotel_id)"
+  },
+  {
+    "cmd": "DELETE",
+    "qual": "(EXISTS ( SELECT 1\n   FROM profiles p\n  WHERE ((p.id = auth.uid()) AND (p.active = true) AND (p.hotel_id = user_area_access.hotel_id) AND (p.role = ANY (ARRAY['admin'::text, 'manager'::text])))))",
+    "roles": [
+      "public"
+    ],
+    "tablename": "user_area_access",
+    "permissive": "PERMISSIVE",
+    "policyname": "uaa_delete_admin_manager_same_hotel",
+    "with_check": null
+  },
+  {
+    "cmd": "INSERT",
+    "qual": null,
+    "roles": [
+      "public"
+    ],
+    "tablename": "user_area_access",
+    "permissive": "PERMISSIVE",
+    "policyname": "uaa_insert_admin_manager_same_hotel",
+    "with_check": "(EXISTS ( SELECT 1\n   FROM profiles p\n  WHERE ((p.id = auth.uid()) AND (p.active = true) AND (p.hotel_id = user_area_access.hotel_id) AND (p.role = ANY (ARRAY['admin'::text, 'manager'::text])))))"
+  },
+  {
+    "cmd": "SELECT",
+    "qual": "((EXISTS ( SELECT 1\n   FROM profiles p\n  WHERE ((p.id = auth.uid()) AND (p.active = true) AND (p.hotel_id = user_area_access.hotel_id) AND (p.role = ANY (ARRAY['admin'::text, 'manager'::text]))))) OR (user_id = auth.uid()))",
+    "roles": [
+      "public"
+    ],
+    "tablename": "user_area_access",
+    "permissive": "PERMISSIVE",
+    "policyname": "uaa_select_admin_manager_same_hotel",
+    "with_check": null
+  },
+  {
+    "cmd": "DELETE",
+    "qual": "sc_has_hotel_role(hotel_id, ARRAY['superadmin'::text, 'admin'::text])",
+    "roles": [
+      "authenticated"
+    ],
+    "tablename": "user_area_access",
+    "permissive": "PERMISSIVE",
+    "policyname": "user_area_access_delete_admin_scoped",
+    "with_check": null
+  },
+  {
+    "cmd": "INSERT",
+    "qual": null,
+    "roles": [
+      "authenticated"
+    ],
+    "tablename": "user_area_access",
+    "permissive": "PERMISSIVE",
+    "policyname": "user_area_access_insert_admin_scoped",
+    "with_check": "sc_has_hotel_role(hotel_id, ARRAY['superadmin'::text, 'admin'::text])"
+  },
+  {
+    "cmd": "SELECT",
+    "qual": "((user_id = auth.uid()) OR sc_has_hotel_role(hotel_id, ARRAY['superadmin'::text, 'admin'::text, 'general_manager'::text, 'manager'::text, 'quality'::text]))",
+    "roles": [
+      "authenticated"
+    ],
+    "tablename": "user_area_access",
+    "permissive": "PERMISSIVE",
+    "policyname": "user_area_access_select_scoped",
+    "with_check": null
+  },
+  {
+    "cmd": "UPDATE",
+    "qual": "sc_has_hotel_role(hotel_id, ARRAY['superadmin'::text, 'admin'::text])",
+    "roles": [
+      "authenticated"
+    ],
+    "tablename": "user_area_access",
+    "permissive": "PERMISSIVE",
+    "policyname": "user_area_access_update_admin_scoped",
+    "with_check": "sc_has_hotel_role(hotel_id, ARRAY['superadmin'::text, 'admin'::text])"
+  },
+  {
+    "cmd": "ALL",
+    "qual": "is_admin()",
+    "roles": [
+      "public"
+    ],
+    "tablename": "user_area_permissions",
+    "permissive": "PERMISSIVE",
+    "policyname": "uarep_admin_write",
+    "with_check": "is_admin()"
+  },
+  {
+    "cmd": "SELECT",
+    "qual": "((user_id = auth.uid()) OR is_admin())",
+    "roles": [
+      "public"
+    ],
+    "tablename": "user_area_permissions",
+    "permissive": "PERMISSIVE",
+    "policyname": "uarep_select",
+    "with_check": null
+  },
+  {
+    "cmd": "ALL",
+    "qual": "is_admin()",
+    "roles": [
+      "public"
+    ],
+    "tablename": "user_audit_permissions",
+    "permissive": "PERMISSIVE",
+    "policyname": "uap_admin_write",
+    "with_check": "is_admin()"
+  },
+  {
+    "cmd": "SELECT",
+    "qual": "((user_id = auth.uid()) OR is_admin())",
+    "roles": [
+      "public"
+    ],
+    "tablename": "user_audit_permissions",
+    "permissive": "PERMISSIVE",
+    "policyname": "uap_select",
+    "with_check": null
+  },
+  {
+    "cmd": "SELECT",
+    "qual": "(user_id = auth.uid())",
+    "roles": [
+      "authenticated"
+    ],
+    "tablename": "user_hotels",
+    "permissive": "PERMISSIVE",
+    "policyname": "user_hotels_select_own",
+    "with_check": null
+  },
+  {
+    "cmd": "SELECT",
+    "qual": "((hotel_id IN ( SELECT profiles.hotel_id\n   FROM profiles\n  WHERE ((profiles.id = auth.uid()) AND (profiles.hotel_id IS NOT NULL)))) OR (EXISTS ( SELECT 1\n   FROM profiles\n  WHERE ((profiles.id = auth.uid()) AND (profiles.role = 'superadmin'::text)))))",
+    "roles": [
+      "authenticated"
+    ],
+    "tablename": "user_scores",
+    "permissive": "PERMISSIVE",
+    "policyname": "user_scores_select",
+    "with_check": null
+  }
+]
