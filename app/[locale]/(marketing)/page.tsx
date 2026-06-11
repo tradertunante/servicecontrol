@@ -7,7 +7,9 @@ import HeroSection from "@/app/(marketing)/_components/HeroSection";
 import HowItWorksSection from "@/app/(marketing)/_components/HowItWorksSection";
 import LandingTracker from "@/app/(marketing)/_components/LandingTracker";
 import ProblemSection from "@/app/(marketing)/_components/ProblemSection";
+import ScenariosSection from "@/app/(marketing)/_components/ScenariosSection";
 import SolutionSection from "@/app/(marketing)/_components/SolutionSection";
+import TrustSection from "@/app/(marketing)/_components/TrustSection";
 
 export default async function MarketingHomePage(props: { params: Promise<{ locale: string }> }) {
   const params = await props.params;
@@ -21,6 +23,8 @@ export default async function MarketingHomePage(props: { params: Promise<{ local
       <BenefitsSection />
       <HowItWorksSection />
       <FeatureGrid />
+      <TrustSection />
+      <ScenariosSection />
       <DemoShowcase />
       <FinalCTA />
     </main>

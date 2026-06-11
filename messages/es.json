@@ -116,6 +116,61 @@
       }
     ]
   },
+  "trust": {
+    "eyebrow": "Diseñado para la hotelería de lujo",
+    "title": "Construido sobre los estándares con los que ya trabajas.",
+    "description": "ServiceControl no es una herramienta genérica de checklists adaptada a hoteles. Está diseñado desde cero sobre la estructura real de una propiedad de lujo: áreas, turnos, roles y los niveles de exigencia de las inspecciones internacionales.",
+    "items": [
+      {
+        "title": "Compatible con tus estándares de inspección",
+        "body": "Configura tus plantillas sobre los criterios de Forbes Travel Guide, LHW o tu propio manual de marca. El estándar que te inspeccionan es el estándar que auditas a diario."
+      },
+      {
+        "title": "Tus datos, protegidos como tu reputación",
+        "body": "Datos alojados en la Unión Europea, cifrado en tránsito y en reposo, acceso por roles y cumplimiento RGPD. La información de tu operación nunca se comparte entre propiedades."
+      },
+      {
+        "title": "Hecho por y para operadores hoteleros",
+        "body": "Cada flujo — auditoría, acción correctiva, reauditoría, formación — replica cómo funciona de verdad un hotel, no cómo lo imagina un software de oficina."
+      },
+      {
+        "title": "Implementación guiada, en tu idioma",
+        "body": "Configuración de áreas, estándares y equipos acompañada por nuestro equipo, en español, sobre tu operación real. Operativo en días, no en meses."
+      }
+    ],
+    "facts": [
+      "100% de hallazgos con responsable y fecha límite",
+      "Reauditoría automática en cada corrección",
+      "Sandbox operativo en menos de 1 minuto",
+      "Informe ejecutivo en tiempo real, no a fin de mes"
+    ]
+  },
+  "scenarios": {
+    "eyebrow": "Para quién está diseñado",
+    "title": "Tres direcciones, el mismo problema: saber si el estándar se cumple hoy.",
+    "description": "Escenarios ilustrativos de cómo trabaja un hotel con ServiceControl en el día a día.",
+    "items": [
+      {
+        "role": "Dirección General · Hotel urbano 5★ · Madrid",
+        "title": "El comité del jueves sin preparar el informe la noche anterior.",
+        "body": "Abre el dashboard antes del comité: score por área, desviaciones abiertas y su antigüedad, reauditorías de la semana. Cuando propiedad pregunta por housekeeping, la respuesta no es una sensación — es una tendencia de 12 meses."
+      },
+      {
+        "role": "Dirección de Operaciones · Resort · Cancún",
+        "title": "Cuatro mil llaves, nueve restaurantes, y saber qué falla sin recorrerlo todo.",
+        "body": "Cada supervisor audita su zona desde el móvil, con foto y hora. Las desviaciones se asignan solas al departamento correcto — mantenimiento ve las suyas, housekeeping las suyas — y nada se cierra hasta que la reauditoría lo confirma."
+      },
+      {
+        "role": "Dirección de Calidad · Beach resort · Los Cabos",
+        "title": "Llegar a la inspección sabiendo el resultado de antemano.",
+        "body": "Los estándares de la inspección viven como plantillas de auditoría ejecutadas cada semana. Seis semanas antes de la visita, el histórico muestra qué áreas aprueban de forma sostenida y cuáles necesitan formación — no una corazonada, un dato por estándar."
+      }
+    ],
+    "foundersBadge": "Programa de hoteles fundadores",
+    "foundersTitle": "Trabajamos con un grupo reducido de propiedades en España y México durante 2026.",
+    "foundersBody": "Implementación guiada por el equipo fundador, configuración de tus estándares incluida y condiciones de socio fundador permanentes.",
+    "foundersCta": "Solicitar plaza"
+  },
   "demoShowcase": {
     "eyebrow": "Prueba visual",
     "title": "Una vista de calidad diseñada para tomar decisiones rápidas.",

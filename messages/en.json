@@ -116,6 +116,61 @@
       }
     ]
   },
+  "trust": {
+    "eyebrow": "Built for luxury hospitality",
+    "title": "Built on the standards you already work with.",
+    "description": "ServiceControl is not a generic checklist tool adapted to hotels. It is designed from the ground up around the real structure of a luxury property: areas, shifts, roles and the level of demand of international inspections.",
+    "items": [
+      {
+        "title": "Compatible with your inspection standards",
+        "body": "Configure your templates on Forbes Travel Guide criteria, LHW standards or your own brand manual. The standard you are inspected against is the standard you audit every day."
+      },
+      {
+        "title": "Your data, protected like your reputation",
+        "body": "Data hosted in the European Union, encryption in transit and at rest, role-based access and GDPR compliance. Your operation's information is never shared between properties."
+      },
+      {
+        "title": "Made by and for hotel operators",
+        "body": "Every workflow — audit, corrective action, re-audit, training — mirrors how a hotel actually runs, not how office software imagines it."
+      },
+      {
+        "title": "Guided implementation, in your language",
+        "body": "Areas, standards and teams configured together with our team, in Spanish or English, on your real operation. Up and running in days, not months."
+      }
+    ],
+    "facts": [
+      "100% of findings with an owner and a due date",
+      "Automatic re-audit on every correction",
+      "Sandbox up and running in under 1 minute",
+      "Executive report in real time, not at month-end"
+    ]
+  },
+  "scenarios": {
+    "eyebrow": "Who it's designed for",
+    "title": "Three management roles, the same problem: knowing if the standard is being met today.",
+    "description": "Illustrative scenarios of how a hotel works with ServiceControl day to day.",
+    "items": [
+      {
+        "role": "General Management · 5-star city hotel · Madrid",
+        "title": "The Thursday committee without building the report the night before.",
+        "body": "Open the dashboard before the meeting: score by area, open deviations and their age, this week's re-audits. When ownership asks about housekeeping, the answer is not a feeling — it's a 12-month trend."
+      },
+      {
+        "role": "Operations Management · Resort · Cancún",
+        "title": "Four thousand keys, nine restaurants, and knowing what fails without walking it all.",
+        "body": "Each supervisor audits their zone from mobile, with photo and timestamp. Deviations route themselves to the right department — maintenance sees theirs, housekeeping theirs — and nothing closes until the re-audit confirms it."
+      },
+      {
+        "role": "Quality Management · Beach resort · Los Cabos",
+        "title": "Walking into the inspection already knowing the result.",
+        "body": "The inspection's standards live as audit templates executed every week. Six weeks before the visit, the history shows which areas pass consistently and which need training — not a hunch, a data point per standard."
+      }
+    ],
+    "foundersBadge": "Founding hotels program",
+    "foundersTitle": "We work with a small group of properties in Spain and Mexico during 2026.",
+    "foundersBody": "Implementation guided by the founding team, configuration of your standards included and permanent founding-partner terms.",
+    "foundersCta": "Request a spot"
+  },
   "demoShowcase": {
     "eyebrow": "Visual preview",
     "title": "A quality view designed for fast decision-making.",
