@@ -50,29 +50,23 @@ export default function HeroSection() {
             <strong className="text-[#0a0a0a]">{t("subtitleBold")}</strong>
           </p>
 
-          <div className="mt-10 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:gap-4">
+          <div className="mt-10 flex flex-col gap-4 sm:flex-row sm:items-center sm:gap-5">
             <Link
               href="/demo"
               onClick={() => posthog.capture('cta_clicked', { cta_location: 'hero', cta_destination: 'demo' }, { send_instantly: true })}
-              className="rounded-[6px] bg-[#185FA5] px-7 py-4 text-center text-base font-medium text-white transition hover:bg-[#378ADD]"
+              className="rounded-[6px] bg-[#185FA5] px-8 py-4 text-center text-base font-medium text-white transition hover:bg-[#378ADD]"
             >
               {t("ctaPrimary")}
             </Link>
             <Link
               href="/trial"
               onClick={() => posthog.capture('cta_clicked', { cta_location: 'hero', cta_destination: 'trial' }, { send_instantly: true })}
-              className="rounded-[6px] border border-[#185FA5] bg-transparent px-7 py-4 text-center text-base font-medium text-[#185FA5] transition hover:bg-[#185FA5]/5"
+              className="text-center text-base font-medium text-[#185FA5] underline-offset-4 transition hover:underline"
             >
-              {t("ctaTrial")}
-            </Link>
-            <Link
-              href="/login"
-              onClick={() => posthog.capture('cta_clicked', { cta_location: 'hero', cta_destination: 'login' }, { send_instantly: true })}
-              className="rounded-[6px] border border-[#0C1F44] bg-transparent px-7 py-4 text-center text-base font-medium text-[#0C1F44] transition hover:bg-[#0C1F44]/5"
-            >
-              {t("ctaSecondary")}
+              {t("ctaTrial")} →
             </Link>
           </div>
+          <p className="mt-3 text-sm text-[var(--text-secondary)]">{t("ctaReassurance")}</p>
 
           <div className="mt-10 grid gap-4 text-sm text-[var(--text-secondary)] sm:grid-cols-3">
             <div

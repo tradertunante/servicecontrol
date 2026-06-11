@@ -3,9 +3,9 @@
     "solution": "Solution",
     "modules": "Modules",
     "pricing": "Pricing",
-    "demo": "Book a call",
+    "demo": "Request a demo",
     "login": "Log in",
-    "requestDemo": "Book a call",
+    "requestDemo": "Request a demo",
     "trial": "Try free"
   },
   "header": {
@@ -18,9 +18,9 @@
     "h1Muted": "Start over.",
     "subtitle": "Centralize everything that currently lives in Excel, paper and WhatsApp. Your team knows what to fix.",
     "subtitleBold": "You know if it got done.",
-    "ctaPrimary": "Book a call",
+    "ctaPrimary": "See ServiceControl in 30 min",
     "ctaTrial": "Try for free",
-    "ctaSecondary": "Member login",
+    "ctaReassurance": "Demo tailored to your areas and standards · No commitment",
     "card1Title": "Real visibility",
     "card1Body": "Score by area, corrective backlog and red flags visible to operations.",
     "card2Title": "Daily execution",
@@ -120,16 +120,15 @@
     "eyebrow": "Visual preview",
     "title": "A quality view designed for fast decision-making.",
     "description": "The demo shows operations by area, findings status, re-audits and training in a clean, sober and executive layout.",
-    "ctaPrimary": "Book a call",
+    "ctaPrimary": "See ServiceControl in 30 min",
     "ctaSecondary": "See plans"
   },
   "finalCta": {
-    "eyebrow": "Book a call",
+    "eyebrow": "Request a demo",
     "title": "Bring real control, follow-up and visibility to your hotel operations.",
     "description": "We'll show you how to adapt ServiceControl to your areas, standards and operational workflow without mixing the commercial experience with the internal app.",
-    "ctaPrimary": "Book a call",
-    "ctaTrial": "Try for free",
-    "ctaSecondary": "Log in"
+    "ctaPrimary": "See ServiceControl in 30 min",
+    "ctaTrial": "Try for free"
   },
   "footer": {
     "tagline": "Platform for operational control, quality, re-audits and team tracking in hotels."
