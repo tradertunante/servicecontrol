@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { setRequestLocale } from "next-intl/server";
 import BenefitsSection from "@/app/(marketing)/_components/BenefitsSection";
 import DemoShowcase from "@/app/(marketing)/_components/DemoShowcase";
@@ -10,6 +11,12 @@ import ProblemSection from "@/app/(marketing)/_components/ProblemSection";
 import ScenariosSection from "@/app/(marketing)/_components/ScenariosSection";
 import SolutionSection from "@/app/(marketing)/_components/SolutionSection";
 import TrustSection from "@/app/(marketing)/_components/TrustSection";
+import { localeAlternates } from "@/lib/marketingSeo";
+
+export async function generateMetadata(props: { params: Promise<{ locale: string }> }): Promise<Metadata> {
+  const params = await props.params;
+  return { alternates: localeAlternates(params.locale, "") };
+}
 
 export default async function MarketingHomePage(props: { params: Promise<{ locale: string }> }) {
   const params = await props.params;
