@@ -9,7 +9,7 @@ import PostHogProvider from "./providers/PostHogProvider";
 export const metadata: Metadata = {
   title: "ServiceControl",
   description: "Control operativo y calidad hotelera en una sola plataforma.",
-  metadataBase: new URL("https://servicecontrol.com"),
+  metadataBase: new URL("https://servicecontrol.io"),
   openGraph: {
     title: "ServiceControl",
     description: "Control operativo y calidad hotelera en una sola plataforma.",

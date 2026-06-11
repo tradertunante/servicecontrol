@@ -1,7 +1,7 @@
 import type { MetadataRoute } from "next";
 import { routing } from "@/i18n/routing";
 
-const BASE = "https://servicecontrol.com";
+const BASE = "https://servicecontrol.io";
 const MARKETING_ROUTES = ["", "/pricing", "/demo", "/trial"];
 
 export default function sitemap(): MetadataRoute.Sitemap {

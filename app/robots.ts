@@ -23,6 +23,6 @@ export default function robots(): MetadataRoute.Robots {
         ],
       },
     ],
-    sitemap: "https://servicecontrol.com/sitemap.xml",
+    sitemap: "https://servicecontrol.io/sitemap.xml",
   };
 }
