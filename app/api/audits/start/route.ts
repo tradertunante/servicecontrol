@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
     return jsonError("No tienes permisos para iniciar auditorías.", 403);
   }
 
-  const hotelResult = resolveRouteHotelScope(caller.profile, null);
+  const hotelResult = await resolveRouteHotelScope(caller.profile, null);
   if (!hotelResult.ok) return jsonError(hotelResult.error, hotelResult.status);
 
   // Plan enforcement: check audit limit

@@ -4,7 +4,7 @@ import { getAllArticles, getArticle, CATEGORY_NAMES } from '@/lib/help'
 import ArticlePage from '@/components/help/ArticlePage'
 
 interface Props {
-  params: { slug: string }
+  params: Promise<{ slug: string }>
 }
 
 export function generateStaticParams() {
@@ -12,7 +12,8 @@ export function generateStaticParams() {
   return articles.map(a => ({ slug: a.slug }))
 }
 
-export async function generateMetadata({ params }: Props): Promise<Metadata> {
+export async function generateMetadata(props: Props): Promise<Metadata> {
+  const params = await props.params;
   const article = getArticle(params.slug)
   if (!article) return {}
   return {
@@ -21,7 +22,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   }
 }
 
-export default function ArticleRoute({ params }: Props) {
+export default async function ArticleRoute(props: Props) {
+  const params = await props.params;
   const article = getArticle(params.slug)
   if (!article) notFound()
 

@@ -5,11 +5,12 @@ import MarketingFooter from "@/app/(marketing)/_components/MarketingFooter";
 import MarketingHeader from "@/app/(marketing)/_components/MarketingHeader";
 import { routing } from "@/i18n/routing";
 
-export async function generateMetadata({
-  params,
-}: {
-  params: { locale: string };
-}): Promise<Metadata> {
+export async function generateMetadata(
+  props: {
+    params: Promise<{ locale: string }>;
+  }
+): Promise<Metadata> {
+  const params = await props.params;
   const t = await getTranslations({ locale: params.locale, namespace: "metadata" });
   return {
     title: { default: t("title"), template: "%s | ServiceControl" },
@@ -21,13 +22,18 @@ export function generateStaticParams() {
   return routing.locales.map((locale) => ({ locale }));
 }
 
-export default async function MarketingLocaleLayout({
-  children,
-  params,
-}: {
-  children: React.ReactNode;
-  params: { locale: string };
-}) {
+export default async function MarketingLocaleLayout(
+  props: {
+    children: React.ReactNode;
+    params: Promise<{ locale: string }>;
+  }
+) {
+  const params = await props.params;
+
+  const {
+    children
+  } = props;
+
   setRequestLocale(params.locale);
   const messages = await getMessages();
 

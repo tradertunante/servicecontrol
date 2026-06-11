@@ -61,10 +61,6 @@ const nextConfig = {
   eslint: {
     ignoreDuringBuilds: true,
   },
-  experimental: {
-    instrumentationHook: true,
-    serverActions: true,
-  },
   async headers() {
     return [
       {
@@ -118,10 +114,8 @@ module.exports = withSentryConfig(withNextIntl(nextConfig), {
   // Upload source maps for better stack traces in production
   widenClientFileUpload: true,
 
-  // Hide source maps from users
-  hideSourceMaps: true,
-
-  // Disable Sentry webpack plugin in development
-  disableServerWebpackPlugin: !process.env.SENTRY_AUTH_TOKEN,
-  disableClientWebpackPlugin: !process.env.SENTRY_AUTH_TOKEN,
+  // Skip source map upload when SENTRY_AUTH_TOKEN is not set (e.g. local builds)
+  sourcemaps: {
+    disable: !process.env.SENTRY_AUTH_TOKEN,
+  },
 });

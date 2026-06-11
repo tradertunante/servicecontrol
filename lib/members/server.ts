@@ -47,7 +47,7 @@ export async function getMembersCaller(request: NextRequest) {
     return { ok: false as const, error: "No autorizado.", status: 401 };
   }
 
-  const hotelResult = resolveRouteHotelScope(caller.profile, null);
+  const hotelResult = await resolveRouteHotelScope(caller.profile, null);
   if (!hotelResult.ok) {
     return hotelResult;
   }

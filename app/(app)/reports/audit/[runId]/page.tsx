@@ -3,11 +3,12 @@ import { buildAuditReportData } from "@/lib/reports/auditReport";
 
 import AuditReportPageClient from "./AuditReportPageClient";
 
-export default async function AuditReportPage({
-  params,
-}: {
-  params: { runId: string };
-}) {
+export default async function AuditReportPage(
+  props: {
+    params: Promise<{ runId: string }>;
+  }
+) {
+  const params = await props.params;
   const auth = await requireAuditRunScope(params.runId, {
     module: "reports",
     nextPath: `/reports/audit/${params.runId}`,

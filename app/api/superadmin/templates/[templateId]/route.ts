@@ -5,10 +5,8 @@ import { parseUUID, isErrorResponse } from "@/lib/api/validate";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { jsonError, jsonOk, loadGlobalTemplate, requireSuperadminRoute } from "@/lib/superadmin/server";
 
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: { templateId: string } }
-) {
+export async function PATCH(request: NextRequest, props: { params: Promise<{ templateId: string }> }) {
+  const params = await props.params;
   const caller = await requireSuperadminRoute(request);
   if (!caller) return jsonError("No autorizado.", 401);
 
@@ -59,10 +57,8 @@ export async function PATCH(
   return jsonOk({ template_id: template.templateId, updated_by: caller.profile.id });
 }
 
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: { templateId: string } }
-) {
+export async function DELETE(request: NextRequest, props: { params: Promise<{ templateId: string }> }) {
+  const params = await props.params;
   const caller = await requireSuperadminRoute(request);
   if (!caller) return jsonError("No autorizado.", 401);
 

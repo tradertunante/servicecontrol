@@ -11,10 +11,8 @@ import { jsonError, jsonDbError } from "@/lib/api/response";
 import { parseUUID, isErrorResponse } from "@/lib/api/validate";
 import { sendWelcomeEmail } from "@/lib/email/sendWelcomeEmail";
 
-export async function POST(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function POST(request: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   try {
     const caller = await authorizeRouteRequest(request, { roles: ["admin", "superadmin"] });
     if (!caller) return jsonError("No autorizado.", 401);
@@ -22,7 +20,7 @@ export async function POST(
     const userId = parseUUID(params.id, "user_id");
     if (isErrorResponse(userId)) return userId;
 
-    const hotelResult = resolveManagedHotelId(caller.profile);
+    const hotelResult = await resolveManagedHotelId(caller.profile);
     if (!hotelResult.ok) return jsonError(hotelResult.error, hotelResult.status);
 
     const target = await loadManagedUser(userId, hotelResult.hotelId);

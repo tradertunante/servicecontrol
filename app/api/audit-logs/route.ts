@@ -41,7 +41,7 @@ export async function GET(request: NextRequest) {
     const caller = await getCaller(request);
     if (!caller.ok) return jsonError(caller.error, caller.status);
 
-    const hotelResult = resolveRouteHotelScope(caller.profile, null);
+    const hotelResult = await resolveRouteHotelScope(caller.profile, null);
     if (!hotelResult.ok) return jsonError(hotelResult.error, hotelResult.status);
 
     const hotelId = hotelResult.hotelId;
@@ -98,7 +98,7 @@ export async function POST(request: NextRequest) {
     const sanitized: AuditLogEntryInput[] = [];
 
     for (const entry of entries) {
-      const hotelResult = resolveRouteHotelScope(caller.profile, null);
+      const hotelResult = await resolveRouteHotelScope(caller.profile, null);
       if (!hotelResult.ok) return jsonError(hotelResult.error, hotelResult.status);
 
       const hotelId = hotelResult.hotelId;

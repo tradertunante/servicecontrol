@@ -4,13 +4,14 @@ import { getPreviousWeekRangeFrom } from "@/lib/reports/reportRanges";
 
 import WeeklyAreaReportPageClient from "./WeeklyAreaReportPageClient";
 
-export default async function WeeklyAreaReportPage({
-  params,
-  searchParams,
-}: {
-  params: { areaId: string };
-  searchParams?: { weekStart?: string };
-}) {
+export default async function WeeklyAreaReportPage(
+  props: {
+    params: Promise<{ areaId: string }>;
+    searchParams?: Promise<{ weekStart?: string }>;
+  }
+) {
+  const searchParams = await props.searchParams;
+  const params = await props.params;
   const auth = await requireAreaScope(params.areaId, {
     module: "reports",
     nextPath: `/reports/weekly/area/${params.areaId}`,

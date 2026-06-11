@@ -37,7 +37,7 @@ export async function PATCH(
   });
   if (!caller) return jsonError("No autorizado.", 401);
 
-  const hotelResult = resolveRouteHotelScope(caller.profile, caller.requestedHotelId);
+  const hotelResult = await resolveRouteHotelScope(caller.profile, caller.requestedHotelId);
   if (!hotelResult.ok) return jsonError(hotelResult.error, hotelResult.status);
 
   const params = await context.params;

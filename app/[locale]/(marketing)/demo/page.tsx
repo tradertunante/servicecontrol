@@ -100,7 +100,8 @@ function DemoPageContent({ locale }: { locale: string }) {
   );
 }
 
-export default function DemoPage({ params }: { params: { locale: string } }) {
+export default async function DemoPage(props: { params: Promise<{ locale: string }> }) {
+  const params = await props.params;
   setRequestLocale(params.locale);
   return <DemoPageContent locale={params.locale} />;
 }

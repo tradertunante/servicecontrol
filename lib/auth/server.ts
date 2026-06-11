@@ -89,8 +89,8 @@ async function loadProfileWithToken(token: string): Promise<Profile | null> {
   return normalized;
 }
 
-function readCookie(name: string): string | null {
-  const value = cookies().get(name)?.value?.trim();
+async function readCookie(name: string): Promise<string | null> {
+  const value = (await cookies()).get(name)?.value?.trim();
   return value || null;
 }
 
@@ -102,9 +102,9 @@ export function getServerSelectedHotelId() {
   return readCookie(HOTEL_SCOPE_COOKIE);
 }
 
-function resolveCanonicalHotelId(profile: Profile) {
+async function resolveCanonicalHotelId(profile: Profile) {
   return profile.role === "superadmin"
-    ? getServerSelectedHotelId()
+    ? await getServerSelectedHotelId()
     : String(profile.hotel_id ?? "").trim() || null;
 }
 
@@ -114,11 +114,11 @@ function buildMissingActiveHotelError(profile: Profile): ActiveHotelResult {
     : { ok: false, error: "hotel_id faltante en perfil.", status: 400 };
 }
 
-function resolveCanonicalActiveHotelResult(
+async function resolveCanonicalActiveHotelResult(
   profile: Profile,
   requestedHotelId?: string | null
-): ActiveHotelResult {
-  const activeHotelId = resolveCanonicalHotelId(profile);
+): Promise<ActiveHotelResult> {
+  const activeHotelId = await resolveCanonicalHotelId(profile);
   if (!activeHotelId) {
     return buildMissingActiveHotelError(profile);
   }
@@ -161,7 +161,7 @@ export function getBearerTokenFromRequest(request: NextRequest) {
 }
 
 export async function requireAuthenticatedUser(nextPath?: string): Promise<AuthContext> {
-  const token = getServerAccessToken();
+  const token = await getServerAccessToken();
   if (!token) redirect(getLoginRedirect(nextPath));
 
   const profile = await loadProfileWithToken(token);
@@ -256,12 +256,12 @@ export async function requirePageAccess(options: {
     return auth;
   }
 
-  const hotelId = resolveScopedHotelId(auth.profile, options.requestedHotelId);
+  const hotelId = await resolveScopedHotelId(auth.profile, options.requestedHotelId);
   return { ...auth, hotelId };
 }
 
-export function resolveScopedHotelId(profile: Profile, requestedHotelId?: string | null) {
-  const result = resolveCanonicalActiveHotelResult(profile, requestedHotelId);
+export async function resolveScopedHotelId(profile: Profile, requestedHotelId?: string | null) {
+  const result = await resolveCanonicalActiveHotelResult(profile, requestedHotelId);
   if (!result.ok) {
     if (profile.role === "superadmin") redirect("/superadmin/hotels");
     redirect("/login");
@@ -299,7 +299,7 @@ async function userHasExplicitAreaAccess(userId: string, hotelId: string, areaId
 export function resolveRouteHotelScope(
   profile: Profile,
   requestedHotelId?: string | null
-): ScopedHotelResult {
+): Promise<ScopedHotelResult> {
   return resolveCanonicalActiveHotelResult(profile, requestedHotelId);
 }
 
@@ -335,12 +335,12 @@ export async function hasAreaScopeForProfile(
   const elevatedRoles: Role[] = ["superadmin", "admin", "general_manager", "quality"];
 
   if (elevatedRoles.includes(profile.role)) {
-    const scopedHotel = resolveRouteHotelScope(profile, hotelId);
+    const scopedHotel = await resolveRouteHotelScope(profile, hotelId);
     return scopedHotel.ok;
   }
 
   if (profile.role === "manager" || profile.role === "auditor" || profile.role === "mystery_shopper") {
-    const scopedHotel = resolveRouteHotelScope(profile, hotelId);
+    const scopedHotel = await resolveRouteHotelScope(profile, hotelId);
     if (!scopedHotel.ok) return false;
     return userHasExplicitAreaAccess(profile.id, scopedHotel.hotelId, areaId);
   }
@@ -356,7 +356,7 @@ export async function requireHotelScope(
     ? await requirePermission(options.permission, options)
     : await requireAuthenticatedUser(options?.nextPath);
 
-  const hotelId = resolveScopedHotelId(auth.profile, requestedHotelId);
+  const hotelId = await resolveScopedHotelId(auth.profile, requestedHotelId);
   return { ...auth, hotelId };
 }
 
@@ -378,7 +378,7 @@ export async function requireAreaScope(
   const areaHotelId = await loadAreaHotelId(areaId);
   if (!areaHotelId) redirect(options?.redirectTo ?? "/areas");
 
-  const scopedHotelId = resolveScopedHotelId(auth.profile, areaHotelId);
+  const scopedHotelId = await resolveScopedHotelId(auth.profile, areaHotelId);
   const elevatedRoles: Role[] = ["superadmin", "admin", "general_manager", "quality"];
 
   if (elevatedRoles.includes(auth.profile.role)) {

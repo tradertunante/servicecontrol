@@ -8,7 +8,7 @@ async function getHotelScope(request: NextRequest) {
   const caller = await authorizeRouteRequest(request, { roles: ["admin", "superadmin"] });
   if (!caller) return { ok: false as const, error: "No autorizado.", status: 401 };
 
-  const hotelResult = resolveRouteHotelScope(caller.profile, null);
+  const hotelResult = await resolveRouteHotelScope(caller.profile, null);
   if (!hotelResult.ok) return hotelResult;
 
   return { ok: true as const, caller, hotelId: hotelResult.hotelId };

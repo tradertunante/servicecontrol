@@ -3,12 +3,13 @@ import { requirePageAccess } from "@/lib/auth/server";
 import NewTemplatePageClient from "./NewTemplatePageClient";
 
 type NewTemplatePageProps = {
-  searchParams?: {
+  searchParams?: Promise<{
     area_id?: string;
-  };
+  }>;
 };
 
-export default async function NewTemplatePage({ searchParams }: NewTemplatePageProps) {
+export default async function NewTemplatePage(props: NewTemplatePageProps) {
+  const searchParams = await props.searchParams;
   const { profile, hotelId } = await requirePageAccess({
     module: "builder",
     requireHotel: true,

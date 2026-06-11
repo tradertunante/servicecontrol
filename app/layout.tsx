@@ -1,6 +1,6 @@
 // app/layout.tsx
 import "./globals.css";
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import QueryProvider from "./providers/QueryProvider";
 import AuthSessionSync from "./components/AuthSessionSync";
 import ToastProvider from "./providers/ToastProvider";
@@ -10,7 +10,6 @@ export const metadata: Metadata = {
   title: "ServiceControl",
   description: "Control operativo y calidad hotelera en una sola plataforma.",
   metadataBase: new URL("https://servicecontrol.com"),
-  viewport: "width=device-width, initial-scale=1, maximum-scale=1",
   openGraph: {
     title: "ServiceControl",
     description: "Control operativo y calidad hotelera en una sola plataforma.",
@@ -20,6 +19,12 @@ export const metadata: Metadata = {
     title: "ServiceControl",
     description: "Control operativo y calidad hotelera en una sola plataforma.",
   },
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

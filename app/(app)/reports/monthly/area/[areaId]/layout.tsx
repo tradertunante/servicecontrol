@@ -2,13 +2,18 @@ import type { ReactNode } from "react";
 
 import { requireAreaScope } from "@/lib/auth/server";
 
-export default async function MonthlyAreaReportLayout({
-  children,
-  params,
-}: {
-  children: ReactNode;
-  params: { areaId: string };
-}) {
+export default async function MonthlyAreaReportLayout(
+  props: {
+    children: ReactNode;
+    params: Promise<{ areaId: string }>;
+  }
+) {
+  const params = await props.params;
+
+  const {
+    children
+  } = props;
+
   await requireAreaScope(params.areaId, {
     module: "reports",
     nextPath: `/reports/monthly/area/${params.areaId}`,

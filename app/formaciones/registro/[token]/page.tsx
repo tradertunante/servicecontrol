@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, use } from "react";
 import type { CSSProperties } from "react";
 import type { TrainingPublicTopicResponse, TrainingSession } from "@/app/(app)/formaciones/_lib/trainingTypes";
 
@@ -46,7 +46,8 @@ function formatDateTime(value: string) {
   }
 }
 
-export default function TrainingRegistrationPage({ params }: { params: { token: string } }) {
+export default function TrainingRegistrationPage(props: { params: Promise<{ token: string }> }) {
+  const params = use(props.params);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [topic, setTopic] = useState<TrainingPublicTopicResponse["topic"] | null>(null);

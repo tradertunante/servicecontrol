@@ -4,12 +4,13 @@ import { requirePageAccess } from "@/lib/auth/server";
 import { getDepartmentRedirectTarget } from "../_lib/departmentAccess";
 
 type TeamPageProps = {
-  searchParams?: {
+  searchParams?: Promise<{
     tab?: string;
-  };
+  }>;
 };
 
-export default async function TeamPage({ searchParams }: TeamPageProps) {
+export default async function TeamPage(props: TeamPageProps) {
+  const searchParams = await props.searchParams;
   const { profile } = await requirePageAccess({
     module: "team",
     requireHotel: true,

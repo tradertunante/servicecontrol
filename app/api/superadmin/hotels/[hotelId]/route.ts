@@ -5,10 +5,8 @@ import { jsonDbError } from "@/lib/api/response";
 import { parseUUID, isErrorResponse } from "@/lib/api/validate";
 import { jsonError, jsonOk, requireSuperadminRoute } from "@/lib/superadmin/server";
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: { hotelId: string } }
-) {
+export async function GET(request: NextRequest, props: { params: Promise<{ hotelId: string }> }) {
+  const params = await props.params;
   const caller = await requireSuperadminRoute(request);
   if (!caller) return jsonError("No autorizado.", 401);
 
@@ -41,10 +39,8 @@ export async function GET(
   });
 }
 
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: { hotelId: string } }
-) {
+export async function PATCH(request: NextRequest, props: { params: Promise<{ hotelId: string }> }) {
+  const params = await props.params;
   const caller = await requireSuperadminRoute(request);
   if (!caller) return jsonError("No autorizado.", 401);
 

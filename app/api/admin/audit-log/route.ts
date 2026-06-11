@@ -9,7 +9,7 @@ export async function GET(request: NextRequest) {
     const caller = await authorizeRouteRequest(request, { roles: ["admin", "superadmin"] });
     if (!caller) return jsonError("No autorizado.", 401);
 
-    const hotelResult = resolveRouteHotelScope(caller.profile, null);
+    const hotelResult = await resolveRouteHotelScope(caller.profile, null);
     if (!hotelResult.ok) return jsonError(hotelResult.error, hotelResult.status);
 
     const url = new URL(request.url);

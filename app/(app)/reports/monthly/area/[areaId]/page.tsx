@@ -4,13 +4,14 @@ import { getPreviousFullMonthFrom } from "@/lib/reports/reportRanges";
 
 import MonthlyAreaReportPageClient from "./MonthlyAreaReportPageClient";
 
-export default async function MonthlyAreaReportPage({
-  params,
-  searchParams,
-}: {
-  params: { areaId: string };
-  searchParams?: { month?: string };
-}) {
+export default async function MonthlyAreaReportPage(
+  props: {
+    params: Promise<{ areaId: string }>;
+    searchParams?: Promise<{ month?: string }>;
+  }
+) {
+  const searchParams = await props.searchParams;
+  const params = await props.params;
   const auth = await requireAreaScope(params.areaId, {
     module: "reports",
     nextPath: `/reports/monthly/area/${params.areaId}`,

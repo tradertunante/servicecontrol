@@ -16,7 +16,7 @@ async function getScope(request: NextRequest) {
   });
   if (!caller) return { ok: false as const, error: "No autorizado.", status: 401 };
 
-  const hotelResult = resolveRouteHotelScope(caller.profile, null);
+  const hotelResult = await resolveRouteHotelScope(caller.profile, null);
   if (!hotelResult.ok) return { ok: false as const, error: hotelResult.error, status: 403 };
 
   return { ok: true as const, hotelId: hotelResult.hotelId };

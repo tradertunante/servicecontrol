@@ -40,7 +40,7 @@ export async function DELETE(
   });
   if (!caller) return jsonError("No autorizado.", 401);
 
-  const hotelResult = resolveRouteHotelScope(caller.profile, null);
+  const hotelResult = await resolveRouteHotelScope(caller.profile, null);
   if (!hotelResult.ok) return jsonError(hotelResult.error, hotelResult.status);
 
   const params = await context.params;

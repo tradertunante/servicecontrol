@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
 
   if (!hotelId) return jsonError("hotel_id es obligatorio.", 400);
 
-  const hotelResult = resolveRouteHotelScope(caller.profile, hotelId);
+  const hotelResult = await resolveRouteHotelScope(caller.profile, hotelId);
   if (!hotelResult.ok) return jsonError(hotelResult.error, hotelResult.status);
 
   const supabase = supabaseAdmin();

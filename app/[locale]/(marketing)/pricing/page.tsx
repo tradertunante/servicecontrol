@@ -20,7 +20,8 @@ function PricingPageContent() {
   );
 }
 
-export default function PricingPage({ params }: { params: { locale: string } }) {
+export default async function PricingPage(props: { params: Promise<{ locale: string }> }) {
+  const params = await props.params;
   setRequestLocale(params.locale);
   return <PricingPageContent />;
 }

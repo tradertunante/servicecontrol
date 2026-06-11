@@ -13,7 +13,7 @@ export default function Card({
   children: ReactNode;
   style?: CSSProperties;
   className?: string;
-  as?: keyof JSX.IntrinsicElements;
+  as?: keyof React.JSX.IntrinsicElements;
   padding?: number | string;
   shadow?: "sm" | "none";
   radius?: number | string;

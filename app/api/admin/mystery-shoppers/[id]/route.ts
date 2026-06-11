@@ -5,15 +5,13 @@ import { jsonError, jsonDbError } from "@/lib/api/response";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { logAdminAction } from "@/lib/admin/auditLog";
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function GET(request: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   try {
     const caller = await authorizeRouteRequest(request, { roles: ["admin", "superadmin"] });
     if (!caller) return jsonError("No autorizado.", 401);
 
-    const hotelResult = resolveRouteHotelScope(caller.profile, null);
+    const hotelResult = await resolveRouteHotelScope(caller.profile, null);
     if (!hotelResult.ok) return jsonError(hotelResult.error, hotelResult.status);
 
     const admin = supabaseAdmin();
@@ -42,15 +40,13 @@ export async function GET(
   }
 }
 
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function PATCH(request: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   try {
     const caller = await authorizeRouteRequest(request, { roles: ["admin", "superadmin"] });
     if (!caller) return jsonError("No autorizado.", 401);
 
-    const hotelResult = resolveRouteHotelScope(caller.profile, null);
+    const hotelResult = await resolveRouteHotelScope(caller.profile, null);
     if (!hotelResult.ok) return jsonError(hotelResult.error, hotelResult.status);
 
     const body = await request.json().catch(() => null);
@@ -115,15 +111,13 @@ export async function PATCH(
   }
 }
 
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function DELETE(request: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   try {
     const caller = await authorizeRouteRequest(request, { roles: ["admin", "superadmin"] });
     if (!caller) return jsonError("No autorizado.", 401);
 
-    const hotelResult = resolveRouteHotelScope(caller.profile, null);
+    const hotelResult = await resolveRouteHotelScope(caller.profile, null);
     if (!hotelResult.ok) return jsonError(hotelResult.error, hotelResult.status);
 
     const admin = supabaseAdmin();

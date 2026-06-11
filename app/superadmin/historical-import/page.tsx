@@ -2,14 +2,15 @@ import HotelHeader from "@/app/components/HotelHeader";
 import HistoricalImportClient from "@/app/superadmin/historical-import/HistoricalImportClient";
 import { getHistoricalImportHotels } from "@/lib/superadmin/historicalImports";
 
-export default async function SuperadminHistoricalImportPage({
-  searchParams,
-}: {
-  searchParams?: {
-    hotelId?: string;
-    templateId?: string;
-  };
-}) {
+export default async function SuperadminHistoricalImportPage(
+  props: {
+    searchParams?: Promise<{
+      hotelId?: string;
+      templateId?: string;
+    }>;
+  }
+) {
+  const searchParams = await props.searchParams;
   const hotels = await getHistoricalImportHotels();
 
   return (

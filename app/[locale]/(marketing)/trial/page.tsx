@@ -60,7 +60,8 @@ function TrialPageContent() {
   );
 }
 
-export default function TrialPage({ params }: { params: { locale: string } }) {
+export default async function TrialPage(props: { params: Promise<{ locale: string }> }) {
+  const params = await props.params;
   setRequestLocale(params.locale);
   return <TrialPageContent />;
 }

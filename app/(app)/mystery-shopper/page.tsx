@@ -2,11 +2,12 @@ import { redirect } from "next/navigation";
 import { requirePageAccess } from "@/lib/auth/server";
 import MysteryShopperDashboard from "./MysteryShopperDashboard";
 
-export default async function MysteryShopperPage({
-  searchParams,
-}: {
-  searchParams: { shopper_id?: string };
-}) {
+export default async function MysteryShopperPage(
+  props: {
+    searchParams: Promise<{ shopper_id?: string }>;
+  }
+) {
+  const searchParams = await props.searchParams;
   const { profile, hotelId } = await requirePageAccess({
     module: "mystery_shopper",
     requireHotel: true,

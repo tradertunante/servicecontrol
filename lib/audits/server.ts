@@ -61,7 +61,7 @@ export async function authorizeAuditRunAccess(
     return { ok: false, status: 401, error: "No autorizado." };
   }
 
-  const hotelResult = resolveRouteHotelScope(caller.profile, null);
+  const hotelResult = await resolveRouteHotelScope(caller.profile, null);
   if (!hotelResult.ok) {
     return { ok: false, status: hotelResult.status, error: hotelResult.error };
   }

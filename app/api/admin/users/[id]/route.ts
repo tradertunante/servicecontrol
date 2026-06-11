@@ -14,15 +14,13 @@ import { parseUUID, isErrorResponse } from "@/lib/api/validate";
 import { logAdminAction } from "@/lib/admin/auditLog";
 import { sendRoleChangeEmail } from "@/lib/email/sendRoleChangeEmail";
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function GET(request: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   try {
     const caller = await authorizeRouteRequest(request, { roles: ["admin", "superadmin"] });
     if (!caller) return jsonError("No autorizado.", 401);
 
-    const hotelResult = resolveManagedHotelId(caller.profile);
+    const hotelResult = await resolveManagedHotelId(caller.profile);
     if (!hotelResult.ok) return jsonError(hotelResult.error, hotelResult.status);
 
     const userId = parseUUID(params.id, "user_id");
@@ -41,16 +39,14 @@ export async function GET(
   }
 }
 
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function PATCH(request: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   try {
     const caller = await authorizeRouteRequest(request, { roles: ["admin", "superadmin"] });
     if (!caller) return jsonError("No autorizado.", 401);
 
     const body = await request.json().catch(() => null);
-    const hotelResult = resolveManagedHotelId(caller.profile);
+    const hotelResult = await resolveManagedHotelId(caller.profile);
     if (!hotelResult.ok) return jsonError(hotelResult.error, hotelResult.status);
 
     const userId = parseUUID(params.id, "user_id");
@@ -167,10 +163,8 @@ export async function PATCH(
   }
 }
 
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function DELETE(request: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   try {
     const caller = await authorizeRouteRequest(request, { roles: ["admin", "superadmin"] });
     if (!caller) return jsonError("No autorizado.", 401);
@@ -178,7 +172,7 @@ export async function DELETE(
     const userId = parseUUID(params.id, "user_id");
     if (isErrorResponse(userId)) return userId;
 
-    const hotelResult = resolveManagedHotelId(caller.profile);
+    const hotelResult = await resolveManagedHotelId(caller.profile);
     const targetSnap = hotelResult.ok
       ? await loadManagedUser(userId, hotelResult.hotelId)
       : null;

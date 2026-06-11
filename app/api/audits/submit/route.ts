@@ -147,7 +147,7 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    const hotelResult = resolveRouteHotelScope(caller.profile, null);
+    const hotelResult = await resolveRouteHotelScope(caller.profile, null);
     if (!hotelResult.ok) {
       return rpcErrorResponse({
         code: "FORBIDDEN",

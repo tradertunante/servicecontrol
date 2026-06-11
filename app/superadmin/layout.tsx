@@ -10,7 +10,7 @@ export default async function SuperadminLayout({ children }: { children: ReactNo
     redirectTo: "/dashboard",
   });
 
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
   const locale = (cookieStore.get("sc-locale")?.value ?? "en") as "en" | "es";
   const messages = locale === "es"
     ? (await import("@/messages/es.json")).default

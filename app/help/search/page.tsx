@@ -6,10 +6,11 @@ import { CATEGORY_NAMES } from '@/lib/help'
 import Breadcrumb from '@/components/help/Breadcrumb'
 
 interface Props {
-  searchParams: { q?: string }
+  searchParams: Promise<{ q?: string }>
 }
 
-export function generateMetadata({ searchParams }: Props): Metadata {
+export async function generateMetadata(props: Props): Promise<Metadata> {
+  const searchParams = await props.searchParams;
   const q = searchParams.q ?? ''
   return {
     title: q
@@ -18,7 +19,8 @@ export function generateMetadata({ searchParams }: Props): Metadata {
   }
 }
 
-export default function SearchPage({ searchParams }: Props) {
+export default async function SearchPage(props: Props) {
+  const searchParams = await props.searchParams;
   const q = (searchParams.q ?? '').trim()
 
   const entries = buildSearchIndex()

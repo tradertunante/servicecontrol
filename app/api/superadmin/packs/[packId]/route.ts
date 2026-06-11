@@ -5,10 +5,8 @@ import { parseUUID, isErrorResponse } from "@/lib/api/validate";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { jsonError, jsonOk, loadGlobalPack, requireSuperadminRoute } from "@/lib/superadmin/server";
 
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: { packId: string } }
-) {
+export async function PATCH(request: NextRequest, props: { params: Promise<{ packId: string }> }) {
+  const params = await props.params;
   const caller = await requireSuperadminRoute(request);
   if (!caller) return jsonError("No autorizado.", 401);
 
@@ -46,10 +44,8 @@ export async function PATCH(
   });
 }
 
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: { packId: string } }
-) {
+export async function DELETE(request: NextRequest, props: { params: Promise<{ packId: string }> }) {
+  const params = await props.params;
   const caller = await requireSuperadminRoute(request);
   if (!caller) return jsonError("No autorizado.", 401);
 

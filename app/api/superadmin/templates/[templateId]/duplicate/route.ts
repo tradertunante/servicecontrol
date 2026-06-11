@@ -4,10 +4,8 @@ import { parseUUID, isErrorResponse } from "@/lib/api/validate";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { jsonError, jsonOk, loadGlobalTemplate, requireSuperadminRoute } from "@/lib/superadmin/server";
 
-export async function POST(
-  request: NextRequest,
-  { params }: { params: { templateId: string } }
-) {
+export async function POST(request: NextRequest, props: { params: Promise<{ templateId: string }> }) {
+  const params = await props.params;
   const caller = await requireSuperadminRoute(request);
   if (!caller) return jsonError("No autorizado.", 401);
 

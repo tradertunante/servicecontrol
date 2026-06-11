@@ -9,7 +9,8 @@ import LandingTracker from "@/app/(marketing)/_components/LandingTracker";
 import ProblemSection from "@/app/(marketing)/_components/ProblemSection";
 import SolutionSection from "@/app/(marketing)/_components/SolutionSection";
 
-export default function MarketingHomePage({ params }: { params: { locale: string } }) {
+export default async function MarketingHomePage(props: { params: Promise<{ locale: string }> }) {
+  const params = await props.params;
   setRequestLocale(params.locale);
   return (
     <main>

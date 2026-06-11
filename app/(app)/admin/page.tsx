@@ -11,12 +11,13 @@ const TAB_TO_VIEW_MODE = {
 } as const;
 
 type AdminPageProps = {
-  searchParams?: {
+  searchParams?: Promise<{
     tab?: string;
-  };
+  }>;
 };
 
-export default async function AdminPage({ searchParams }: AdminPageProps) {
+export default async function AdminPage(props: AdminPageProps) {
+  const searchParams = await props.searchParams;
   const { hotelId } = await requirePageAccess({
     module: "admin",
     requireHotel: true,

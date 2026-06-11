@@ -98,7 +98,7 @@ export async function loadManagedUser(userId: string, hotelId?: string | null) {
 }
 
 export async function resolveManagedUserAccess(actorProfile: Profile, userId: string) {
-  const hotelResult = resolveManagedHotelId(actorProfile);
+  const hotelResult = await resolveManagedHotelId(actorProfile);
   if (!hotelResult.ok) {
     return {
       ok: false as const,
@@ -132,7 +132,7 @@ export async function resolveManagedUserAccess(actorProfile: Profile, userId: st
 }
 
 export async function listManagedUsers(actorProfile: Profile) {
-  const hotelResult = resolveManagedHotelId(actorProfile);
+  const hotelResult = await resolveManagedHotelId(actorProfile);
   if (!hotelResult.ok) {
     return {
       ok: false as const,
@@ -215,7 +215,7 @@ export async function createManagedUser(
     };
   }
 
-  const hotelResult = resolveManagedHotelId(actorProfile);
+  const hotelResult = await resolveManagedHotelId(actorProfile);
   if (!hotelResult.ok) {
     return {
       ok: false as const,

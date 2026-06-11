@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
     if (!caller) return jsonError("No autorizado.", 401);
 
     // Plan enforcement: check user limit
-    const hotelResult = resolveRouteHotelScope(caller.profile, null);
+    const hotelResult = await resolveRouteHotelScope(caller.profile, null);
     if (hotelResult.ok) {
       const userCheck = await canAddUser(caller.profile.id, hotelResult.hotelId);
       if (!userCheck.allowed) {

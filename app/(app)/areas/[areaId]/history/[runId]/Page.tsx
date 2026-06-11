@@ -2,11 +2,12 @@ import { requireAuditRunScope } from "@/lib/auth/server";
 
 import AuditRunSectionDetailPageClient from "./AuditRunSectionDetailPageClient";
 
-export default async function AuditRunSectionDetailPage({
-  params,
-}: {
-  params: { areaId: string; runId: string };
-}) {
+export default async function AuditRunSectionDetailPage(
+  props: {
+    params: Promise<{ areaId: string; runId: string }>;
+  }
+) {
+  const params = await props.params;
   await requireAuditRunScope(params.runId, {
     module: "areas",
     nextPath: `/areas/${params.areaId}/history/${params.runId}`,

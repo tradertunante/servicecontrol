@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
     });
     if (!caller) return jsonError("No autorizado.", 401);
 
-    const hotelResult = resolveRouteHotelScope(caller.profile, null);
+    const hotelResult = await resolveRouteHotelScope(caller.profile, null);
     if (!hotelResult.ok) return jsonError(hotelResult.error, hotelResult.status);
 
     // Admin can query a specific shopper; mystery_shopper always sees their own data

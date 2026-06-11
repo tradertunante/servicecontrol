@@ -8,15 +8,13 @@ import { logger } from "@/lib/logger";
 const VALID_FIELDS = new Set(["comment_requirement", "photo_requirement", "signature_requirement"]);
 const VALID_VALUES = new Set(["never", "if_fail", "optional", "always"]);
 
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: { templateId: string } }
-) {
+export async function PATCH(request: NextRequest, props: { params: Promise<{ templateId: string }> }) {
+  const params = await props.params;
   try {
     const caller = await authorizeRouteRequest(request, { roles: ["admin", "superadmin"] });
     if (!caller) return jsonError("No autorizado.", 401);
 
-    const hotelResult = resolveRouteHotelScope(caller.profile, null);
+    const hotelResult = await resolveRouteHotelScope(caller.profile, null);
     if (!hotelResult.ok) return jsonError(hotelResult.error, hotelResult.status);
 
     const templateId = parseUUID(params.templateId, "templateId");

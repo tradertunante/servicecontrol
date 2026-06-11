@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
     const page = Math.max(1, parseInt(request.nextUrl.searchParams.get("page") ?? "1", 10) || 1);
     const pageSize = Math.min(100, Math.max(10, parseInt(request.nextUrl.searchParams.get("page_size") ?? "50", 10) || 50));
 
-    const hotelResult = resolveMembersHotelId(callerResult.caller);
+    const hotelResult = await resolveMembersHotelId(callerResult.caller);
     if (!hotelResult.ok) return jsonError(hotelResult.error, hotelResult.status);
 
     const admin = supabaseAdmin();
@@ -73,7 +73,7 @@ export async function POST(request: NextRequest) {
     if (!callerResult.ok) return jsonError(callerResult.error, callerResult.status);
 
     const body = await request.json().catch(() => null);
-    const hotelResult = resolveMembersHotelId(callerResult.caller);
+    const hotelResult = await resolveMembersHotelId(callerResult.caller);
     if (!hotelResult.ok) return jsonError(hotelResult.error, hotelResult.status);
 
     const fullName = String(body?.full_name ?? "").trim();

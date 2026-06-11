@@ -5,7 +5,7 @@ import { supabaseWithToken } from "@/lib/supabaseServer";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
 export async function POST(request: NextRequest) {
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
   const token = cookieStore.get(AUTH_TOKEN_COOKIE)?.value;
   if (!token) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

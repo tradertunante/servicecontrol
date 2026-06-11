@@ -3,11 +3,12 @@ import { buildAnalyticsPagePayload } from "@/lib/analytics/server";
 
 import AnalyticsPageClient from "./AnalyticsPageClient";
 
-export default async function AnalyticsPage({
-  searchParams,
-}: {
-  searchParams?: Record<string, string | string[] | undefined>;
-}) {
+export default async function AnalyticsPage(
+  props: {
+    searchParams?: Promise<Record<string, string | string[] | undefined>>;
+  }
+) {
+  const searchParams = await props.searchParams;
   const { profile, hotelId } = await requirePageAccess({
     roles: ["admin", "manager", "superadmin", "general_manager", "quality"],
     requireHotel: true,

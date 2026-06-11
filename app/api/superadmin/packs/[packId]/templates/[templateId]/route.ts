@@ -7,8 +7,9 @@ import { jsonError, jsonOk, loadGlobalPack, requireSuperadminRoute } from "@/lib
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { packId: string; templateId: string } }
+  props: { params: Promise<{ packId: string; templateId: string }> }
 ) {
+  const params = await props.params;
   const caller = await requireSuperadminRoute(request);
   if (!caller) return jsonError("No autorizado.", 401);
 
@@ -44,8 +45,9 @@ export async function PATCH(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { packId: string; templateId: string } }
+  props: { params: Promise<{ packId: string; templateId: string }> }
 ) {
+  const params = await props.params;
   const caller = await requireSuperadminRoute(request);
   if (!caller) return jsonError("No autorizado.", 401);
 

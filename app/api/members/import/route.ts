@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
 
     const formData = await request.formData();
     const file = formData.get("file");
-    const hotelResult = resolveMembersHotelId(callerResult.caller);
+    const hotelResult = await resolveMembersHotelId(callerResult.caller);
     if (!hotelResult.ok) return jsonError(hotelResult.error, hotelResult.status);
 
     if (!(file instanceof File)) {

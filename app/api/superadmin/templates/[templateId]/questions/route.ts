@@ -21,10 +21,8 @@ function uniqueStrings(values: unknown[]) {
   );
 }
 
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: { templateId: string } }
-) {
+export async function PATCH(request: NextRequest, props: { params: Promise<{ templateId: string }> }) {
+  const params = await props.params;
   const caller = await requireSuperadminRoute(request);
   if (!caller) return jsonError("No autorizado.", 401);
 
@@ -125,10 +123,8 @@ export async function PATCH(
   });
 }
 
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: { templateId: string } }
-) {
+export async function DELETE(request: NextRequest, props: { params: Promise<{ templateId: string }> }) {
+  const params = await props.params;
   const caller = await requireSuperadminRoute(request);
   if (!caller) return jsonError("No autorizado.", 401);
 
