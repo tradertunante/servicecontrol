@@ -14,11 +14,11 @@ export default function MarketingFooter() {
             <rect x="0" y="40" width="47" height="7" fill="#FFFFFF" rx="3"/>
             <line x1="15" y1="23" x2="26" y2="38" stroke="#378ADD" strokeWidth="7" strokeLinecap="round"/>
             <line x1="26" y1="38" x2="43" y2="10" stroke="#378ADD" strokeWidth="7" strokeLinecap="round"/>
-            <line x1="63" y1="6" x2="63" y2="52" stroke="#444441" strokeWidth="0.8"/>
+            <line x1="63" y1="6" x2="63" y2="52" stroke="rgba(255,255,255,0.25)" strokeWidth="0.8"/>
             <text x="75" y="36" fontFamily="Georgia, 'Times New Roman', serif" fontSize="28" fontWeight="700">
               <tspan fill="#FFFFFF">Service</tspan><tspan fill="#378ADD">Control</tspan>
             </text>
-            <text x="76" y="51" fontFamily="Georgia, 'Times New Roman', serif" fontSize="9.5" fontWeight="400" fill="#5F5E5A" letterSpacing="4">HOTEL QUALITY PLATFORM</text>
+            <text x="76" y="51" fontFamily="Georgia, 'Times New Roman', serif" fontSize="9.5" fontWeight="400" fill="rgba(255,255,255,0.55)" letterSpacing="4">HOTEL QUALITY PLATFORM</text>
           </svg>
           <div className="mt-2 max-w-[42rem] leading-6 text-white/60">
             {t("tagline")}

@@ -99,7 +99,8 @@ export default function HeroSection() {
           </div>
         </div>
 
-        <div className="relative hidden lg:block">
+        {/* En móvil se muestra recortado con un degradado; completo a partir de lg */}
+        <div className="relative max-h-[560px] overflow-hidden [mask-image:linear-gradient(to_bottom,black_72%,transparent)] lg:max-h-none lg:[mask-image:none]">
           <ProductDashboardMock />
         </div>
       </div>

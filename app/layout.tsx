@@ -1,7 +1,10 @@
 // app/layout.tsx
 import "./globals.css";
 import type { Metadata, Viewport } from "next";
+import { Inter } from "next/font/google";
 import QueryProvider from "./providers/QueryProvider";
+
+const inter = Inter({ subsets: ["latin"], display: "swap" });
 import AuthSessionSync from "./components/AuthSessionSync";
 import ToastProvider from "./providers/ToastProvider";
 import PostHogProvider from "./providers/PostHogProvider";
@@ -24,12 +27,11 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  maximumScale: 1,
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="es">
+    <html lang="es" className={inter.className}>
       <body>
         <PostHogProvider>
           <QueryProvider>
