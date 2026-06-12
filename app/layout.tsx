@@ -5,6 +5,7 @@ import QueryProvider from "./providers/QueryProvider";
 import AuthSessionSync from "./components/AuthSessionSync";
 import ToastProvider from "./providers/ToastProvider";
 import PostHogProvider from "./providers/PostHogProvider";
+import CookieBanner from "./components/CookieBanner";
 
 export const metadata: Metadata = {
   title: "ServiceControl",
@@ -38,6 +39,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               {children}
             </ToastProvider>
           </QueryProvider>
+          <CookieBanner />
         </PostHogProvider>
       </body>
     </html>

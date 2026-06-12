@@ -132,7 +132,9 @@
     "ctaSecondary": "Acceder"
   },
   "footer": {
-    "tagline": "Plataforma para control operativo, calidad, reauditorías y seguimiento del equipo en hoteles."
+    "tagline": "Plataforma para control operativo, calidad, reauditorías y seguimiento del equipo en hoteles.",
+    "privacy": "Privacidad",
+    "cookies": "Cookies"
   },
   "pricingPage": {
     "eyebrow": "Pricing",

@@ -132,7 +132,9 @@
     "ctaSecondary": "Log in"
   },
   "footer": {
-    "tagline": "Platform for operational control, quality, re-audits and team tracking in hotels."
+    "tagline": "Platform for operational control, quality, re-audits and team tracking in hotels.",
+    "privacy": "Privacy",
+    "cookies": "Cookies"
   },
   "pricingPage": {
     "eyebrow": "Pricing",

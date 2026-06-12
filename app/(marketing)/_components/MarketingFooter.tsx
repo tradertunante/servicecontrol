@@ -40,6 +40,12 @@ export default function MarketingFooter() {
           <a href="/help" className="transition hover:text-white">
             Centro de ayuda
           </a>
+          <a href="/privacy" className="transition hover:text-white">
+            {t("privacy")}
+          </a>
+          <a href="/cookies" className="transition hover:text-white">
+            {t("cookies")}
+          </a>
         </div>
       </div>
     </footer>
