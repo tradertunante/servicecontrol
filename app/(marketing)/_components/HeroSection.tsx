@@ -52,18 +52,18 @@ export default function HeroSection() {
 
           <div className="mt-10 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:gap-4">
             <Link
-              href="/demo"
-              onClick={() => posthog.capture('cta_clicked', { cta_location: 'hero', cta_destination: 'demo' }, { send_instantly: true })}
-              className="rounded-[6px] bg-[#185FA5] px-7 py-4 text-center text-base font-medium text-white transition hover:bg-[#378ADD]"
-            >
-              {t("ctaPrimary")}
-            </Link>
-            <Link
               href="/trial"
               onClick={() => posthog.capture('cta_clicked', { cta_location: 'hero', cta_destination: 'trial' }, { send_instantly: true })}
-              className="rounded-[6px] border border-[#185FA5] bg-transparent px-7 py-4 text-center text-base font-medium text-[#185FA5] transition hover:bg-[#185FA5]/5"
+              className="rounded-[6px] bg-[#185FA5] px-7 py-4 text-center text-base font-medium text-white transition hover:bg-[#378ADD]"
             >
               {t("ctaTrial")}
+            </Link>
+            <Link
+              href="/demo"
+              onClick={() => posthog.capture('cta_clicked', { cta_location: 'hero', cta_destination: 'demo' }, { send_instantly: true })}
+              className="rounded-[6px] border border-[#185FA5] bg-transparent px-7 py-4 text-center text-base font-medium text-[#185FA5] transition hover:bg-[#185FA5]/5"
+            >
+              {t("ctaPrimary")}
             </Link>
             <Link
               href="/login"
@@ -72,6 +72,11 @@ export default function HeroSection() {
             >
               {t("ctaSecondary")}
             </Link>
+          </div>
+
+          {/* Product preview — mobile only (desktop shows right column) */}
+          <div className="mt-8 lg:hidden">
+            <ProductDashboardMock />
           </div>
 
           <div className="mt-10 grid gap-4 text-sm text-[var(--text-secondary)] sm:grid-cols-3">
