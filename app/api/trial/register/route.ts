@@ -80,13 +80,16 @@ export async function POST(request: NextRequest) {
   // Crear usuario en Supabase Auth.
   // El trigger sync_profile_from_auth_user lee raw_user_meta_data para crear el perfil,
   // por lo que hotel_id (NOT NULL en profiles) debe venir en los metadatos.
+  // Rol "quality", no "admin": el hotel demo es compartido entre todos los trials;
+  // quality conserva la experiencia completa (dashboard, auditar, correctivas,
+  // formación) sin poder gestionar usuarios, settings del hotel ni borrar runs.
   const { data: authData, error: authError } = await admin.auth.admin.createUser({
     email,
     password,
     email_confirm: true,
     user_metadata: {
       full_name: name,
-      role: "admin",
+      role: "quality",
       hotel_id: DEMO_HOTEL_ID,
       active: true,
       is_trial: true,

@@ -43,6 +43,8 @@ type BasicProfileRow = {
   hotel_id: string | null;
   active: boolean | null;
   access_expires_at: string | null;
+  is_trial: boolean | null;
+  trial_expires_at: string | null;
 };
 
 function getLoginRedirect(nextPath?: string) {
@@ -71,7 +73,7 @@ async function loadProfileWithToken(token: string): Promise<Profile | null> {
 
   const { data: profile, error: profileError } = await client
     .from("profiles")
-    .select("id, full_name, role, hotel_id, active, access_expires_at")
+    .select("id, full_name, role, hotel_id, active, access_expires_at, is_trial, trial_expires_at")
     .eq("id", user.id)
     .maybeSingle();
 
@@ -84,6 +86,12 @@ async function loadProfileWithToken(token: string): Promise<Profile | null> {
   if (normalized.role === "mystery_shopper") {
     const expiresAt = (profile as BasicProfileRow).access_expires_at;
     if (expiresAt && new Date(expiresAt) < new Date()) return null;
+  }
+
+  // Trial accounts lose access when the trial expires
+  const row = profile as BasicProfileRow;
+  if (row.is_trial && row.trial_expires_at && new Date(row.trial_expires_at) < new Date()) {
+    return null;
   }
 
   return normalized;
