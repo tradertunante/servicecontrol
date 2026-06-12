@@ -186,8 +186,9 @@ export function useAuditAnswers({
 
       if (uploadError) throw uploadError;
 
-      const { data: urlData } = supabase.storage.from("audit-photos").getPublicUrl(fileName);
-      const newPhotos = [...currentPhotos, urlData.publicUrl];
+      // El bucket es privado: se guarda la ruta del endpoint que firma y
+      // redirige (/api/photos/[fileName]), válida como src en toda la app.
+      const newPhotos = [...currentPhotos, `/api/photos/${fileName}`];
       const nextDraft = {
         ...makeDraftAnswer(runId, questionId, current),
         photo_paths: newPhotos,

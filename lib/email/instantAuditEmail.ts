@@ -55,6 +55,14 @@ function buildSectionsText(sections: AuditReportSection[]): string {
   );
 }
 
+// Las fotos se guardan como rutas relativas (/api/photos/...); en email
+// necesitan URL absoluta hacia la app (el endpoint exige sesión al abrirlas).
+function absolutePhotoUrl(url: string): string {
+  if (!url.startsWith("/")) return url;
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://app.servicecontrol.io";
+  return `${appUrl}${url}`;
+}
+
 function buildFailedItemsText(sections: AuditReportSection[]): string {
   const failedItems: (AuditReportItem & { sectionName: string })[] = [];
   for (const s of sections) {
@@ -69,7 +77,7 @@ function buildFailedItemsText(sections: AuditReportSection[]): string {
       .map((item) => {
         let line = `  - [${item.sectionName}] ${item.question_text}`;
         if (item.comment) line += `\n    Comentario: ${item.comment}`;
-        if (item.photo_urls[0]) line += `\n    Evidencia: ${item.photo_urls[0]}`;
+        if (item.photo_urls[0]) line += `\n    Evidencia: ${absolutePhotoUrl(item.photo_urls[0])}`;
         return line;
       })
       .join("\n")
@@ -144,7 +152,7 @@ function buildFailedItemsHtml(sections: AuditReportSection[]): string {
         ? `<div style="font-size:12px;color:#6b7280;margin-top:3px;font-style:italic">${item.comment}</div>`
         : "";
       const photoHtml = item.photo_urls[0]
-        ? `<div style="margin-top:4px"><a href="${item.photo_urls[0]}" style="font-size:12px;color:#2563eb;text-decoration:none;font-weight:500" target="_blank">Ver evidencia →</a></div>`
+        ? `<div style="margin-top:4px"><a href="${absolutePhotoUrl(item.photo_urls[0])}" style="font-size:12px;color:#2563eb;text-decoration:none;font-weight:500" target="_blank">Ver evidencia →</a></div>`
         : "";
       return `
         <tr>
