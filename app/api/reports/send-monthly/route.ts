@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { waitUntil } from "@vercel/functions";
 
 import { authorizeRouteRequest } from "@/lib/auth/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
@@ -31,12 +32,29 @@ async function resolveSubscribedHotelIds(): Promise<string[] | NextResponse> {
 /**
  * GET /api/reports/send-monthly
  * Entry point for Vercel cron (1st of month 8am UTC).
+ * Dispatches one POST per hotel so each runs in its own serverless invocation.
  */
 export async function GET(request: NextRequest) {
   if (!isAuthorizedCronRequest(request)) return jsonError("No autorizado.", 401);
   const hotelIds = await resolveSubscribedHotelIds();
   if (hotelIds instanceof NextResponse) return hotelIds;
-  return sendMonthlyReports(hotelIds);
+  if (hotelIds.length === 0) return NextResponse.json({ ok: true, dispatched: 0 });
+
+  const origin = new URL(request.url).origin;
+  const secret = process.env.CRON_SECRET!;
+
+  const dispatches = Promise.allSettled(
+    hotelIds.map((id) =>
+      fetch(`${origin}/api/reports/send-monthly`, {
+        method: "POST",
+        headers: { "x-cron-secret": secret, "Content-Type": "application/json" },
+        body: JSON.stringify({ hotel_id: id }),
+      })
+    )
+  );
+
+  waitUntil(dispatches);
+  return NextResponse.json({ ok: true, dispatched: hotelIds.length }, { status: 202 });
 }
 
 /**

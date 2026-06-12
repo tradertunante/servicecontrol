@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { waitUntil } from "@vercel/functions";
 
 import Anthropic from "@anthropic-ai/sdk";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
@@ -369,16 +370,38 @@ function isAuthorizedCronRequest(request: NextRequest) {
 
 /**
  * GET /api/trainings/generate-suggestions
- * Entry point for Vercel cron (Monday 9am UTC) — all active hotels.
+ * Entry point for Vercel cron (Monday 9am UTC).
+ * Dispatches one POST per active hotel so each runs in its own serverless invocation.
  */
 export async function GET(request: NextRequest) {
   if (!isAuthorizedCronRequest(request)) return jsonError("No autorizado.", 401);
-  return generateSuggestions(request, { viaCron: true });
+
+  const admin = supabaseAdmin();
+  const { data: hotels, error } = await admin.from("hotels").select("id").eq("is_active", true);
+  if (error) return jsonDbError(error);
+  const hotelIds = (hotels ?? []).map((h) => h.id);
+  if (hotelIds.length === 0) return NextResponse.json({ ok: true, dispatched: 0 });
+
+  const origin = new URL(request.url).origin;
+  const secret = process.env.CRON_SECRET!;
+
+  const dispatches = Promise.allSettled(
+    hotelIds.map((id) =>
+      fetch(`${origin}/api/trainings/generate-suggestions`, {
+        method: "POST",
+        headers: { "x-cron-secret": secret, "Content-Type": "application/json" },
+        body: JSON.stringify({ hotel_id: id }),
+      })
+    )
+  );
+
+  waitUntil(dispatches);
+  return NextResponse.json({ ok: true, dispatched: hotelIds.length }, { status: 202 });
 }
 
 /**
  * POST /api/trainings/generate-suggestions
- * Manual admin/gm trigger, or server-to-server with x-cron-secret.
+ * Manual admin/gm trigger, or server-to-server with x-cron-secret (single hotel via hotel_id).
  * Analyzes audit failure ratios and generates AI training suggestions for managers to review.
  */
 export async function POST(request: NextRequest) {
@@ -391,12 +414,19 @@ async function generateSuggestions(request: NextRequest, { viaCron }: { viaCron:
     let hotelIds: string[] = [];
 
     if (viaCron) {
-      const { data: hotels, error } = await admin
-        .from("hotels")
-        .select("id")
-        .eq("is_active", true);
-      if (error) return jsonDbError(error);
-      hotelIds = (hotels ?? []).map((h) => h.id);
+      const body = await request.json().catch(() => null);
+      const singleId = typeof body?.hotel_id === "string" ? body.hotel_id.trim() : null;
+      if (singleId) {
+        hotelIds = [singleId];
+      } else {
+        // Fallback: direct x-cron-secret call without hotel_id (legacy / manual)
+        const { data: hotels, error } = await admin
+          .from("hotels")
+          .select("id")
+          .eq("is_active", true);
+        if (error) return jsonDbError(error);
+        hotelIds = (hotels ?? []).map((h) => h.id);
+      }
     } else {
       const caller = await authorizeRouteRequest(request, {
         roles: ["admin", "general_manager"],
