@@ -2,10 +2,10 @@
   "nav": {
     "solution": "Solución",
     "modules": "Módulos",
-    "pricing": "Pricing",
-    "demo": "Concertar cita",
+    "pricing": "Precios",
+    "demo": "Solicitar demo",
     "login": "Acceder",
-    "requestDemo": "Concertar cita",
+    "requestDemo": "Solicitar demo",
     "trial": "Probar gratis"
   },
   "header": {
@@ -13,14 +13,14 @@
   },
   "hero": {
     "badge": "Plataforma SaaS para operación y calidad hotelera",
-    "h1Part1": "Auditas. Detectas.",
-    "h1Highlight": "Nada cambia.",
-    "h1Muted": "Vuelves a empezar.",
-    "subtitle": "Centraliza todo lo que hoy vive en Excel, papel y WhatsApp. Tu equipo sabe qué tiene que corregir.",
-    "subtitleBold": "Tú sabes si lo hizo.",
-    "ctaPrimary": "Concertar cita",
+    "h1Part1": "La calidad de tu hotel,",
+    "h1Highlight": "convertida en un sistema",
+    "h1Muted": "que puedes demostrar.",
+    "subtitle": "Auditorías, acciones correctivas y reauditorías en una sola plataforma. Tu equipo sabe qué corregir y tú presentas a propiedad un estándar que se cumple —",
+    "subtitleBold": "con datos, no con sensaciones.",
+    "ctaPrimary": "Ver ServiceControl en 30 min",
     "ctaTrial": "Probar gratis",
-    "ctaSecondary": "Acceso miembros",
+    "ctaReassurance": "Demo adaptada a tus áreas y estándares · Sin compromiso",
     "card1Title": "Visibilidad real",
     "card1Body": "Score por área, backlog correctivo y focos rojos visibles para operaciones.",
     "card2Title": "Ejecución diaria",
@@ -116,20 +116,74 @@
       }
     ]
   },
+  "trust": {
+    "eyebrow": "Diseñado para la hotelería de lujo",
+    "title": "Construido sobre los estándares con los que ya trabajas.",
+    "description": "ServiceControl no es una herramienta genérica de checklists adaptada a hoteles. Está diseñado desde cero sobre la estructura real de una propiedad de lujo: áreas, turnos, roles y los niveles de exigencia de las inspecciones internacionales.",
+    "items": [
+      {
+        "title": "Compatible con tus estándares de inspección",
+        "body": "Configura tus plantillas sobre los criterios de Forbes Travel Guide, LHW o tu propio manual de marca. El estándar que te inspeccionan es el estándar que auditas a diario."
+      },
+      {
+        "title": "Tus datos, protegidos como tu reputación",
+        "body": "Datos alojados en la Unión Europea, cifrado en tránsito y en reposo, acceso por roles y cumplimiento RGPD. La información de tu operación nunca se comparte entre propiedades."
+      },
+      {
+        "title": "Hecho por y para operadores hoteleros",
+        "body": "Cada flujo — auditoría, acción correctiva, reauditoría, formación — replica cómo funciona de verdad un hotel, no cómo lo imagina un software de oficina."
+      },
+      {
+        "title": "Implementación guiada, en tu idioma",
+        "body": "Configuración de áreas, estándares y equipos acompañada por nuestro equipo, en español, sobre tu operación real. Operativo en días, no en meses."
+      }
+    ],
+    "facts": [
+      "100% de hallazgos con responsable y fecha límite",
+      "Reauditoría automática en cada corrección",
+      "Sandbox operativo en menos de 1 minuto",
+      "Informe ejecutivo en tiempo real, no a fin de mes"
+    ]
+  },
+  "scenarios": {
+    "eyebrow": "Para quién está diseñado",
+    "title": "Tres direcciones, el mismo problema: saber si el estándar se cumple hoy.",
+    "description": "Escenarios ilustrativos de cómo trabaja un hotel con ServiceControl en el día a día.",
+    "items": [
+      {
+        "role": "Dirección General · Hotel urbano 5★ · Madrid",
+        "title": "El comité del jueves sin preparar el informe la noche anterior.",
+        "body": "Abre el dashboard antes del comité: score por área, desviaciones abiertas y su antigüedad, reauditorías de la semana. Cuando propiedad pregunta por housekeeping, la respuesta no es una sensación — es una tendencia de 12 meses."
+      },
+      {
+        "role": "Dirección de Operaciones · Resort · Cancún",
+        "title": "Cuatro mil llaves, nueve restaurantes, y saber qué falla sin recorrerlo todo.",
+        "body": "Cada supervisor audita su zona desde el móvil, con foto y hora. Las desviaciones se asignan solas al departamento correcto — mantenimiento ve las suyas, housekeeping las suyas — y nada se cierra hasta que la reauditoría lo confirma."
+      },
+      {
+        "role": "Dirección de Calidad · Beach resort · Los Cabos",
+        "title": "Llegar a la inspección sabiendo el resultado de antemano.",
+        "body": "Los estándares de la inspección viven como plantillas de auditoría ejecutadas cada semana. Seis semanas antes de la visita, el histórico muestra qué áreas aprueban de forma sostenida y cuáles necesitan formación — no una corazonada, un dato por estándar."
+      }
+    ],
+    "foundersBadge": "Programa de hoteles fundadores",
+    "foundersTitle": "Trabajamos con un grupo reducido de propiedades en España y México durante 2026.",
+    "foundersBody": "Implementación guiada por el equipo fundador, configuración de tus estándares incluida y condiciones de socio fundador permanentes.",
+    "foundersCta": "Solicitar plaza"
+  },
   "demoShowcase": {
     "eyebrow": "Prueba visual",
     "title": "Una vista de calidad diseñada para tomar decisiones rápidas.",
     "description": "La demo muestra la operación por área, el estado de hallazgos, reauditorías y formación en una composición clara, sobria y ejecutiva.",
-    "ctaPrimary": "Concertar cita",
+    "ctaPrimary": "Ver ServiceControl en 30 min",
     "ctaSecondary": "Ver planes"
   },
   "finalCta": {
-    "eyebrow": "Concertar una cita",
+    "eyebrow": "Solicitar demo",
     "title": "Lleva control, seguimiento y visibilidad real a la operación de tu hotel.",
     "description": "Te mostramos cómo adaptar ServiceControl a tus áreas, estándares y flujo operativo sin mezclar la experiencia comercial con la app interna.",
-    "ctaPrimary": "Concertar cita",
-    "ctaTrial": "Probar gratis",
-    "ctaSecondary": "Acceder"
+    "ctaPrimary": "Ver ServiceControl en 30 min",
+    "ctaTrial": "Probar gratis"
   },
   "footer": {
     "tagline": "Plataforma para control operativo, calidad, reauditorías y seguimiento del equipo en hoteles.",
@@ -137,29 +191,90 @@
     "cookies": "Cookies"
   },
   "pricingPage": {
-    "eyebrow": "Pricing",
-    "title": "Planes pensados para hoteles que necesitan control operativo real.",
-    "description": "La contratación se define según número de áreas, complejidad operativa y alcance de implantación. Priorizamos una propuesta clara y alineada con tu operación.",
-    "planLabel": "Plan Growth Hotel",
-    "planTitle": "Implementación guiada y licencia anual",
-    "modelLabel": "Modelo comercial",
-    "modelValue": "Presupuesto a medida",
-    "highlights": [
-      "Implementación guiada sobre la operación real del hotel",
-      "Configuración de áreas, plantillas y flujos de calidad",
-      "Acompañamiento para dirección, operaciones y calidad"
-    ],
-    "licenseNote": "Licencia para auditorías, reauditorías, acciones correctivas, formación y dashboard ejecutivo.",
-    "evaluationLabel": "Lo que evaluamos",
-    "evaluationItems": [
-      "Número de hoteles y áreas operativas",
-      "Volumen de auditorías y responsables involucrados",
-      "Nivel de acompañamiento deseado en implantación",
-      "Necesidades de reporting para dirección y management"
-    ],
-    "evaluationNote": "Si quieres evaluar encaje, te mostramos la plataforma y preparamos una propuesta ajustada a tu operación.",
-    "ctaPrimary": "Concertar cita",
-    "ctaSecondary": "Acceder"
+    "eyebrow": "Planes y precios",
+    "title": "Control operativo real, en el plan que encaja con tu hotel",
+    "description": "Tres planes pensados para distintos niveles de complejidad. El precio final depende del número de áreas, usuarios y nivel de acompañamiento.",
+    "billingMonthly": "Mensual",
+    "billingAnnual": "Anual",
+    "popularBadge": "Más popular",
+    "recommendedBadge": "Recomendado para ti",
+    "monthlyPriceLabel": "Precio / mes",
+    "annualPriceLabel": "Con pago anual",
+    "perMonth": "/mes",
+    "annualBilledNote": "€{total}/año · facturado anualmente",
+    "monthlyNote": "Sin contrato anual",
+    "ctaDemo": "Ver demo · 30 min",
+    "modules": {
+      "core": "Core",
+      "training": "Formación",
+      "analytics": "Analítica",
+      "it": "IT",
+      "maintenance": "Mantenimiento"
+    },
+    "tiers": {
+      "auditoria": {
+        "name": "Auditorías",
+        "tagline": "Digitaliza y estandariza tus inspecciones",
+        "persona": "Hoteles que dan sus primeros pasos en auditoría digital",
+        "features": [
+          "Checklists digitales por área y departamento",
+          "Detección y seguimiento de incidencias",
+          "Puntuación automática por auditoría",
+          "Histórico y comparativas por periodo",
+          "Reauditorías para verificar correcciones"
+        ]
+      },
+      "operaciones": {
+        "name": "Operaciones",
+        "tagline": "Detecta, forma y analiza en un solo sistema",
+        "persona": "Hoteles que quieren cerrar el ciclo auditoría → formación",
+        "features": [
+          "Todo lo del plan Auditorías",
+          "Fallos vinculados a planes de formación del equipo",
+          "Asignación de formaciones con seguimiento hasta completado",
+          "Dashboards avanzados, tendencias y exportes por área",
+          "−10% por combinar módulos"
+        ]
+      },
+      "control": {
+        "name": "Control Total",
+        "tagline": "Toda la operación bajo un solo sistema",
+        "persona": "Propiedades con operativa compleja o equipos multidepartamento",
+        "features": [
+          "Todo lo del plan Operaciones",
+          "IT y Mantenimiento gestionan sus propios backlogs",
+          "Trazabilidad auditoría → formación → mantenimiento",
+          "Dashboard 360° de toda la operación",
+          "−20% por bundle completo"
+        ]
+      }
+    },
+    "multihotel": {
+      "badge": "Cadena / Multihotel",
+      "title": "Gestión de varias propiedades",
+      "description": "Cualquier plan con tarifa por propiedad adicional · Panel unificado para comparar resultados entre hoteles.",
+      "cta": "Hablar con ventas"
+    },
+    "quiz": {
+      "toggle": "¿No sabes cuál elegir? Responde 2 preguntas y te lo decimos",
+      "stepLabel": "Pregunta {current} de {total}",
+      "resultLabel": "Plan recomendado",
+      "restart": "Repetir",
+      "questions": {
+        "formaciones": {
+          "question": "¿Quieres que los fallos detectados generen planes de formación para el equipo?",
+          "hint": "Cuando la auditoría detecta un fallo recurrente, el sistema asigna una formación al responsable y verifica que se completa.",
+          "yes": "Sí, me interesa",
+          "no": "No por ahora"
+        },
+        "depts": {
+          "question": "¿Quieres que IT y Mantenimiento gestionen sus propios backlogs de incidencias y obras?",
+          "hint": "Cada departamento recibe los fallos que le corresponden, los gestiona desde su propia vista y los cierra cuando están resueltos.",
+          "yes": "Sí",
+          "no": "No"
+        }
+      }
+    }
   },
   "demoPage": {
     "eyebrow": "Demo",
@@ -179,15 +294,7 @@
       "Ejecución de auditorías y evidencias desde móvil",
       "Seguimiento de acciones correctivas y reauditorías",
       "Registro de formación vinculado a desviaciones reales"
-    ],
-    "ctaLabel": "Solicita una demo",
-    "ctaTitle": "Muestra guiada para dirección, operaciones o calidad.",
-    "ctaDescription": "De momento dejamos esta ruta preparada como punto comercial. Si después decides conectar un formulario o calendario, la estructura ya queda separada del producto.",
-    "ctaSuggestedLabel": "CTA sugerido",
-    "ctaSuggestedTitle": "Solicitar demo comercial",
-    "ctaSuggestedNote": "Puedes reemplazar este bloque por formulario, email o calendar booking cuando lo definas.",
-    "ctaPrimary": "Ver pricing",
-    "ctaSecondary": "Acceder"
+    ]
   },
   "metadata": {
     "title": "ServiceControl | Calidad hotelera en tiempo real",

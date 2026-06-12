@@ -45,13 +45,6 @@ export default function FinalCTA() {
             >
               {t("ctaTrial")}
             </Link>
-            <Link
-              href="/login"
-              onClick={() => posthog.capture('cta_clicked', { cta_location: 'final_cta', cta_destination: 'login' }, { send_instantly: true })}
-              className="rounded-[6px] border border-white/30 px-7 py-4 text-base font-medium text-white transition hover:bg-white/10"
-            >
-              {t("ctaSecondary")}
-            </Link>
           </div>
         </div>
       </div>

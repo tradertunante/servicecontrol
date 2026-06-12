@@ -1,11 +1,18 @@
+import type { Metadata } from "next";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import SectionIntro from "@/app/(marketing)/_components/SectionIntro";
 import PricingQuiz from "@/app/(marketing)/_components/PricingQuiz";
+import { localeAlternates } from "@/lib/marketingSeo";
+
+export async function generateMetadata(props: { params: Promise<{ locale: string }> }): Promise<Metadata> {
+  const params = await props.params;
+  return { alternates: localeAlternates(params.locale, "/pricing") };
+}
 
 export default async function PricingPage(props: { params: Promise<{ locale: string }> }) {
   const params = await props.params;
   setRequestLocale(params.locale);
-  const t = await getTranslations({ locale: params.locale, namespace: "pricing" });
+  const t = await getTranslations({ locale: params.locale, namespace: "pricingPage" });
 
   return (
     <main className="px-5 pb-20 pt-10 sm:px-8 lg:px-10 lg:pb-28 lg:pt-14">

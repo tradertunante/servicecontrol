@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { NextIntlClientProvider } from "next-intl";
 import { getMessages, getTranslations, setRequestLocale } from "next-intl/server";
+import HtmlLang from "@/app/(marketing)/_components/HtmlLang";
 import MarketingFooter from "@/app/(marketing)/_components/MarketingFooter";
 import MarketingHeader from "@/app/(marketing)/_components/MarketingHeader";
 import { routing } from "@/i18n/routing";
@@ -15,6 +16,12 @@ export async function generateMetadata(
   return {
     title: { default: t("title"), template: "%s | ServiceControl" },
     description: t("description"),
+    openGraph: {
+      title: t("title"),
+      description: t("description"),
+      locale: params.locale === "es" ? "es_ES" : "en_US",
+      type: "website",
+    },
   };
 }
 
@@ -39,6 +46,7 @@ export default async function MarketingLocaleLayout(
 
   return (
     <NextIntlClientProvider messages={messages} locale={params.locale}>
+      <HtmlLang locale={params.locale} />
       <div
         className="marketing-layout min-h-screen bg-[var(--bg)] text-[var(--text)] antialiased"
       >

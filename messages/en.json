@@ -3,9 +3,9 @@
     "solution": "Solution",
     "modules": "Modules",
     "pricing": "Pricing",
-    "demo": "Book a call",
+    "demo": "Request a demo",
     "login": "Log in",
-    "requestDemo": "Book a call",
+    "requestDemo": "Request a demo",
     "trial": "Try free"
   },
   "header": {
@@ -13,14 +13,14 @@
   },
   "hero": {
     "badge": "SaaS platform for hotel operations and quality",
-    "h1Part1": "Audit. Detect.",
-    "h1Highlight": "Nothing changes.",
-    "h1Muted": "Start over.",
-    "subtitle": "Centralize everything that currently lives in Excel, paper and WhatsApp. Your team knows what to fix.",
-    "subtitleBold": "You know if it got done.",
-    "ctaPrimary": "Book a call",
+    "h1Part1": "Your hotel's quality,",
+    "h1Highlight": "turned into a system",
+    "h1Muted": "you can prove.",
+    "subtitle": "Audits, corrective actions and re-audits in a single platform. Your team knows what to fix, and you show ownership a standard that is met —",
+    "subtitleBold": "with data, not impressions.",
+    "ctaPrimary": "See ServiceControl in 30 min",
     "ctaTrial": "Try for free",
-    "ctaSecondary": "Member login",
+    "ctaReassurance": "Demo tailored to your areas and standards · No commitment",
     "card1Title": "Real visibility",
     "card1Body": "Score by area, corrective backlog and red flags visible to operations.",
     "card2Title": "Daily execution",
@@ -116,20 +116,74 @@
       }
     ]
   },
+  "trust": {
+    "eyebrow": "Built for luxury hospitality",
+    "title": "Built on the standards you already work with.",
+    "description": "ServiceControl is not a generic checklist tool adapted to hotels. It is designed from the ground up around the real structure of a luxury property: areas, shifts, roles and the level of demand of international inspections.",
+    "items": [
+      {
+        "title": "Compatible with your inspection standards",
+        "body": "Configure your templates on Forbes Travel Guide criteria, LHW standards or your own brand manual. The standard you are inspected against is the standard you audit every day."
+      },
+      {
+        "title": "Your data, protected like your reputation",
+        "body": "Data hosted in the European Union, encryption in transit and at rest, role-based access and GDPR compliance. Your operation's information is never shared between properties."
+      },
+      {
+        "title": "Made by and for hotel operators",
+        "body": "Every workflow — audit, corrective action, re-audit, training — mirrors how a hotel actually runs, not how office software imagines it."
+      },
+      {
+        "title": "Guided implementation, in your language",
+        "body": "Areas, standards and teams configured together with our team, in Spanish or English, on your real operation. Up and running in days, not months."
+      }
+    ],
+    "facts": [
+      "100% of findings with an owner and a due date",
+      "Automatic re-audit on every correction",
+      "Sandbox up and running in under 1 minute",
+      "Executive report in real time, not at month-end"
+    ]
+  },
+  "scenarios": {
+    "eyebrow": "Who it's designed for",
+    "title": "Three management roles, the same problem: knowing if the standard is being met today.",
+    "description": "Illustrative scenarios of how a hotel works with ServiceControl day to day.",
+    "items": [
+      {
+        "role": "General Management · 5-star city hotel · Madrid",
+        "title": "The Thursday committee without building the report the night before.",
+        "body": "Open the dashboard before the meeting: score by area, open deviations and their age, this week's re-audits. When ownership asks about housekeeping, the answer is not a feeling — it's a 12-month trend."
+      },
+      {
+        "role": "Operations Management · Resort · Cancún",
+        "title": "Four thousand keys, nine restaurants, and knowing what fails without walking it all.",
+        "body": "Each supervisor audits their zone from mobile, with photo and timestamp. Deviations route themselves to the right department — maintenance sees theirs, housekeeping theirs — and nothing closes until the re-audit confirms it."
+      },
+      {
+        "role": "Quality Management · Beach resort · Los Cabos",
+        "title": "Walking into the inspection already knowing the result.",
+        "body": "The inspection's standards live as audit templates executed every week. Six weeks before the visit, the history shows which areas pass consistently and which need training — not a hunch, a data point per standard."
+      }
+    ],
+    "foundersBadge": "Founding hotels program",
+    "foundersTitle": "We work with a small group of properties in Spain and Mexico during 2026.",
+    "foundersBody": "Implementation guided by the founding team, configuration of your standards included and permanent founding-partner terms.",
+    "foundersCta": "Request a spot"
+  },
   "demoShowcase": {
     "eyebrow": "Visual preview",
     "title": "A quality view designed for fast decision-making.",
     "description": "The demo shows operations by area, findings status, re-audits and training in a clean, sober and executive layout.",
-    "ctaPrimary": "Book a call",
+    "ctaPrimary": "See ServiceControl in 30 min",
     "ctaSecondary": "See plans"
   },
   "finalCta": {
-    "eyebrow": "Book a call",
+    "eyebrow": "Request a demo",
     "title": "Bring real control, follow-up and visibility to your hotel operations.",
     "description": "We'll show you how to adapt ServiceControl to your areas, standards and operational workflow without mixing the commercial experience with the internal app.",
-    "ctaPrimary": "Book a call",
-    "ctaTrial": "Try for free",
-    "ctaSecondary": "Log in"
+    "ctaPrimary": "See ServiceControl in 30 min",
+    "ctaTrial": "Try for free"
   },
   "footer": {
     "tagline": "Platform for operational control, quality, re-audits and team tracking in hotels.",
@@ -137,29 +191,90 @@
     "cookies": "Cookies"
   },
   "pricingPage": {
-    "eyebrow": "Pricing",
-    "title": "Plans designed for hotels that need real operational control.",
-    "description": "Pricing is defined based on the number of areas, operational complexity and implementation scope. We prioritize a clear proposal aligned with your operation.",
-    "planLabel": "Growth Hotel Plan",
-    "planTitle": "Guided implementation and annual license",
-    "modelLabel": "Commercial model",
-    "modelValue": "Custom quote",
-    "highlights": [
-      "Guided implementation based on the hotel's real operation",
-      "Configuration of areas, templates and quality workflows",
-      "Support for management, operations and quality teams"
-    ],
-    "licenseNote": "License for audits, re-audits, corrective actions, training and executive dashboard.",
-    "evaluationLabel": "What we assess",
-    "evaluationItems": [
-      "Number of hotels and operational areas",
-      "Audit volume and stakeholders involved",
-      "Desired level of implementation support",
-      "Reporting needs for management and leadership"
-    ],
-    "evaluationNote": "If you want to assess fit, we'll show you the platform and prepare a proposal tailored to your operation.",
-    "ctaPrimary": "Book a call",
-    "ctaSecondary": "Log in"
+    "eyebrow": "Plans & pricing",
+    "title": "Real operational control, in the plan that fits your hotel",
+    "description": "Three plans designed for different levels of complexity. The final price depends on the number of areas, users and level of support.",
+    "billingMonthly": "Monthly",
+    "billingAnnual": "Annual",
+    "popularBadge": "Most popular",
+    "recommendedBadge": "Recommended for you",
+    "monthlyPriceLabel": "Price / month",
+    "annualPriceLabel": "With annual billing",
+    "perMonth": "/month",
+    "annualBilledNote": "€{total}/year · billed annually",
+    "monthlyNote": "No annual contract",
+    "ctaDemo": "See demo · 30 min",
+    "modules": {
+      "core": "Core",
+      "training": "Training",
+      "analytics": "Analytics",
+      "it": "IT",
+      "maintenance": "Maintenance"
+    },
+    "tiers": {
+      "auditoria": {
+        "name": "Audits",
+        "tagline": "Digitize and standardize your inspections",
+        "persona": "Hotels taking their first steps in digital auditing",
+        "features": [
+          "Digital checklists by area and department",
+          "Issue detection and follow-up",
+          "Automatic scoring per audit",
+          "History and comparisons by period",
+          "Re-audits to verify corrections"
+        ]
+      },
+      "operaciones": {
+        "name": "Operations",
+        "tagline": "Detect, train and analyze in a single system",
+        "persona": "Hotels that want to close the audit → training loop",
+        "features": [
+          "Everything in the Audits plan",
+          "Failures linked to team training plans",
+          "Training assignment with follow-up until completed",
+          "Advanced dashboards, trends and exports by area",
+          "−10% for combining modules"
+        ]
+      },
+      "control": {
+        "name": "Total Control",
+        "tagline": "Your entire operation under one system",
+        "persona": "Properties with complex operations or multi-department teams",
+        "features": [
+          "Everything in the Operations plan",
+          "IT and Maintenance manage their own backlogs",
+          "Audit → training → maintenance traceability",
+          "360° dashboard of the entire operation",
+          "−20% for the full bundle"
+        ]
+      }
+    },
+    "multihotel": {
+      "badge": "Chain / Multi-property",
+      "title": "Managing several properties",
+      "description": "Any plan with a rate per additional property · Unified panel to compare results across hotels.",
+      "cta": "Talk to sales"
+    },
+    "quiz": {
+      "toggle": "Not sure which one? Answer 2 questions and we'll tell you",
+      "stepLabel": "Question {current} of {total}",
+      "resultLabel": "Recommended plan",
+      "restart": "Restart",
+      "questions": {
+        "formaciones": {
+          "question": "Do you want detected failures to generate training plans for your team?",
+          "hint": "When an audit detects a recurring failure, the system assigns training to the owner and verifies it gets completed.",
+          "yes": "Yes, I'm interested",
+          "no": "Not for now"
+        },
+        "depts": {
+          "question": "Do you want IT and Maintenance to manage their own backlogs of issues and works?",
+          "hint": "Each department receives the failures that belong to it, manages them from its own view and closes them when resolved.",
+          "yes": "Yes",
+          "no": "No"
+        }
+      }
+    }
   },
   "demoPage": {
     "eyebrow": "Demo",
@@ -179,15 +294,7 @@
       "Audit execution and evidence capture from mobile",
       "Corrective action and re-audit tracking",
       "Training log linked to real deviations"
-    ],
-    "ctaLabel": "Request a demo",
-    "ctaTitle": "Guided walkthrough for management, operations or quality.",
-    "ctaDescription": "This route is ready as a commercial entry point. If you later decide to connect a form or calendar booking, the structure is already separate from the product.",
-    "ctaSuggestedLabel": "Suggested CTA",
-    "ctaSuggestedTitle": "Request commercial demo",
-    "ctaSuggestedNote": "You can replace this block with a form, email or calendar booking when you define it.",
-    "ctaPrimary": "See pricing",
-    "ctaSecondary": "Log in"
+    ]
   },
   "metadata": {
     "title": "ServiceControl | Hotel quality in real time",

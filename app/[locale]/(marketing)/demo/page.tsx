@@ -1,7 +1,14 @@
+import type { Metadata } from "next";
 import { setRequestLocale } from "next-intl/server";
 import { useTranslations } from "next-intl";
 import SectionIntro from "@/app/(marketing)/_components/SectionIntro";
 import CalEmbed from "@/app/(marketing)/_components/CalEmbed";
+import { localeAlternates } from "@/lib/marketingSeo";
+
+export async function generateMetadata(props: { params: Promise<{ locale: string }> }): Promise<Metadata> {
+  const params = await props.params;
+  return { alternates: localeAlternates(params.locale, "/demo") };
+}
 
 function DemoPageContent({ locale }: { locale: string }) {
   const t = useTranslations("demoPage");

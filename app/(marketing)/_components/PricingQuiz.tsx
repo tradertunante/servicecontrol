@@ -8,11 +8,13 @@ import { Link } from "@/i18n/navigation";
 
 type BillingPeriod = "monthly" | "annual";
 type TierKey = "auditoria" | "operaciones" | "control";
-type QuizStep = "q_formaciones" | "q_depts" | "result";
+type ModuleKey = "core" | "training" | "analytics" | "it" | "maintenance";
+type QuizKey = "formaciones" | "depts";
 
 type TierData = {
   key: TierKey;
-  moduleGroups: string[][];
+  // moduleGroups: rows of badges — keeps IT+Mantenimiento on the same line in Control Total
+  moduleGroups: ModuleKey[][];
   popular: boolean;
   monthlyPrice: number;
   annualPrice: number;
@@ -28,28 +30,28 @@ type QuizAnswers = {
 const TIERS: TierData[] = [
   {
     key: "auditoria",
-    moduleGroups: [["Core"]],
+    moduleGroups: [["core"]],
     popular: false,
     monthlyPrice: 195,
     annualPrice: 165,
   },
   {
     key: "operaciones",
-    moduleGroups: [["Core", "Formación", "Analítica"]],
+    moduleGroups: [["core", "training", "analytics"]],
     popular: true,
     monthlyPrice: 259,
     annualPrice: 220,
   },
   {
     key: "control",
-    moduleGroups: [["Core", "Formación", "Analítica"], ["IT", "Mantenimiento"]],
+    moduleGroups: [["core", "training", "analytics"], ["it", "maintenance"]],
     popular: false,
     monthlyPrice: 349,
     annualPrice: 295,
   },
 ];
 
-const QUIZ_STEP_KEYS: Exclude<QuizStep, "result">[] = ["q_formaciones", "q_depts"];
+const QUIZ_KEYS: QuizKey[] = ["formaciones", "depts"];
 
 const FAQ_KEYS = ["permanencia", "config", "multihotel", "cambio", "instalar", "datos"] as const;
 
@@ -63,7 +65,8 @@ function getRecommendedTier(a: QuizAnswers): TierKey {
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
-function ModuleBadge({ label, inverted = false }: { label: string; inverted?: boolean }) {
+function ModuleBadge({ moduleKey, inverted = false }: { moduleKey: ModuleKey; inverted?: boolean }) {
+  const t = useTranslations("pricingPage");
   return (
     <span
       className="rounded-full px-2.5 py-0.5 text-xs font-medium"
@@ -73,7 +76,7 @@ function ModuleBadge({ label, inverted = false }: { label: string; inverted?: bo
           : { background: "#EBF3FC", color: "#185FA5", border: "1px solid #C3DCEE" }
       }
     >
-      {label}
+      {t(`modules.${moduleKey}`)}
     </span>
   );
 }
@@ -87,7 +90,8 @@ function TierCard({
   period: BillingPeriod;
   highlighted: boolean;
 }) {
-  const t = useTranslations("pricing");
+  const t = useTranslations("pricingPage");
+  const features = t.raw(`tiers.${tier.key}.features`) as string[];
   const isPop = tier.popular;
   const isHighlighted = highlighted && !isPop;
 
@@ -111,14 +115,14 @@ function TierCard({
       {isPop && (
         <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 whitespace-nowrap">
           <span className="rounded-full bg-white px-4 py-1 text-xs font-bold text-[#185FA5] shadow-sm">
-            {t("badge.popular")}
+            {t("popularBadge")}
           </span>
         </div>
       )}
       {isHighlighted && (
         <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 whitespace-nowrap">
           <span className="rounded-full px-4 py-1 text-xs font-bold" style={{ background: "#185FA5", color: "white" }}>
-            {t("badge.recommended")}
+            {t("recommendedBadge")}
           </span>
         </div>
       )}
@@ -154,22 +158,22 @@ function TierCard({
           className="text-[10px] font-semibold uppercase tracking-[1.5px]"
           style={{ color: isPop ? "rgba(255,255,255,0.55)" : "var(--text-secondary)" }}
         >
-          {period === "annual" ? t("billing.annualLabel") : t("billing.monthlyLabel")}
+          {period === "annual" ? t("annualPriceLabel") : t("monthlyPriceLabel")}
         </div>
         <div className="mt-0.5 flex items-baseline gap-1" style={{ color: isPop ? "white" : "var(--text)" }}>
           <span className="text-2xl font-extrabold">
             €{period === "annual" ? tier.annualPrice : tier.monthlyPrice}
           </span>
-          <span className="text-sm font-medium opacity-70">{t("billing.perMonth")}</span>
+          <span className="text-sm font-medium opacity-70">{t("perMonth")}</span>
         </div>
         {period === "annual" && (
           <div className="mt-0.5 text-xs" style={{ color: isPop ? "rgba(255,255,255,0.6)" : "var(--text-secondary)" }}>
-            {t("billing.annualBilled", { total: tier.annualPrice * 12 })}
+            {t("annualBilledNote", { total: tier.annualPrice * 12 })}
           </div>
         )}
         {period === "monthly" && (
           <div className="mt-0.5 text-xs" style={{ color: isPop ? "rgba(255,255,255,0.6)" : "var(--text-secondary)" }}>
-            {t("billing.noContract")}
+            {t("monthlyNote")}
           </div>
         )}
       </div>
@@ -178,14 +182,14 @@ function TierCard({
         {tier.moduleGroups.map((group, gi) => (
           <div key={gi} className="flex flex-wrap gap-1.5">
             {group.map((m) => (
-              <ModuleBadge key={m} label={m} inverted={isPop} />
+              <ModuleBadge key={m} moduleKey={m} inverted={isPop} />
             ))}
           </div>
         ))}
       </div>
 
       <ul className="mb-6 flex-1 space-y-2.5">
-        {(t.raw(`tiers.${tier.key}.features`) as string[]).map((f) => (
+        {features.map((f) => (
           <li key={f} className="flex items-start gap-2">
             <svg
               className="mt-0.5 h-4 w-4 shrink-0"
@@ -216,14 +220,14 @@ function TierCard({
         className="block rounded-[10px] px-5 py-3 text-center text-sm font-semibold transition"
         style={isPop ? { background: "white", color: "#185FA5" } : { background: "#185FA5", color: "white" }}
       >
-        {t("cta.demo")}
+        {t("ctaDemo")}
       </Link>
     </div>
   );
 }
 
 function MultihotelBanner() {
-  const t = useTranslations("pricing");
+  const t = useTranslations("pricingPage");
   return (
     <div
       className="flex flex-wrap items-center justify-between gap-4 rounded-[16px] p-5"
@@ -239,14 +243,16 @@ function MultihotelBanner() {
           </span>
           <span className="text-sm font-bold text-[var(--text)]">{t("multihotel.title")}</span>
         </div>
-        <p className="text-sm text-[var(--text-secondary)]">{t("multihotel.desc")}</p>
+        <p className="text-sm text-[var(--text-secondary)]">
+          {t("multihotel.description")}
+        </p>
       </div>
       <Link
         href="/demo"
         className="shrink-0 rounded-[8px] px-4 py-2 text-sm font-semibold text-[var(--text)] transition hover:text-[#185FA5]"
         style={{ border: "1px solid var(--border)" }}
       >
-        {t("cta.sales")}
+        {t("multihotel.cta")}
       </Link>
     </div>
   );
@@ -297,31 +303,31 @@ function FaqAccordion() {
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
 export default function PricingQuiz() {
-  const t = useTranslations("pricing");
+  const t = useTranslations("pricingPage");
+  const tPricing = useTranslations("pricing");
   const [period, setPeriod] = useState<BillingPeriod>("monthly");
   const [showQuiz, setShowQuiz] = useState(false);
-  const [quizStep, setQuizStep] = useState<QuizStep>("q_formaciones");
+  const [stepIndex, setStepIndex] = useState(0);
   const [answers, setAnswers] = useState<QuizAnswers>({ formaciones: null, depts: null });
   const [recommendedTier, setRecommendedTier] = useState<TierKey | null>(null);
 
-  const currentStepIndex = QUIZ_STEP_KEYS.indexOf(quizStep as Exclude<QuizStep, "result">);
-  const currentStepKey = quizStep as Exclude<QuizStep, "result">;
+  const isResult = stepIndex >= QUIZ_KEYS.length;
+  const currentKey = isResult ? null : QUIZ_KEYS[stepIndex];
 
   function handleAnswer(value: boolean) {
-    const answerKey = currentStepKey.replace("q_", "") as keyof QuizAnswers;
-    const nextKey = QUIZ_STEP_KEYS[currentStepIndex + 1];
-    const updated = { ...answers, [answerKey]: value };
+    if (!currentKey) return;
+    const updated = { ...answers, [currentKey]: value };
     setAnswers(updated);
-    if (nextKey) {
-      setQuizStep(nextKey);
+    if (stepIndex + 1 < QUIZ_KEYS.length) {
+      setStepIndex(stepIndex + 1);
     } else {
       setRecommendedTier(getRecommendedTier(updated));
-      setQuizStep("result");
+      setStepIndex(QUIZ_KEYS.length);
     }
   }
 
   function restartQuiz() {
-    setQuizStep("q_formaciones");
+    setStepIndex(0);
     setAnswers({ formaciones: null, depts: null });
     setRecommendedTier(null);
   }
@@ -344,7 +350,7 @@ export default function PricingQuiz() {
                 : { color: "var(--text-secondary)" }
             }
           >
-            {t("billing.monthly")}
+            {t("billingMonthly")}
           </button>
           <button
             onClick={() => setPeriod("annual")}
@@ -355,9 +361,9 @@ export default function PricingQuiz() {
                 : { color: "var(--text-secondary)" }
             }
           >
-            {t("billing.annual")}
+            {t("billingAnnual")}
             <span className="rounded-full bg-[#15803D] px-2 py-0.5 text-[10px] font-bold text-white">
-              {t("billing.annualSavings")}
+              {tPricing("billing.annualSavings")}
             </span>
           </button>
         </div>
@@ -397,26 +403,26 @@ export default function PricingQuiz() {
 
         {showQuiz && (
           <div className="px-6 pb-6 pt-2" style={{ borderTop: "1px solid var(--border)" }}>
-            {quizStep !== "result" ? (
+            {!isResult && currentKey ? (
               <>
                 <div className="mb-6 flex items-center gap-2">
-                  {QUIZ_STEP_KEYS.map((s, i) => (
+                  {QUIZ_KEYS.map((key, i) => (
                     <div
-                      key={s}
+                      key={key}
                       className="h-1 flex-1 rounded-full transition-all"
-                      style={{ background: i <= currentStepIndex ? "#185FA5" : "var(--border)" }}
+                      style={{ background: i <= stepIndex ? "#185FA5" : "var(--border)" }}
                     />
                   ))}
                 </div>
 
                 <div className="text-[11px] font-semibold uppercase tracking-[2px] text-[var(--text-secondary)]">
-                  {t("quiz.stepLabel", { current: currentStepIndex + 1, total: QUIZ_STEP_KEYS.length })}
+                  {t("quiz.stepLabel", { current: stepIndex + 1, total: QUIZ_KEYS.length })}
                 </div>
                 <h3 className="mt-2 text-lg font-bold text-[var(--text)]">
-                  {t(`quiz.steps.${currentStepKey}.question`)}
+                  {t(`quiz.questions.${currentKey}.question`)}
                 </h3>
                 <p className="mt-2 text-sm leading-6 text-[var(--text-secondary)]">
-                  {t(`quiz.steps.${currentStepKey}.hint`)}
+                  {t(`quiz.questions.${currentKey}.hint`)}
                 </p>
 
                 <div className="mt-6 grid gap-3 sm:grid-cols-2">
@@ -426,7 +432,7 @@ export default function PricingQuiz() {
                     style={{ background: "var(--row-bg)", border: "1px solid var(--border)" }}
                   >
                     <span className="mr-2 text-[#185FA5]">→</span>
-                    {t(`quiz.steps.${currentStepKey}.yes`)}
+                    {t(`quiz.questions.${currentKey}.yes`)}
                   </button>
                   <button
                     onClick={() => handleAnswer(false)}
@@ -434,17 +440,17 @@ export default function PricingQuiz() {
                     style={{ background: "var(--row-bg)", border: "1px solid var(--border)" }}
                   >
                     <span className="mr-2 text-[var(--text-secondary)]">→</span>
-                    {t(`quiz.steps.${currentStepKey}.no`)}
+                    {t(`quiz.questions.${currentKey}.no`)}
                   </button>
                 </div>
               </>
             ) : (
               <>
                 <div className="mb-3 text-[11px] font-semibold uppercase tracking-[2px] text-[#185FA5]">
-                  {t("quiz.recommended")}
+                  {t("quiz.resultLabel")}
                 </div>
                 {recommendedTier && (() => {
-                  const tier = TIERS.find((t) => t.key === recommendedTier)!;
+                  const tier = TIERS.find((tr) => tr.key === recommendedTier)!;
                   return (
                     <div
                       className="rounded-[16px] p-5"
@@ -463,7 +469,7 @@ export default function PricingQuiz() {
                           {tier.moduleGroups.map((group, gi) => (
                             <div key={gi} className="flex flex-wrap gap-1.5">
                               {group.map((m) => (
-                                <ModuleBadge key={m} label={m} />
+                                <ModuleBadge key={m} moduleKey={m} />
                               ))}
                             </div>
                           ))}
@@ -474,7 +480,7 @@ export default function PricingQuiz() {
                           href="/demo"
                           className="rounded-[8px] bg-[#185FA5] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#378ADD]"
                         >
-                          {t("cta.demo")}
+                          {t("ctaDemo")}
                         </Link>
                         <button
                           onClick={restartQuiz}
