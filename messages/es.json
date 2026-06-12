@@ -674,5 +674,106 @@
     "conflictTitle": "Ya tienes acceso",
     "conflictBody": "Este email ya tiene una cuenta en el sandbox. Revisa tu bandeja de entrada con las credenciales originales.",
     "conflictCta": "Ir al login"
+  },
+  "pricing": {
+    "eyebrow": "Pricing",
+    "title": "Control operativo real, en el plan que encaja con tu hotel",
+    "description": "Tres planes pensados para distintos niveles de complejidad. El precio final depende del número de áreas, usuarios y nivel de acompañamiento.",
+    "billing": {
+      "monthly": "Mensual",
+      "annual": "Anual",
+      "annualSavings": "−15%",
+      "annualLabel": "Con pago anual",
+      "monthlyLabel": "Precio / mes",
+      "perMonth": "/mes",
+      "annualBilled": "€{total}/año · facturado anualmente",
+      "noContract": "Sin contrato anual"
+    },
+    "badge": {
+      "popular": "Más popular",
+      "recommended": "Recomendado para ti"
+    },
+    "cta": {
+      "demo": "Ver demo · 30 min",
+      "sales": "Hablar con ventas"
+    },
+    "tiers": {
+      "auditoria": {
+        "name": "Auditorías",
+        "tagline": "Digitaliza y estandariza tus inspecciones",
+        "persona": "Hoteles que dan sus primeros pasos en auditoría digital",
+        "features": [
+          "Checklists digitales por área y departamento",
+          "Detección y seguimiento de incidencias",
+          "Puntuación automática por auditoría",
+          "Histórico y comparativas por periodo",
+          "Reauditorías para verificar correcciones"
+        ]
+      },
+      "operaciones": {
+        "name": "Operaciones",
+        "tagline": "Detecta, forma y analiza en un solo sistema",
+        "persona": "Hoteles que quieren cerrar el ciclo auditoría → formación",
+        "features": [
+          "Todo lo del plan Auditorías",
+          "Fallos vinculados a planes de formación del equipo",
+          "Asignación de formaciones con seguimiento hasta completado",
+          "Dashboards avanzados, tendencias y exportes por área",
+          "−10% por combinar módulos"
+        ]
+      },
+      "control": {
+        "name": "Control Total",
+        "tagline": "Toda la operación bajo un solo sistema",
+        "persona": "Propiedades con operativa compleja o equipos multidepartamento",
+        "features": [
+          "Todo lo del plan Operaciones",
+          "IT y Mantenimiento gestionan sus propios backlogs",
+          "Trazabilidad auditoría → formación → mantenimiento",
+          "Dashboard 360° de toda la operación",
+          "−20% por bundle completo"
+        ]
+      }
+    },
+    "multihotel": {
+      "badge": "Cadena / Multihotel",
+      "title": "Gestión de varias propiedades",
+      "desc": "Cualquier plan con tarifa por propiedad adicional · Panel unificado para comparar resultados entre hoteles."
+    },
+    "quiz": {
+      "toggle": "¿No sabes cuál elegir? Responde 2 preguntas y te lo decimos",
+      "stepLabel": "Pregunta {current} de {total}",
+      "recommended": "Plan recomendado",
+      "restart": "Repetir",
+      "steps": {
+        "q_formaciones": {
+          "question": "¿Quieres que los fallos detectados generen planes de formación para el equipo?",
+          "hint": "Cuando la auditoría detecta un fallo recurrente, el sistema asigna una formación al responsable y verifica que se completa.",
+          "yes": "Sí, me interesa",
+          "no": "No por ahora"
+        },
+        "q_depts": {
+          "question": "¿Quieres que IT y Mantenimiento gestionen sus propios backlogs de incidencias y obras?",
+          "hint": "Cada departamento recibe los fallos que le corresponden, los gestiona desde su propia vista y los cierra cuando están resueltos.",
+          "yes": "Sí",
+          "no": "No"
+        }
+      }
+    },
+    "faq": {
+      "title": "Preguntas frecuentes",
+      "permanencia_q": "¿Hay permanencia mínima?",
+      "permanencia_a": "No. Los planes mensuales se pueden cancelar en cualquier momento. Con el plan anual facturas el año completo por adelantado a cambio del −15%.",
+      "config_q": "¿El precio incluye la configuración inicial?",
+      "config_a": "La primera configuración (áreas, plantillas, usuarios) se realiza en una sesión guiada incluida en todos los planes. Una implantación más extensa o una migración de datos se acuerda aparte.",
+      "multihotel_q": "¿Qué pasa si tenemos más de un hotel?",
+      "multihotel_a": "Cualquier plan se amplía con propiedades adicionales a tarifa preferente. Disponemos de un panel multihotel para comparar resultados entre propiedades.",
+      "cambio_q": "¿Puedo cambiar de plan después?",
+      "cambio_a": "Sí. Puedes subir o bajar de plan en cualquier momento. Al cambiar a anual, el tiempo restante del mes en curso se prorratea.",
+      "instalar_q": "¿Necesito instalar algo?",
+      "instalar_a": "No. ServiceControl es 100% web y funciona desde cualquier dispositivo — el equipo puede auditar desde el móvil y dirección ver los dashboards desde el ordenador.",
+      "datos_q": "¿Están seguros mis datos?",
+      "datos_a": "Sí. Los datos se almacenan en servidores europeos (EU-West), con backups diarios, cifrado en tránsito y en reposo, y acceso por roles. Podemos firmar un DPA si tu organización lo requiere."
+    }
   }
 }

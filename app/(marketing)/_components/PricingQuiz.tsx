@@ -1,111 +1,57 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type BillingPeriod = "monthly" | "annual";
 type TierKey = "auditoria" | "operaciones" | "control";
+type QuizStep = "q_formaciones" | "q_depts" | "result";
 
-type Tier = {
+type TierData = {
   key: TierKey;
-  name: string;
-  tagline: string;
-  persona: string;
-  // moduleGroups: rows of badges — keeps IT+Mantenimiento on the same line in Control Total
   moduleGroups: string[][];
-  features: string[];
   popular: boolean;
   monthlyPrice: number;
   annualPrice: number;
 };
 
-type QuizStep = "q_formaciones" | "q_depts" | "result";
-
 type QuizAnswers = {
   formaciones: boolean | null;
-  depts: boolean | null; // IT + Mantenimiento always as a pair
+  depts: boolean | null;
 };
 
-// ─── Data ─────────────────────────────────────────────────────────────────────
+// ─── Structural data (no strings) ─────────────────────────────────────────────
 
-const TIERS: Tier[] = [
+const TIERS: TierData[] = [
   {
     key: "auditoria",
-    name: "Auditorías",
-    tagline: "Digitaliza y estandariza tus inspecciones",
-    persona: "Hoteles que dan sus primeros pasos en auditoría digital",
     moduleGroups: [["Core"]],
-    features: [
-      "Checklists digitales por área y departamento",
-      "Detección y seguimiento de incidencias",
-      "Puntuación automática por auditoría",
-      "Histórico y comparativas por periodo",
-      "Reauditorías para verificar correcciones",
-    ],
     popular: false,
     monthlyPrice: 195,
     annualPrice: 165,
   },
   {
     key: "operaciones",
-    name: "Operaciones",
-    tagline: "Detecta, forma y analiza en un solo sistema",
-    persona: "Hoteles que quieren cerrar el ciclo auditoría → formación",
     moduleGroups: [["Core", "Formación", "Analítica"]],
-    features: [
-      "Todo lo del plan Auditorías",
-      "Fallos vinculados a planes de formación del equipo",
-      "Asignación de formaciones con seguimiento hasta completado",
-      "Dashboards avanzados, tendencias y exportes por área",
-      "−10% por combinar módulos",
-    ],
     popular: true,
     monthlyPrice: 259,
     annualPrice: 220,
   },
   {
     key: "control",
-    name: "Control Total",
-    tagline: "Toda la operación bajo un solo sistema",
-    persona: "Propiedades con operativa compleja o equipos multidepartamento",
     moduleGroups: [["Core", "Formación", "Analítica"], ["IT", "Mantenimiento"]],
-    features: [
-      "Todo lo del plan Operaciones",
-      "IT y Mantenimiento gestionan sus propios backlogs",
-      "Trazabilidad auditoría → formación → mantenimiento",
-      "Dashboard 360° de toda la operación",
-      "−20% por bundle completo",
-    ],
     popular: false,
     monthlyPrice: 349,
     annualPrice: 295,
   },
 ];
 
-const QUIZ_STEPS: {
-  key: QuizStep;
-  question: string;
-  hint: string;
-  yes: string;
-  no: string;
-}[] = [
-  {
-    key: "q_formaciones",
-    question: "¿Quieres que los fallos detectados generen planes de formación para el equipo?",
-    hint: "Cuando la auditoría detecta un fallo recurrente, el sistema asigna una formación al responsable y verifica que se completa.",
-    yes: "Sí, me interesa",
-    no: "No por ahora",
-  },
-  {
-    key: "q_depts",
-    question: "¿Quieres que IT y Mantenimiento gestionen sus propios backlogs de incidencias y obras?",
-    hint: "Cada departamento recibe los fallos que le corresponden, los gestiona desde su propia vista y los cierra cuando están resueltos.",
-    yes: "Sí",
-    no: "No",
-  },
-];
+const QUIZ_STEP_KEYS: Exclude<QuizStep, "result">[] = ["q_formaciones", "q_depts"];
+
+const FAQ_KEYS = ["permanencia", "config", "multihotel", "cambio", "instalar", "datos"] as const;
 
 // ─── Logic ────────────────────────────────────────────────────────────────────
 
@@ -137,10 +83,11 @@ function TierCard({
   period,
   highlighted,
 }: {
-  tier: Tier;
+  tier: TierData;
   period: BillingPeriod;
   highlighted: boolean;
 }) {
+  const t = useTranslations("pricing");
   const isPop = tier.popular;
   const isHighlighted = highlighted && !isPop;
 
@@ -164,41 +111,38 @@ function TierCard({
       {isPop && (
         <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 whitespace-nowrap">
           <span className="rounded-full bg-white px-4 py-1 text-xs font-bold text-[#185FA5] shadow-sm">
-            Más popular
+            {t("badge.popular")}
           </span>
         </div>
       )}
       {isHighlighted && (
         <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 whitespace-nowrap">
           <span className="rounded-full px-4 py-1 text-xs font-bold" style={{ background: "#185FA5", color: "white" }}>
-            Recomendado para ti
+            {t("badge.recommended")}
           </span>
         </div>
       )}
 
-      {/* Persona */}
       <div
         className="mb-3 text-[10px] font-semibold uppercase tracking-[1.5px] leading-4"
         style={{ color: isPop ? "rgba(255,255,255,0.65)" : "var(--text-secondary)" }}
       >
-        {tier.persona}
+        {t(`tiers.${tier.key}.persona`)}
       </div>
 
-      {/* Name + tagline */}
       <h3
         className="text-2xl font-extrabold tracking-tight"
         style={{ color: isPop ? "white" : "var(--text)" }}
       >
-        {tier.name}
+        {t(`tiers.${tier.key}.name`)}
       </h3>
       <p
         className="mt-1 text-sm font-medium"
         style={{ color: isPop ? "rgba(255,255,255,0.8)" : "var(--text-secondary)" }}
       >
-        {tier.tagline}
+        {t(`tiers.${tier.key}.tagline`)}
       </p>
 
-      {/* Price box */}
       <div
         className="my-5 rounded-[12px] px-4 py-3"
         style={{
@@ -210,27 +154,26 @@ function TierCard({
           className="text-[10px] font-semibold uppercase tracking-[1.5px]"
           style={{ color: isPop ? "rgba(255,255,255,0.55)" : "var(--text-secondary)" }}
         >
-          {period === "annual" ? "Con pago anual" : "Precio / mes"}
+          {period === "annual" ? t("billing.annualLabel") : t("billing.monthlyLabel")}
         </div>
         <div className="mt-0.5 flex items-baseline gap-1" style={{ color: isPop ? "white" : "var(--text)" }}>
           <span className="text-2xl font-extrabold">
             €{period === "annual" ? tier.annualPrice : tier.monthlyPrice}
           </span>
-          <span className="text-sm font-medium opacity-70">/mes</span>
+          <span className="text-sm font-medium opacity-70">{t("billing.perMonth")}</span>
         </div>
         {period === "annual" && (
           <div className="mt-0.5 text-xs" style={{ color: isPop ? "rgba(255,255,255,0.6)" : "var(--text-secondary)" }}>
-            €{tier.annualPrice * 12}/año · facturado anualmente
+            {t("billing.annualBilled", { total: tier.annualPrice * 12 })}
           </div>
         )}
         {period === "monthly" && (
           <div className="mt-0.5 text-xs" style={{ color: isPop ? "rgba(255,255,255,0.6)" : "var(--text-secondary)" }}>
-            Sin contrato anual
+            {t("billing.noContract")}
           </div>
         )}
       </div>
 
-      {/* Module badges — each group stays on its own line */}
       <div className="mb-5 space-y-1.5">
         {tier.moduleGroups.map((group, gi) => (
           <div key={gi} className="flex flex-wrap gap-1.5">
@@ -241,9 +184,8 @@ function TierCard({
         ))}
       </div>
 
-      {/* Feature list */}
       <ul className="mb-6 flex-1 space-y-2.5">
-        {tier.features.map((f) => (
+        {(t.raw(`tiers.${tier.key}.features`) as string[]).map((f) => (
           <li key={f} className="flex items-start gap-2">
             <svg
               className="mt-0.5 h-4 w-4 shrink-0"
@@ -269,19 +211,19 @@ function TierCard({
         ))}
       </ul>
 
-      {/* CTA */}
       <Link
         href="/demo"
         className="block rounded-[10px] px-5 py-3 text-center text-sm font-semibold transition"
         style={isPop ? { background: "white", color: "#185FA5" } : { background: "#185FA5", color: "white" }}
       >
-        Ver demo · 30 min
+        {t("cta.demo")}
       </Link>
     </div>
   );
 }
 
 function MultihotelBanner() {
+  const t = useTranslations("pricing");
   return (
     <div
       className="flex flex-wrap items-center justify-between gap-4 rounded-[16px] p-5"
@@ -293,21 +235,61 @@ function MultihotelBanner() {
             className="rounded-full px-2.5 py-0.5 text-xs font-semibold"
             style={{ background: "#EBF3FC", color: "#185FA5", border: "1px solid #C3DCEE" }}
           >
-            Cadena / Multihotel
+            {t("multihotel.badge")}
           </span>
-          <span className="text-sm font-bold text-[var(--text)]">Gestión de varias propiedades</span>
+          <span className="text-sm font-bold text-[var(--text)]">{t("multihotel.title")}</span>
         </div>
-        <p className="text-sm text-[var(--text-secondary)]">
-          Cualquier plan con tarifa por propiedad adicional · Panel unificado para comparar resultados entre hoteles.
-        </p>
+        <p className="text-sm text-[var(--text-secondary)]">{t("multihotel.desc")}</p>
       </div>
       <Link
         href="/demo"
         className="shrink-0 rounded-[8px] px-4 py-2 text-sm font-semibold text-[var(--text)] transition hover:text-[#185FA5]"
         style={{ border: "1px solid var(--border)" }}
       >
-        Hablar con ventas
+        {t("cta.sales")}
       </Link>
+    </div>
+  );
+}
+
+function FaqAccordion() {
+  const t = useTranslations("pricing");
+  const [open, setOpen] = useState<string | null>(null);
+
+  return (
+    <div className="mt-16">
+      <h2 className="mb-8 text-center text-2xl font-extrabold tracking-tight text-[var(--text)]">
+        {t("faq.title")}
+      </h2>
+      <div className="mx-auto max-w-2xl divide-y" style={{ borderTop: "1px solid var(--border)", borderBottom: "1px solid var(--border)" }}>
+        {FAQ_KEYS.map((key) => {
+          const isOpen = open === key;
+          return (
+            <div key={key}>
+              <button
+                onClick={() => setOpen(isOpen ? null : key)}
+                className="flex w-full items-center justify-between gap-4 py-4 text-left text-sm font-semibold text-[var(--text)] transition hover:text-[#185FA5]"
+              >
+                <span>{t(`faq.${key}_q`)}</span>
+                <span
+                  className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs transition-transform"
+                  style={{
+                    border: "1px solid var(--border)",
+                    transform: isOpen ? "rotate(45deg)" : "none",
+                  }}
+                >
+                  +
+                </span>
+              </button>
+              {isOpen && (
+                <p className="pb-4 text-sm leading-6 text-[var(--text-secondary)]">
+                  {t(`faq.${key}_a`)}
+                </p>
+              )}
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -315,22 +297,23 @@ function MultihotelBanner() {
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
 export default function PricingQuiz() {
+  const t = useTranslations("pricing");
   const [period, setPeriod] = useState<BillingPeriod>("monthly");
   const [showQuiz, setShowQuiz] = useState(false);
   const [quizStep, setQuizStep] = useState<QuizStep>("q_formaciones");
   const [answers, setAnswers] = useState<QuizAnswers>({ formaciones: null, depts: null });
   const [recommendedTier, setRecommendedTier] = useState<TierKey | null>(null);
 
-  const currentStepIndex = QUIZ_STEPS.findIndex((s) => s.key === quizStep);
-  const currentStep = QUIZ_STEPS[currentStepIndex];
+  const currentStepIndex = QUIZ_STEP_KEYS.indexOf(quizStep as Exclude<QuizStep, "result">);
+  const currentStepKey = quizStep as Exclude<QuizStep, "result">;
 
   function handleAnswer(value: boolean) {
-    const key = currentStep.key.replace("q_", "") as keyof QuizAnswers;
-    const next = QUIZ_STEPS[currentStepIndex + 1];
-    const updated = { ...answers, [key]: value };
+    const answerKey = currentStepKey.replace("q_", "") as keyof QuizAnswers;
+    const nextKey = QUIZ_STEP_KEYS[currentStepIndex + 1];
+    const updated = { ...answers, [answerKey]: value };
     setAnswers(updated);
-    if (next) {
-      setQuizStep(next.key);
+    if (nextKey) {
+      setQuizStep(nextKey);
     } else {
       setRecommendedTier(getRecommendedTier(updated));
       setQuizStep("result");
@@ -361,7 +344,7 @@ export default function PricingQuiz() {
                 : { color: "var(--text-secondary)" }
             }
           >
-            Mensual
+            {t("billing.monthly")}
           </button>
           <button
             onClick={() => setPeriod("annual")}
@@ -372,9 +355,9 @@ export default function PricingQuiz() {
                 : { color: "var(--text-secondary)" }
             }
           >
-            Anual
+            {t("billing.annual")}
             <span className="rounded-full bg-[#15803D] px-2 py-0.5 text-[10px] font-bold text-white">
-              −15%
+              {t("billing.annualSavings")}
             </span>
           </button>
         </div>
@@ -403,7 +386,7 @@ export default function PricingQuiz() {
           onClick={() => setShowQuiz((v) => !v)}
           className="flex w-full items-center justify-between px-6 py-4 text-sm font-semibold text-[var(--text)] transition hover:bg-[var(--row-bg)]"
         >
-          <span>¿No sabes cuál elegir? Responde 2 preguntas y te lo decimos</span>
+          <span>{t("quiz.toggle")}</span>
           <span
             className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs"
             style={{ border: "1px solid var(--border)" }}
@@ -417,9 +400,9 @@ export default function PricingQuiz() {
             {quizStep !== "result" ? (
               <>
                 <div className="mb-6 flex items-center gap-2">
-                  {QUIZ_STEPS.map((s, i) => (
+                  {QUIZ_STEP_KEYS.map((s, i) => (
                     <div
-                      key={s.key}
+                      key={s}
                       className="h-1 flex-1 rounded-full transition-all"
                       style={{ background: i <= currentStepIndex ? "#185FA5" : "var(--border)" }}
                     />
@@ -427,10 +410,14 @@ export default function PricingQuiz() {
                 </div>
 
                 <div className="text-[11px] font-semibold uppercase tracking-[2px] text-[var(--text-secondary)]">
-                  Pregunta {currentStepIndex + 1} de {QUIZ_STEPS.length}
+                  {t("quiz.stepLabel", { current: currentStepIndex + 1, total: QUIZ_STEP_KEYS.length })}
                 </div>
-                <h3 className="mt-2 text-lg font-bold text-[var(--text)]">{currentStep.question}</h3>
-                <p className="mt-2 text-sm leading-6 text-[var(--text-secondary)]">{currentStep.hint}</p>
+                <h3 className="mt-2 text-lg font-bold text-[var(--text)]">
+                  {t(`quiz.steps.${currentStepKey}.question`)}
+                </h3>
+                <p className="mt-2 text-sm leading-6 text-[var(--text-secondary)]">
+                  {t(`quiz.steps.${currentStepKey}.hint`)}
+                </p>
 
                 <div className="mt-6 grid gap-3 sm:grid-cols-2">
                   <button
@@ -439,7 +426,7 @@ export default function PricingQuiz() {
                     style={{ background: "var(--row-bg)", border: "1px solid var(--border)" }}
                   >
                     <span className="mr-2 text-[#185FA5]">→</span>
-                    {currentStep.yes}
+                    {t(`quiz.steps.${currentStepKey}.yes`)}
                   </button>
                   <button
                     onClick={() => handleAnswer(false)}
@@ -447,14 +434,14 @@ export default function PricingQuiz() {
                     style={{ background: "var(--row-bg)", border: "1px solid var(--border)" }}
                   >
                     <span className="mr-2 text-[var(--text-secondary)]">→</span>
-                    {currentStep.no}
+                    {t(`quiz.steps.${currentStepKey}.no`)}
                   </button>
                 </div>
               </>
             ) : (
               <>
                 <div className="mb-3 text-[11px] font-semibold uppercase tracking-[2px] text-[#185FA5]">
-                  Plan recomendado
+                  {t("quiz.recommended")}
                 </div>
                 {recommendedTier && (() => {
                   const tier = TIERS.find((t) => t.key === recommendedTier)!;
@@ -465,8 +452,12 @@ export default function PricingQuiz() {
                     >
                       <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
                         <div>
-                          <div className="text-xl font-extrabold text-[var(--text)]">{tier.name}</div>
-                          <div className="mt-0.5 text-sm text-[var(--text-secondary)]">{tier.tagline}</div>
+                          <div className="text-xl font-extrabold text-[var(--text)]">
+                            {t(`tiers.${tier.key}.name`)}
+                          </div>
+                          <div className="mt-0.5 text-sm text-[var(--text-secondary)]">
+                            {t(`tiers.${tier.key}.tagline`)}
+                          </div>
                         </div>
                         <div className="space-y-1.5">
                           {tier.moduleGroups.map((group, gi) => (
@@ -483,14 +474,14 @@ export default function PricingQuiz() {
                           href="/demo"
                           className="rounded-[8px] bg-[#185FA5] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#378ADD]"
                         >
-                          Ver demo · 30 min
+                          {t("cta.demo")}
                         </Link>
                         <button
                           onClick={restartQuiz}
                           className="rounded-[8px] px-5 py-2.5 text-sm font-semibold text-[var(--text-secondary)] transition hover:text-[var(--text)]"
                           style={{ border: "1px solid var(--border)" }}
                         >
-                          Repetir
+                          {t("quiz.restart")}
                         </button>
                       </div>
                     </div>
@@ -501,6 +492,9 @@ export default function PricingQuiz() {
           </div>
         )}
       </div>
+
+      {/* ── FAQ ── */}
+      <FaqAccordion />
 
     </div>
   );

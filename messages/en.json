@@ -674,5 +674,106 @@
     "conflictTitle": "You already have access",
     "conflictBody": "This email already has a sandbox account. Check your inbox for the original credentials.",
     "conflictCta": "Go to login"
+  },
+  "pricing": {
+    "eyebrow": "Pricing",
+    "title": "Real operational control, in the plan that fits your hotel",
+    "description": "Three plans designed for different levels of complexity. The final price depends on the number of areas, users and level of support.",
+    "billing": {
+      "monthly": "Monthly",
+      "annual": "Annual",
+      "annualSavings": "−15%",
+      "annualLabel": "Annual billing",
+      "monthlyLabel": "Price / month",
+      "perMonth": "/mo",
+      "annualBilled": "€{total}/yr · billed annually",
+      "noContract": "No annual contract"
+    },
+    "badge": {
+      "popular": "Most popular",
+      "recommended": "Recommended for you"
+    },
+    "cta": {
+      "demo": "See demo · 30 min",
+      "sales": "Talk to sales"
+    },
+    "tiers": {
+      "auditoria": {
+        "name": "Audits",
+        "tagline": "Digitize and standardize your inspections",
+        "persona": "Hotels taking their first steps in digital auditing",
+        "features": [
+          "Digital checklists by area and department",
+          "Incident detection and tracking",
+          "Automatic scoring per audit",
+          "History and comparisons by period",
+          "Re-audits to verify corrections"
+        ]
+      },
+      "operaciones": {
+        "name": "Operations",
+        "tagline": "Detect, train and analyze in one system",
+        "persona": "Hotels that want to close the audit → training loop",
+        "features": [
+          "Everything in the Audits plan",
+          "Failures linked to team training plans",
+          "Training assignment with completion tracking",
+          "Advanced dashboards, trends and area exports",
+          "−10% for combining modules"
+        ]
+      },
+      "control": {
+        "name": "Total Control",
+        "tagline": "Your entire operation under one system",
+        "persona": "Properties with complex operations or multi-department teams",
+        "features": [
+          "Everything in the Operations plan",
+          "IT and Maintenance manage their own backlogs",
+          "Audit → training → maintenance traceability",
+          "360° dashboard of the full operation",
+          "−20% for the complete bundle"
+        ]
+      }
+    },
+    "multihotel": {
+      "badge": "Chain / Multi-property",
+      "title": "Managing multiple properties",
+      "desc": "Any plan with a per-property add-on rate · Unified panel to compare results across hotels."
+    },
+    "quiz": {
+      "toggle": "Not sure which plan? Answer 2 questions and we'll tell you",
+      "stepLabel": "Question {current} of {total}",
+      "recommended": "Recommended plan",
+      "restart": "Restart",
+      "steps": {
+        "q_formaciones": {
+          "question": "Do you want detected failures to trigger training plans for the team?",
+          "hint": "When an audit detects a recurring failure, the system assigns training to the responsible person and verifies it is completed.",
+          "yes": "Yes, I'm interested",
+          "no": "Not for now"
+        },
+        "q_depts": {
+          "question": "Do you want IT and Maintenance to manage their own incident and works backlogs?",
+          "hint": "Each department receives its relevant failures, manages them from its own view and closes them when resolved.",
+          "yes": "Yes",
+          "no": "No"
+        }
+      }
+    },
+    "faq": {
+      "title": "Frequently asked questions",
+      "permanencia_q": "Is there a minimum commitment?",
+      "permanencia_a": "No. Monthly plans can be cancelled at any time. With the annual plan you invoice the full year upfront in exchange for −15%.",
+      "config_q": "Does the price include initial setup?",
+      "config_a": "The first configuration (areas, templates, users) is done in a guided session included in all plans. A more extensive implementation or data migration is agreed separately.",
+      "multihotel_q": "What if we have more than one hotel?",
+      "multihotel_a": "Any plan can be extended with additional properties at a preferential rate. We also have a multi-property panel to compare results across properties.",
+      "cambio_q": "Can I change plans later?",
+      "cambio_a": "Yes. You can upgrade or downgrade at any time. When switching to annual, the remaining time on the current month is prorated.",
+      "instalar_q": "Do I need to install anything?",
+      "instalar_a": "No. ServiceControl is 100% web-based and works from any device — the team can audit from mobile and management can view dashboards from desktop.",
+      "datos_q": "Is my data safe?",
+      "datos_a": "Yes. Data is stored on European servers (EU-West), with daily backups, encryption in transit and at rest, and role-based access. We can sign a DPA if your organization requires it."
+    }
   }
 }
