@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import Anthropic from "@anthropic-ai/sdk";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { fetchAllRows, fetchAllRowsByIds } from "@/lib/api/fetchAll";
 import { logApiCost } from "@/lib/ai/costLogger";
 import { authorizeRouteRequest, resolveRouteHotelScope } from "@/lib/auth/server";
 import { jsonError, jsonDbError } from "@/lib/api/response";
@@ -48,25 +49,23 @@ async function getFailureDataForHotel(hotelId: string): Promise<FailureRow[]> {
     now.getTime() - HISTORICAL_DAYS * 24 * 60 * 60 * 1000
   ).toISOString();
 
-  const { data: recentRuns, error: recentError } = await admin
-    .from("audit_runs")
-    .select("id, area_id")
-    .eq("hotel_id", hotelId)
-    .eq("status", "submitted")
-    .is("archived_at", null)
-    .gte("executed_at", recentStart);
-  if (recentError) throw recentError;
+  // Una sola query (90 días) paginada; el corte reciente se hace en memoria.
+  const historicalRuns = await fetchAllRows<{ id: string; area_id: string; executed_at: string }>(
+    (from, to) =>
+      admin
+        .from("audit_runs")
+        .select("id, area_id, executed_at")
+        .eq("hotel_id", hotelId)
+        .eq("status", "submitted")
+        .is("archived_at", null)
+        .gte("executed_at", historicalStart)
+        .order("executed_at", { ascending: false })
+        .range(from, to)
+  );
 
-  const { data: historicalRuns, error: histError } = await admin
-    .from("audit_runs")
-    .select("id, area_id")
-    .eq("hotel_id", hotelId)
-    .eq("status", "submitted")
-    .is("archived_at", null)
-    .gte("executed_at", historicalStart);
-  if (histError) throw histError;
+  const recentRuns = historicalRuns.filter((r) => r.executed_at >= recentStart);
 
-  if (!recentRuns?.length) return [];
+  if (!recentRuns.length) return [];
 
   const recentAreaById = new Map(recentRuns.map((r) => [r.id, r.area_id]));
   const historicalAreaById = new Map((historicalRuns ?? []).map((r) => [r.id, r.area_id]));
@@ -80,22 +79,32 @@ async function getFailureDataForHotel(hotelId: string): Promise<FailureRow[]> {
   const { data: areas } = await admin.from("areas").select("id, name").in("id", allAreaIds);
   const areaNameById = new Map((areas ?? []).map((a) => [String(a.id), String(a.name)]));
 
-  const recentRunIds = recentRuns.map((r) => r.id);
-  const historicalRunIds = (historicalRuns ?? []).map((r) => r.id);
+  const recentRunIdSet = new Set(recentRuns.map((r) => r.id));
+  const historicalRunIds = historicalRuns.map((r) => r.id);
 
-  const { data: recentAnswers, error: raError } = await admin
-    .from("audit_answers")
-    .select("question_id, question_text, result, answer, audit_run_id")
-    .in("audit_run_id", recentRunIds);
-  if (raError) throw raError;
+  type AnswerLite = {
+    question_id: string | null;
+    question_text: string | null;
+    result: string | null;
+    answer: string | null;
+    audit_run_id: string;
+  };
 
-  const { data: historicalAnswers, error: haError } = historicalRunIds.length
-    ? await admin
+  // Una pasada paginada sobre el período histórico (los runs recientes son
+  // subconjunto); sin paginar, PostgREST truncaba a 1.000 answers en silencio
+  // y los ratios de fallo se calculaban con datos parciales.
+  const historicalAnswers = await fetchAllRowsByIds<AnswerLite>(
+    historicalRunIds,
+    (idsChunk, from, to) =>
+      admin
         .from("audit_answers")
         .select("question_id, question_text, result, answer, audit_run_id")
-        .in("audit_run_id", historicalRunIds)
-    : { data: [], error: null };
-  if (haError) throw haError;
+        .in("audit_run_id", idsChunk)
+        .order("id", { ascending: true })
+        .range(from, to)
+  );
+
+  const recentAnswers = historicalAnswers.filter((a) => recentRunIdSet.has(String(a.audit_run_id)));
 
   type Stats = {
     fail: number;
@@ -276,6 +285,23 @@ async function processSuggestionsForHotel(
   let created = 0;
   let skipped = 0;
 
+  // Managers del hotel y sus áreas asignadas, una sola vez fuera del loop:
+  // cada manager recibe solo las sugerencias de sus áreas.
+  const [{ data: managerRows }, { data: accessRows }] = await Promise.all([
+    admin.from("profiles").select("id").eq("hotel_id", hotelId).eq("role", "manager"),
+    admin.from("user_area_access").select("user_id, area_id").eq("hotel_id", hotelId),
+  ]);
+  const managerIds = new Set((managerRows ?? []).map((m) => String(m.id)).filter(Boolean));
+  const managerIdsByArea = new Map<string, string[]>();
+  for (const row of accessRows ?? []) {
+    const userId = String(row.user_id ?? "");
+    const areaId = String(row.area_id ?? "");
+    if (!userId || !areaId || !managerIds.has(userId)) continue;
+    const list = managerIdsByArea.get(areaId) ?? [];
+    list.push(userId);
+    managerIdsByArea.set(areaId, list);
+  }
+
   for (const s of suggestions) {
     const key = `${s.area_id}::${s.question_text}`;
     if (existingKeys.has(key)) {
@@ -307,18 +333,11 @@ async function processSuggestionsForHotel(
 
     created++;
 
-    // Notify area managers
-    const { data: managers } = await admin
-      .from("profiles")
-      .select("id")
-      .eq("hotel_id", hotelId)
-      .eq("role", "manager");
-
-    for (const mgr of managers ?? []) {
-      if (!mgr.id) continue;
+    // Notificar solo a los managers con acceso al área de la sugerencia
+    for (const managerId of managerIdsByArea.get(s.area_id) ?? []) {
       await admin.rpc("notify_user", {
         p_hotel_id: hotelId,
-        p_user_id: mgr.id,
+        p_user_id: managerId,
         p_type: "training_suggestion_pending",
         p_title: "Nueva sugerencia de formación",
         p_body: `El sistema detectó un patrón de fallos en "${s.area_name}" que puede requerir formación.`,

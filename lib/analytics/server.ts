@@ -1,6 +1,7 @@
 import "server-only";
 
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { fetchAllRows, fetchAllRowsByIds } from "@/lib/api/fetchAll";
 import type {
   AnalyticsFiltersState,
   AnalyticsPagePayload,
@@ -563,16 +564,27 @@ export async function buildAnalyticsPagePayload(args: {
     };
   }
 
-  const { data: runsData, error: runsError } = await admin
-    .from("audit_runs")
-    .select("id,executed_at,team_member_id,area_id,status,hotel_id,audit_template_id")
-    .eq("hotel_id", hotelId)
-    .eq("area_id", selectedArea.id)
-    .is("archived_at", null)
-    .eq("status", "submitted")
-    .gte("executed_at", fromISO)
-    .lte("executed_at", toISO)
-    .order("executed_at", { ascending: false });
+  // Paginado: sin .range(), PostgREST trunca a 1.000 filas sin error y la
+  // analítica se calcula sobre datos parciales.
+  let runsData: AuditRunRow[] | null = null;
+  let runsError: { message?: string } | null = null;
+  try {
+    runsData = await fetchAllRows<AuditRunRow>((from, to) =>
+      admin
+        .from("audit_runs")
+        .select("id,executed_at,team_member_id,area_id,status,hotel_id,audit_template_id")
+        .eq("hotel_id", hotelId)
+        .eq("area_id", selectedArea.id)
+        .is("archived_at", null)
+        .eq("status", "submitted")
+        .gte("executed_at", fromISO)
+        .lte("executed_at", toISO)
+        .order("executed_at", { ascending: false })
+        .range(from, to)
+    );
+  } catch (err) {
+    runsError = err instanceof Error ? { message: err.message } : { message: "Error de consulta." };
+  }
 
   if (runsError) {
     return {
@@ -618,7 +630,7 @@ export async function buildAnalyticsPagePayload(args: {
   const templateIds = Array.from(new Set(runs.map((run) => run.audit_template_id).filter(Boolean))) as string[];
   const memberIds = Array.from(new Set(runs.map((run) => run.team_member_id).filter(Boolean))) as string[];
 
-  const [templatesResult, answersResult, membersResult] = await Promise.all([
+  const [templatesResult, answersRows, membersResult] = await Promise.all([
     templateIds.length > 0
       ? admin
           .from("audit_templates")
@@ -626,7 +638,14 @@ export async function buildAnalyticsPagePayload(args: {
           .or(`hotel_id.eq.${hotelId},hotel_id.is.null`)
           .in("id", templateIds)
       : Promise.resolve({ data: [], error: null }),
-    admin.from("audit_answers").select("audit_run_id,question_id,answer,result").in("audit_run_id", runIds),
+    fetchAllRowsByIds<{ audit_run_id: string; question_id: string; answer: string; result: string | null }>(runIds, (idsChunk, from, to) =>
+      admin
+        .from("audit_answers")
+        .select("audit_run_id,question_id,answer,result")
+        .in("audit_run_id", idsChunk)
+        .order("id", { ascending: true })
+        .range(from, to)
+    ),
     memberIds.length > 0
       ? admin
           .from("team_members")
@@ -637,14 +656,13 @@ export async function buildAnalyticsPagePayload(args: {
   ]);
 
   if (templatesResult.error) throw templatesResult.error;
-  if (answersResult.error) throw answersResult.error;
   if (membersResult.error) throw membersResult.error;
 
   const templates = ((templatesResult.data ?? []) as TemplateLite[]).sort((a, b) =>
     (a.name ?? "").localeCompare(b.name ?? "", "es-ES")
   );
 
-  const answers = ((answersResult.data ?? []) as any[]).map((answer) => ({
+  const answers = (answersRows as any[]).map((answer) => ({
     audit_run_id: String(answer.audit_run_id),
     question_id: String(answer.question_id),
     answer: safeVal(answer.answer),

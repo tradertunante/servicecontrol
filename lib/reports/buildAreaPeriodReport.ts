@@ -1,6 +1,7 @@
 import "server-only";
 
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { fetchAllRows, fetchAllRowsByIds } from "@/lib/api/fetchAll";
 import type {
   AreaPeriodAuditRow,
   AreaPeriodReportData,
@@ -100,20 +101,20 @@ export async function buildAreaPeriodReport(args: {
     hotel = (hotelData as HotelRow | null) ?? null;
   }
 
-  const { data: runData, error: runErr } = await admin
-    .from("audit_runs")
-    .select("id,area_id,audit_template_id,score,status,executed_at,executed_by")
-    .eq("area_id", areaId)
-    .eq("hotel_id", hotelId)
-    .is("archived_at", null)
-    .eq("status", "submitted")
-    .gte("executed_at", `${startDate}T00:00:00`)
-    .lt("executed_at", `${endExclusiveStr}T00:00:00`)
-    .order("executed_at", { ascending: true });
-
-  if (runErr) throw runErr;
-
-  const runs = (runData ?? []) as AuditRunRow[];
+  // Paginado: PostgREST trunca a 1.000 filas sin error
+  const runs = (await fetchAllRows((from, to) =>
+    admin
+      .from("audit_runs")
+      .select("id,area_id,audit_template_id,score,status,executed_at,executed_by")
+      .eq("area_id", areaId)
+      .eq("hotel_id", hotelId)
+      .is("archived_at", null)
+      .eq("status", "submitted")
+      .gte("executed_at", `${startDate}T00:00:00`)
+      .lt("executed_at", `${endExclusiveStr}T00:00:00`)
+      .order("executed_at", { ascending: true })
+      .range(from, to)
+  )) as AuditRunRow[];
   const runIds = runs.map((r) => r.id);
   const templateIds = Array.from(new Set(runs.map((r) => r.audit_template_id).filter(Boolean)));
 
@@ -130,13 +131,14 @@ export async function buildAreaPeriodReport(args: {
 
   let answers: AnswerRow[] = [];
   if (runIds.length > 0) {
-    const { data, error } = await admin
-      .from("audit_answers")
-      .select("audit_run_id,question_id,result,answer")
-      .in("audit_run_id", runIds);
-
-    if (error) throw error;
-    answers = (data ?? []) as AnswerRow[];
+    answers = (await fetchAllRowsByIds(runIds, (idsChunk, from, to) =>
+      admin
+        .from("audit_answers")
+        .select("audit_run_id,question_id,result,answer")
+        .in("audit_run_id", idsChunk)
+        .order("id", { ascending: true })
+        .range(from, to)
+    )) as AnswerRow[];
   }
 
   const questionIds = Array.from(new Set(answers.map((a) => a.question_id).filter(Boolean)));
