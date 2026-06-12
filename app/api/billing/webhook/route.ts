@@ -4,6 +4,7 @@ import Stripe from "stripe";
 import { stripe, normalizeInterval, normalizeStatus } from "@/lib/stripe";
 import { logger } from "@/lib/logger";
 import { billingAdmin, type BillingAccountRow } from "@/lib/billing/db";
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
 const WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET;
 
@@ -134,6 +135,26 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
     .update({ provider_customer_id: customerId })
     .eq("id", billingAccountId)
     .is("provider_customer_id", null);
+
+  // Clear trial flag for the billing account owner so they exit demo mode.
+  const { data: account } = await billingAdmin()
+    .from("billing_accounts")
+    .select("owner_user_id")
+    .eq("id", billingAccountId)
+    .maybeSingle() as { data: { owner_user_id: string } | null };
+
+  if (account?.owner_user_id) {
+    const { error: trialError } = await supabaseAdmin()
+      .from("profiles")
+      .update({ is_trial: false })
+      .eq("id", account.owner_user_id);
+
+    if (trialError) {
+      logger.warn("billing_trial_clear_failed", { userId: account.owner_user_id, error: trialError.message });
+    } else {
+      logger.info("billing_trial_cleared", { userId: account.owner_user_id, billingAccountId });
+    }
+  }
 
   logger.info("billing_checkout_completed", { billingAccountId, customerId, sessionId: session.id });
 }

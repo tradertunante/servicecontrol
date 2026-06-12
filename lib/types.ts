@@ -25,4 +25,5 @@ export type Profile = {
   role: Role;
   hotel_id: string | null;
   active?: boolean | null;
+  is_trial?: boolean | null;
 };

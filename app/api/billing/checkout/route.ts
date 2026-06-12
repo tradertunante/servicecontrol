@@ -17,10 +17,14 @@ const VALID_INTERVALS = ["month", "year"];
  * Body: { plan_code: string, interval: "month" | "year" }
  */
 export async function POST(request: NextRequest) {
-  const caller = await authorizeRouteRequest(request, {
-    roles: ["admin", "superadmin"],
-  });
+  const caller = await authorizeRouteRequest(request);
   if (!caller) return jsonError("No autorizado.", 401);
+
+  const isTrialUser = caller.profile.is_trial === true;
+  const isAdminUser = caller.profile.role === "admin" || caller.profile.role === "superadmin";
+  if (!isAdminUser && !isTrialUser) {
+    return jsonError("No autorizado.", 403);
+  }
 
   const body = await request.json().catch(() => null);
   const planCode = typeof body?.plan_code === "string" ? body.plan_code.trim() : "";
@@ -59,10 +63,9 @@ export async function POST(request: NextRequest) {
     account = newAccount;
   }
 
-  // Link the active hotel to the billing account. Plan enforcement resolves
-  // limits via hotels.billing_account_id, so without this link the hotel
-  // stays in grace period forever even after paying.
-  const hotelResult = await resolveRouteHotelScope(caller.profile, null);
+  // Trial users are in a shared demo hotel — skip linking to avoid polluting it.
+  // Their real hotel gets linked after completing hotel creation post-checkout.
+  const hotelResult = isTrialUser ? { ok: false as const } : await resolveRouteHotelScope(caller.profile, null);
   if (hotelResult.ok) {
     const { data: hotel } = await supabaseAdmin()
       .from("hotels")

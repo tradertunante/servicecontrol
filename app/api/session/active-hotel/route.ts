@@ -23,18 +23,20 @@ export async function GET(request: NextRequest) {
   let hotelName: string | null = null;
   let trialHotelName: string | null = null;
   let isTrial = false;
+  let trialExpiresAt: string | null = null;
 
   if (activeHotel.ok) {
     const admin = supabaseAdmin();
 
     const [hotelResult, profileResult] = await Promise.all([
       admin.from("hotels").select("name").eq("id", activeHotel.hotelId).maybeSingle(),
-      admin.from("profiles").select("trial_hotel_name, is_trial").eq("id", caller.profile.id).maybeSingle(),
+      admin.from("profiles").select("trial_hotel_name, is_trial, trial_expires_at").eq("id", caller.profile.id).maybeSingle(),
     ]);
 
     hotelName = hotelResult.data?.name ?? null;
     trialHotelName = profileResult.data?.trial_hotel_name ?? null;
     isTrial = profileResult.data?.is_trial ?? false;
+    trialExpiresAt = profileResult.data?.trial_expires_at ?? null;
   }
 
   return NextResponse.json({
@@ -45,6 +47,7 @@ export async function GET(request: NextRequest) {
     role: caller.profile.role,
     profile_hotel_id: caller.profile.hotel_id ?? null,
     is_trial: isTrial,
+    trial_expires_at: trialExpiresAt,
   });
 }
 

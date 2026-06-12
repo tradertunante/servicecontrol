@@ -59,6 +59,7 @@ function normalizeProfile(row: BasicProfileRow): Profile {
     role: normalizeRole(row.role),
     hotel_id: row.hotel_id ?? null,
     active: row.active ?? null,
+    is_trial: row.is_trial ?? null,
   };
 }
 
