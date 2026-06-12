@@ -41,26 +41,54 @@ const FREE_ENTITLEMENTS: PlanEntitlements = {
   analytics_enabled: false,
 };
 
+const NO_ACCOUNT_STATE: BillingState = {
+  has_account: false,
+  billing_account_id: null,
+  subscription: null,
+  is_active: false,
+  is_past_due: false,
+};
+
 /**
- * Get billing state for a user. Server-side only (uses service_role).
+ * Get billing state for a user (account owner). Server-side only (uses service_role).
+ * Use this for the owner's billing page; for plan enforcement use
+ * getActiveSubscriptionForHotel — limits apply to the hotel, not to whoever calls.
  */
 export async function getActiveSubscription(userId: string): Promise<BillingState> {
-  // 1. Find billing account
   const { data: account } = await billingAdmin()
     .from("billing_accounts")
     .select("id")
     .eq("owner_user_id", userId)
     .maybeSingle() as { data: Pick<BillingAccountRow, "id"> | null };
 
-  if (!account) {
-    return { has_account: false, billing_account_id: null, subscription: null, is_active: false, is_past_due: false };
-  }
+  if (!account) return NO_ACCOUNT_STATE;
 
-  // 2. Find best subscription (active > trialing > past_due)
+  return getBillingStateForAccount(account.id);
+}
+
+/**
+ * Get billing state for a hotel via hotels.billing_account_id.
+ * This is the resolution enforcement must use: audits/users are created by
+ * auditors and managers who never own the billing account.
+ */
+export async function getActiveSubscriptionForHotel(hotelId: string): Promise<BillingState> {
+  const { data: hotel } = await billingAdmin()
+    .from("hotels")
+    .select("billing_account_id")
+    .eq("id", hotelId)
+    .maybeSingle() as { data: { billing_account_id: string | null } | null };
+
+  if (!hotel?.billing_account_id) return NO_ACCOUNT_STATE;
+
+  return getBillingStateForAccount(hotel.billing_account_id);
+}
+
+async function getBillingStateForAccount(accountId: string): Promise<BillingState> {
+  // Find best subscription (active > trialing > past_due)
   const { data: subs } = await billingAdmin()
     .from("billing_subscriptions")
     .select("*")
-    .eq("billing_account_id", account.id)
+    .eq("billing_account_id", accountId)
     .in("status", ["active", "trialing", "past_due"])
     .order("created_at", { ascending: false })
     .limit(1) as { data: BillingSubscriptionRow[] | null };
@@ -68,7 +96,7 @@ export async function getActiveSubscription(userId: string): Promise<BillingStat
   const sub = subs?.[0] ?? null;
 
   if (!sub) {
-    return { has_account: true, billing_account_id: account.id, subscription: null, is_active: false, is_past_due: false };
+    return { has_account: true, billing_account_id: accountId, subscription: null, is_active: false, is_past_due: false };
   }
 
   // 3. Load entitlements
@@ -93,7 +121,7 @@ export async function getActiveSubscription(userId: string): Promise<BillingStat
 
   return {
     has_account: true,
-    billing_account_id: account.id,
+    billing_account_id: accountId,
     subscription: {
       subscription_id: sub.id,
       plan_code: sub.plan_code,

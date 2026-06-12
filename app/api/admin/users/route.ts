@@ -31,10 +31,10 @@ export async function POST(request: NextRequest) {
     const caller = await authorizeRouteRequest(request, { roles: ["admin", "superadmin"] });
     if (!caller) return jsonError("No autorizado.", 401);
 
-    // Plan enforcement: check user limit
+    // Plan enforcement: check user limit (resolved by hotel, not by caller)
     const hotelResult = await resolveRouteHotelScope(caller.profile, null);
     if (hotelResult.ok) {
-      const userCheck = await canAddUser(caller.profile.id, hotelResult.hotelId);
+      const userCheck = await canAddUser(hotelResult.hotelId);
       if (!userCheck.allowed) {
         return jsonError(userCheck.reason, 403);
       }

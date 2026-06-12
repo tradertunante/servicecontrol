@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { stripe } from "@/lib/stripe";
-import { authorizeRouteRequest } from "@/lib/auth/server";
+import { authorizeRouteRequest, resolveRouteHotelScope } from "@/lib/auth/server";
 import { jsonError } from "@/lib/api/response";
 import { logger } from "@/lib/logger";
 import { billingAdmin, type BillingAccountRow } from "@/lib/billing/db";
@@ -57,6 +57,48 @@ export async function POST(request: NextRequest) {
     }
 
     account = newAccount;
+  }
+
+  // Link the active hotel to the billing account. Plan enforcement resolves
+  // limits via hotels.billing_account_id, so without this link the hotel
+  // stays in grace period forever even after paying.
+  const hotelResult = await resolveRouteHotelScope(caller.profile, null);
+  if (hotelResult.ok) {
+    const { data: hotel } = await supabaseAdmin()
+      .from("hotels")
+      .select("billing_account_id")
+      .eq("id", hotelResult.hotelId)
+      .maybeSingle();
+
+    if (!hotel?.billing_account_id) {
+      const { error: linkError } = await supabaseAdmin()
+        .from("hotels")
+        .update({ billing_account_id: account.id })
+        .eq("id", hotelResult.hotelId)
+        .is("billing_account_id", null);
+
+      if (linkError) {
+        logger.error("billing_hotel_link_failed", {
+          hotelId: hotelResult.hotelId,
+          billingAccountId: account.id,
+          error: linkError.message,
+        });
+        return jsonError("Error al vincular el hotel con la cuenta de facturación.", 500);
+      }
+    } else if (hotel.billing_account_id !== account.id) {
+      // Hotel already belongs to another billing account — refuse instead of hijacking it.
+      logger.warn("billing_hotel_already_linked", {
+        hotelId: hotelResult.hotelId,
+        existingAccountId: hotel.billing_account_id,
+        requestedAccountId: account.id,
+      });
+      return jsonError("Este hotel ya está vinculado a otra cuenta de facturación.", 409);
+    }
+  } else {
+    logger.warn("billing_checkout_no_hotel_scope", {
+      userId: caller.profile.id,
+      billingAccountId: account.id,
+    });
   }
 
   // Find Stripe Price by lookup_key convention: "{plan_code}_{interval}"

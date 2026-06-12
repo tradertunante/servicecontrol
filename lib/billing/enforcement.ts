@@ -1,5 +1,9 @@
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
-import { getActiveSubscription, type BillingState, type PlanEntitlements } from "./getActiveSubscription";
+import {
+  getActiveSubscription,
+  getActiveSubscriptionForHotel,
+  type PlanEntitlements,
+} from "./getActiveSubscription";
 
 type EnforcementResult =
   | { allowed: true }
@@ -7,10 +11,12 @@ type EnforcementResult =
 
 /**
  * Check if a hotel can create more audits this month.
- * If no billing account exists yet, allow (grace period until billing is set up).
+ * Resolved via hotels.billing_account_id — never via the caller, who is
+ * usually an auditor/manager without a billing account of their own.
+ * If the hotel has no billing account yet, allow (grace period until billing is set up).
  */
-export async function canCreateAudit(userId: string, hotelId: string): Promise<EnforcementResult> {
-  const billing = await getActiveSubscription(userId);
+export async function canCreateAudit(hotelId: string): Promise<EnforcementResult> {
+  const billing = await getActiveSubscriptionForHotel(hotelId);
 
   // No billing account = no enforcement yet (grace period)
   if (!billing.has_account) return { allowed: true };
@@ -39,10 +45,11 @@ export async function canCreateAudit(userId: string, hotelId: string): Promise<E
 
 /**
  * Check if a hotel can add more users.
- * If no billing account exists yet, allow (grace period).
+ * Resolved via hotels.billing_account_id (see canCreateAudit).
+ * If the hotel has no billing account yet, allow (grace period).
  */
-export async function canAddUser(userId: string, hotelId: string): Promise<EnforcementResult> {
-  const billing = await getActiveSubscription(userId);
+export async function canAddUser(hotelId: string): Promise<EnforcementResult> {
+  const billing = await getActiveSubscriptionForHotel(hotelId);
 
   if (!billing.has_account) return { allowed: true };
 
@@ -92,13 +99,13 @@ export async function canAddHotel(userId: string): Promise<EnforcementResult> {
 }
 
 /**
- * Check if a feature is enabled for the user's plan.
+ * Check if a feature is enabled for the hotel's plan.
  */
 export async function canAccessFeature(
-  userId: string,
+  hotelId: string,
   feature: keyof Pick<PlanEntitlements, "reports_enabled" | "training_enabled" | "analytics_enabled">,
 ): Promise<EnforcementResult> {
-  const billing = await getActiveSubscription(userId);
+  const billing = await getActiveSubscriptionForHotel(hotelId);
 
   if (!billing.has_account) return { allowed: true };
 

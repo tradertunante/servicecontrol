@@ -32,8 +32,8 @@ export async function POST(request: NextRequest) {
   const hotelResult = await resolveRouteHotelScope(caller.profile, null);
   if (!hotelResult.ok) return jsonError(hotelResult.error, hotelResult.status);
 
-  // Plan enforcement: check audit limit
-  const auditCheck = await canCreateAudit(caller.profile.id, hotelResult.hotelId);
+  // Plan enforcement: check audit limit (resolved by hotel, not by caller)
+  const auditCheck = await canCreateAudit(hotelResult.hotelId);
   if (!auditCheck.allowed) {
     return jsonError(auditCheck.reason, 403);
   }
