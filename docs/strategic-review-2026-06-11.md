@@ -3,6 +3,47 @@
 **Alcance:** codebase completo (~69.300 líneas TS/TSX, 79 route handlers, 100+ migraciones, landing i18n, capa IA, billing).
 **Base:** análisis directo del código en rama `landing/cta-jerarquia` + contraste con `docs/architecture-review-2026-06-09.md` y `docs/rls-review-2026-06-10.md` para no repetir lo ya resuelto.
 
+---
+
+## Seguimiento — actualizado 2026-06-12
+
+### ✅ Hecho (en producción desde 2026-06-12, main `36d15d3`, 76/76 tests integración)
+
+| # | Punto | Impacto | Commit |
+|---|---|---|---|
+| 1 | **Enforcement de billing por hotel** (`getActiveSubscriptionForHotel` vía `hotels.billing_account_id`) + checkout vincula hotel↔cuenta (nada escribía esa columna) | **CRÍTICO** — sin esto los límites de plan no aplicaban a nadie que no fuera el owner: ingresos | `a1a2925` |
+| 2 | **Caducidad de trials aplicada** (`trial_expires_at` en `loadProfileWithToken`, cubre SSR + API) | **ALTO** — los trials de 14 días no caducaban nunca | `e95424b` |
+| 3 | **Trials sin rol admin** (rol `quality`, conserva la experiencia del sandbox) + migración `20260612100000`: trials no leen perfiles ajenos, downgrade de existentes | **ALTO** — RGPD: un prospecto veía emails de otros y podía desactivarlos | `e95424b` |
+| 4 | **Bucket `audit-photos` privado** + `GET /api/photos/[fileName]` (autoriza por hotel, redirect a signed URL 5 min) + migración `20260612110000` reescribe URLs guardadas | **ALTO** — evidencia fotográfica de hoteles accesible por URL filtrada, sin revocación | `95f808a` |
+| 5 | **Paginación de lecturas >1.000 filas** (`lib/api/fetchAll.ts` en analytics, reportes de período y sugerencias IA) | **ALTO** — analítica y ratios IA calculados con datos parciales en silencio | `ae30a89` |
+| 6 | N+1 de managers fuera del loop + notificaciones de sugerencias IA solo a managers del área | MEDIO — ruido que entrena a ignorar notificaciones | `ae30a89` |
+
+Verificado además: deploy Vercel Ready, `supabase db push` aplicado, smoke check (endpoint fotos 401 sin sesión).
+
+### ⬜ Por hacer
+
+| Prio | Punto | Impacto | Esfuerzo |
+|---|---|---|---|
+| **P0** | Rate limiter distribuido (Upstash/Vercel KV) + subir límite de `sync-session` | ALTO — logouts fantasma bajo NAT hotelera el primer día de uso real (A-2) | Medio (~½ día) |
+| **P0** | Tests de autorización por ruta (rol × hotel × resultado, ~15 rutas sensibles) | ALTO — 67 rutas con service-role dependen solo de código TS (A-1/Q-7) | Medio (1-2 días) |
+| **P0** | Endurecer alta de trial: try/catch, Brevo/Notion a `waitUntil`, UNIQUE `trial_leads.email` | MEDIO-ALTO — un fallo de Notion quema el lead sin contraseña (B-3) | Bajo (~1 h) |
+| **P0** | Migración con los 7 índices que faltan (sección 1.4) | MEDIO — primeros "va lento" con datos reales | Bajo (~30 min) |
+| **P0** | Privacidad: página `/privacy`, banner de consentimiento, PostHog EU sin cookie previa | ALTO — la landing promete RGPD y es refutable en un click (S-4/L-2) | Medio (~½ día) |
+| **P1** | Pricing: i18n real (hoy hardcoded ES), 3 tarjetas visibles sin quiz, FAQ de objeciones | ALTO conversión — es la página de decisión (L-1/L-8/L-5) | Bajo-medio |
+| **P1** | CTA primario unificado a /demo en header + producto visible en hero móvil | MEDIO conversión (L-3/L-4) | Bajo |
+| **P1** | LandingTracker: `endsWith("/demo")` (no trackea locale EN) + scroll 90 % | MEDIO — los datos de iteración de la landing están sesgados (L-7) | Bajo (~15 min) |
+| **P1** | Flujo trial→pago: conectar `is_trial` con checkout, CTA de upgrade | ALTO negocio — hoy no hay camino de conversión (B-2) | Medio-alto |
+| **P2** | `jsonDbError` en [my/area-access](app/api/my/area-access/route.ts) (única fuga de error crudo) | BAJO (Q-1) | 5 min |
+| **P2** | `waitUntil` en costLogger + pricing por modelo, quitar `sessionTotal` | BAJO-MEDIO — logs de coste IA perdidos (AI-1/AI-2) | Bajo (~20 min) |
+| **P2** | Fallback muerto `app.servicecontrol.io` → `servicecontrol.io` (2 sitios) | BAJO — inofensivo mientras exista `NEXT_PUBLIC_APP_URL` | 5 min |
+| **P2** | Loguear fallos de parseo IA (narrativas/sugerencias degradan en silencio) | BAJO-MEDIO (B-5/AI-4) | Bajo |
+| **P2** | `xlsx` con CVEs → `exceljs` (procesa archivos subidos por usuarios) | MEDIO seguridad (S-9) | Medio |
+| **P2** | Crons fan-out por hotel (timeout con >10-15 hoteles) | MEDIO al escalar (A-3) | Medio |
+| **P3** | Drop de ~17 tablas muertas + squash de migraciones | BAJO — superficie e higiene (1.3) | Medio |
+| **P3** | Dividir componentes cliente de 900-1.250 líneas (al tocarlos) | BAJO (Q-2) | Incremental |
+
+---
+
 **Estado de lo reportado anteriormente (verificado hoy):**
 
 | Hallazgo previo | Estado |
@@ -18,7 +59,7 @@
 | **C-2 Rate limit in-memory** | ❌ **Sigue abierto** — `lib/api/rateLimit.ts` sin cambios |
 | **C-3 67 rutas con service-role, autorización solo en TS** | ❌ Sigue abierto (mitigado por RLS en path browser) |
 | **C-5 Cobertura de tests de autorización casi nula** | ❌ Sigue abierto — 3 archivos unit + 76 integración RLS, 0 tests de rutas |
-| **C-6 Bucket `audit-photos` público** | ❌ Sigue abierto — ninguna migración lo revierte |
+| **C-6 Bucket `audit-photos` público** | ✅ Arreglado 2026-06-12 — bucket privado + `/api/photos` con signed URLs (commit `95f808a`) |
 | **S-5 Crons secuenciales por hotel con IA** | ❌ Sigue abierto |
 | **S-9 `xlsx@0.18.5` con CVEs** | ❌ Sigue abierto |
 
