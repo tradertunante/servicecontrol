@@ -2,7 +2,7 @@
   "nav": {
     "solution": "Solución",
     "modules": "Módulos",
-    "pricing": "Pricing",
+    "pricing": "Precios",
     "demo": "Solicitar demo",
     "login": "Acceder",
     "requestDemo": "Solicitar demo",
@@ -189,29 +189,90 @@
     "tagline": "Plataforma para control operativo, calidad, reauditorías y seguimiento del equipo en hoteles."
   },
   "pricingPage": {
-    "eyebrow": "Pricing",
-    "title": "Planes pensados para hoteles que necesitan control operativo real.",
-    "description": "La contratación se define según número de áreas, complejidad operativa y alcance de implantación. Priorizamos una propuesta clara y alineada con tu operación.",
-    "planLabel": "Plan Growth Hotel",
-    "planTitle": "Implementación guiada y licencia anual",
-    "modelLabel": "Modelo comercial",
-    "modelValue": "Presupuesto a medida",
-    "highlights": [
-      "Implementación guiada sobre la operación real del hotel",
-      "Configuración de áreas, plantillas y flujos de calidad",
-      "Acompañamiento para dirección, operaciones y calidad"
-    ],
-    "licenseNote": "Licencia para auditorías, reauditorías, acciones correctivas, formación y dashboard ejecutivo.",
-    "evaluationLabel": "Lo que evaluamos",
-    "evaluationItems": [
-      "Número de hoteles y áreas operativas",
-      "Volumen de auditorías y responsables involucrados",
-      "Nivel de acompañamiento deseado en implantación",
-      "Necesidades de reporting para dirección y management"
-    ],
-    "evaluationNote": "Si quieres evaluar encaje, te mostramos la plataforma y preparamos una propuesta ajustada a tu operación.",
-    "ctaPrimary": "Concertar cita",
-    "ctaSecondary": "Acceder"
+    "eyebrow": "Planes y precios",
+    "title": "Control operativo real, en el plan que encaja con tu hotel",
+    "description": "Tres planes pensados para distintos niveles de complejidad. El precio final depende del número de áreas, usuarios y nivel de acompañamiento.",
+    "billingMonthly": "Mensual",
+    "billingAnnual": "Anual",
+    "popularBadge": "Más popular",
+    "recommendedBadge": "Recomendado para ti",
+    "monthlyPriceLabel": "Precio / mes",
+    "annualPriceLabel": "Con pago anual",
+    "perMonth": "/mes",
+    "annualBilledNote": "€{total}/año · facturado anualmente",
+    "monthlyNote": "Sin contrato anual",
+    "ctaDemo": "Ver demo · 30 min",
+    "modules": {
+      "core": "Core",
+      "training": "Formación",
+      "analytics": "Analítica",
+      "it": "IT",
+      "maintenance": "Mantenimiento"
+    },
+    "tiers": {
+      "auditoria": {
+        "name": "Auditorías",
+        "tagline": "Digitaliza y estandariza tus inspecciones",
+        "persona": "Hoteles que dan sus primeros pasos en auditoría digital",
+        "features": [
+          "Checklists digitales por área y departamento",
+          "Detección y seguimiento de incidencias",
+          "Puntuación automática por auditoría",
+          "Histórico y comparativas por periodo",
+          "Reauditorías para verificar correcciones"
+        ]
+      },
+      "operaciones": {
+        "name": "Operaciones",
+        "tagline": "Detecta, forma y analiza en un solo sistema",
+        "persona": "Hoteles que quieren cerrar el ciclo auditoría → formación",
+        "features": [
+          "Todo lo del plan Auditorías",
+          "Fallos vinculados a planes de formación del equipo",
+          "Asignación de formaciones con seguimiento hasta completado",
+          "Dashboards avanzados, tendencias y exportes por área",
+          "−10% por combinar módulos"
+        ]
+      },
+      "control": {
+        "name": "Control Total",
+        "tagline": "Toda la operación bajo un solo sistema",
+        "persona": "Propiedades con operativa compleja o equipos multidepartamento",
+        "features": [
+          "Todo lo del plan Operaciones",
+          "IT y Mantenimiento gestionan sus propios backlogs",
+          "Trazabilidad auditoría → formación → mantenimiento",
+          "Dashboard 360° de toda la operación",
+          "−20% por bundle completo"
+        ]
+      }
+    },
+    "multihotel": {
+      "badge": "Cadena / Multihotel",
+      "title": "Gestión de varias propiedades",
+      "description": "Cualquier plan con tarifa por propiedad adicional · Panel unificado para comparar resultados entre hoteles.",
+      "cta": "Hablar con ventas"
+    },
+    "quiz": {
+      "toggle": "¿No sabes cuál elegir? Responde 2 preguntas y te lo decimos",
+      "stepLabel": "Pregunta {current} de {total}",
+      "resultLabel": "Plan recomendado",
+      "restart": "Repetir",
+      "questions": {
+        "formaciones": {
+          "question": "¿Quieres que los fallos detectados generen planes de formación para el equipo?",
+          "hint": "Cuando la auditoría detecta un fallo recurrente, el sistema asigna una formación al responsable y verifica que se completa.",
+          "yes": "Sí, me interesa",
+          "no": "No por ahora"
+        },
+        "depts": {
+          "question": "¿Quieres que IT y Mantenimiento gestionen sus propios backlogs de incidencias y obras?",
+          "hint": "Cada departamento recibe los fallos que le corresponden, los gestiona desde su propia vista y los cierra cuando están resueltos.",
+          "yes": "Sí",
+          "no": "No"
+        }
+      }
+    }
   },
   "demoPage": {
     "eyebrow": "Demo",
@@ -231,15 +292,7 @@
       "Ejecución de auditorías y evidencias desde móvil",
       "Seguimiento de acciones correctivas y reauditorías",
       "Registro de formación vinculado a desviaciones reales"
-    ],
-    "ctaLabel": "Solicita una demo",
-    "ctaTitle": "Muestra guiada para dirección, operaciones o calidad.",
-    "ctaDescription": "De momento dejamos esta ruta preparada como punto comercial. Si después decides conectar un formulario o calendario, la estructura ya queda separada del producto.",
-    "ctaSuggestedLabel": "CTA sugerido",
-    "ctaSuggestedTitle": "Solicitar demo comercial",
-    "ctaSuggestedNote": "Puedes reemplazar este bloque por formulario, email o calendar booking cuando lo definas.",
-    "ctaPrimary": "Ver pricing",
-    "ctaSecondary": "Acceder"
+    ]
   },
   "metadata": {
     "title": "ServiceControl | Calidad hotelera en tiempo real",

@@ -189,29 +189,90 @@
     "tagline": "Platform for operational control, quality, re-audits and team tracking in hotels."
   },
   "pricingPage": {
-    "eyebrow": "Pricing",
-    "title": "Plans designed for hotels that need real operational control.",
-    "description": "Pricing is defined based on the number of areas, operational complexity and implementation scope. We prioritize a clear proposal aligned with your operation.",
-    "planLabel": "Growth Hotel Plan",
-    "planTitle": "Guided implementation and annual license",
-    "modelLabel": "Commercial model",
-    "modelValue": "Custom quote",
-    "highlights": [
-      "Guided implementation based on the hotel's real operation",
-      "Configuration of areas, templates and quality workflows",
-      "Support for management, operations and quality teams"
-    ],
-    "licenseNote": "License for audits, re-audits, corrective actions, training and executive dashboard.",
-    "evaluationLabel": "What we assess",
-    "evaluationItems": [
-      "Number of hotels and operational areas",
-      "Audit volume and stakeholders involved",
-      "Desired level of implementation support",
-      "Reporting needs for management and leadership"
-    ],
-    "evaluationNote": "If you want to assess fit, we'll show you the platform and prepare a proposal tailored to your operation.",
-    "ctaPrimary": "Book a call",
-    "ctaSecondary": "Log in"
+    "eyebrow": "Plans & pricing",
+    "title": "Real operational control, in the plan that fits your hotel",
+    "description": "Three plans designed for different levels of complexity. The final price depends on the number of areas, users and level of support.",
+    "billingMonthly": "Monthly",
+    "billingAnnual": "Annual",
+    "popularBadge": "Most popular",
+    "recommendedBadge": "Recommended for you",
+    "monthlyPriceLabel": "Price / month",
+    "annualPriceLabel": "With annual billing",
+    "perMonth": "/month",
+    "annualBilledNote": "€{total}/year · billed annually",
+    "monthlyNote": "No annual contract",
+    "ctaDemo": "See demo · 30 min",
+    "modules": {
+      "core": "Core",
+      "training": "Training",
+      "analytics": "Analytics",
+      "it": "IT",
+      "maintenance": "Maintenance"
+    },
+    "tiers": {
+      "auditoria": {
+        "name": "Audits",
+        "tagline": "Digitize and standardize your inspections",
+        "persona": "Hotels taking their first steps in digital auditing",
+        "features": [
+          "Digital checklists by area and department",
+          "Issue detection and follow-up",
+          "Automatic scoring per audit",
+          "History and comparisons by period",
+          "Re-audits to verify corrections"
+        ]
+      },
+      "operaciones": {
+        "name": "Operations",
+        "tagline": "Detect, train and analyze in a single system",
+        "persona": "Hotels that want to close the audit → training loop",
+        "features": [
+          "Everything in the Audits plan",
+          "Failures linked to team training plans",
+          "Training assignment with follow-up until completed",
+          "Advanced dashboards, trends and exports by area",
+          "−10% for combining modules"
+        ]
+      },
+      "control": {
+        "name": "Total Control",
+        "tagline": "Your entire operation under one system",
+        "persona": "Properties with complex operations or multi-department teams",
+        "features": [
+          "Everything in the Operations plan",
+          "IT and Maintenance manage their own backlogs",
+          "Audit → training → maintenance traceability",
+          "360° dashboard of the entire operation",
+          "−20% for the full bundle"
+        ]
+      }
+    },
+    "multihotel": {
+      "badge": "Chain / Multi-property",
+      "title": "Managing several properties",
+      "description": "Any plan with a rate per additional property · Unified panel to compare results across hotels.",
+      "cta": "Talk to sales"
+    },
+    "quiz": {
+      "toggle": "Not sure which one? Answer 2 questions and we'll tell you",
+      "stepLabel": "Question {current} of {total}",
+      "resultLabel": "Recommended plan",
+      "restart": "Restart",
+      "questions": {
+        "formaciones": {
+          "question": "Do you want detected failures to generate training plans for your team?",
+          "hint": "When an audit detects a recurring failure, the system assigns training to the owner and verifies it gets completed.",
+          "yes": "Yes, I'm interested",
+          "no": "Not for now"
+        },
+        "depts": {
+          "question": "Do you want IT and Maintenance to manage their own backlogs of issues and works?",
+          "hint": "Each department receives the failures that belong to it, manages them from its own view and closes them when resolved.",
+          "yes": "Yes",
+          "no": "No"
+        }
+      }
+    }
   },
   "demoPage": {
     "eyebrow": "Demo",
@@ -231,15 +292,7 @@
       "Audit execution and evidence capture from mobile",
       "Corrective action and re-audit tracking",
       "Training log linked to real deviations"
-    ],
-    "ctaLabel": "Request a demo",
-    "ctaTitle": "Guided walkthrough for management, operations or quality.",
-    "ctaDescription": "This route is ready as a commercial entry point. If you later decide to connect a form or calendar booking, the structure is already separate from the product.",
-    "ctaSuggestedLabel": "Suggested CTA",
-    "ctaSuggestedTitle": "Request commercial demo",
-    "ctaSuggestedNote": "You can replace this block with a form, email or calendar booking when you define it.",
-    "ctaPrimary": "See pricing",
-    "ctaSecondary": "Log in"
+    ]
   },
   "metadata": {
     "title": "ServiceControl | Hotel quality in real time",
