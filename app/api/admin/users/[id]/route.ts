@@ -124,7 +124,7 @@ export async function PATCH(request: NextRequest, props: { params: Promise<{ id:
       if (target.email) {
         void (async () => {
           try {
-            const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://app.servicecontrol.io";
+            const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://servicecontrol.io";
             const { data: hotel } = await supabaseAdmin()
               .from("hotels")
               .select("name")

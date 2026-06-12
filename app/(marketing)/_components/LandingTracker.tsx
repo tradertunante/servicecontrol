@@ -16,9 +16,11 @@ export default function LandingTracker() {
         fired.add(50);
         posthog.capture("landing_scroll_depth", { depth: 50 });
       }
-      if (pct >= 100 && !fired.has(100)) {
-        fired.add(100);
-        posthog.capture("landing_scroll_depth", { depth: 100 });
+      // 90% como "fin de página": el 100% exacto casi nunca dispara
+      // (scrollHeight incluye el footer y los redondeos juegan en contra)
+      if (pct >= 90 && !fired.has(90)) {
+        fired.add(90);
+        posthog.capture("landing_scroll_depth", { depth: 90 });
       }
     }
 
@@ -27,14 +29,15 @@ export default function LandingTracker() {
       if (!anchor) return;
       const href = anchor.getAttribute("href") ?? "";
 
-      if (href === "/demo" || href === "/trial") {
+      // endsWith: los Link de next-intl prefijan el locale (/en/demo)
+      if (href.endsWith("/demo") || href.endsWith("/trial")) {
         posthog.capture("landing_cta_click", {
           href,
           label: anchor.textContent?.trim() ?? null,
         });
       }
 
-      if (href === "/pricing" || href.startsWith("/pricing")) {
+      if (href.includes("/pricing")) {
         posthog.capture("landing_pricing_click", {
           href,
           label: anchor.textContent?.trim() ?? null,

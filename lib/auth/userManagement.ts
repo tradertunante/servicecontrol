@@ -283,7 +283,7 @@ export async function createManagedUser(
   void (async () => {
     if (!sendEmail) return;
     try {
-      const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://app.servicecontrol.io";
+      const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://servicecontrol.io";
       const [{ data: hotel }, enabled] = await Promise.all([
         admin.from("hotels").select("name").eq("id", hotelResult.hotelId).single(),
         shouldSendNotification(hotelResult.hotelId, "new_user_email"),

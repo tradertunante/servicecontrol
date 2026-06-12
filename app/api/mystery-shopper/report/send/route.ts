@@ -62,7 +62,7 @@ export async function POST(request: NextRequest) {
       .eq("id", hotelResult.hotelId)
       .single();
 
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://app.servicecontrol.io";
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://servicecontrol.io";
     const runList = (runs ?? []) as Array<{
       id: string;
       area_id: string | null;

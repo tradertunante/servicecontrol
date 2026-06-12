@@ -2,6 +2,7 @@ import "server-only";
 
 import Anthropic from "@anthropic-ai/sdk";
 import { logApiCost } from "@/lib/ai/costLogger";
+import { logger } from "@/lib/logger";
 
 export type AreaReportData = {
   name: string;
@@ -102,8 +103,13 @@ export async function generateReportNarrative(
     const parsed = JSON.parse(raw.slice(start, end + 1)) as ReportNarrativeOutput;
     if (!parsed.hotel || typeof parsed.areas !== "object") throw new Error("Estructura AI inválida.");
     return parsed;
-  } catch {
-    // Fallback: return raw text as hotel narrative with empty areas
+  } catch (parseErr) {
+    // Fallback degradado: el reporte sale sin narrativas por área.
+    // Logueado para que no pase desapercibido (antes era silencioso).
+    await logger.warn("ai_narrative_parse_fallback", {
+      error: parseErr instanceof Error ? parseErr.message : String(parseErr),
+      preview: textBlock.text.slice(0, 120),
+    });
     return { hotel: textBlock.text.slice(0, 600), areas: {} };
   }
 }

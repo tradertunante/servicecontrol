@@ -6,6 +6,7 @@ import { fetchAllRows, fetchAllRowsByIds } from "@/lib/api/fetchAll";
 import { logApiCost } from "@/lib/ai/costLogger";
 import { authorizeRouteRequest, resolveRouteHotelScope } from "@/lib/auth/server";
 import { jsonError, jsonDbError } from "@/lib/api/response";
+import { logger } from "@/lib/logger";
 
 const RECENT_DAYS = 30;
 const HISTORICAL_DAYS = 90;
@@ -225,9 +226,17 @@ Devuelve SOLO un array JSON válido (puede ser vacío []). Sin texto adicional, 
     const raw = textBlock.text.trim();
     const start = raw.indexOf("[");
     const end = raw.lastIndexOf("]");
-    if (start === -1 || end === -1) return [];
+    if (start === -1 || end === -1) {
+      await logger.warn("ai_suggestions_no_json", { hotelId, preview: raw.slice(0, 120) });
+      return [];
+    }
     parsed = JSON.parse(raw.slice(start, end + 1));
-  } catch {
+  } catch (parseErr) {
+    // Antes era silencioso: "0 sugerencias" era indistinguible de "la IA falló"
+    await logger.warn("ai_suggestions_parse_failed", {
+      hotelId,
+      error: parseErr instanceof Error ? parseErr.message : String(parseErr),
+    });
     return [];
   }
 
@@ -420,11 +429,14 @@ async function generateSuggestions(request: NextRequest, { viaCron }: { viaCron:
         );
         results.push({ hotel_id: hotelId, created, skipped });
       } catch (err) {
+        const message = err instanceof Error ? err.message : "Error desconocido";
+        // La respuesta HTTP del cron no la lee nadie: el error tiene que llegar al logger
+        await logger.error("ai_suggestions_hotel_failed", { hotelId, error: message });
         results.push({
           hotel_id: hotelId,
           created: 0,
           skipped: 0,
-          error: err instanceof Error ? err.message : "Error desconocido",
+          error: message,
         });
       }
     }

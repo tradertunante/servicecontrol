@@ -154,7 +154,7 @@ export async function POST(request: NextRequest) {
     // Send email with credentials (fire-and-forget)
     void (async () => {
       try {
-        const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://app.servicecontrol.io";
+        const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://servicecontrol.io";
         const { data: hotel } = await admin.from("hotels").select("name").eq("id", hotelResult.hotelId).single();
         await sendMysteryShopperEmail({
           to: contactEmail,

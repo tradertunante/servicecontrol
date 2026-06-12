@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { authorizeRouteRequest } from "@/lib/auth/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
-import { jsonError } from "@/lib/api/response";
+import { jsonDbError, jsonError } from "@/lib/api/response";
 
 export async function GET(request: NextRequest) {
   const caller = await authorizeRouteRequest(request);
@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
     .eq("user_id", profile.id)
     .eq("hotel_id", hotelId);
 
-  if (error) return jsonError(error.message, 500);
+  if (error) return jsonDbError(error);
 
   const areaIds = Array.from(
     new Set(

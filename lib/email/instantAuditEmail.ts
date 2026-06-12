@@ -59,7 +59,7 @@ function buildSectionsText(sections: AuditReportSection[]): string {
 // necesitan URL absoluta hacia la app (el endpoint exige sesión al abrirlas).
 function absolutePhotoUrl(url: string): string {
   if (!url.startsWith("/")) return url;
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://app.servicecontrol.io";
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://servicecontrol.io";
   return `${appUrl}${url}`;
 }
 
@@ -188,7 +188,7 @@ export async function sendInstantAuditEmail(data: InstantAuditEmailData) {
   const channelLabel = data.channel === "quality" ? "Calidad" : "Interna";
   const areaName = report.area?.name ?? "Área";
   const templateName = report.template?.name ?? "Auditoría";
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://app.servicecontrol.io";
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://servicecontrol.io";
   const reportUrl = `${appUrl}/reports/audit/${report.run.id}`;
 
   const dateStr = report.run.executed_at

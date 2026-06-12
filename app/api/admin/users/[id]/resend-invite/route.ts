@@ -32,7 +32,7 @@ export async function POST(request: NextRequest, props: { params: Promise<{ id: 
     }
 
     const admin = supabaseAdmin();
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://app.servicecontrol.io";
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://servicecontrol.io";
 
     const { data: linkData, error: linkError } = await admin.auth.admin.generateLink({
       type: "recovery",

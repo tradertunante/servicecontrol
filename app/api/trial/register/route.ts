@@ -2,7 +2,9 @@ import "server-only";
 
 import { randomBytes } from "crypto";
 import { NextRequest, NextResponse } from "next/server";
+import { waitUntil } from "@vercel/functions";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { logger } from "@/lib/logger";
 import { jsonError } from "@/lib/api/response";
 import { TRIAL_ENABLED_PACKS } from "@/lib/auth/packs";
 import { sendTrialWelcomeEmail } from "@/lib/email/sendTrialWelcomeEmail";
@@ -30,6 +32,17 @@ function getClientIp(request: NextRequest): string {
 }
 
 export async function POST(request: NextRequest) {
+  try {
+    return await handleRegister(request);
+  } catch (err) {
+    logger.error("trial_register_unexpected_error", {
+      error: err instanceof Error ? err.message : String(err),
+    });
+    return jsonError("No se pudo crear la cuenta. Inténtalo de nuevo.", 500);
+  }
+}
+
+async function handleRegister(request: NextRequest) {
   const body = await request.json().catch(() => null);
 
   const name = sanitizeText(body?.name);
@@ -141,9 +154,13 @@ export async function POST(request: NextRequest) {
     ip_address: ip,
   });
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://app.servicecontrol.io";
-  await Promise.all([
-    sendTrialWelcomeEmail({
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://servicecontrol.io";
+
+  // El email lleva la contraseña: si falla, la cuenta es inutilizable y el
+  // reintento del usuario chocaría con el 409 de "email ya registrado".
+  // Rollback completo y 500 para que pueda reintentar de verdad.
+  try {
+    await sendTrialWelcomeEmail({
       to: email,
       name,
       hotelName,
@@ -151,10 +168,31 @@ export async function POST(request: NextRequest) {
       password,
       loginUrl: `${appUrl}/login`,
       demoUrl: `${appUrl}/demo`,
-    }),
-    addTrialLeadToBrevo(email, name, hotelName, trialExpiresAt),
-    addTrialLeadToNotion(email, hotelName),
-  ]);
+    });
+  } catch (emailErr) {
+    logger.error("trial_register_welcome_email_failed", {
+      error: emailErr instanceof Error ? emailErr.message : String(emailErr),
+    });
+    await admin.auth.admin.deleteUser(userId).catch(() => undefined);
+    await admin.from("trial_leads").delete().eq("email", email);
+    return jsonError("No se pudo enviar el email de acceso. Inténtalo de nuevo.", 500);
+  }
+
+  // CRM y Notion fuera del camino crítico: su fallo no debe romper el alta
+  waitUntil(
+    Promise.allSettled([
+      addTrialLeadToBrevo(email, name, hotelName, trialExpiresAt),
+      addTrialLeadToNotion(email, hotelName),
+    ]).then((results) => {
+      for (const r of results) {
+        if (r.status === "rejected") {
+          logger.warn("trial_register_crm_sync_failed", {
+            error: r.reason instanceof Error ? r.reason.message : String(r.reason),
+          });
+        }
+      }
+    })
+  );
 
   return NextResponse.json({ ok: true });
 }
