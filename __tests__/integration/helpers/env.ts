@@ -21,6 +21,17 @@ export function describeMissingEnv(): string {
   return missing.join(", ");
 }
 
+/**
+ * URL base del servidor Next.js corriendo localmente.
+ * Requerido para los tests de autorización de rutas HTTP.
+ * Ej: TEST_BASE_URL=http://localhost:3000
+ */
+export const TEST_BASE_URL = process.env.TEST_BASE_URL ?? "";
+
+/** Opt-in para los tests de rutas HTTP (requieren servidor corriendo). */
+export const routeTestsEnabled =
+  integrationEnabled && Boolean(TEST_BASE_URL);
+
 /** Dominio reservado para usuarios de test: el sweep de limpieza borra por este sufijo. */
 export const TEST_EMAIL_DOMAIN = "sc-integration-tests.dev";
 

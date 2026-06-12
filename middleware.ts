@@ -1,7 +1,7 @@
 import createIntlMiddleware from "next-intl/middleware";
 import { NextFetchEvent, NextRequest, NextResponse } from "next/server";
 
-import { checkRateLimit } from "@/lib/api/rateLimit";
+import { checkRateLimitDistributed } from "@/lib/api/rateLimitDistributed";
 import { logger } from "@/lib/logger";
 import { routing } from "@/i18n/routing";
 
@@ -43,7 +43,7 @@ const MARKETING_PATHS = ["/", "/pricing", "/demo", "/trial"];
 
 const intlMiddleware = createIntlMiddleware(routing);
 
-export function middleware(request: NextRequest, event: NextFetchEvent) {
+export async function middleware(request: NextRequest, event: NextFetchEvent) {
   const { pathname } = request.nextUrl;
 
   // Rate limit + CORS for API routes
@@ -79,11 +79,10 @@ export function middleware(request: NextRequest, event: NextFetchEvent) {
       }
     }
 
-    // Strict limit for auth routes to prevent brute-force attacks (5 req/min)
-    const isAuthRoute = pathname.startsWith("/api/auth/");
-    const { allowed, retryAfterMs } = isAuthRoute
-      ? checkRateLimit(ip, { maxRequests: 5, windowMs: 60_000, storeKey: "auth" })
-      : checkRateLimit(ip);
+    // sync-session is rate-limited per-user inside the handler — skip strict IP limit here
+    const isSyncSession = pathname.startsWith("/api/auth/sync-session");
+    const isAuthRoute = pathname.startsWith("/api/auth/") && !isSyncSession;
+    const { allowed, retryAfterMs } = await checkRateLimitDistributed(ip, isAuthRoute ? "auth" : "general");
 
     if (!allowed) {
       event.waitUntil(

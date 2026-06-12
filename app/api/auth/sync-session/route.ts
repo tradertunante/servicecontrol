@@ -1,7 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { AUTH_TOKEN_COOKIE } from "@/lib/auth/cookies";
+import { checkRateLimitDistributed } from "@/lib/api/rateLimitDistributed";
 import { supabaseWithToken } from "@/lib/supabaseServer";
+
+function extractJwtSub(token: string): string | null {
+  try {
+    const payload = token.split(".")[1];
+    if (!payload) return null;
+    const json = JSON.parse(Buffer.from(payload, "base64url").toString("utf-8"));
+    return typeof json.sub === "string" ? json.sub : null;
+  } catch {
+    return null;
+  }
+}
 
 function buildCookieOptions() {
   return {
@@ -32,6 +44,18 @@ export async function POST(request: NextRequest) {
       maxAge: 0,
     });
     return response;
+  }
+
+  // Per-user rate limit: 5 refreshes/min. Keyed by JWT sub so hotel shared IPs don't collide.
+  const userId = extractJwtSub(token);
+  if (userId) {
+    const { allowed, retryAfterMs } = await checkRateLimitDistributed(userId, "auth");
+    if (!allowed) {
+      return NextResponse.json(
+        { ok: false, error: "Demasiadas solicitudes. Intenta de nuevo en un momento." },
+        { status: 429, headers: { "Retry-After": String(Math.ceil((retryAfterMs ?? 60000) / 1000)) } },
+      );
+    }
   }
 
   // Only persist tokens that Supabase recognizes — rejects garbage/forged values
