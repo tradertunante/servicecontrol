@@ -123,7 +123,7 @@ export default function AuditReviewScreen({ onClose }: { onClose: () => void }) 
                         {answer.photo_paths.map((path, i) => (
                           <img
                             key={i}
-                            src={`/api/photos/${path}`}
+                            src={path}
                             alt={`Foto ${i + 1}`}
                             className="h-20 w-20 rounded-xl border border-slate-200 object-cover"
                           />
