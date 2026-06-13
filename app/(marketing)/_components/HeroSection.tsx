@@ -42,7 +42,7 @@ export default function HeroSection() {
               {t("h1Highlight")}
             </span>
             <br />
-            <span style={{ color: "#888780" }}>{t("h1Muted")}</span>
+            <span>{t("h1Muted")}</span>
           </h1>
 
           <p className="mt-7 max-w-[560px] text-[var(--text-secondary)]">
