@@ -8,7 +8,7 @@ export default function FeatureGrid() {
   const modules = t.raw("modules") as Module[];
 
   return (
-    <section id="modulos" className="px-5 py-20 sm:px-8 lg:px-10 lg:py-24">
+    <section id="modules" className="px-5 py-20 sm:px-8 lg:px-10 lg:py-24">
       <div className="mx-auto w-full max-w-[1480px]">
         <SectionIntro
           eyebrow={t("eyebrow")}

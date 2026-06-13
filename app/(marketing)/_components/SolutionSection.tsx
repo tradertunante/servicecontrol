@@ -19,7 +19,7 @@ export default function SolutionSection() {
   ];
 
   return (
-    <section id="solucion" className="px-5 py-20 sm:px-8 lg:px-10 lg:py-24">
+    <section id="solution" className="px-5 py-20 sm:px-8 lg:px-10 lg:py-24">
       <div
         className="mx-auto w-full max-w-[1480px] rounded-[28px] px-6 py-10 text-white sm:px-8 lg:px-10 lg:py-14"
         style={{
