@@ -1,8 +1,8 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 740 180" width="740" height="180">
   <defs>
     <style>
-      .name { font-family: Georgia, 'Times New Roman', serif; font-size: 54px; font-weight: bold; }
-      .sub  { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 13.5px; letter-spacing: 5px; fill: #9CA3AF; }
+      .name { font-family: Inter, system-ui, -apple-system, sans-serif; font-size: 54px; font-weight: bold; }
+      .sub  { font-family: Inter, system-ui, -apple-system, sans-serif; font-size: 13.5px; letter-spacing: 5px; fill: #9CA3AF; }
     </style>
   </defs>
 

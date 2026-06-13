@@ -33,19 +33,19 @@ export default function ServiceControlLogo({ variant = "dark", showText = true, 
       className={className}
     >
       {/* Icon */}
-      <polyline points="0,2 0,47 45,47" fill="none" stroke={c.l} strokeWidth="7" strokeLinecap="round" strokeLinejoin="round"/>
-      <polyline points="11,28 22,42 42,10" fill="none" stroke={c.check} strokeWidth="6.5" strokeLinecap="round" strokeLinejoin="round"/>
+      <polyline points="4,3 4,47 45,47" fill="none" stroke={c.l} strokeWidth="7" strokeLinecap="round" strokeLinejoin="round"/>
+      <polyline points="13,28 23,42 43,10" fill="none" stroke={c.check} strokeWidth="6.5" strokeLinecap="round" strokeLinejoin="round"/>
 
       {/* Divider */}
       <line x1="63" y1="6" x2="63" y2="52" stroke={c.divider} strokeWidth="0.8"/>
 
       {/* Brand name */}
-      <text x="75" y="36" fontFamily="Georgia, 'Times New Roman', serif" fontSize="28" fontWeight="700">
+      <text x="75" y="36" fontFamily="Inter, system-ui, -apple-system, sans-serif" fontSize="28" fontWeight="700">
         <tspan fill={c.text}>Service</tspan><tspan fill={c.textAccent}>Control</tspan>
       </text>
 
       {/* Tagline */}
-      <text x="76" y="51" fontFamily="'Helvetica Neue', Helvetica, Arial, sans-serif" fontSize="9.5" fontWeight="400" fill={c.sub} letterSpacing="4">HOTEL QUALITY PLATFORM</text>
+      <text x="76" y="51" fontFamily="Inter, system-ui, -apple-system, sans-serif" fontSize="9.5" fontWeight="400" fill={c.sub} letterSpacing="4">HOTEL QUALITY PLATFORM</text>
     </svg>
   );
 }
