@@ -88,6 +88,8 @@ export default function HotelHeader() {
   const loading = sessionLoading;
 
   const isAdmin = (role === "admin" || role === "superadmin") || (profile?.role === "admin" || profile?.role === "superadmin");
+  const isManagerLevel = ["admin", "superadmin", "general_manager", "manager", "quality"].includes(role ?? "") ||
+    ["admin", "superadmin", "general_manager", "manager", "quality"].includes(profile?.role ?? "");
   const displayHotel = hotelName ?? (loading ? t("loadingHotel") : t("selectHotel"));
   const backTarget = getBackTarget(pathname);
   const showBack = Boolean(backTarget);
@@ -191,6 +193,15 @@ export default function HotelHeader() {
                 {t("pages.admin")}
               </button>
             )}
+            {isManagerLevel && (
+              <button
+                onClick={() => navTo("/corrective-actions")}
+                disabled={loading}
+                className="px-3 h-8 rounded-lg text-[13px] font-medium text-white/70 hover:text-white hover:bg-white/10 transition-colors disabled:opacity-40"
+              >
+                {t("pages.correctiveActions")}
+              </button>
+            )}
             <button
               onClick={() => void openAuditArea()}
               disabled={loading}
@@ -242,6 +253,15 @@ export default function HotelHeader() {
                     className="w-full text-left px-4 py-2.5 text-[13px] font-medium text-[#0C1F44] hover:bg-[#F4F7FB] transition-colors disabled:opacity-40"
                   >
                     {t("pages.admin")}
+                  </button>
+                )}
+                {isManagerLevel && (
+                  <button
+                    onClick={() => navTo("/corrective-actions")}
+                    disabled={loading}
+                    className="w-full text-left px-4 py-2.5 text-[13px] font-medium text-[#0C1F44] hover:bg-[#F4F7FB] transition-colors disabled:opacity-40"
+                  >
+                    {t("pages.correctiveActions")}
                   </button>
                 )}
                 <button

@@ -330,7 +330,8 @@
         "audit": "Auditoría",
         "users": "Usuarios",
         "profile": "Perfil",
-        "selectHotel": "Elegir hotel"
+        "selectHotel": "Elegir hotel",
+        "correctiveActions": "Acciones"
       }
     },
     "dashboard": {
@@ -742,6 +743,45 @@
         "errorImport": "No se pudo importar el archivo.",
         "errorSession": "Sesion invalida."
       }
+    },
+    "corrective": {
+      "title": "Acciones correctivas",
+      "subtitle": "Bandeja unificada de todas las acciones abiertas del hotel.",
+      "statOpen": "Pendientes",
+      "statInProgress": "En progreso",
+      "statResolved": "Resueltas",
+      "statBlocking": "Bloquean re-auditoría",
+      "statOverdue": "Vencidas",
+      "searchPlaceholder": "Buscar título, área, responsable…",
+      "allStatuses": "Todos los estados",
+      "statusOpen": "Pendiente",
+      "statusInProgress": "En progreso",
+      "statusResolved": "Resuelto",
+      "allAreas": "Todas las áreas",
+      "allDepts": "Todos los departamentos",
+      "blockingOnly": "Solo bloqueantes",
+      "reload": "Recargar",
+      "loading": "Cargando…",
+      "showing": "{count} de {total} acciones",
+      "empty": "Sin acciones correctivas",
+      "emptyDesc": "No hay registros para los filtros actuales.",
+      "blocksReaudit": "BLOQUEA RE-AUDITORÍA",
+      "overdue": "VENCIDA",
+      "openDays": "{days, plural, one {# día abierta} other {# días abierta}}",
+      "fieldArea": "Área",
+      "fieldCollaborator": "Colaborador",
+      "fieldAssignedTo": "Responsable",
+      "fieldDueDate": "Fecha límite",
+      "fieldOpened": "Abierta el",
+      "fieldResolvedBy": "Resuelta por",
+      "unassigned": "Sin asignar",
+      "reopen": "Reabrir",
+      "markInProgress": "Marcar en progreso",
+      "markResolved": "Marcar como resuelta",
+      "saving": "Guardando…",
+      "msgResolved": "Acción marcada como resuelta.",
+      "msgInProgress": "Acción marcada en progreso.",
+      "msgReopened": "Acción reabierta."
     }
   },
   "trialPage": {

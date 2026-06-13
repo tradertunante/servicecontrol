@@ -330,7 +330,8 @@
         "audit": "Audit",
         "users": "Users",
         "profile": "Profile",
-        "selectHotel": "Select hotel"
+        "selectHotel": "Select hotel",
+        "correctiveActions": "Actions"
       }
     },
     "dashboard": {
@@ -742,6 +743,45 @@
         "errorImport": "Could not import the file.",
         "errorSession": "Invalid session."
       }
+    },
+    "corrective": {
+      "title": "Corrective Actions",
+      "subtitle": "Unified inbox for all open hotel actions.",
+      "statOpen": "Open",
+      "statInProgress": "In Progress",
+      "statResolved": "Resolved",
+      "statBlocking": "Blocking Re-audit",
+      "statOverdue": "Overdue",
+      "searchPlaceholder": "Search title, area, assignee…",
+      "allStatuses": "All statuses",
+      "statusOpen": "Open",
+      "statusInProgress": "In progress",
+      "statusResolved": "Resolved",
+      "allAreas": "All areas",
+      "allDepts": "All departments",
+      "blockingOnly": "Blocking only",
+      "reload": "Reload",
+      "loading": "Loading…",
+      "showing": "{count} of {total} actions",
+      "empty": "No corrective actions",
+      "emptyDesc": "No records for the current filters.",
+      "blocksReaudit": "BLOCKS RE-AUDIT",
+      "overdue": "OVERDUE",
+      "openDays": "{days, plural, one {# day open} other {# days open}}",
+      "fieldArea": "Area",
+      "fieldCollaborator": "Collaborator",
+      "fieldAssignedTo": "Assigned to",
+      "fieldDueDate": "Due date",
+      "fieldOpened": "Opened",
+      "fieldResolvedBy": "Resolved by",
+      "unassigned": "Unassigned",
+      "reopen": "Reopen",
+      "markInProgress": "Mark In Progress",
+      "markResolved": "Mark Resolved",
+      "saving": "Saving…",
+      "msgResolved": "Action marked as resolved.",
+      "msgInProgress": "Action marked as in progress.",
+      "msgReopened": "Action reopened."
     }
   },
   "trialPage": {
