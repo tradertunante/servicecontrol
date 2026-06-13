@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useAuditSessionContext } from "../_context/AuditSessionContext";
 import AuditHeader from "./AuditHeader";
 import AuditQuestionCard from "./AuditQuestionCard";
+import AuditReviewScreen from "./AuditReviewScreen";
 import AuditStickyFooter from "./AuditStickyFooter";
 import DesktopAuditLayout from "./DesktopAuditLayout";
 import MobileAuditLayout from "./MobileAuditLayout";
@@ -21,6 +22,8 @@ function fmtDate(iso: string | null) {
 }
 
 export default function AuditPageShell() {
+  const [showReview, setShowReview] = useState(false);
+
   const {
     run,
     template,
@@ -48,8 +51,6 @@ export default function AuditPageShell() {
     error,
     activeQuestionId,
     activeSectionId,
-    canGoPrevious,
-    canGoNext,
     onSelectSection,
     saveTeamMember: onSelectMember,
     setRoomNumber: onChangeRoomNumber,
@@ -58,9 +59,6 @@ export default function AuditPageShell() {
     setComment: onChangeComment,
     uploadPhoto: onUploadPhoto,
     deletePhoto: onDeletePhoto,
-    onPreviousQuestion,
-    onNextQuestion,
-    submitRun: onSubmit,
   } = useAuditSessionContext();
 
   const questionRefs = useRef<Record<string, HTMLDivElement | null>>({});
@@ -255,12 +253,15 @@ export default function AuditPageShell() {
       submitting={submitting}
       submitted={submitted}
       saving={saving}
-      onSave={onSubmit}
+      onReview={() => setShowReview(true)}
     />
   );
 
   return (
     <>
+      {showReview ? (
+        <AuditReviewScreen onClose={() => setShowReview(false)} />
+      ) : null}
       <MobileAuditLayout header={header} content={content} footer={footer} />
       <DesktopAuditLayout header={header} content={content} footer={footer} />
     </>
