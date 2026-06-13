@@ -36,7 +36,7 @@ export type {
 
 export function useAuditSession(runId: string | undefined) {
   const router = useRouter();
-  const { pendingCount, scheduleSave: rawScheduleSave, flushAll } = useAuditAutosave();
+  const { pendingCount, scheduleSave: rawScheduleSave, flushAll } = useAuditAutosave(450, runId);
   const isOnline = useOnlineStatus();
 
   const [submitting, setSubmitting] = useState(false);
@@ -243,6 +243,7 @@ export function useAuditSession(runId: string | undefined) {
     employeeName,
     setEmployeeName,
     saveEmployeeName,
+    isOfflineMode: loaderState.isOfflineMode,
     isHousekeeping: loaderState.isHousekeeping,
     requiresRoomNumber,
     requiresAuditedEmployee,

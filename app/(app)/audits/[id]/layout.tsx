@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { requireAuditRunScope } from "@/lib/auth/server";
 import ModuleOnboardingTour from "@/app/components/ModuleOnboardingTour";
 import { AUDIT_SESSION_STEPS } from "@/lib/onboarding/auditarSteps";
+import { AuditSwRegistrar } from "./_components/AuditSwRegistrar";
 
 export default async function AuditRunLayout(
   props: {
@@ -23,6 +24,7 @@ export default async function AuditRunLayout(
 
   return (
     <>
+      <AuditSwRegistrar />
       <ModuleOnboardingTour module="audit-session" steps={AUDIT_SESSION_STEPS} />
       {children}
     </>

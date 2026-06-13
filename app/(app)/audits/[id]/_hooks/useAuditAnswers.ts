@@ -9,6 +9,7 @@ import {
   makeDraftAnswer,
 } from "./useAuditSession.lib";
 import { resizeImage } from "@/lib/image/resizeImage";
+import { saveAnswerLocally } from "@/lib/offline/auditIdb";
 import type {
   AnswerRow,
   AnswerValue,
@@ -82,6 +83,13 @@ export function useAuditAnswers({
         [questionId]: nextDraft!,
       };
     });
+
+    // Persist to IndexedDB immediately (fire-and-forget) so offline reloads
+    // can restore the auditor's latest edits without waiting for the network save.
+    if (nextDraft && runId) {
+      saveAnswerLocally(runId, nextDraft);
+    }
+
     return nextDraft;
   }
 
@@ -89,7 +97,6 @@ export function useAuditAnswers({
     if (!runId || submitted) return;
     setError(null);
 
-    // Capturar valor previo para rollback
     const prevAnswer = answersByQ[questionId];
 
     const nextDraft = updateAnswerDraft(questionId, (draft) => ({
@@ -104,7 +111,6 @@ export function useAuditAnswers({
       try {
         await persistAnswerDraft(questionId, nextDraft);
       } catch (saveError: unknown) {
-        // Rollback al valor previo
         setAnswersByQ((prev) => ({
           ...prev,
           [questionId]: prevAnswer ?? makeDraftAnswer(runId, questionId),
@@ -200,6 +206,7 @@ export function useAuditAnswers({
         [questionId]: nextDraft,
       }));
 
+      saveAnswerLocally(runId, nextDraft);
       await persistAnswerDraft(questionId, nextDraft);
     } catch (photoError: unknown) {
       setError(getErrorMessage(photoError, "No se pudo subir la foto."));
@@ -243,6 +250,7 @@ export function useAuditAnswers({
         [questionId]: nextDraft,
       }));
 
+      saveAnswerLocally(runId, nextDraft);
       await persistAnswerDraft(questionId, nextDraft);
     } catch (photoError: unknown) {
       setError(getErrorMessage(photoError, "No se pudo eliminar la foto."));

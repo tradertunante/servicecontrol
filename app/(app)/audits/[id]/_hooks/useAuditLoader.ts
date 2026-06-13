@@ -6,6 +6,11 @@ import {
   getErrorMessage,
   loadAuditSession,
 } from "./useAuditSession.lib";
+import {
+  cacheSession,
+  loadCachedSession,
+  loadLocalAnswers,
+} from "@/lib/offline/auditIdb";
 import type {
   AnswerRow,
   AnswerValue,
@@ -20,6 +25,7 @@ import type {
 export function useAuditLoader(runId: string | undefined) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isOfflineMode, setIsOfflineMode] = useState(false);
 
   const [run, setRun] = useState<AuditRunRow | null>(null);
   const [template, setTemplate] = useState<TemplateRow | null>(null);
@@ -46,10 +52,14 @@ export function useAuditLoader(runId: string | undefined) {
     (async () => {
       setLoading(true);
       setError(null);
+      setIsOfflineMode(false);
 
       try {
         const session = await loadAuditSession(runId);
         if (!alive) return;
+
+        // Cache full session so subsequent offline loads work
+        void cacheSession(runId, session);
 
         setRun(session.run);
         setTemplate(session.template);
@@ -64,6 +74,40 @@ export function useAuditLoader(runId: string | undefined) {
         setLoading(false);
       } catch (sessionError: unknown) {
         if (!alive) return;
+
+        // Network failed — attempt offline recovery from IndexedDB
+        try {
+          const [cached, localAnswers] = await Promise.all([
+            loadCachedSession(runId),
+            loadLocalAnswers(runId),
+          ]);
+
+          if (cached && alive) {
+            // Local answer writes (saveAnswerLocally) are more recent than the
+            // server snapshot — overlay them so the auditor sees their own edits.
+            const merged = { ...cached.answersByQ };
+            for (const [qId, ans] of Object.entries(localAnswers)) {
+              merged[qId] = ans;
+            }
+
+            setRun(cached.run);
+            setTemplate(cached.template);
+            setArea(cached.area);
+            setSections(cached.sections);
+            setQuestions(cached.questions);
+            setAnswersByQ(merged);
+            setTeamMembers(cached.teamMembers);
+            setSelectedMember(cached.run.team_member_id ?? "");
+            setRoomNumber(cached.run.room_number ?? "");
+            setEmployeeName((cached.run as any).employee_name ?? "");
+            setIsOfflineMode(true);
+            setLoading(false);
+            return;
+          }
+        } catch {
+          // IDB unavailable — fall through to normal error
+        }
+
         setError(getErrorMessage(sessionError, "Error cargando auditoría."));
         setLoading(false);
       }
@@ -118,5 +162,6 @@ export function useAuditLoader(runId: string | undefined) {
     employeeName, setEmployeeName,
     submitted, isHousekeeping, requiresRoomNumber, requiresAuditedEmployee, showRoomNumberField,
     totals, groupedQuestions,
+    isOfflineMode,
   };
 }

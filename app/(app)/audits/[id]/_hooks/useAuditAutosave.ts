@@ -1,10 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { deleteDraftQueueItem, loadDraftQueue } from "@/lib/offline/auditIdb";
 
 type SaveAction = () => Promise<void>;
 
-export function useAuditAutosave(delayMs = 450) {
+export function useAuditAutosave(delayMs = 450, runId?: string) {
   const timersRef = useRef(new Map<string, ReturnType<typeof setTimeout>>());
   const actionsRef = useRef(new Map<string, SaveAction>());
   const runningRef = useRef(new Map<string, Promise<void>>());
@@ -109,6 +110,36 @@ export function useAuditAutosave(delayMs = 450) {
     }
   }, [runAction]);
 
+  // Drain the SW's IDB draft-queue on reconnect.
+  // Background Sync handles this automatically on Chrome/Android; this is the
+  // Safari fallback for browsers that don't support the Background Sync API.
+  const flushSwQueue = useCallback(async () => {
+    if (!runId) return;
+    let queued;
+    try {
+      queued = await loadDraftQueue(runId);
+    } catch {
+      return;
+    }
+    for (const item of queued) {
+      try {
+        const res = await fetch(item.url, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: item.authorization,
+          },
+          body: JSON.stringify(item.body),
+        });
+        if (res.ok) {
+          await deleteDraftQueueItem(item.key);
+        }
+      } catch {
+        // still offline — leave in queue
+      }
+    }
+  }, [runId]);
+
   useEffect(() => {
     const timers = timersRef.current;
     const actions = actionsRef.current;
@@ -135,6 +166,7 @@ export function useAuditAutosave(delayMs = 450) {
     const handleOnline = () => {
       isOnlineRef.current = true;
       void flushAll();
+      void flushSwQueue();
     };
     const handleOffline = () => {
       isOnlineRef.current = false;
@@ -145,7 +177,7 @@ export function useAuditAutosave(delayMs = 450) {
       window.removeEventListener("online", handleOnline);
       window.removeEventListener("offline", handleOffline);
     };
-  }, [flushAll]);
+  }, [flushAll, flushSwQueue]);
 
   return {
     pendingCount,
