@@ -20,7 +20,7 @@
     "subtitleBold": "with data, not impressions.",
     "ctaPrimary": "See ServiceControl in 30 min",
     "ctaTrial": "Try for free",
-    "ctaReassurance": "Demo tailored to your areas and standards · No commitment",
+    "ctaReassurance": "No credit card required · Up and running in under a day · No-commitment demo",
     "card1Title": "Real visibility",
     "card1Body": "Score by area, corrective backlog and red flags visible to operations.",
     "card2Title": "Daily execution",
@@ -183,7 +183,8 @@
     "title": "Bring real control, follow-up and visibility to your hotel operations.",
     "description": "We'll show you how to adapt ServiceControl to your areas, standards and operational workflow without mixing the commercial experience with the internal app.",
     "ctaPrimary": "See ServiceControl in 30 min",
-    "ctaTrial": "Try for free"
+    "ctaTrial": "Try for free",
+    "ctaReassurance": "No credit card required · No commitment"
   },
   "footer": {
     "tagline": "Platform for operational control, quality, re-audits and team tracking in hotels.",

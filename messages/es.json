@@ -20,7 +20,7 @@
     "subtitleBold": "con datos, no con sensaciones.",
     "ctaPrimary": "Ver ServiceControl en 30 min",
     "ctaTrial": "Probar gratis",
-    "ctaReassurance": "Demo adaptada a tus áreas y estándares · Sin compromiso",
+    "ctaReassurance": "Sin tarjeta de crédito · Operativo en menos de 1 día · Demo sin compromiso",
     "card1Title": "Visibilidad real",
     "card1Body": "Score por área, backlog correctivo y focos rojos visibles para operaciones.",
     "card2Title": "Ejecución diaria",
@@ -183,7 +183,8 @@
     "title": "Lleva control, seguimiento y visibilidad real a la operación de tu hotel.",
     "description": "Te mostramos cómo adaptar ServiceControl a tus áreas, estándares y flujo operativo sin mezclar la experiencia comercial con la app interna.",
     "ctaPrimary": "Ver ServiceControl en 30 min",
-    "ctaTrial": "Probar gratis"
+    "ctaTrial": "Probar gratis",
+    "ctaReassurance": "Sin tarjeta de crédito · Sin compromiso"
   },
   "footer": {
     "tagline": "Plataforma para control operativo, calidad, reauditorías y seguimiento del equipo en hoteles.",
