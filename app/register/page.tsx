@@ -20,24 +20,40 @@ export default function RegisterPage() {
           ServiceControl
         </h1>
         <p style={{ opacity: 0.7, marginBottom: "24px", fontSize: "15px" }}>
-          El registro en ServiceControl es solo por invitación.
-          Contacta al administrador de tu hotel.
+          El registro en ServiceControl es por invitación del administrador de tu hotel.
+          ¿Aún no tenéis cuenta? Prueba la plataforma gratis 14 días.
         </p>
         <a
-          href="/login"
+          href="/trial"
           style={{
             display: "inline-block",
             padding: "10px 20px",
-            backgroundColor: "#000",
+            backgroundColor: "#185FA5",
             color: "white",
             textDecoration: "none",
             borderRadius: "4px",
             fontSize: "14px",
-            fontWeight: "600"
+            fontWeight: "600",
+            marginBottom: "12px"
           }}
         >
-          Ir al login
+          Probar gratis 14 días
         </a>
+        <div>
+          <a
+            href="/login"
+            style={{
+              display: "inline-block",
+              padding: "10px 20px",
+              color: "#333",
+              textDecoration: "none",
+              fontSize: "14px",
+              fontWeight: "600"
+            }}
+          >
+            Ir al login
+          </a>
+        </div>
       </div>
     </div>
   );
