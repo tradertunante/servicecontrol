@@ -10,7 +10,9 @@ import { jsonError } from "@/lib/api/response";
  * Returns the current billing state for the authenticated user.
  */
 export async function GET(request: NextRequest) {
-  const caller = await authorizeRouteRequest(request, { roles: ["admin", "superadmin"] });
+  // Sin filtro de rol: devuelve solo el estado de facturación del propio caller,
+  // y los trials/ex-trials que pagaron necesitan verlo desde /billing.
+  const caller = await authorizeRouteRequest(request);
   if (!caller) return jsonError("No autorizado.", 401);
 
   const billing = await getActiveSubscription(caller.profile.id);

@@ -5,6 +5,7 @@ import { stripe, normalizeInterval, normalizeStatus } from "@/lib/stripe";
 import { logger } from "@/lib/logger";
 import { billingAdmin, type BillingAccountRow } from "@/lib/billing/db";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { sendCheckoutNotificationEmail } from "@/lib/email/sendCheckoutNotificationEmail";
 
 const WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET;
 
@@ -157,6 +158,21 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
   }
 
   logger.info("billing_checkout_completed", { billingAccountId, customerId, sessionId: session.id });
+
+  // Aviso a ventas: el alta del hotel real es manual, este email dispara el proceso.
+  try {
+    await sendCheckoutNotificationEmail({
+      customerEmail: session.customer_details?.email ?? session.customer_email ?? "desconocido",
+      planCode: session.metadata?.plan_code ?? "unknown",
+      billingAccountId,
+      sessionId: session.id,
+    });
+  } catch (err) {
+    logger.warn("checkout_notification_email_failed", {
+      sessionId: session.id,
+      error: err instanceof Error ? err.message : String(err),
+    });
+  }
 }
 
 async function upsertSubscription(sub: Stripe.Subscription) {
