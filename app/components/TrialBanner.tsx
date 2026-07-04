@@ -1,7 +1,8 @@
 "use client";
 
+import Link from "next/link";
+
 import { useHotelId } from "@/hooks/useHotelId";
-import { Link } from "@/i18n/navigation";
 
 function daysLeft(expiresAt: string | null): number | null {
   if (!expiresAt) return null;
