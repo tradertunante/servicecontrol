@@ -6,6 +6,8 @@ import { logger } from "@/lib/logger";
 import { billingAdmin, type BillingAccountRow } from "@/lib/billing/db";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { sendCheckoutNotificationEmail } from "@/lib/email/sendCheckoutNotificationEmail";
+import { provisionAccountAccess } from "@/lib/billing/provisioning";
+import { getPlan } from "@/lib/billing/plans";
 
 const WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET;
 
@@ -137,35 +139,53 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
     .eq("id", billingAccountId)
     .is("provider_customer_id", null);
 
-  // Clear trial flag for the billing account owner so they exit demo mode.
   const { data: account } = await billingAdmin()
     .from("billing_accounts")
     .select("owner_user_id")
     .eq("id", billingAccountId)
     .maybeSingle() as { data: { owner_user_id: string } | null };
 
-  if (account?.owner_user_id) {
-    const { error: trialError } = await supabaseAdmin()
-      .from("profiles")
-      .update({ is_trial: false })
-      .eq("id", account.owner_user_id);
+  const planCode = session.metadata?.plan_code ?? "unknown";
 
-    if (trialError) {
-      logger.warn("billing_trial_clear_failed", { userId: account.owner_user_id, error: trialError.message });
-    } else {
-      logger.info("billing_trial_cleared", { userId: account.owner_user_id, billingAccountId });
-    }
+  // La suscripción puede haber llegado en un evento anterior al set del
+  // provider_customer_id (orden de webhooks no garantizado): upsert directo.
+  const rawSessionSub = session.subscription;
+  const sessionSubId = typeof rawSessionSub === "string" ? rawSessionSub : rawSessionSub?.id;
+  if (sessionSubId) {
+    const sub = await stripe.subscriptions.retrieve(sessionSubId);
+    await upsertSubscription(sub);
   }
 
-  logger.info("billing_checkout_completed", { billingAccountId, customerId, sessionId: session.id });
+  // Alta automática: hotel propio + rol admin + packs del plan.
+  // Si falla, el evento queda en "failed" y Stripe reintenta (es idempotente).
+  let provisioning: { hotelId: string | null; created: boolean } = { hotelId: null, created: false };
+  if (account?.owner_user_id) {
+    provisioning = await provisionAccountAccess({
+      billingAccountId,
+      ownerUserId: account.owner_user_id,
+      planCode,
+    });
+  } else {
+    logger.warn("billing_checkout_account_without_owner", { billingAccountId, sessionId: session.id });
+  }
 
-  // Aviso a ventas: el alta del hotel real es manual, este email dispara el proceso.
+  logger.info("billing_checkout_completed", {
+    billingAccountId,
+    customerId,
+    sessionId: session.id,
+    hotelId: provisioning.hotelId,
+    hotelCreated: provisioning.created,
+  });
+
+  // Aviso a ventas (informativo — el alta ya es automática)
   try {
     await sendCheckoutNotificationEmail({
       customerEmail: session.customer_details?.email ?? session.customer_email ?? "desconocido",
-      planCode: session.metadata?.plan_code ?? "unknown",
+      planCode,
       billingAccountId,
       sessionId: session.id,
+      hotelId: provisioning.hotelId,
+      hotelCreated: provisioning.created,
     });
   } catch (err) {
     logger.warn("checkout_notification_email_failed", {
@@ -214,6 +234,19 @@ async function upsertSubscription(sub: Stripe.Subscription) {
   if (error) {
     logger.error("billing_subscription_upsert_failed", { error: (error as { message?: string }).message, subscriptionId: sub.id });
     throw error;
+  }
+
+  // Cambios de plan desde el portal de Stripe: sincronizar los módulos del hotel.
+  const plan = getPlan(planCode);
+  if (plan && (sub.status === "active" || sub.status === "trialing")) {
+    const { error: packsError } = await supabaseAdmin()
+      .from("hotels")
+      .update({ enabled_packs: plan.enabledPacks })
+      .eq("billing_account_id", account.id);
+
+    if (packsError) {
+      logger.warn("billing_packs_sync_failed", { billingAccountId: account.id, planCode, error: packsError.message });
+    }
   }
 
   logger.info("billing_subscription_upserted", {

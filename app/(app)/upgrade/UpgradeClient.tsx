@@ -2,30 +2,7 @@
 
 import { useState } from "react";
 import { useHotelId } from "@/hooks/useHotelId";
-
-const PLANS = [
-  {
-    code: "starter",
-    name: "Starter",
-    price: { month: "29", year: "23" },
-    highlight: false,
-    features: ["1 hotel", "10 usuarios", "50 auditorías/mes", "Soporte por email"],
-  },
-  {
-    code: "professional",
-    name: "Professional",
-    price: { month: "79", year: "63" },
-    highlight: true,
-    features: ["3 hoteles", "25 usuarios/hotel", "500 auditorías/mes", "Reportes PDF", "Formaciones", "Soporte prioritario"],
-  },
-  {
-    code: "enterprise",
-    name: "Enterprise",
-    price: { month: "199", year: "159" },
-    highlight: false,
-    features: ["Hoteles ilimitados", "Usuarios ilimitados", "Auditorías ilimitadas", "Analytics avanzado", "Soporte dedicado"],
-  },
-] as const;
+import { PLANS } from "@/lib/billing/plans";
 
 type Interval = "month" | "year";
 
@@ -68,8 +45,11 @@ export default function UpgradeClient() {
         {/* Header */}
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-gray-900">Activa tu cuenta</h1>
+          <p className="mt-2 text-sm text-gray-500">
+            Al completar el pago, tu hotel se crea automáticamente y entras como administrador.
+          </p>
           {days !== null && (
-            <p className="mt-2 text-sm text-gray-500">
+            <p className="mt-1 text-sm text-gray-500">
               {days === 0
                 ? "Tu periodo de prueba expira hoy."
                 : `Tu periodo de prueba termina en ${days} ${days === 1 ? "día" : "días"}.`}
@@ -94,7 +74,7 @@ export default function UpgradeClient() {
                 interval === "year" ? "bg-black text-white" : "text-gray-600 hover:text-gray-900"
               }`}
             >
-              Anual <span className="text-xs text-green-600 font-semibold">−20%</span>
+              Anual <span className="text-xs text-green-600 font-semibold">−15%</span>
             </button>
           </div>
         </div>
@@ -111,26 +91,31 @@ export default function UpgradeClient() {
             <div
               key={plan.code}
               className={`relative bg-white rounded-2xl p-6 flex flex-col shadow-sm ${
-                plan.highlight ? "ring-2 ring-black" : "border border-gray-200"
+                plan.highlight ? "ring-2 ring-[#185FA5]" : "border border-gray-200"
               }`}
             >
               {plan.highlight && (
-                <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-black text-white text-xs font-semibold px-3 py-1 rounded-full">
+                <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-[#185FA5] text-white text-xs font-semibold px-3 py-1 rounded-full">
                   Más popular
                 </span>
               )}
               <h2 className="text-lg font-semibold">{plan.name}</h2>
+              <p className="text-xs text-gray-500 mt-0.5">{plan.tagline}</p>
               <div className="mt-3 flex items-end gap-1">
-                <span className="text-4xl font-bold">{plan.price[interval]}€</span>
+                <span className="text-4xl font-bold">
+                  {interval === "year" ? plan.annual : plan.monthly}€
+                </span>
                 <span className="text-sm text-gray-400 mb-1">/mes</span>
               </div>
               {interval === "year" && (
-                <p className="text-xs text-green-600 mt-1">Facturado anualmente</p>
+                <p className="text-xs text-green-600 mt-1">
+                  Facturado anualmente ({plan.annual * 12}€/año)
+                </p>
               )}
               <ul className="mt-5 space-y-2 text-sm text-gray-600 flex-1">
                 {plan.features.map((f) => (
-                  <li key={f} className="flex items-center gap-2">
-                    <svg className="w-4 h-4 text-green-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <li key={f} className="flex items-start gap-2">
+                    <svg className="w-4 h-4 mt-0.5 text-green-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                     </svg>
                     {f}
@@ -142,7 +127,7 @@ export default function UpgradeClient() {
                 disabled={loading !== null}
                 className={`mt-6 w-full py-2.5 rounded-xl text-sm font-semibold transition disabled:opacity-50 ${
                   plan.highlight
-                    ? "bg-black text-white hover:bg-gray-800"
+                    ? "bg-[#185FA5] text-white hover:bg-[#1a6ab8]"
                     : "bg-gray-100 text-gray-900 hover:bg-gray-200"
                 }`}
               >
@@ -153,7 +138,7 @@ export default function UpgradeClient() {
         </div>
 
         <p className="text-center text-xs text-gray-400 mt-6">
-          Pago seguro con Stripe · Cancela cuando quieras
+          Pago seguro con Stripe · Sin permanencia · Acceso inmediato tras el pago
         </p>
       </div>
     </div>

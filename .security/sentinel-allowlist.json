@@ -3,12 +3,14 @@
     "process.env",
     ".env",
     "lib/supabaseAdmin.ts",
-    "lib/reports/generateNarrative.ts"
+    "lib/reports/generateNarrative.ts",
+    "scripts/stripe-sync-plans.ts"
   ],
   "domains": [],
   "commands": [],
   "envVars": [
     "SUPABASE_SERVICE_ROLE_KEY",
-    "ANTHROPIC_API_KEY"
+    "ANTHROPIC_API_KEY",
+    "STRIPE_SECRET_KEY"
   ]
 }

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
+import { getPlan } from "@/lib/billing/plans";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -27,27 +28,29 @@ type QuizAnswers = {
 
 // ─── Structural data (no strings) ─────────────────────────────────────────────
 
+// Precios desde el catálogo canónico (lib/billing/plans.ts) — misma fuente
+// que /upgrade y el checkout de Stripe.
 const TIERS: TierData[] = [
   {
     key: "auditoria",
     moduleGroups: [["core"]],
     popular: false,
-    monthlyPrice: 195,
-    annualPrice: 165,
+    monthlyPrice: getPlan("auditoria")!.monthly,
+    annualPrice: getPlan("auditoria")!.annual,
   },
   {
     key: "operaciones",
     moduleGroups: [["core", "training", "analytics"]],
     popular: true,
-    monthlyPrice: 259,
-    annualPrice: 220,
+    monthlyPrice: getPlan("operaciones")!.monthly,
+    annualPrice: getPlan("operaciones")!.annual,
   },
   {
     key: "control",
     moduleGroups: [["core", "training", "analytics"], ["it", "maintenance"]],
     popular: false,
-    monthlyPrice: 349,
-    annualPrice: 295,
+    monthlyPrice: getPlan("control")!.monthly,
+    annualPrice: getPlan("control")!.annual,
   },
 ];
 

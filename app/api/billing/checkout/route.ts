@@ -6,8 +6,8 @@ import { jsonError } from "@/lib/api/response";
 import { logger } from "@/lib/logger";
 import { billingAdmin, type BillingAccountRow } from "@/lib/billing/db";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { PLAN_CODES } from "@/lib/billing/plans";
 
-const VALID_PLANS = ["starter", "professional", "enterprise"];
 const VALID_INTERVALS = ["month", "year"];
 
 /**
@@ -30,8 +30,8 @@ export async function POST(request: NextRequest) {
   const planCode = typeof body?.plan_code === "string" ? body.plan_code.trim() : "";
   const interval = typeof body?.interval === "string" ? body.interval.trim() : "month";
 
-  if (!VALID_PLANS.includes(planCode)) {
-    return jsonError(`Plan inválido. Opciones: ${VALID_PLANS.join(", ")}`);
+  if (!(PLAN_CODES as string[]).includes(planCode)) {
+    return jsonError(`Plan inválido. Opciones: ${PLAN_CODES.join(", ")}`);
   }
   if (!VALID_INTERVALS.includes(interval)) {
     return jsonError("Intervalo inválido. Usa 'month' o 'year'.");
@@ -131,10 +131,6 @@ export async function POST(request: NextRequest) {
     sessionParams.customer = account.provider_customer_id;
   } else {
     sessionParams.customer_email = account.email;
-  }
-
-  if (planCode === "starter") {
-    (sessionParams.subscription_data as Record<string, unknown>).trial_period_days = 14;
   }
 
   const session = await stripe.checkout.sessions.create(

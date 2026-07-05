@@ -1,7 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import type { BillingState } from "@/lib/billing/getActiveSubscription";
+import { PLANS } from "@/lib/billing/plans";
 
 const STATUS_LABELS: Record<string, { label: string; color: string }> = {
   active: { label: "Activa", color: "#22c55e" },
@@ -11,57 +13,67 @@ const STATUS_LABELS: Record<string, { label: string; color: string }> = {
   unpaid: { label: "Impagada", color: "#ef4444" },
 };
 
-const PLAN_LABELS: Record<string, string> = {
-  starter: "Starter",
-  professional: "Professional",
-  enterprise: "Enterprise",
-};
+const PLAN_LABELS: Record<string, string> = Object.fromEntries(
+  PLANS.map((p) => [p.code, p.name]),
+);
+
+// El webhook de Stripe tarda unos segundos en aprovisionar tras el checkout:
+// mientras haya session_id sin suscripción visible, reintentamos.
+const POLL_INTERVAL_MS = 2500;
+const POLL_MAX_ATTEMPTS = 24; // ~1 minuto
 
 export default function BillingPageClient() {
+  const searchParams = useSearchParams();
+  const justPaid = Boolean(searchParams.get("session_id"));
+
   const [billing, setBilling] = useState<BillingState | null>(null);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
+  const [pollTimedOut, setPollTimedOut] = useState(false);
+  const pollAttempts = useRef(0);
 
   useEffect(() => {
     const controller = new AbortController();
+    let timer: ReturnType<typeof setTimeout> | null = null;
 
-    (async () => {
+    const fetchStatus = async () => {
       try {
         const res = await fetch("/api/billing/status", {
           credentials: "include",
           signal: controller.signal,
         });
         const data = await res.json();
-        if (!controller.signal.aborted && data.ok) {
-          setBilling(data.billing);
+        if (controller.signal.aborted) return;
+
+        if (data.ok) setBilling(data.billing);
+        setLoading(false);
+
+        const hasSub = Boolean(data.ok && data.billing?.subscription);
+        if (justPaid && !hasSub) {
+          pollAttempts.current += 1;
+          if (pollAttempts.current < POLL_MAX_ATTEMPTS) {
+            timer = setTimeout(fetchStatus, POLL_INTERVAL_MS);
+          } else {
+            setPollTimedOut(true);
+          }
+        } else if (justPaid && hasSub) {
+          // El perfil pudo cambiar (rol admin, hotel nuevo): refrescar el shell.
+          window.location.replace("/billing");
         }
       } catch (e) {
         if (e instanceof DOMException && e.name === "AbortError") return;
-      } finally {
         if (!controller.signal.aborted) setLoading(false);
       }
-    })();
+    };
 
-    return () => { controller.abort(); };
-  }, []);
+    fetchStatus();
 
-  const handleCheckout = async (planCode: string, interval: "month" | "year") => {
-    setActionLoading(true);
-    try {
-      const res = await fetch("/api/billing/checkout", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ plan_code: planCode, interval }),
-      });
-      const data = await res.json();
-      if (data.ok && data.url) {
-        window.location.href = data.url;
-      }
-    } finally {
-      setActionLoading(false);
-    }
-  };
+    return () => {
+      controller.abort();
+      if (timer) clearTimeout(timer);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [justPaid]);
 
   const handlePortal = async () => {
     setActionLoading(true);
@@ -88,12 +100,35 @@ export default function BillingPageClient() {
   }
 
   const sub = billing?.subscription;
+
+  // Post-checkout: el webhook aún no ha confirmado la suscripción
+  if (justPaid && !sub && !pollTimedOut) {
+    return (
+      <div className="min-h-screen bg-[#eef1f5] flex items-center justify-center p-6">
+        <div className="bg-white rounded-xl shadow-sm p-8 max-w-md text-center">
+          <div className="mx-auto mb-4 h-10 w-10 animate-spin rounded-full border-4 border-gray-200 border-t-[#185FA5]" />
+          <h1 className="text-lg font-semibold">Confirmando tu pago…</h1>
+          <p className="mt-2 text-sm text-gray-500">
+            Estamos activando tu cuenta y creando tu hotel. Esto tarda unos segundos.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   const statusInfo = sub ? STATUS_LABELS[sub.status] ?? { label: sub.status, color: "#6b7280" } : null;
 
   return (
     <div className="min-h-screen bg-[#eef1f5] p-6">
       <div className="max-w-3xl mx-auto">
         <h1 className="text-2xl font-bold mb-6">Facturación</h1>
+
+        {pollTimedOut && !sub && (
+          <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800">
+            Tu pago se ha recibido pero la activación está tardando más de lo normal.
+            Recarga esta página en un minuto o escríbenos a soporte y lo resolvemos al momento.
+          </div>
+        )}
 
         {/* Current plan */}
         {sub ? (
@@ -167,37 +202,18 @@ export default function BillingPageClient() {
             )}
           </div>
         ) : (
-          /* No subscription — show plans */
-          <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
+          /* No subscription — send to the plan picker */
+          <div className="bg-white rounded-xl shadow-sm p-8 mb-6 text-center">
             <h2 className="text-lg font-semibold mb-2">Sin suscripción activa</h2>
-            <p className="text-sm text-gray-500 mb-6">Elige un plan para empezar.</p>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {[
-                { code: "starter", name: "Starter", price: "29", features: ["1 hotel", "10 usuarios", "50 auditorías/mes"] },
-                { code: "professional", name: "Professional", price: "79", features: ["3 hoteles", "25 usuarios/hotel", "500 auditorías/mes", "Reportes", "Formaciones"] },
-                { code: "enterprise", name: "Enterprise", price: "199", features: ["Hoteles ilimitados", "Usuarios ilimitados", "Auditorías ilimitadas", "Todo incluido"] },
-              ].map((plan) => (
-                <div key={plan.code} className="border border-gray-200 rounded-xl p-5 flex flex-col">
-                  <h3 className="font-semibold text-lg">{plan.name}</h3>
-                  <p className="text-2xl font-bold mt-2">
-                    {plan.price}€<span className="text-sm font-normal text-gray-400">/mes</span>
-                  </p>
-                  <ul className="mt-4 space-y-1 text-sm text-gray-600 flex-1">
-                    {plan.features.map((f) => (
-                      <li key={f}>✓ {f}</li>
-                    ))}
-                  </ul>
-                  <button
-                    onClick={() => handleCheckout(plan.code, "month")}
-                    disabled={actionLoading}
-                    className="mt-4 w-full px-4 py-2 bg-black text-white rounded-lg text-sm hover:bg-gray-800 disabled:opacity-50"
-                  >
-                    Empezar
-                  </button>
-                </div>
-              ))}
-            </div>
+            <p className="text-sm text-gray-500 mb-6">
+              Elige un plan y tu cuenta se activa en el momento.
+            </p>
+            <a
+              href="/upgrade"
+              className="inline-block px-6 py-3 bg-[#185FA5] text-white rounded-lg text-sm font-semibold hover:bg-[#1a6ab8]"
+            >
+              Ver planes
+            </a>
           </div>
         )}
       </div>
