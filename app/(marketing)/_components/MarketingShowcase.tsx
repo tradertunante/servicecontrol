@@ -167,10 +167,10 @@ function GaugeRing({ score, label, count }: { score: number; label: string; coun
           strokeLinecap="round"
           transform="rotate(-90 48 48)"
         />
-        <text x={48} y={44} textAnchor="middle" className="text-[18px] font-black" fill="var(--text)">
+        <text x={48} y={44} textAnchor="middle" dominantBaseline="middle" style={{ fontSize: '14px', fontWeight: 900 }} fill="var(--text)">
           {score}%
         </text>
-        <text x={48} y={58} textAnchor="middle" className="text-[9px] font-bold" fill="var(--text-secondary)">
+        <text x={48} y={57} textAnchor="middle" dominantBaseline="middle" style={{ fontSize: '8.5px', fontWeight: 700 }} fill="var(--text-secondary)">
           ({count} auditorias)
         </text>
       </svg>
