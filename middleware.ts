@@ -39,7 +39,7 @@ function isCorsViolation(origin: string | null, request: NextRequest): boolean {
   return true;
 }
 
-const MARKETING_PATHS = ["/", "/pricing", "/demo", "/trial"];
+const MARKETING_PATHS = ["/", "/pricing", "/demo", "/trial", "/founders"];
 
 const intlMiddleware = createIntlMiddleware(routing);
 
@@ -121,7 +121,8 @@ export async function middleware(request: NextRequest, event: NextFetchEvent) {
       pathname === `/${locale}` ||
       pathname.startsWith(`/${locale}/pricing`) ||
       pathname.startsWith(`/${locale}/demo`) ||
-      pathname.startsWith(`/${locale}/trial`)
+      pathname.startsWith(`/${locale}/trial`) ||
+      pathname.startsWith(`/${locale}/founders`)
     );
 
   if (isMarketingPath) {

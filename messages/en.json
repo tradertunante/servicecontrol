@@ -923,5 +923,48 @@
       "datos_q": "Is my data safe?",
       "datos_a": "Yes. Data is stored on European servers (EU-West), with daily backups, encryption in transit and at rest, and role-based access. We can sign a DPA if your organization requires it."
     }
+  },
+  "foundersPage": {
+    "metaTitle": "Founding program — 5 spots",
+    "metaDescription": "Become one of ServiceControl's 5 founding hotels: first month free with implementation included and 6 months at 50% off, in exchange for your real feedback.",
+    "eyebrow": "Founding program · Only 5 hotels",
+    "title": "We're looking for 5 founding hotels. On terms that won't come back.",
+    "description": "We're building the best hotel operational quality platform with 5 real hotels. You bring the feedback; we bring full implementation and a price we will never offer again.",
+    "offerLabel": "The offer",
+    "offerTitle": "First month free + 6 months at 50% off",
+    "offerItems": [
+      "Month 1 free: we set up ServiceControl with you — we migrate your audit templates from Excel or paper and configure areas, roles and team",
+      "Months 2 to 7 at 50% off, on any plan",
+      "No lock-in: leave any month, no questions asked",
+      "Direct line to the founder: WhatsApp and phone support, answers within hours",
+      "Your operation drives the roadmap: what your hotel needs gets development priority"
+    ],
+    "perMonth": "/mo",
+    "insteadOf": "then €{price}/mo",
+    "pricingNote": "From month 8 onwards, standard pricing. No lock-in at any point: if it doesn't deliver, you walk away.",
+    "askLabel": "What we ask in return",
+    "askTitle": "Use it for real and tell us the truth",
+    "askItems": [
+      "A 30-minute feedback call every two weeks during the program",
+      "A case study with your real results — including your logo — if the system works",
+      "Total honesty: if something doesn't work, we want to hear it first"
+    ],
+    "fitYesTitle": "It's for your hotel if…",
+    "fitYes": [
+      "You have 40 to 200 rooms and someone responsible for quality or operations",
+      "You currently coordinate audits and corrections with Excel, paper or WhatsApp",
+      "You audit, but the same deviations repeat month after month",
+      "You can spend one hour a month telling us what works and what doesn't"
+    ],
+    "fitNoTitle": "It's not for you if…",
+    "fitNo": [
+      "You want software just to \"have it\", but nobody will use it in the field",
+      "Your chain already mandates a corporate quality tool",
+      "Nobody on the team can lead adoption during the first month"
+    ],
+    "spotsNote": "Once the 5 spots are filled, the program closes and these terms disappear.",
+    "ctaLabel": "Start here",
+    "ctaTitle": "Book a 30-minute call",
+    "ctaDescription": "No commitment. Tell me how you manage quality today, I'll show you the system using your real cases and, if it fits, you claim your spot."
   }
 }

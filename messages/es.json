@@ -923,5 +923,48 @@
       "datos_q": "¿Están seguros mis datos?",
       "datos_a": "Sí. Los datos se almacenan en servidores europeos (EU-West), con backups diarios, cifrado en tránsito y en reposo, y acceso por roles. Podemos firmar un DPA si tu organización lo requiere."
     }
+  },
+  "foundersPage": {
+    "metaTitle": "Programa fundador — 5 plazas",
+    "metaDescription": "Sé uno de los 5 hoteles fundadores de ServiceControl: primer mes gratis con implementación incluida y 6 meses al 50%, a cambio de tu feedback real.",
+    "eyebrow": "Programa fundador · Solo 5 hoteles",
+    "title": "Buscamos 5 hoteles fundadores. Condiciones que no se repetirán.",
+    "description": "Vamos a construir la mejor plataforma de calidad operativa hotelera con 5 hoteles reales. Tú pones el feedback; nosotros ponemos la implementación completa y un precio que nunca volveremos a ofrecer.",
+    "offerLabel": "La oferta",
+    "offerTitle": "Primer mes gratis + 6 meses al 50%",
+    "offerItems": [
+      "Mes 1 gratis: montamos ServiceControl contigo — migramos tus plantillas de auditoría desde Excel o papel y configuramos áreas, roles y equipo",
+      "Meses 2 a 7 al 50% del precio, en cualquier plan",
+      "Sin permanencia: puedes salir cualquier mes, sin explicaciones",
+      "Línea directa con el fundador: soporte por WhatsApp y teléfono, respuesta en horas",
+      "Tu operativa marca el roadmap: lo que tu hotel necesite tiene prioridad de desarrollo"
+    ],
+    "perMonth": "/mes",
+    "insteadOf": "después €{price}/mes",
+    "pricingNote": "A partir del mes 8, precio estándar. Sin permanencia en ningún momento: si no te aporta, te vas.",
+    "askLabel": "Qué pedimos a cambio",
+    "askTitle": "Que lo uses de verdad y nos digas la verdad",
+    "askItems": [
+      "Una llamada de feedback de 30 minutos cada dos semanas durante el programa",
+      "Un caso de estudio con tus resultados reales — con tu logo — si el sistema funciona",
+      "Sinceridad total: si algo no sirve, queremos oírlo antes que nadie"
+    ],
+    "fitYesTitle": "Es para tu hotel si…",
+    "fitYes": [
+      "Tienes entre 40 y 200 habitaciones y una persona responsable de calidad u operaciones",
+      "Hoy coordináis auditorías y correcciones con Excel, papel o WhatsApp",
+      "Auditáis, pero las mismas desviaciones se repiten mes tras mes",
+      "Puedes dedicar una hora al mes a contarnos qué funciona y qué no"
+    ],
+    "fitNoTitle": "No es para ti si…",
+    "fitNo": [
+      "Buscas un software para \"tenerlo\", pero nadie lo va a usar en campo",
+      "Tu cadena ya te impone una herramienta corporativa de calidad",
+      "Nadie en el equipo puede liderar la adopción durante el primer mes"
+    ],
+    "spotsNote": "Cuando se cubran las 5 plazas, el programa se cierra y estas condiciones desaparecen.",
+    "ctaLabel": "Empieza aquí",
+    "ctaTitle": "Reserva una llamada de 30 minutos",
+    "ctaDescription": "Sin compromiso. Me cuentas cómo gestionáis la calidad hoy, te enseño el sistema con casos de tu operativa y, si encaja, reservas tu plaza."
   }
 }

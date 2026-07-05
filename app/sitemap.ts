@@ -2,7 +2,7 @@ import type { MetadataRoute } from "next";
 import { routing } from "@/i18n/routing";
 
 const BASE = "https://servicecontrol.io";
-const MARKETING_ROUTES = ["", "/pricing", "/demo", "/trial"];
+const MARKETING_ROUTES = ["", "/pricing", "/demo", "/trial", "/founders"];
 
 export default function sitemap(): MetadataRoute.Sitemap {
   return routing.locales.flatMap((locale) =>
