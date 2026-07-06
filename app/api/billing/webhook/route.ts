@@ -98,6 +98,11 @@ export async function POST(request: NextRequest) {
       .from("billing_events")
       .update({ status: "failed", processed_at: new Date().toISOString() })
       .eq("provider_event_id", event.id);
+
+    // 5xx para que Stripe reintente (con 200 da el evento por entregado y no
+    // vuelve). Reprocesar es seguro: los handlers son idempotentes y los
+    // eventos ya procesados se saltan arriba.
+    return NextResponse.json({ error: "Processing failed" }, { status: 500 });
   }
 
   return NextResponse.json({ received: true });
@@ -211,7 +216,18 @@ async function upsertSubscription(sub: Stripe.Subscription) {
   }
 
   const item = sub.items.data[0];
-  const planCode = item?.price?.metadata?.plan_code ?? item?.price?.lookup_key ?? "unknown";
+  // lookup_key es `${plan_code}_${month|year}` — quitar el sufijo si falta metadata.
+  const planCode =
+    item?.price?.metadata?.plan_code ??
+    item?.price?.lookup_key?.replace(/_(month|year)$/, "") ??
+    "unknown";
+
+  // Desde la API Basil (2025-03-31) current_period_* vive en el item de la
+  // suscripción, no en la suscripción; el fallback cubre payloads de webhooks
+  // configurados con una versión de API anterior.
+  const legacyPeriods = sub as unknown as { current_period_start?: number; current_period_end?: number };
+  const periodStart = item?.current_period_start ?? legacyPeriods.current_period_start ?? null;
+  const periodEnd = item?.current_period_end ?? legacyPeriods.current_period_end ?? null;
 
   const row = {
     billing_account_id: account.id,
@@ -222,8 +238,8 @@ async function upsertSubscription(sub: Stripe.Subscription) {
     amount: item?.price?.unit_amount ?? 0,
     currency: sub.currency ?? "eur",
     trial_end: sub.trial_end ? new Date(sub.trial_end * 1000).toISOString() : null,
-    current_period_start: new Date((sub as any).current_period_start * 1000).toISOString(),
-    current_period_end: new Date((sub as any).current_period_end * 1000).toISOString(),
+    current_period_start: periodStart ? new Date(periodStart * 1000).toISOString() : null,
+    current_period_end: periodEnd ? new Date(periodEnd * 1000).toISOString() : null,
     cancel_at_period_end: sub.cancel_at_period_end ?? false,
   };
 
