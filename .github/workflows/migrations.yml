@@ -1,0 +1,51 @@
+name: Deploy Supabase migrations
+
+# Aplica migraciones pendientes al proyecto Supabase de producción cuando se
+# mergea a main un cambio en supabase/migrations/. El environment "production"
+# debe configurarse en GitHub con "required reviewers" para que el push a la BD
+# requiera aprobación manual explícita.
+#
+# Secrets necesarios (en el environment "production"):
+#   SUPABASE_ACCESS_TOKEN  — token personal de Supabase (supabase.com/dashboard/account/tokens)
+#   SUPABASE_PROJECT_REF   — ref del proyecto (subdominio de *.supabase.co)
+#   SUPABASE_DB_PASSWORD   — contraseña de la BD
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "supabase/migrations/**"
+  workflow_dispatch:
+
+concurrency:
+  group: supabase-migrations
+  cancel-in-progress: false
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Link project
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+        run: supabase link --project-ref "${{ secrets.SUPABASE_PROJECT_REF }}"
+
+      - name: Show pending migrations
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+        run: supabase migration list
+
+      - name: Apply migrations
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+        run: supabase db push
