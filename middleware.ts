@@ -8,6 +8,7 @@ import { routing } from "@/i18n/routing";
 const AUTH_TOKEN_COOKIE = "sc-access-token";
 
 const PUBLIC_API_PREFIXES = [
+  "/api/health",
   "/api/auth/sync-session",
   "/api/trainings/sessions",
   "/api/trainings/attendances",
