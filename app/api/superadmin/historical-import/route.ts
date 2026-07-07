@@ -9,6 +9,7 @@ import {
 import { createHistoricalRun } from "@/lib/superadmin/createHistoricalRun";
 import { buildHistoricalQuestionReferences, parseHistoricalImportRows } from "@/lib/superadmin/historicalImportExcel";
 import { jsonError, requireSuperadminRoute } from "@/lib/superadmin/server";
+import { validateSpreadsheetUpload } from "@/lib/api/validateUpload";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { logger } from "@/lib/logger";
 
@@ -184,12 +185,9 @@ export async function POST(request: NextRequest) {
 
   if (!hotelId) return jsonError("hotel_id es obligatorio.", 400);
   if (!templateId) return jsonError("template_id es obligatorio.", 400);
-  if (!(file instanceof File)) return jsonError("Debes adjuntar un archivo Excel.", 400);
 
-  const fileName = cleanCell(file.name).toLowerCase();
-  if (!fileName.endsWith(".xlsx") && !fileName.endsWith(".xls")) {
-    return jsonError("El archivo debe ser .xlsx o .xls.", 400);
-  }
+  const upload = await validateSpreadsheetUpload(file);
+  if (!upload.ok) return upload.response;
 
   const hotel = await loadHotelOrError(hotelId);
   if (!hotel.ok) return jsonError(hotel.error, hotel.status);
@@ -204,8 +202,7 @@ export async function POST(request: NextRequest) {
     return jsonError("El template seleccionado no tiene preguntas activas.", 409);
   }
 
-  const arrayBuffer = await file.arrayBuffer();
-  const workbook = XLSX.read(arrayBuffer, { type: "array" });
+  const workbook = XLSX.read(upload.arrayBuffer, { type: "array" });
   const firstSheetName = workbook.SheetNames[0];
   if (!firstSheetName) return jsonError("El archivo no contiene hojas.", 400);
 

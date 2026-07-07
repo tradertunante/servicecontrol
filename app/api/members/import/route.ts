@@ -12,6 +12,7 @@ import {
   uniqueStrings,
 } from "@/lib/members/server";
 import { jsonError , jsonDbError } from "@/lib/api/response";
+import { validateSpreadsheetUpload } from "@/lib/api/validateUpload";
 
 export async function POST(request: NextRequest) {
   try {
@@ -23,22 +24,10 @@ export async function POST(request: NextRequest) {
     const hotelResult = await resolveMembersHotelId(callerResult.caller);
     if (!hotelResult.ok) return jsonError(hotelResult.error, hotelResult.status);
 
-    if (!(file instanceof File)) {
-      return jsonError("Debes adjuntar un archivo Excel.", 400);
-    }
+    const upload = await validateSpreadsheetUpload(file);
+    if (!upload.ok) return upload.response;
 
-    const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 MB
-    if (file.size > MAX_FILE_SIZE) {
-      return jsonError("El archivo no puede superar 5 MB.", 400);
-    }
-
-    const fileName = String(file.name ?? "").toLowerCase();
-    if (!fileName.endsWith(".xlsx") && !fileName.endsWith(".xls")) {
-      return jsonError("El archivo debe ser .xlsx o .xls.", 400);
-    }
-
-    const arrayBuffer = await file.arrayBuffer();
-    const workbook = XLSX.read(arrayBuffer, { type: "array" });
+    const workbook = XLSX.read(upload.arrayBuffer, { type: "array" });
     const firstSheetName = workbook.SheetNames[0];
 
     if (!firstSheetName) {
