@@ -8,8 +8,8 @@ import { logger } from "@/lib/logger";
 import { jsonError } from "@/lib/api/response";
 import { TRIAL_ENABLED_PACKS } from "@/lib/auth/packs";
 import { sendTrialWelcomeEmail } from "@/lib/email/sendTrialWelcomeEmail";
-import { addTrialLeadToBrevo } from "@/lib/brevo";
-import { addTrialLeadToNotion } from "@/lib/notion";
+import { addTrialLeadToBrevo } from "@/lib/integrations/brevo";
+import { addTrialLeadToNotion } from "@/lib/integrations/notion";
 
 const DEMO_HOTEL_ID = process.env.TRIAL_DEMO_HOTEL_ID;
 

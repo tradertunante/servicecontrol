@@ -1,36 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { waitUntil } from "@vercel/functions";
 import { canSubmitAudit } from "@/lib/auth/permissions";
-import {
-  authorizeRouteRequest,
-  hasAreaScopeForProfile,
-  resolveRouteHotelScope,
-} from "@/lib/auth/server";
-import { supabaseAdmin } from "@/lib/supabaseAdmin";
-import { sendInstantNotifications } from "@/lib/email/sendInstantNotifications";
-import { updateBrevoContact } from "@/lib/brevo";
-import { logger } from "@/lib/logger";
-
-async function maybeTrackFirstAudit(userId: string) {
-  const admin = supabaseAdmin();
-  const { data: profile } = await admin
-    .from("profiles")
-    .select("is_trial, first_audit_completed_at, email")
-    .eq("id", userId)
-    .maybeSingle();
-
-  if (!profile?.is_trial || profile.first_audit_completed_at) return;
-
-  const now = new Date().toISOString();
-  await admin
-    .from("profiles")
-    .update({ first_audit_completed_at: now })
-    .eq("id", userId);
-
-  if (profile.email) {
-    await updateBrevoContact(profile.email, { FIRST_AUDIT_AT: now });
-  }
-}
+import { authorizeRouteRequest } from "@/lib/auth/server";
+import { AUDIT_EDIT_ROLES } from "@/lib/audits/server";
+import { submitAuditRun, runPostSubmitTasks } from "@/lib/audits/submitRun";
 
 type SubmitAuditBody = {
   run_id?: unknown;
@@ -99,9 +72,7 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    const caller = await authorizeRouteRequest(request, {
-      roles: ["superadmin", "admin", "general_manager", "manager", "auditor", "quality", "mystery_shopper"],
-    });
+    const caller = await authorizeRouteRequest(request, { roles: AUDIT_EDIT_ROLES });
 
     if (!caller) {
       return rpcErrorResponse({
@@ -147,139 +118,19 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    const hotelResult = await resolveRouteHotelScope(caller.profile, null);
-    if (!hotelResult.ok) {
+    const result = await submitAuditRun(caller, runId);
+
+    if (!result.ok) {
+      const { failure } = result;
       return rpcErrorResponse({
-        code: "FORBIDDEN",
-        message: hotelResult.error,
-        status: hotelResult.status,
+        code: failure.code,
+        message: failure.message,
+        status: failure.status,
         error: {
-          type: "authorization",
-          field: "run_id",
+          type: failure.errorType,
+          field: failure.field,
           question_id: null,
-          details: {},
-        },
-        meta: {
-          run_id: runId,
-          actor_user_id: caller.profile.id,
-          idempotent: false,
-          submitted: false,
-        },
-      });
-    }
-
-    const admin = supabaseAdmin();
-    const { data: run, error: runError } = await admin
-      .from("audit_runs")
-      .select("id, hotel_id, area_id, executed_by")
-      .eq("id", runId)
-      .maybeSingle();
-
-    if (runError) {
-      return rpcErrorResponse({
-        code: "RUN_LOOKUP_FAILED",
-        message: "Error interno al buscar la auditoría.",
-        status: 500,
-        error: {
-          type: "internal",
-          field: "run_id",
-          question_id: null,
-          details: {},
-        },
-        meta: {
-          run_id: runId,
-          actor_user_id: caller.profile.id,
-          idempotent: false,
-          submitted: false,
-        },
-      });
-    }
-
-    if (!run?.id || String(run.hotel_id ?? "") !== hotelResult.hotelId) {
-      return rpcErrorResponse({
-        code: "FORBIDDEN",
-        message: "La auditoría no pertenece al hotel activo.",
-        status: 403,
-        error: {
-          type: "authorization",
-          field: "run_id",
-          question_id: null,
-          details: {},
-        },
-        meta: {
-          run_id: runId,
-          actor_user_id: caller.profile.id,
-          idempotent: false,
-          submitted: false,
-        },
-      });
-    }
-
-    const hasAreaScope = await hasAreaScopeForProfile(
-      caller.profile,
-      hotelResult.hotelId,
-      String(run.area_id ?? "")
-    );
-
-    if (!hasAreaScope) {
-      return rpcErrorResponse({
-        code: "FORBIDDEN",
-        message: "No tienes acceso al área de esta auditoría.",
-        status: 403,
-        error: {
-          type: "authorization",
-          field: "run_id",
-          question_id: null,
-          details: {},
-        },
-        meta: {
-          run_id: runId,
-          actor_user_id: caller.profile.id,
-          idempotent: false,
-          submitted: false,
-        },
-      });
-    }
-
-    if (
-      caller.profile.role === "auditor" &&
-      String(run.executed_by ?? "") !== caller.profile.id
-    ) {
-      return rpcErrorResponse({
-        code: "FORBIDDEN",
-        message: "Un auditor solo puede enviar auditorías ejecutadas por sí mismo.",
-        status: 403,
-        error: {
-          type: "authorization",
-          field: "run_id",
-          question_id: null,
-          details: {},
-        },
-        meta: {
-          run_id: runId,
-          actor_user_id: caller.profile.id,
-          idempotent: false,
-          submitted: false,
-        },
-      });
-    }
-
-    const { data, error } = await admin.rpc("submit_audit_run", {
-      p_run_id: runId,
-      p_actor_user_id: caller.profile.id,
-    });
-
-    if (error) {
-      await logger.error("submit_audit_run_rpc_error", { message: error.message, details: error.details, hint: error.hint, code: error.code });
-      return rpcErrorResponse({
-        code: "RPC_EXECUTION_FAILED",
-        message: "Error interno al procesar la auditoría.",
-        status: 500,
-        error: {
-          type: "internal",
-          field: null,
-          question_id: null,
-          details: {},
+          details: failure.details,
         },
         meta: {
           run_id: runId,
@@ -292,16 +143,9 @@ export async function POST(request: NextRequest) {
 
     // Send emails and track trial signals in the background.
     // waitUntil keeps the function alive after the response is sent.
-    waitUntil(
-      Promise.all([
-        sendInstantNotifications(runId).catch((err) =>
-          logger.error("instant_email_background_error", { error: err instanceof Error ? err.message : String(err) })
-        ),
-        maybeTrackFirstAudit(caller.profile.id).catch(() => undefined),
-      ])
-    );
+    waitUntil(runPostSubmitTasks(runId, caller.profile.id));
 
-    return NextResponse.json(data);
+    return NextResponse.json(result.data);
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unexpected error.";
 

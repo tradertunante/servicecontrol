@@ -5,7 +5,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { supabaseWithToken } from "@/lib/supabaseServer";
 import { getBearerTokenFromRequest } from "@/lib/auth/server";
-import { updateBrevoContact } from "@/lib/brevo";
+import { updateBrevoContact } from "@/lib/integrations/brevo";
 import { jsonError } from "@/lib/api/response";
 
 export async function POST(request: NextRequest) {

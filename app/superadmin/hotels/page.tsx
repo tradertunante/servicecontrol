@@ -3,7 +3,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { signOutAndRedirect } from "@/lib/auth";
+import { signOutAndRedirect } from "@/lib/auth/clientSession";
 import { getClientProfile } from "@/lib/auth/clientProfile";
 import { supabase } from "@/lib/supabaseClient";
 import { fetchActiveHotel, setActiveHotel } from "@/lib/auth/activeHotelClient";

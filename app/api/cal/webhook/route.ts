@@ -2,8 +2,8 @@ import "server-only";
 
 import { createHmac, timingSafeEqual } from "crypto";
 import { NextRequest, NextResponse } from "next/server";
-import { markDemoBooked } from "@/lib/brevo";
-import { addDemoLeadToNotion } from "@/lib/notion";
+import { markDemoBooked } from "@/lib/integrations/brevo";
+import { addDemoLeadToNotion } from "@/lib/integrations/notion";
 import { logger } from "@/lib/logger";
 
 const CAL_SECRET = process.env.CAL_WEBHOOK_SECRET;

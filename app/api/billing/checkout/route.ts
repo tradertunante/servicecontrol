@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { stripe } from "@/lib/stripe";
+import { stripe } from "@/lib/billing/stripe";
 import { authorizeRouteRequest, resolveRouteHotelScope } from "@/lib/auth/server";
 import { jsonError } from "@/lib/api/response";
 import { logger } from "@/lib/logger";

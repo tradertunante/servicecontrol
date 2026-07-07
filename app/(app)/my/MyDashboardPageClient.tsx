@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/app/providers/ToastProvider";
 
-import { signOutAndRedirect } from "@/lib/auth";
+import { signOutAndRedirect } from "@/lib/auth/clientSession";
 import type { Profile } from "@/lib/types";
 
 import { useMyDashboardData } from "./_hooks/useMyDashboardData";

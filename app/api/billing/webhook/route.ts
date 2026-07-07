@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
 
-import { stripe, normalizeInterval, normalizeStatus } from "@/lib/stripe";
+import { stripe, normalizeInterval, normalizeStatus } from "@/lib/billing/stripe";
 import { logger } from "@/lib/logger";
 import { billingAdmin, type BillingAccountRow } from "@/lib/billing/db";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
