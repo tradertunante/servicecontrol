@@ -1,0 +1,89 @@
+# Réplica de los crons de vercel.json para el despliegue autoalojado.
+# Los endpoints validan "Authorization: Bearer ${CRON_SECRET}"; el secret se lee
+# de servicecontrol-env (la misma clave CRON_SECRET que usa la app).
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: sc-reports-weekly
+spec:
+  schedule: "0 8 * * 1"
+  concurrencyPolicy: Forbid
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      template:
+        spec:
+          restartPolicy: Never
+          containers:
+            - name: curl
+              image: curlimages/curl:8.10.1
+              command: ["/bin/sh", "-c"]
+              args:
+                - >
+                  curl -fsS --max-time 300
+                  -H "Authorization: Bearer ${CRON_SECRET}"
+                  http://servicecontrol/api/reports/send-weekly
+              env:
+                - name: CRON_SECRET
+                  valueFrom:
+                    secretKeyRef:
+                      name: servicecontrol-env
+                      key: CRON_SECRET
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: sc-reports-monthly
+spec:
+  schedule: "0 8 1 * *"
+  concurrencyPolicy: Forbid
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      template:
+        spec:
+          restartPolicy: Never
+          containers:
+            - name: curl
+              image: curlimages/curl:8.10.1
+              command: ["/bin/sh", "-c"]
+              args:
+                - >
+                  curl -fsS --max-time 300
+                  -H "Authorization: Bearer ${CRON_SECRET}"
+                  http://servicecontrol/api/reports/send-monthly
+              env:
+                - name: CRON_SECRET
+                  valueFrom:
+                    secretKeyRef:
+                      name: servicecontrol-env
+                      key: CRON_SECRET
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: sc-trainings-suggestions
+spec:
+  schedule: "0 9 * * 1"
+  concurrencyPolicy: Forbid
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      template:
+        spec:
+          restartPolicy: Never
+          containers:
+            - name: curl
+              image: curlimages/curl:8.10.1
+              command: ["/bin/sh", "-c"]
+              args:
+                - >
+                  curl -fsS --max-time 300
+                  -H "Authorization: Bearer ${CRON_SECRET}"
+                  http://servicecontrol/api/trainings/generate-suggestions
+              env:
+                - name: CRON_SECRET
+                  valueFrom:
+                    secretKeyRef:
+                      name: servicecontrol-env
+                      key: CRON_SECRET

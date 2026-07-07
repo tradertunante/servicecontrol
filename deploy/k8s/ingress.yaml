@@ -1,0 +1,25 @@
+# Ingress con TLS vía cert-manager (ajustar host y cluster-issuer al entorno real).
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: servicecontrol
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.ingress.kubernetes.io/proxy-body-size: 15m # subida de fotos de auditoría
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - app.servicecontrol.example
+      secretName: servicecontrol-tls
+  rules:
+    - host: app.servicecontrol.example
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: servicecontrol
+                port:
+                  number: 80

@@ -58,6 +58,8 @@ function stripMarkdownCJS(md) {
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Vercel no necesita standalone; los builds Docker (deploy/) sí.
+  output: process.env.BUILD_STANDALONE === "1" ? "standalone" : undefined,
   eslint: {
     ignoreDuringBuilds: true,
   },

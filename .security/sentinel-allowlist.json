@@ -4,13 +4,16 @@
     ".env",
     "lib/supabaseAdmin.ts",
     "lib/reports/generateNarrative.ts",
-    "scripts/stripe-sync-plans.ts"
+    "scripts/stripe-sync-plans.ts",
+    "deploy/k8s/cronjobs.yaml",
+    ".github/workflows"
   ],
   "domains": [],
   "commands": [],
   "envVars": [
     "SUPABASE_SERVICE_ROLE_KEY",
     "ANTHROPIC_API_KEY",
-    "STRIPE_SECRET_KEY"
+    "STRIPE_SECRET_KEY",
+    "CRON_SECRET"
   ]
 }

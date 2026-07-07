@@ -1,0 +1,88 @@
+# ServiceControl — Deployment de contingencia (el despliegue primario es Vercel).
+# Requiere el Secret "servicecontrol-env" (ver secret.example.yaml) y una imagen
+# publicada en un registry accesible por el clúster.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: servicecontrol
+  labels:
+    app: servicecontrol
+spec:
+  replicas: 2
+  revisionHistoryLimit: 5
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  selector:
+    matchLabels:
+      app: servicecontrol
+  template:
+    metadata:
+      labels:
+        app: servicecontrol
+    spec:
+      securityContext:
+        runAsNonRoot: true
+      containers:
+        - name: app
+          image: ghcr.io/tradertunante/servicecontrol:latest # fijar a un tag inmutable en producción
+          ports:
+            - containerPort: 3000
+          envFrom:
+            - secretRef:
+                name: servicecontrol-env
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              memory: 1Gi
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: 3000
+            initialDelaySeconds: 10
+            periodSeconds: 15
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: 3000
+            initialDelaySeconds: 20
+            periodSeconds: 30
+            failureThreshold: 3
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false # Next.js escribe caché en .next/cache
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: servicecontrol
+spec:
+  selector:
+    app: servicecontrol
+  ports:
+    - port: 80
+      targetPort: 3000
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: servicecontrol
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: servicecontrol
+  minReplicas: 2
+  maxReplicas: 6
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70
