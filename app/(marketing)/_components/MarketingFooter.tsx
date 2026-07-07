@@ -1,4 +1,5 @@
 import { useTranslations } from "next-intl";
+import NextLink from "next/link";
 import { Link } from "@/i18n/navigation";
 
 export default function MarketingFooter() {
@@ -37,15 +38,16 @@ export default function MarketingFooter() {
           <Link href="/login" className="transition hover:text-white">
             {tNav("login")}
           </Link>
-          <a href="/help" className="transition hover:text-white">
+          {/* NextLink (sin prefijo de locale): /help, /privacy y /cookies viven fuera del routing i18n */}
+          <NextLink href="/help" className="transition hover:text-white">
             Centro de ayuda
-          </a>
-          <a href="/privacy" className="transition hover:text-white">
+          </NextLink>
+          <NextLink href="/privacy" className="transition hover:text-white">
             {t("privacy")}
-          </a>
-          <a href="/cookies" className="transition hover:text-white">
+          </NextLink>
+          <NextLink href="/cookies" className="transition hover:text-white">
             {t("cookies")}
-          </a>
+          </NextLink>
         </div>
       </div>
     </footer>

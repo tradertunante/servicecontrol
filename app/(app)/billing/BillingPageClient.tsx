@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import type { BillingState } from "@/lib/billing/getActiveSubscription";
 import { PLANS } from "@/lib/billing/plans";
@@ -208,12 +209,12 @@ export default function BillingPageClient() {
             <p className="text-sm text-gray-500 mb-6">
               Elige un plan y tu cuenta se activa en el momento.
             </p>
-            <a
+            <Link
               href="/upgrade"
               className="inline-block px-6 py-3 bg-[#185FA5] text-white rounded-lg text-sm font-semibold hover:bg-[#1a6ab8]"
             >
               Ver planes
-            </a>
+            </Link>
           </div>
         )}
       </div>

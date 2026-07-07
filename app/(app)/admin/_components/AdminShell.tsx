@@ -3,6 +3,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import type { CSSProperties } from "react";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 
 import DepartmentsModule from "../_modules/departments/DepartmentsModule";
@@ -179,7 +180,7 @@ export default function AdminShell({
             })}
           </div>
 
-          <a
+          <Link
             href="/users"
             data-onboarding="admin-users"
             style={buildNavItemStyle(false)}
@@ -189,7 +190,7 @@ export default function AdminShell({
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
               Usuarios ↗
             </span>
-          </a>
+          </Link>
 
           {!activeHotelId ? (
             <div className="mt-3 text-[12px] opacity-[0.85] leading-[1.35]">

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { CONSENT_COOKIE, getStoredConsent, initPostHog } from "@/app/providers/PostHogProvider";
 
 function setConsentCookie(value: "granted" | "denied") {
@@ -54,13 +55,13 @@ export default function CookieBanner() {
     >
       <p style={{ margin: 0, fontSize: 13, lineHeight: 1.6, color: "#333" }}>
         Usamos cookies analíticas (PostHog) para mejorar el producto. No vendemos tus datos.{" "}
-        <a href="/cookies" style={{ color: "#000", fontWeight: 600, textDecoration: "underline" }}>
+        <Link href="/cookies" style={{ color: "#000", fontWeight: 600, textDecoration: "underline" }}>
           Política de cookies
-        </a>{" "}
+        </Link>{" "}
         ·{" "}
-        <a href="/privacy" style={{ color: "#000", fontWeight: 600, textDecoration: "underline" }}>
+        <Link href="/privacy" style={{ color: "#000", fontWeight: 600, textDecoration: "underline" }}>
           Privacidad
-        </a>
+        </Link>
       </p>
       <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
         <button

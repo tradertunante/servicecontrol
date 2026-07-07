@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 export default function RegisterPage() {
   return (
     <div style={{
@@ -23,7 +25,7 @@ export default function RegisterPage() {
           El registro en ServiceControl es por invitación del administrador de tu hotel.
           ¿Aún no tenéis cuenta? Prueba la plataforma gratis 14 días.
         </p>
-        <a
+        <Link
           href="/trial"
           style={{
             display: "inline-block",
@@ -38,9 +40,9 @@ export default function RegisterPage() {
           }}
         >
           Probar gratis 14 días
-        </a>
+        </Link>
         <div>
-          <a
+          <Link
             href="/login"
             style={{
               display: "inline-block",
@@ -52,7 +54,7 @@ export default function RegisterPage() {
             }}
           >
             Ir al login
-          </a>
+          </Link>
         </div>
       </div>
     </div>

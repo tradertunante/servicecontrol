@@ -2,6 +2,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useToast } from "@/app/providers/ToastProvider";
@@ -178,12 +179,12 @@ export default function HotelHeader() {
           {/* Desktop */}
           <nav className="hidden md:flex items-center gap-1 ml-1">
             <AppLocaleSwitcher />
-            <a
+            <Link
               href="/help"
               className="px-3 h-8 rounded-lg text-[13px] font-medium text-white/70 hover:text-white hover:bg-white/10 transition-colors flex items-center"
             >
               Ayuda
-            </a>
+            </Link>
             {isAdmin && (
               <button
                 onClick={() => navTo("/admin")}
@@ -240,12 +241,12 @@ export default function HotelHeader() {
                 <div className="px-4 py-2">
                   <AppLocaleSwitcher />
                 </div>
-                <a
+                <Link
                   href="/help"
                   className="block w-full text-left px-4 py-2.5 text-[13px] font-medium text-[#0C1F44] hover:bg-[#F4F7FB] transition-colors"
                 >
                   Ayuda
-                </a>
+                </Link>
                 {isAdmin && (
                   <button
                     onClick={() => navTo("/admin")}
