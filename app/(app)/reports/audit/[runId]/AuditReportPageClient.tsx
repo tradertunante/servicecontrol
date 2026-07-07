@@ -525,7 +525,7 @@ export default function AuditReportPageClient({
             <button onClick={() => window.print()} style={btnStyle(true)}>
               Imprimir / PDF
             </button>
-            <button onClick={() => exportAuditReportToExcel(report)} style={btnStyle(false)}>
+            <button onClick={() => void exportAuditReportToExcel(report)} style={btnStyle(false)}>
               Exportar Excel
             </button>
             <button

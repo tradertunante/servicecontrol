@@ -3,7 +3,7 @@
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { ProductDashboardMock } from "./MarketingShowcase";
-import posthog from "posthog-js";
+import { capture } from "@/lib/analytics/posthog";
 
 export default function HeroSection() {
   const t = useTranslations("hero");
@@ -53,14 +53,14 @@ export default function HeroSection() {
           <div className="mt-10 flex flex-col gap-4 sm:flex-row sm:items-center sm:gap-5">
             <Link
               href="/trial"
-              onClick={() => posthog.capture('cta_clicked', { cta_location: 'hero', cta_destination: 'trial' }, { send_instantly: true })}
+              onClick={() => capture('cta_clicked', { cta_location: 'hero', cta_destination: 'trial' }, { send_instantly: true })}
               className="rounded-[6px] bg-[#185FA5] px-8 py-4 text-center text-base font-medium text-white transition hover:bg-[#378ADD]"
             >
               {t("ctaTrial")}
             </Link>
             <Link
               href="/demo"
-              onClick={() => posthog.capture('cta_clicked', { cta_location: 'hero', cta_destination: 'demo' }, { send_instantly: true })}
+              onClick={() => capture('cta_clicked', { cta_location: 'hero', cta_destination: 'demo' }, { send_instantly: true })}
               className="text-center text-base font-medium text-[#185FA5] underline-offset-4 transition hover:underline"
             >
               {t("ctaPrimary")} →

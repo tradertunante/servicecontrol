@@ -446,7 +446,7 @@ export async function generateTemplate(hotelId: string, templateId: string) {
     throw new Error("El template seleccionado no tiene preguntas activas.");
   }
 
-  const workbook = buildHistoricalImportWorkbook(questions);
+  const workbook = await buildHistoricalImportWorkbook(questions);
   const buffer = XLSX.write(workbook, { type: "buffer", bookType: "xlsx" });
 
   return {

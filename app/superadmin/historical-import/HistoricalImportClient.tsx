@@ -13,7 +13,6 @@ import type {
   HistoricalImportSelectedTemplate,
   HistoricalImportTemplateOption,
 } from "@/lib/superadmin/historicalImportShared";
-import * as XLSX from "xlsx";
 
 function cardStyle() {
   return {
@@ -219,6 +218,7 @@ export default function HistoricalImportClient({
 
     try {
       setLoadingPreview(true);
+      const XLSX = await import("xlsx");
       const arrayBuffer = await file.arrayBuffer();
       const workbook = XLSX.read(arrayBuffer, { type: "array" });
       const firstSheetName = workbook.SheetNames[0];

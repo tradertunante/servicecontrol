@@ -9,7 +9,12 @@ import type { HeatMode } from "../_lib/dashboardUtils";
 type HotelRow = { id: string; name: string; active: boolean | null; status: string | null };
 type AreaRow = { id: string; name: string; type: string | null; hotel_id: string | null; active?: boolean | null; sort_order?: number | null };
 type TemplateRow = { id: string; name: string; hotel_id: string | null; area_id: string | null };
-type DepartmentBacklogResponse = { rows?: unknown[] };
+type DepartmentBacklogResponse = { rows?: unknown[]; count?: number };
+
+function backlogPendingCount(payload: DepartmentBacklogResponse): number {
+  if (typeof payload.count === "number") return payload.count;
+  return Array.isArray(payload.rows) ? payload.rows.length : 0;
+}
 
 export type PendingTeamItem = {
   teamKey: "it" | "maintenance" | "otros";
@@ -108,7 +113,7 @@ export function useDashboardFetch({
         const emptyBacklog: DepartmentBacklogResponse = { rows: [] };
 
         const backlogItPromise = hasPackIt
-          ? fetch(`/api/departments/backlog?department=it&hotel_id=${activeHotelId}`, {
+          ? fetch(`/api/departments/backlog?department=it&hotel_id=${activeHotelId}&count_only=1`, {
               method: "GET", credentials: "include", cache: "no-store", signal: controller.signal,
             }).then(async (response) => {
               const payload = (await response.json().catch(() => null)) as DepartmentBacklogResponse | null;
@@ -118,7 +123,7 @@ export function useDashboardFetch({
           : Promise.resolve(emptyBacklog);
 
         const backlogEngineeringPromise = hasPackEngineering
-          ? fetch(`/api/departments/backlog?department=engineering&hotel_id=${activeHotelId}`, {
+          ? fetch(`/api/departments/backlog?department=engineering&hotel_id=${activeHotelId}&count_only=1`, {
               method: "GET", credentials: "include", cache: "no-store", signal: controller.signal,
             }).then(async (response) => {
               const payload = (await response.json().catch(() => null)) as DepartmentBacklogResponse | null;
@@ -127,7 +132,7 @@ export function useDashboardFetch({
             }).catch(() => emptyBacklog)
           : Promise.resolve(emptyBacklog);
 
-        const backlogOtrosPromise = fetch(`/api/departments/backlog?department=otros&hotel_id=${activeHotelId}`, {
+        const backlogOtrosPromise = fetch(`/api/departments/backlog?department=otros&hotel_id=${activeHotelId}&count_only=1`, {
           method: "GET", credentials: "include", cache: "no-store", signal: controller.signal,
         }).then(async (response) => {
           const payload = (await response.json().catch(() => null)) as DepartmentBacklogResponse | null;
@@ -171,17 +176,17 @@ export function useDashboardFetch({
           ...(hasPackIt ? [{
             teamKey: "it" as const,
             teamLabel: "IT",
-            pendingCount: Array.isArray(backlogItRes.rows) ? backlogItRes.rows.length : 0,
+            pendingCount: backlogPendingCount(backlogItRes),
           }] : []),
           ...(hasPackEngineering ? [{
             teamKey: "maintenance" as const,
             teamLabel: "Mantenimiento",
-            pendingCount: Array.isArray(backlogEngineeringRes.rows) ? backlogEngineeringRes.rows.length : 0,
+            pendingCount: backlogPendingCount(backlogEngineeringRes),
           }] : []),
           {
             teamKey: "otros" as const,
             teamLabel: "Otros",
-            pendingCount: Array.isArray(backlogOtrosRes.rows) ? backlogOtrosRes.rows.length : 0,
+            pendingCount: backlogPendingCount(backlogOtrosRes),
           },
         ]);
       } catch (e: unknown) {

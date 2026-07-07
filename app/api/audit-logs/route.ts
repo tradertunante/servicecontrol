@@ -95,21 +95,27 @@ export async function POST(request: NextRequest) {
 
     if (entries.length === 0) return jsonError("No hay entradas para registrar.", 400);
 
+    // El scope de hotel no depende de la entrada: se resuelve una sola vez
+    const hotelResult = await resolveRouteHotelScope(caller.profile, null);
+    if (!hotelResult.ok) return jsonError(hotelResult.error, hotelResult.status);
+
+    const hotelId = hotelResult.hotelId;
+
     const sanitized: AuditLogEntryInput[] = [];
+    const areaAccessCache = new Map<string, boolean>();
 
     for (const entry of entries) {
-      const hotelResult = await resolveRouteHotelScope(caller.profile, null);
-      if (!hotelResult.ok) return jsonError(hotelResult.error, hotelResult.status);
-
-      const hotelId = hotelResult.hotelId;
-
       const areaId = String(entry.metadata?.area_id ?? "");
       if (caller.profile.role === "manager") {
         if (!areaId) {
           return jsonError("Los managers deben registrar audit logs con metadata.area_id.", 400);
         }
 
-        const hasAccess = await hasAreaScopeForProfile(caller.profile, hotelId, areaId);
+        let hasAccess = areaAccessCache.get(areaId);
+        if (hasAccess === undefined) {
+          hasAccess = await hasAreaScopeForProfile(caller.profile, hotelId, areaId);
+          areaAccessCache.set(areaId, hasAccess);
+        }
         if (!hasAccess) return jsonError("Forbidden: area fuera de alcance.", 403);
       }
 

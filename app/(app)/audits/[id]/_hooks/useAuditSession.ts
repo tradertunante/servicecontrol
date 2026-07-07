@@ -2,7 +2,7 @@
 
 import { useCallback, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import posthog from "posthog-js";
+import { capture } from "@/lib/analytics/posthog";
 
 import { useAuditAutosave } from "./useAuditAutosave";
 import { useAuditLoader } from "./useAuditLoader";
@@ -191,13 +191,13 @@ export function useAuditSession(runId: string | undefined) {
       }
 
       const failCount = submitAnswersPayload.filter((a) => a.answer === "FAIL").length;
-      posthog.capture("audit_completed", {
+      capture("audit_completed", {
         run_id: run.id,
         score: payload.data?.run?.score ?? null,
         fail_count: failCount,
       });
       if (failCount > 0) {
-        posthog.capture("finding_registered", { run_id: run.id, count: failCount });
+        capture("finding_registered", { run_id: run.id, count: failCount });
       }
 
       setRun((prev) =>

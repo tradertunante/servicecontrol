@@ -1,12 +1,15 @@
-import * as XLSX from "xlsx";
+import type { WorkBook } from "xlsx";
 import type { AuditReportData } from "@/lib/reports/auditReportTypes";
 import type { AreaPeriodReportData } from "@/lib/reports/areaPeriodReportTypes";
+
+// xlsx pesa ~150 kB gz; se importa bajo demanda para no cargarlo con la página
+type XlsxModule = typeof import("xlsx");
 
 function sanitizeFilename(name: string): string {
   return name.replace(/[^a-zA-Z0-9áéíóúñÁÉÍÓÚÑ _-]/g, "").trim().replace(/\s+/g, "_");
 }
 
-function downloadWorkbook(wb: XLSX.WorkBook, filename: string) {
+function downloadWorkbook(XLSX: XlsxModule, wb: WorkBook, filename: string) {
   const buf = XLSX.write(wb, { bookType: "xlsx", type: "array" });
   const blob = new Blob([buf], {
     type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -19,7 +22,8 @@ function downloadWorkbook(wb: XLSX.WorkBook, filename: string) {
   URL.revokeObjectURL(url);
 }
 
-export function exportAuditReportToExcel(data: AuditReportData): void {
+export async function exportAuditReportToExcel(data: AuditReportData): Promise<void> {
+  const XLSX = await import("xlsx");
   const wb = XLSX.utils.book_new();
 
   // Sheet 1: Resumen
@@ -56,10 +60,11 @@ export function exportAuditReportToExcel(data: AuditReportData): void {
   const date = sanitizeFilename(data.run.executed_at?.slice(0, 10) ?? "sin-fecha");
   const filename = `Auditoria_${areaName}_${date}.xlsx`;
 
-  downloadWorkbook(wb, filename);
+  downloadWorkbook(XLSX, wb, filename);
 }
 
-export function exportAreaPeriodReportToExcel(data: AreaPeriodReportData): void {
+export async function exportAreaPeriodReportToExcel(data: AreaPeriodReportData): Promise<void> {
+  const XLSX = await import("xlsx");
   const wb = XLSX.utils.book_new();
 
   // Sheet 1: Resumen
@@ -104,5 +109,5 @@ export function exportAreaPeriodReportToExcel(data: AreaPeriodReportData): void 
   const rangeLabel = sanitizeFilename(data.range.label);
   const filename = `Reporte_${areaName}_${rangeLabel}.xlsx`;
 
-  downloadWorkbook(wb, filename);
+  downloadWorkbook(XLSX, wb, filename);
 }

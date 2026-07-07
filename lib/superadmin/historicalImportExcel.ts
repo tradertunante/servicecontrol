@@ -1,5 +1,5 @@
-import * as XLSX from "xlsx";
-
+// xlsx se importa bajo demanda: este módulo también lo consume el cliente
+// (parseHistoricalImportRows) y un import estático lo metería en su bundle
 import {
   buildHistoricalImportQuestionCode,
   buildHistoricalImportHeaders,
@@ -31,7 +31,8 @@ export function buildHistoricalQuestionReferences(
   }));
 }
 
-export function buildHistoricalImportWorkbook(questions: HistoricalImportWorkbookQuestion[]) {
+export async function buildHistoricalImportWorkbook(questions: HistoricalImportWorkbookQuestion[]) {
+  const XLSX = await import("xlsx");
   const workbook = XLSX.utils.book_new();
   const headers = buildHistoricalImportHeaders(questions.length);
   const worksheet = XLSX.utils.aoa_to_sheet([headers]);

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import posthog from "posthog-js";
+import { capture } from "@/lib/analytics/posthog";
 import { goBackOrFallback } from "@/lib/navigation/clientBack";
 
 import { supabase } from "@/lib/supabaseClient";
@@ -168,7 +168,7 @@ export default function NewAuditPageClient({
         throw new Error(payload?.error ?? "No se pudo crear la auditoría.");
       }
 
-      posthog.capture("audit_created", {
+      capture("audit_created", {
         run_id: payload.run_id,
         template_id: templateId,
         template_name: template?.name ?? null,

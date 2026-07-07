@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
-import posthog from "posthog-js";
+import { capture, identify } from "@/lib/analytics/posthog";
 import { supabase } from "@/lib/supabaseClient";
 import { normalizeRole } from "@/lib/auth/permissions";
 import TermsModal from "./TermsModal";
@@ -68,11 +68,11 @@ export default function LoginClient() {
 
       if (profileError) throw profileError;
 
-      posthog.identify(userData.user.id, {
+      identify(userData.user.id, {
         email: userData.user.email,
         role: profile?.role ?? null,
       });
-      posthog.capture("user_logged_in", { role: profile?.role ?? null });
+      capture("user_logged_in", { role: profile?.role ?? null });
 
       const destination = normalizeRole(profile?.role) === "superadmin" ? "/superadmin" : "/home";
 
@@ -100,7 +100,7 @@ export default function LoginClient() {
         body: JSON.stringify({ version: "1.0" }),
       });
       if (!res.ok) throw new Error("Error al registrar aceptación");
-      posthog.capture("terms_accepted", { version: "1.0" });
+      capture("terms_accepted", { version: "1.0" });
       router.replace(pendingRedirect ?? "/home");
       router.refresh();
     } catch {

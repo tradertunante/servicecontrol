@@ -3,7 +3,7 @@
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import SectionIntro from "./SectionIntro";
-import posthog from "posthog-js";
+import { capture } from "@/lib/analytics/posthog";
 
 export default function ScenariosSection() {
   const t = useTranslations("scenarios");
@@ -59,7 +59,7 @@ export default function ScenariosSection() {
           </div>
           <Link
             href="/demo"
-            onClick={() => posthog.capture('cta_clicked', { cta_location: 'founders_banner', cta_destination: 'demo' }, { send_instantly: true })}
+            onClick={() => capture('cta_clicked', { cta_location: 'founders_banner', cta_destination: 'demo' }, { send_instantly: true })}
             className="rounded-[6px] bg-[#185FA5] px-7 py-4 text-center text-base font-medium text-white transition hover:bg-[#378ADD]"
           >
             {t("foundersCta")}

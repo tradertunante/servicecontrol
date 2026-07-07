@@ -35,8 +35,18 @@ export default function NotificationBell() {
 
   useEffect(() => {
     fetchNotifications();
-    const interval = setInterval(fetchNotifications, 30_000);
-    return () => clearInterval(interval);
+    // No sondear en pestañas ocultas; al volver a ser visible se refresca al momento
+    const interval = setInterval(() => {
+      if (!document.hidden) fetchNotifications();
+    }, 30_000);
+    const handleVisibilityChange = () => {
+      if (!document.hidden) fetchNotifications();
+    };
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
   }, [fetchNotifications]);
 
   useEffect(() => {

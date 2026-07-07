@@ -53,8 +53,7 @@ async function handleTemplateRequest(hotelId: string, templateId: string, reques
   if (template.active === false) return jsonError("El template seleccionado está inactivo.", 409);
 
   try {
-    const questions = await loadOrderedActiveTemplateQuestions(String(template.id));
-    const workbook = buildHistoricalImportWorkbook(questions);
+    const questions = await loadOrderedActiveTemplateQuestions(String(template.id));    const workbook = await buildHistoricalImportWorkbook(questions);
     const buffer = XLSX.write(workbook, { type: "buffer", bookType: "xlsx" });
 
     return new NextResponse(buffer, {

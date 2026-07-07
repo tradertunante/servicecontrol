@@ -1,6 +1,6 @@
 "use client";
 
-import posthog from "posthog-js";
+import { capture } from "@/lib/analytics/posthog";
 import { useEffect } from "react";
 
 export default function LandingTracker() {
@@ -14,13 +14,13 @@ export default function LandingTracker() {
 
       if (pct >= 50 && !fired.has(50)) {
         fired.add(50);
-        posthog.capture("landing_scroll_depth", { depth: 50 });
+        capture("landing_scroll_depth", { depth: 50 });
       }
       // 90% como "fin de página": el 100% exacto casi nunca dispara
       // (scrollHeight incluye el footer y los redondeos juegan en contra)
       if (pct >= 90 && !fired.has(90)) {
         fired.add(90);
-        posthog.capture("landing_scroll_depth", { depth: 90 });
+        capture("landing_scroll_depth", { depth: 90 });
       }
     }
 
@@ -31,14 +31,14 @@ export default function LandingTracker() {
 
       // endsWith: los Link de next-intl prefijan el locale (/en/demo)
       if (href.endsWith("/demo") || href.endsWith("/trial")) {
-        posthog.capture("landing_cta_click", {
+        capture("landing_cta_click", {
           href,
           label: anchor.textContent?.trim() ?? null,
         });
       }
 
       if (href.includes("/pricing")) {
-        posthog.capture("landing_pricing_click", {
+        capture("landing_pricing_click", {
           href,
           label: anchor.textContent?.trim() ?? null,
         });

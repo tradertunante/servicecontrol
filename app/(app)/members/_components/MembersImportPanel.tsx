@@ -2,8 +2,6 @@
 
 import { useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
-import * as XLSX from "xlsx";
-
 import { supabase } from "@/lib/supabaseClient";
 import {
   MEMBER_IMPORT_HEADERS,
@@ -62,6 +60,7 @@ export default function MembersImportPanel({
 
     try {
       setLoadingPreview(true);
+      const XLSX = await import("xlsx");
       const arrayBuffer = await file.arrayBuffer();
       const workbook = XLSX.read(arrayBuffer, { type: "array" });
       const firstSheetName = workbook.SheetNames[0];
@@ -91,7 +90,8 @@ export default function MembersImportPanel({
     }
   }
 
-  function downloadTemplate() {
+  async function downloadTemplate() {
+    const XLSX = await import("xlsx");
     const worksheet = XLSX.utils.json_to_sheet([
       {
         full_name: MEMBER_IMPORT_TEMPLATE_ROW.full_name,

@@ -193,6 +193,27 @@ export async function GET(request: NextRequest) {
     });
   }
 
+  // Modo ligero para el dashboard: solo necesita el número de pendientes,
+  // no las 500 filas enriquecidas con runs/areas/templates
+  if (request.nextUrl.searchParams.get("count_only") === "1") {
+    let countQuery = admin
+      .from("department_backlog_items")
+      .select("id", { count: "exact", head: true })
+      .eq("hotel_id", hotelResult.hotelId)
+      .eq("owner_department", department);
+
+    if (routeScope === "area") {
+      countQuery = countQuery.in("area_id", allowedAreaIds);
+    }
+
+    const { count, error: countError } = await countQuery;
+    if (countError && !isMissingBacklogTable(countError.message)) return jsonDbError(countError);
+    if (!countError) {
+      return NextResponse.json({ ok: true, count: count ?? 0, storageMode: "backlog" });
+    }
+    // Tabla no migrada: seguir con el flujo completo, que devuelve rows
+  }
+
   let itemsQuery = admin
     .from("department_backlog_items")
     .select(

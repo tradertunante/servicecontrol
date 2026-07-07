@@ -377,7 +377,7 @@ export default function AreaPeriodReportPage({
             <button onClick={() => window.print()} style={btnStyle(true)}>
               Imprimir / PDF
             </button>
-            <button onClick={() => exportAreaPeriodReportToExcel(report as AreaPeriodReportData)} style={btnStyle(false)}>
+            <button onClick={() => void exportAreaPeriodReportToExcel(report as AreaPeriodReportData)} style={btnStyle(false)}>
               Exportar Excel
             </button>
             <button onClick={() => router.push(`/areas/${report.area.id}`)} style={btnStyle(false)}>
