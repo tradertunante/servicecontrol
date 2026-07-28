@@ -3,6 +3,7 @@
 import {
   btnWhiteStyle,
   cardStyle,
+  CertificationStandardRow,
   RequirementType,
   ResponsibleDepartmentOption,
   UiRow,
@@ -12,6 +13,8 @@ import QuestionTableRow from "./QuestionTableRow";
 type Props = {
   rows: UiRow[];
   saving: boolean;
+  certifications: CertificationStandardRow[];
+  onToggleCertification: (questionId: string, certificationId: string, checked: boolean) => void;
   ownerDepartmentAvailable: boolean;
   responsibleDepartmentOptions: ResponsibleDepartmentOption[];
   templateResponsibleLabel: string;
@@ -41,6 +44,8 @@ const thStyle: React.CSSProperties = {
 export default function QuestionsTable({
   rows,
   saving,
+  certifications,
+  onToggleCertification,
   ownerDepartmentAvailable,
   responsibleDepartmentOptions,
   templateResponsibleLabel,
@@ -108,13 +113,20 @@ export default function QuestionsTable({
 
       <div style={{ marginTop: 14, overflowX: "auto", overflowY: "auto", maxHeight: "calc(100dvh - 460px)", minHeight: 200 }}>
         <table
-          style={{ width: "100%", borderCollapse: "collapse", minWidth: 1560 }}
+          style={{
+            width: "100%",
+            borderCollapse: "collapse",
+            minWidth: 1560 + certifications.length * 90,
+          }}
         >
           <colgroup>
             <col style={{ width: 90 }} />
             <col style={{ width: 260 }} />
             <col style={{ width: 240 }} />
             <col style={{ width: 660 }} />
+            {certifications.map((cert) => (
+              <col key={cert.id} style={{ width: 90 }} />
+            ))}
             <col style={{ width: 220 }} />
             <col style={{ width: 140 }} />
             <col style={{ width: 140 }} />
@@ -129,6 +141,15 @@ export default function QuestionsTable({
               <th style={thStyle}>CLASSIFICATION</th>
               <th style={thStyle}>TAG</th>
               <th style={thStyle}>STANDARD</th>
+              {certifications.map((cert) => (
+                <th
+                  key={cert.id}
+                  style={{ ...thStyle, textAlign: "center" }}
+                  title={cert.name}
+                >
+                  {cert.name}
+                </th>
+              ))}
               <th style={thStyle}>Responsable</th>
               <th style={thStyle}>Comentario</th>
               <th style={thStyle}>Foto</th>
@@ -160,6 +181,8 @@ export default function QuestionsTable({
                   canUp={canUp}
                   canDown={canDown}
                   saving={saving}
+                  certifications={certifications}
+                  onToggleCertification={onToggleCertification}
                   ownerDepartmentAvailable={ownerDepartmentAvailable}
                   responsibleDepartmentOptions={responsibleDepartmentOptions}
                   templateResponsibleLabel={templateResponsibleLabel}
@@ -182,7 +205,7 @@ export default function QuestionsTable({
 
             {rows.length === 0 ? (
               <tr>
-                <td colSpan={10} style={{ padding: 14, opacity: 0.8 }}>
+                <td colSpan={10 + certifications.length} style={{ padding: 14, opacity: 0.8 }}>
                   No hay preguntas. Importa desde Excel o crea preguntas.
                 </td>
               </tr>

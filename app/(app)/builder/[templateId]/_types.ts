@@ -5,9 +5,17 @@ export type TemplateRow = {
   name: string;
   active: boolean | null;
   area_id: string | null;
+  hotel_id: string | null;
   created_at: string | null;
   require_room_number: boolean;
   require_audited_employee: boolean;
+};
+
+export type CertificationStandardRow = {
+  id: string;
+  hotel_id: string;
+  name: string;
+  active: boolean;
 };
 
 export type AreaRow = {
@@ -48,6 +56,7 @@ export type UiRow = {
   classification: string;
   tag: string;
   standard: string;
+  certificationIds: string[];
   owner_department: ResponsibleDepartment;
   comment_requirement: RequirementType;
   photo_requirement: RequirementType;
