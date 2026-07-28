@@ -57,6 +57,25 @@ export async function loadGlobalTemplate(templateId: string) {
   return { ok: true as const, templateId: String(data.id) };
 }
 
+export async function loadCertification(certificationId: string) {
+  const admin = supabaseAdmin();
+  const { data, error } = await admin
+    .from("certification_standards")
+    .select("id")
+    .eq("id", certificationId)
+    .maybeSingle();
+
+  if (error) {
+    return { ok: false as const, error: error.message, status: 500 };
+  }
+
+  if (!data?.id) {
+    return { ok: false as const, error: "Certificado no encontrado.", status: 404 };
+  }
+
+  return { ok: true as const, certificationId: String(data.id) };
+}
+
 export async function loadGlobalPack(packId: string) {
   const admin = supabaseAdmin();
   const { data, error } = await admin
