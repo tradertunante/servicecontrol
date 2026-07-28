@@ -56,11 +56,19 @@ type UiRow = {
   classification: string;
   tag: string;
   standard: string;
+  certificationIds: string[];
   comment_requirement: RequirementType;
   photo_requirement: RequirementType;
   signature_requirement: RequirementType;
   active: boolean;
   order: number;
+};
+
+type CertificationStandardRow = {
+  id: string;
+  hotel_id: string | null;
+  name: string;
+  active: boolean;
 };
 
 function toBool(v: any): boolean {
@@ -93,6 +101,10 @@ export default function SuperadminGlobalTemplateBuilderPage() {
 
   const [rows, setRows] = useState<UiRow[]>([]);
   const [openRowMenuId, setOpenRowMenuId] = useState<string | null>(null);
+
+  const [certifications, setCertifications] = useState<CertificationStandardRow[]>([]);
+  const [certificationsAvailable, setCertificationsAvailable] = useState(true);
+  const [newCertName, setNewCertName] = useState("");
 
   const [quickComment, setQuickComment] = useState<RequirementType>("never");
   const [quickPhoto, setQuickPhoto] = useState<RequirementType>("never");
@@ -225,6 +237,41 @@ export default function SuperadminGlobalTemplateBuilderPage() {
           qList = (qData ?? []) as QuestionRow[];
         }
 
+        // Certificados globales (Forbes / LHW / Meliá, etc.) y sus etiquetas
+        // por pregunta. Defensivo: si la migración aún no está desplegada en
+        // este entorno, se oculta la funcionalidad en vez de romper el editor.
+        const questionIds = qList.map((q) => q.id);
+        const certByQuestion = new Map<string, string[]>();
+        try {
+          const { data: certData, error: certErr } = await supabase
+            .from("certification_standards")
+            .select("id,hotel_id,name,active")
+            .is("hotel_id", null)
+            .eq("active", true)
+            .order("name", { ascending: true });
+          if (certErr) throw certErr;
+          if (mounted) setCertifications((certData ?? []) as CertificationStandardRow[]);
+
+          if (questionIds.length) {
+            const { data: linkData, error: linkErr } = await supabase
+              .from("audit_question_certifications")
+              .select("question_id,certification_standard_id")
+              .in("question_id", questionIds);
+            if (linkErr) throw linkErr;
+            for (const link of linkData ?? []) {
+              const list = certByQuestion.get(link.question_id) ?? [];
+              list.push(link.certification_standard_id);
+              certByQuestion.set(link.question_id, list);
+            }
+          }
+          if (mounted) setCertificationsAvailable(true);
+        } catch {
+          if (mounted) {
+            setCertifications([]);
+            setCertificationsAvailable(false);
+          }
+        }
+
         const secNameById = new Map<string, string>();
         for (const s of secs) secNameById.set(s.id, s.name ?? "Sin sección");
 
@@ -241,6 +288,7 @@ export default function SuperadminGlobalTemplateBuilderPage() {
             classification: secNameById.get(q.audit_section_id) ?? "Sin sección",
             tag: safeStr(q.tag),
             standard: safeStr(q.text),
+            certificationIds: certByQuestion.get(q.id) ?? [],
             comment_requirement: toRequirement(q.comment_requirement),
             photo_requirement: toRequirement(q.photo_requirement),
             signature_requirement: toRequirement(q.signature_requirement),
@@ -439,6 +487,115 @@ export default function SuperadminGlobalTemplateBuilderPage() {
       setInfo("Pregunta eliminada ✅");
     } catch (e: any) {
       setError(e?.message ?? "Error al eliminar.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  // ─── Certificados globales (Forbes / LHW / Meliá, etc.) ───────────────────
+
+  async function toggleCertification(questionId: string, certificationId: string, checked: boolean) {
+    setRows((prev) =>
+      prev.map((x) => {
+        if (x.questionId !== questionId) return x;
+        const set = new Set(x.certificationIds);
+        if (checked) set.add(certificationId);
+        else set.delete(certificationId);
+        return { ...x, certificationIds: Array.from(set) };
+      })
+    );
+    setSaving(true);
+    setError(null);
+    try {
+      if (checked) {
+        const { error: insErr } = await supabase
+          .from("audit_question_certifications")
+          .insert({ question_id: questionId, certification_standard_id: certificationId });
+        if (insErr) throw insErr;
+      } else {
+        const { error: delErr } = await supabase
+          .from("audit_question_certifications")
+          .delete()
+          .eq("question_id", questionId)
+          .eq("certification_standard_id", certificationId);
+        if (delErr) throw delErr;
+      }
+    } catch (e: any) {
+      setRows((prev) =>
+        prev.map((x) => {
+          if (x.questionId !== questionId) return x;
+          const set = new Set(x.certificationIds);
+          if (checked) set.delete(certificationId);
+          else set.add(certificationId);
+          return { ...x, certificationIds: Array.from(set) };
+        })
+      );
+      setError(e?.message ?? "No se pudo actualizar el certificado.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function createGlobalCertification() {
+    const trimmed = newCertName.trim();
+    if (!trimmed) return;
+    setSaving(true);
+    setError(null);
+    try {
+      const { data, error: insErr } = await supabase
+        .from("certification_standards")
+        .insert({ hotel_id: null, name: trimmed })
+        .select("id,hotel_id,name,active")
+        .single();
+      if (insErr) throw insErr;
+      setCertifications((prev) =>
+        [...prev, data as CertificationStandardRow].sort((a, b) =>
+          a.name.localeCompare(b.name, "es", { sensitivity: "base" })
+        )
+      );
+      setNewCertName("");
+      setInfo("Certificado creado ✅");
+    } catch (e: any) {
+      setError(e?.message ?? "No se pudo crear el certificado.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function renameCertification(certificationId: string, name: string) {
+    const trimmed = name.trim();
+    if (!trimmed) return;
+    setSaving(true);
+    setError(null);
+    try {
+      const { error: upErr } = await supabase
+        .from("certification_standards")
+        .update({ name: trimmed })
+        .eq("id", certificationId);
+      if (upErr) throw upErr;
+      setCertifications((prev) => prev.map((c) => (c.id === certificationId ? { ...c, name: trimmed } : c)));
+      setInfo("Certificado renombrado ✅");
+    } catch (e: any) {
+      setError(e?.message ?? "No se pudo renombrar el certificado.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function deactivateCertification(certificationId: string) {
+    if (!window.confirm("¿Desactivar este certificado global? Las plantillas ya etiquetadas conservarán la etiqueta.")) return;
+    setSaving(true);
+    setError(null);
+    try {
+      const { error: upErr } = await supabase
+        .from("certification_standards")
+        .update({ active: false })
+        .eq("id", certificationId);
+      if (upErr) throw upErr;
+      setCertifications((prev) => prev.filter((c) => c.id !== certificationId));
+      setInfo("Certificado desactivado ✅");
+    } catch (e: any) {
+      setError(e?.message ?? "No se pudo desactivar el certificado.");
     } finally {
       setSaving(false);
     }
@@ -769,6 +926,68 @@ export default function SuperadminGlobalTemplateBuilderPage() {
         </div>
       </div>
 
+      {certificationsAvailable ? (
+        <div style={{ ...card, marginTop: 14 }}>
+          <div style={{ fontWeight: 950, marginBottom: 4 }}>Certificados / Estándares (globales)</div>
+          <div style={{ opacity: 0.75, fontSize: 13, marginBottom: 10 }}>
+            Marca en cada pregunta a qué certificado(s) aplica (Forbes, LHW, Meliá, etc.). Con una sola
+            auditoría se calculará el resultado de cumplimiento de forma independiente para cada certificado.
+          </div>
+
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginBottom: 12 }}>
+            {certifications.map((cert) => (
+              <div
+                key={cert.id}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6,
+                  padding: "6px 8px",
+                  borderRadius: 999,
+                  border: "1px solid rgba(0,0,0,0.15)",
+                  background: "rgba(0,0,0,0.03)",
+                }}
+              >
+                <input
+                  defaultValue={cert.name}
+                  key={`${cert.id}-${cert.name}`}
+                  onBlur={(e) => {
+                    const trimmed = e.target.value.trim();
+                    if (trimmed && trimmed !== cert.name) renameCertification(cert.id, trimmed);
+                  }}
+                  disabled={saving}
+                  style={{ padding: "4px 8px", borderRadius: 8, border: "1px solid rgba(0,0,0,0.15)", fontWeight: 900, fontSize: 12, width: 160 }}
+                />
+                <button
+                  onClick={() => deactivateCertification(cert.id)}
+                  disabled={saving}
+                  title="Desactivar certificado"
+                  style={{ border: "none", background: "transparent", cursor: saving ? "not-allowed" : "pointer", fontWeight: 900, opacity: 0.7 }}
+                >
+                  ✕
+                </button>
+              </div>
+            ))}
+            {certifications.length === 0 ? (
+              <div style={{ opacity: 0.7, fontSize: 13 }}>Todavía no hay certificados globales creados.</div>
+            ) : null}
+          </div>
+
+          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <input
+              value={newCertName}
+              onChange={(e) => setNewCertName(e.target.value)}
+              placeholder="Ej: Forbes Travel Standards"
+              disabled={saving}
+              style={{ padding: "8px 12px", borderRadius: 10, border: "1px solid rgba(0,0,0,0.18)", fontWeight: 900, outline: "none" }}
+            />
+            <button style={smallBtn} disabled={saving || !newCertName.trim()} onClick={createGlobalCertification}>
+              + Añadir certificado
+            </button>
+          </div>
+        </div>
+      ) : null}
+
       {/* overlay to close row menus */}
       {openRowMenuId && (
         <div style={{ position: "fixed", inset: 0, zIndex: 99 }} onClick={() => setOpenRowMenuId(null)} />
@@ -788,6 +1007,11 @@ export default function SuperadminGlobalTemplateBuilderPage() {
                   <th style={{ padding: "9px 10px", textAlign: "left", fontWeight: 950, width: 110 }}>Clasificación</th>
                   <th style={{ padding: "9px 10px", textAlign: "left", fontWeight: 950, width: 80 }}>Tag</th>
                   <th style={{ padding: "9px 10px", textAlign: "left", fontWeight: 950 }}>Estándar</th>
+                  {certifications.map((cert) => (
+                    <th key={cert.id} style={{ padding: "9px 10px", textAlign: "center", fontWeight: 950, width: 70 }} title={cert.name}>
+                      {cert.name}
+                    </th>
+                  ))}
                   <th style={{ padding: "9px 10px", textAlign: "center", fontWeight: 950, width: 110 }}>Comentario</th>
                   <th style={{ padding: "9px 10px", textAlign: "center", fontWeight: 950, width: 90 }}>Foto</th>
                   <th style={{ padding: "9px 10px", textAlign: "center", fontWeight: 950, width: 90 }}>Firma</th>
@@ -836,6 +1060,16 @@ export default function SuperadminGlobalTemplateBuilderPage() {
                         style={{ width: "100%", padding: "5px 8px", borderRadius: 8, border: "1px solid rgba(0,0,0,0.15)", fontWeight: 700, fontSize: 13 }}
                       />
                     </td>
+                    {certifications.map((cert) => (
+                      <td key={cert.id} style={{ padding: "6px 10px", textAlign: "center" }}>
+                        <input
+                          type="checkbox"
+                          checked={row.certificationIds.includes(cert.id)}
+                          disabled={saving}
+                          onChange={(e) => toggleCertification(row.questionId, cert.id, e.target.checked)}
+                        />
+                      </td>
+                    ))}
                     {(["comment_requirement", "photo_requirement", "signature_requirement"] as const).map((field) => (
                       <td key={field} style={{ padding: "6px 10px", textAlign: "center" }}>
                         <select

@@ -1658,21 +1658,21 @@ export type Database = {
         Row: {
           active: boolean
           created_at: string
-          hotel_id: string
+          hotel_id: string | null
           id: string
           name: string
         }
         Insert: {
           active?: boolean
           created_at?: string
-          hotel_id: string
+          hotel_id?: string | null
           id?: string
           name: string
         }
         Update: {
           active?: boolean
           created_at?: string
-          hotel_id?: string
+          hotel_id?: string | null
           id?: string
           name?: string
         }

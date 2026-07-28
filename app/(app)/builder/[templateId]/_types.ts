@@ -13,7 +13,7 @@ export type TemplateRow = {
 
 export type CertificationStandardRow = {
   id: string;
-  hotel_id: string;
+  hotel_id: string | null;
   name: string;
   active: boolean;
 };
