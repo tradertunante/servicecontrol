@@ -1,6 +1,12 @@
 "use client";
 
-import { RequirementType, ResponsibleDepartmentOption, toResponsibleDepartment, UiRow } from "../_types";
+import {
+  CertificationStandardRow,
+  RequirementType,
+  ResponsibleDepartmentOption,
+  toResponsibleDepartment,
+  UiRow,
+} from "../_types";
 
 const inputStyle: React.CSSProperties = {
   width: "100%",
@@ -63,6 +69,8 @@ type Props = {
   canUp: boolean;
   canDown: boolean;
   saving: boolean;
+  certifications: CertificationStandardRow[];
+  onToggleCertification: (questionId: string, certificationId: string, checked: boolean) => void;
   ownerDepartmentAvailable: boolean;
   responsibleDepartmentOptions: ResponsibleDepartmentOption[];
   templateResponsibleLabel: string;
@@ -84,6 +92,8 @@ export default function QuestionTableRow({
   canUp,
   canDown,
   saving,
+  certifications,
+  onToggleCertification,
   ownerDepartmentAvailable,
   responsibleDepartmentOptions,
   templateResponsibleLabel,
@@ -173,6 +183,26 @@ export default function QuestionTableRow({
           }}
         />
       </td>
+
+      {/* Certificaciones (Forbes / LHW / Meliá, etc.) */}
+      {certifications.map((cert) => {
+        const checked = row.certificationIds.includes(cert.id);
+        return (
+          <td
+            key={cert.id}
+            style={{ padding: "10px 8px", verticalAlign: "top", textAlign: "center" }}
+          >
+            <input
+              type="checkbox"
+              checked={checked}
+              disabled={saving}
+              onChange={(e) =>
+                onToggleCertification(row.questionId, cert.id, e.target.checked)
+              }
+            />
+          </td>
+        );
+      })}
 
       {/* Owner department */}
       <td style={{ padding: "10px 8px", verticalAlign: "top" }}>

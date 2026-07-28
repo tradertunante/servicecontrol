@@ -975,6 +975,39 @@ export type Database = {
           },
         ]
       }
+      audit_question_certifications: {
+        Row: {
+          certification_standard_id: string
+          created_at: string
+          question_id: string
+        }
+        Insert: {
+          certification_standard_id: string
+          created_at?: string
+          question_id: string
+        }
+        Update: {
+          certification_standard_id?: string
+          created_at?: string
+          question_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "audit_question_certifications_certification_standard_id_fkey"
+            columns: ["certification_standard_id"]
+            isOneToOne: false
+            referencedRelation: "certification_standards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "audit_question_certifications_question_id_fkey"
+            columns: ["question_id"]
+            isOneToOne: false
+            referencedRelation: "audit_questions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       audit_questions: {
         Row: {
           active: boolean | null
@@ -1617,6 +1650,38 @@ export type Database = {
             columns: ["billing_account_id"]
             isOneToOne: false
             referencedRelation: "billing_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      certification_standards: {
+        Row: {
+          active: boolean
+          created_at: string
+          hotel_id: string | null
+          id: string
+          name: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          hotel_id?: string | null
+          id?: string
+          name: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          hotel_id?: string | null
+          id?: string
+          name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "certification_standards_hotel_id_fkey"
+            columns: ["hotel_id"]
+            isOneToOne: false
+            referencedRelation: "hotels"
             referencedColumns: ["id"]
           },
         ]

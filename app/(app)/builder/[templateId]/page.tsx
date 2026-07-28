@@ -8,6 +8,7 @@ import type { Database } from "@/lib/types/database";
 import {
   AreaRow,
   buildResponsibleDepartmentOptions,
+  CertificationStandardRow,
   getResponsibleDepartmentValue,
   normalizeOrder,
   QuestionRow,
@@ -22,6 +23,7 @@ import {
 } from "./_types";
 import BuilderHeader from "./_components/BuilderHeader";
 import TemplateSettingsCard from "./_components/TemplateSettingsCard";
+import CertificationsManagerCard from "./_components/CertificationsManagerCard";
 import QuickRulesCard from "./_components/QuickRulesCard";
 import QuestionsTable from "./_components/QuestionsTable";
 
@@ -41,6 +43,10 @@ export default function BuilderTemplatePage() {
 
   const [sections, setSections] = useState<SectionRow[]>([]);
   const [rows, setRows] = useState<UiRow[]>([]);
+
+  const [hotelId, setHotelId] = useState<string | null>(null);
+  const [certifications, setCertifications] = useState<CertificationStandardRow[]>([]);
+  const [certificationsAvailable, setCertificationsAvailable] = useState(true);
 
   // Quick rules
   const [quickComment, setQuickComment] = useState<RequirementType>("never");
@@ -89,7 +95,7 @@ export default function BuilderTemplatePage() {
           const { data: tData, error: tErr } = await supabase
             .from("audit_templates")
             .select(
-              "id,name,active,area_id,created_at,require_room_number,require_audited_employee"
+              "id,name,active,area_id,hotel_id,created_at,require_room_number,require_audited_employee"
             )
             .eq("id", templateId)
             .single();
@@ -102,7 +108,7 @@ export default function BuilderTemplatePage() {
             ) {
               const { data: fallbackData, error: fallbackErr } = await supabase
                 .from("audit_templates")
-                .select("id,name,active,area_id,created_at")
+                .select("id,name,active,area_id,hotel_id,created_at")
                 .eq("id", templateId)
                 .single();
 
@@ -135,6 +141,7 @@ export default function BuilderTemplatePage() {
         setNameDraft(tpl.name ?? "");
 
         // Area + hotel areas
+        let resolvedHotelId: string | null = tpl.hotel_id ?? null;
         if (tpl.area_id) {
           const { data: aData, error: aErr } = await supabase
             .from("areas")
@@ -145,6 +152,7 @@ export default function BuilderTemplatePage() {
           if (!aErr && aData) {
             const nextArea = aData as AreaRow;
             setArea(nextArea);
+            if (!resolvedHotelId) resolvedHotelId = nextArea.hotel_id ?? null;
 
             if (nextArea.hotel_id) {
               const { data: hotelAreasData, error: hotelAreasErr } =
@@ -164,6 +172,7 @@ export default function BuilderTemplatePage() {
           setArea(null);
           setHotelAreas([]);
         }
+        setHotelId(resolvedHotelId);
 
         // Sections
         const { data: sData, error: sErr } = await supabase
@@ -221,6 +230,46 @@ export default function BuilderTemplatePage() {
           }
         }
 
+        // Certificaciones del hotel (Forbes / LHW / Meliá, etc.) y sus
+        // etiquetas por pregunta. Defensivo: si la migración aún no está
+        // desplegada en este entorno, se oculta la funcionalidad en vez de
+        // romper el editor.
+        const questionIds = qList.map((q) => q.id);
+        const certByQuestion = new Map<string, string[]>();
+        try {
+          if (resolvedHotelId) {
+            const { data: certData, error: certErr } = await supabase
+              .from("certification_standards")
+              .select("id,hotel_id,name,active")
+              .eq("hotel_id", resolvedHotelId)
+              .eq("active", true)
+              .order("name", { ascending: true });
+            if (certErr) throw certErr;
+            setCertifications((certData ?? []) as CertificationStandardRow[]);
+          } else {
+            setCertifications([]);
+          }
+
+          if (questionIds.length) {
+            const { data: linkData, error: linkErr } = await supabase
+              .from("audit_question_certifications")
+              .select("question_id,certification_standard_id")
+              .in("question_id", questionIds);
+            if (linkErr) throw linkErr;
+            for (const link of linkData ?? []) {
+              const list = certByQuestion.get(link.question_id) ?? [];
+              list.push(link.certification_standard_id);
+              certByQuestion.set(link.question_id, list);
+            }
+          }
+          setCertificationsAvailable(true);
+        } catch {
+          // Tabla(s) todavía no migradas en este entorno: se desactiva la
+          // funcionalidad de certificaciones sin bloquear el resto del editor.
+          setCertifications([]);
+          setCertificationsAvailable(false);
+        }
+
         // Build UI rows
         const secNameById = new Map<string, string>();
         for (const s of secs) secNameById.set(s.id, s.name ?? "Sin sección");
@@ -231,6 +280,7 @@ export default function BuilderTemplatePage() {
           perSectionCounter.set(q.audit_section_id, count);
           return {
             questionId: q.id,
+            certificationIds: certByQuestion.get(q.id) ?? [],
             sectionId: q.audit_section_id,
             classification:
               secNameById.get(q.audit_section_id) ?? "Sin sección",
@@ -616,6 +666,124 @@ export default function BuilderTemplatePage() {
     updateQuestion(questionId, { active: value });
   }
 
+  // ─── Certificaciones (Forbes / LHW / Meliá, etc.) ─────────────────────────
+
+  async function toggleCertification(
+    questionId: string,
+    certificationId: string,
+    checked: boolean
+  ) {
+    setRows((prev) =>
+      prev.map((x) => {
+        if (x.questionId !== questionId) return x;
+        const set = new Set(x.certificationIds);
+        if (checked) set.add(certificationId);
+        else set.delete(certificationId);
+        return { ...x, certificationIds: Array.from(set) };
+      })
+    );
+    setSaving(true);
+    setError(null);
+    try {
+      if (checked) {
+        const { error: insErr } = await supabase
+          .from("audit_question_certifications")
+          .insert({ question_id: questionId, certification_standard_id: certificationId });
+        if (insErr) throw insErr;
+      } else {
+        const { error: delErr } = await supabase
+          .from("audit_question_certifications")
+          .delete()
+          .eq("question_id", questionId)
+          .eq("certification_standard_id", certificationId);
+        if (delErr) throw delErr;
+      }
+    } catch (e: unknown) {
+      // revertir en caso de error
+      setRows((prev) =>
+        prev.map((x) => {
+          if (x.questionId !== questionId) return x;
+          const set = new Set(x.certificationIds);
+          if (checked) set.delete(certificationId);
+          else set.add(certificationId);
+          return { ...x, certificationIds: Array.from(set) };
+        })
+      );
+      setError(e instanceof Error ? e.message : "No se pudo actualizar el certificado.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function createCertification(name: string) {
+    const trimmed = name.trim();
+    if (!trimmed || !hotelId) return;
+    setSaving(true);
+    setError(null);
+    try {
+      const { data, error: insErr } = await supabase
+        .from("certification_standards")
+        .insert({ hotel_id: hotelId, name: trimmed })
+        .select("id,hotel_id,name,active")
+        .single();
+      if (insErr) throw insErr;
+      setCertifications((prev) =>
+        [...prev, data as CertificationStandardRow].sort((a, b) =>
+          a.name.localeCompare(b.name, "es", { sensitivity: "base" })
+        )
+      );
+      setInfo("Certificado creado ✅");
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "No se pudo crear el certificado.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function renameCertification(certificationId: string, name: string) {
+    const trimmed = name.trim();
+    if (!trimmed) return;
+    setSaving(true);
+    setError(null);
+    try {
+      const { error: upErr } = await supabase
+        .from("certification_standards")
+        .update({ name: trimmed })
+        .eq("id", certificationId);
+      if (upErr) throw upErr;
+      setCertifications((prev) =>
+        prev.map((c) => (c.id === certificationId ? { ...c, name: trimmed } : c))
+      );
+      setInfo("Certificado renombrado ✅");
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "No se pudo renombrar el certificado.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function deactivateCertification(certificationId: string) {
+    const ok = confirm(
+      "¿Desactivar este certificado? Las preguntas ya etiquetadas conservarán la etiqueta, pero dejará de aparecer para nuevas ediciones."
+    );
+    if (!ok) return;
+    setSaving(true);
+    setError(null);
+    try {
+      const { error: upErr } = await supabase
+        .from("certification_standards")
+        .update({ active: false })
+        .eq("id", certificationId);
+      if (upErr) throw upErr;
+      setCertifications((prev) => prev.filter((c) => c.id !== certificationId));
+      setInfo("Certificado desactivado ✅");
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "No se pudo desactivar el certificado.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
   // ─── Render ───────────────────────────────────────────────────────────────
 
   if (loading) {
@@ -648,6 +816,17 @@ export default function BuilderTemplatePage() {
         onUpdateRequirements={updateTemplateRequirements}
       />
 
+      {certificationsAvailable ? (
+        <CertificationsManagerCard
+          certifications={certifications}
+          hotelIdAvailable={Boolean(hotelId)}
+          saving={saving}
+          onCreate={createCertification}
+          onRename={renameCertification}
+          onDeactivate={deactivateCertification}
+        />
+      ) : null}
+
       <QuickRulesCard
         totalCount={rows.length}
         saving={saving}
@@ -665,6 +844,8 @@ export default function BuilderTemplatePage() {
       <QuestionsTable
         rows={rows}
         saving={saving}
+        certifications={certifications}
+        onToggleCertification={toggleCertification}
         ownerDepartmentAvailable={ownerDepartmentAvailable}
         responsibleDepartmentOptions={responsibleDepartmentOptions}
         templateResponsibleLabel={templateResponsibleLabel}
