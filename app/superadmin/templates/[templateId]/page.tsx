@@ -10,6 +10,7 @@
 
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { useParams, useRouter } from "next/navigation";
+import Link from "next/link";
 import { supabase } from "@/lib/supabaseClient";
 import HotelHeader from "@/app/components/HotelHeader";
 import { fetchJsonOrThrow } from "@/lib/superadmin/clientApi";
@@ -104,7 +105,6 @@ export default function SuperadminGlobalTemplateBuilderPage() {
 
   const [certifications, setCertifications] = useState<CertificationStandardRow[]>([]);
   const [certificationsAvailable, setCertificationsAvailable] = useState(true);
-  const [newCertName, setNewCertName] = useState("");
 
   const [quickComment, setQuickComment] = useState<RequirementType>("never");
   const [quickPhoto, setQuickPhoto] = useState<RequirementType>("never");
@@ -536,71 +536,6 @@ export default function SuperadminGlobalTemplateBuilderPage() {
     }
   }
 
-  async function createGlobalCertification() {
-    const trimmed = newCertName.trim();
-    if (!trimmed) return;
-    setSaving(true);
-    setError(null);
-    try {
-      const { data, error: insErr } = await supabase
-        .from("certification_standards")
-        .insert({ hotel_id: null, name: trimmed })
-        .select("id,hotel_id,name,active")
-        .single();
-      if (insErr) throw insErr;
-      setCertifications((prev) =>
-        [...prev, data as CertificationStandardRow].sort((a, b) =>
-          a.name.localeCompare(b.name, "es", { sensitivity: "base" })
-        )
-      );
-      setNewCertName("");
-      setInfo("Certificado creado ✅");
-    } catch (e: any) {
-      setError(e?.message ?? "No se pudo crear el certificado.");
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  async function renameCertification(certificationId: string, name: string) {
-    const trimmed = name.trim();
-    if (!trimmed) return;
-    setSaving(true);
-    setError(null);
-    try {
-      const { error: upErr } = await supabase
-        .from("certification_standards")
-        .update({ name: trimmed })
-        .eq("id", certificationId);
-      if (upErr) throw upErr;
-      setCertifications((prev) => prev.map((c) => (c.id === certificationId ? { ...c, name: trimmed } : c)));
-      setInfo("Certificado renombrado ✅");
-    } catch (e: any) {
-      setError(e?.message ?? "No se pudo renombrar el certificado.");
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  async function deactivateCertification(certificationId: string) {
-    if (!window.confirm("¿Desactivar este certificado global? Las plantillas ya etiquetadas conservarán la etiqueta.")) return;
-    setSaving(true);
-    setError(null);
-    try {
-      const { error: upErr } = await supabase
-        .from("certification_standards")
-        .update({ active: false })
-        .eq("id", certificationId);
-      if (upErr) throw upErr;
-      setCertifications((prev) => prev.filter((c) => c.id !== certificationId));
-      setInfo("Certificado desactivado ✅");
-    } catch (e: any) {
-      setError(e?.message ?? "No se pudo desactivar el certificado.");
-    } finally {
-      setSaving(false);
-    }
-  }
-
   const card: CSSProperties = {
     borderRadius: 18,
     border: "1px solid rgba(0,0,0,0.08)",
@@ -932,58 +867,38 @@ export default function SuperadminGlobalTemplateBuilderPage() {
           <div style={{ opacity: 0.75, fontSize: 13, marginBottom: 10 }}>
             Marca en cada pregunta a qué certificado(s) aplica (Forbes, LHW, Meliá, etc.). Con una sola
             auditoría se calculará el resultado de cumplimiento de forma independiente para cada certificado.
+            El catálogo se gestiona en{" "}
+            <Link href="/superadmin/certifications" style={{ fontWeight: 950, textDecoration: "underline" }}>
+              /superadmin/certifications
+            </Link>
+            .
           </div>
 
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginBottom: 12 }}>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
             {certifications.map((cert) => (
               <div
                 key={cert.id}
                 style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 6,
-                  padding: "6px 8px",
+                  padding: "6px 12px",
                   borderRadius: 999,
                   border: "1px solid rgba(0,0,0,0.15)",
                   background: "rgba(0,0,0,0.03)",
+                  fontWeight: 900,
+                  fontSize: 12,
                 }}
               >
-                <input
-                  defaultValue={cert.name}
-                  key={`${cert.id}-${cert.name}`}
-                  onBlur={(e) => {
-                    const trimmed = e.target.value.trim();
-                    if (trimmed && trimmed !== cert.name) renameCertification(cert.id, trimmed);
-                  }}
-                  disabled={saving}
-                  style={{ padding: "4px 8px", borderRadius: 8, border: "1px solid rgba(0,0,0,0.15)", fontWeight: 900, fontSize: 12, width: 160 }}
-                />
-                <button
-                  onClick={() => deactivateCertification(cert.id)}
-                  disabled={saving}
-                  title="Desactivar certificado"
-                  style={{ border: "none", background: "transparent", cursor: saving ? "not-allowed" : "pointer", fontWeight: 900, opacity: 0.7 }}
-                >
-                  ✕
-                </button>
+                {cert.name}
               </div>
             ))}
             {certifications.length === 0 ? (
-              <div style={{ opacity: 0.7, fontSize: 13 }}>Todavía no hay certificados globales creados.</div>
+              <div style={{ opacity: 0.7, fontSize: 13 }}>
+                Todavía no hay certificados en el catálogo. Crea uno en{" "}
+                <Link href="/superadmin/certifications" style={{ fontWeight: 900, textDecoration: "underline" }}>
+                  /superadmin/certifications
+                </Link>
+                .
+              </div>
             ) : null}
-          </div>
-
-          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-            <input
-              value={newCertName}
-              onChange={(e) => setNewCertName(e.target.value)}
-              placeholder="Ej: Forbes Travel Standards"
-              disabled={saving}
-              style={{ padding: "8px 12px", borderRadius: 10, border: "1px solid rgba(0,0,0,0.18)", fontWeight: 900, outline: "none" }}
-            />
-            <button style={smallBtn} disabled={saving || !newCertName.trim()} onClick={createGlobalCertification}>
-              + Añadir certificado
-            </button>
           </div>
         </div>
       ) : null}

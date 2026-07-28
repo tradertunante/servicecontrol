@@ -79,6 +79,12 @@ export default function SuperadminHomePage() {
       href: "/superadmin/hotels",
       icon: "🏨",
     },
+    {
+      title: "Certificaciones",
+      subtitle: "Catálogo global de certificados (Forbes, LHW, Meliá, etc.).",
+      href: "/superadmin/certifications",
+      icon: "🏅",
+    },
   ];
 
   return (

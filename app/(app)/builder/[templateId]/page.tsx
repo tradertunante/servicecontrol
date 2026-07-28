@@ -237,18 +237,16 @@ export default function BuilderTemplatePage() {
         const questionIds = qList.map((q) => q.id);
         const certByQuestion = new Map<string, string[]>();
         try {
-          if (resolvedHotelId) {
-            const { data: certData, error: certErr } = await supabase
-              .from("certification_standards")
-              .select("id,hotel_id,name,active")
-              .eq("hotel_id", resolvedHotelId)
-              .eq("active", true)
-              .order("name", { ascending: true });
-            if (certErr) throw certErr;
-            setCertifications((certData ?? []) as CertificationStandardRow[]);
-          } else {
-            setCertifications([]);
-          }
+          const certQuery = supabase
+            .from("certification_standards")
+            .select("id,hotel_id,name,active")
+            .eq("active", true)
+            .order("name", { ascending: true });
+          const { data: certData, error: certErr } = resolvedHotelId
+            ? await certQuery.or(`hotel_id.is.null,hotel_id.eq.${resolvedHotelId}`)
+            : await certQuery.is("hotel_id", null);
+          if (certErr) throw certErr;
+          setCertifications((certData ?? []) as CertificationStandardRow[]);
 
           if (questionIds.length) {
             const { data: linkData, error: linkErr } = await supabase
@@ -715,75 +713,6 @@ export default function BuilderTemplatePage() {
     }
   }
 
-  async function createCertification(name: string) {
-    const trimmed = name.trim();
-    if (!trimmed || !hotelId) return;
-    setSaving(true);
-    setError(null);
-    try {
-      const { data, error: insErr } = await supabase
-        .from("certification_standards")
-        .insert({ hotel_id: hotelId, name: trimmed })
-        .select("id,hotel_id,name,active")
-        .single();
-      if (insErr) throw insErr;
-      setCertifications((prev) =>
-        [...prev, data as CertificationStandardRow].sort((a, b) =>
-          a.name.localeCompare(b.name, "es", { sensitivity: "base" })
-        )
-      );
-      setInfo("Certificado creado ✅");
-    } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "No se pudo crear el certificado.");
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  async function renameCertification(certificationId: string, name: string) {
-    const trimmed = name.trim();
-    if (!trimmed) return;
-    setSaving(true);
-    setError(null);
-    try {
-      const { error: upErr } = await supabase
-        .from("certification_standards")
-        .update({ name: trimmed })
-        .eq("id", certificationId);
-      if (upErr) throw upErr;
-      setCertifications((prev) =>
-        prev.map((c) => (c.id === certificationId ? { ...c, name: trimmed } : c))
-      );
-      setInfo("Certificado renombrado ✅");
-    } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "No se pudo renombrar el certificado.");
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  async function deactivateCertification(certificationId: string) {
-    const ok = confirm(
-      "¿Desactivar este certificado? Las preguntas ya etiquetadas conservarán la etiqueta, pero dejará de aparecer para nuevas ediciones."
-    );
-    if (!ok) return;
-    setSaving(true);
-    setError(null);
-    try {
-      const { error: upErr } = await supabase
-        .from("certification_standards")
-        .update({ active: false })
-        .eq("id", certificationId);
-      if (upErr) throw upErr;
-      setCertifications((prev) => prev.filter((c) => c.id !== certificationId));
-      setInfo("Certificado desactivado ✅");
-    } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "No se pudo desactivar el certificado.");
-    } finally {
-      setSaving(false);
-    }
-  }
-
   // ─── Render ───────────────────────────────────────────────────────────────
 
   if (loading) {
@@ -817,14 +746,7 @@ export default function BuilderTemplatePage() {
       />
 
       {certificationsAvailable ? (
-        <CertificationsManagerCard
-          certifications={certifications}
-          hotelIdAvailable={Boolean(hotelId)}
-          saving={saving}
-          onCreate={createCertification}
-          onRename={renameCertification}
-          onDeactivate={deactivateCertification}
-        />
+        <CertificationsManagerCard certifications={certifications} />
       ) : null}
 
       <QuickRulesCard
