@@ -13,9 +13,10 @@ export default function CertificationsManagerCard({
       <div style={{ opacity: 0.75, fontSize: 13, marginTop: 4 }}>
         Marca en cada pregunta de la tabla a qué certificado(s) aplica (Forbes,
         LHW, Meliá, etc.). Con una sola auditoría se calculará el resultado de
-        cumplimiento de forma independiente para cada certificado. El catálogo
-        de certificados lo gestiona superadmin en{" "}
-        <strong>/superadmin/certifications</strong>.
+        cumplimiento de forma independiente para cada certificado. Los
+        certificados disponibles dependen del pack del que proviene esta
+        plantilla; los gestiona superadmin en{" "}
+        <strong>/superadmin/global-audits</strong>.
       </div>
 
       <div style={{ marginTop: 12, display: "flex", flexWrap: "wrap", gap: 10 }}>
@@ -36,8 +37,9 @@ export default function CertificationsManagerCard({
 
         {certifications.length === 0 ? (
           <div style={{ opacity: 0.7, fontSize: 13 }}>
-            Todavía no hay certificados en el catálogo. Pide a un superadmin que
-            cree uno en /superadmin/certifications.
+            Esta plantilla no tiene certificados disponibles: no proviene de
+            ningún pack con certificados asignados, o el pack de origen no
+            tiene certificados configurados todavía.
           </div>
         ) : null}
       </div>

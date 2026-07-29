@@ -237,20 +237,47 @@ export default function SuperadminGlobalTemplateBuilderPage() {
           qList = (qData ?? []) as QuestionRow[];
         }
 
-        // Certificados globales (Forbes / LHW / Meliá, etc.) y sus etiquetas
-        // por pregunta. Defensivo: si la migración aún no está desplegada en
-        // este entorno, se oculta la funcionalidad en vez de romper el editor.
+        // Certificados disponibles según el/los PACK(S) a los que pertenece
+        // esta plantilla global (Forbes / LHW / Meliá, etc.), no el catálogo
+        // completo — una plantilla que no está en ningún pack no tiene
+        // certificados para elegir. Defensivo: si la migración aún no está
+        // desplegada en este entorno, se oculta la funcionalidad en vez de
+        // romper el editor.
         const questionIds = qList.map((q) => q.id);
         const certByQuestion = new Map<string, string[]>();
         try {
-          const { data: certData, error: certErr } = await supabase
-            .from("certification_standards")
-            .select("id,hotel_id,name,active")
-            .is("hotel_id", null)
-            .eq("active", true)
-            .order("name", { ascending: true });
-          if (certErr) throw certErr;
-          if (mounted) setCertifications((certData ?? []) as CertificationStandardRow[]);
+          const { data: packLinks, error: packLinksErr } = await supabase
+            .from("global_audit_pack_templates")
+            .select("pack_id")
+            .eq("audit_template_id", templateId);
+          if (packLinksErr) throw packLinksErr;
+
+          const packIds = Array.from(new Set((packLinks ?? []).map((l) => l.pack_id)));
+
+          let certData: CertificationStandardRow[] = [];
+          if (packIds.length) {
+            const { data: packCertLinks, error: packCertErr } = await supabase
+              .from("global_audit_pack_certifications")
+              .select("certification_standard_id")
+              .in("pack_id", packIds);
+            if (packCertErr) throw packCertErr;
+
+            const certIds = Array.from(
+              new Set((packCertLinks ?? []).map((l) => l.certification_standard_id))
+            );
+
+            if (certIds.length) {
+              const { data: certRows, error: certErr } = await supabase
+                .from("certification_standards")
+                .select("id,hotel_id,name,active")
+                .in("id", certIds)
+                .eq("active", true)
+                .order("name", { ascending: true });
+              if (certErr) throw certErr;
+              certData = (certRows ?? []) as CertificationStandardRow[];
+            }
+          }
+          if (mounted) setCertifications(certData);
 
           if (questionIds.length) {
             const { data: linkData, error: linkErr } = await supabase
@@ -867,9 +894,9 @@ export default function SuperadminGlobalTemplateBuilderPage() {
           <div style={{ opacity: 0.75, fontSize: 13, marginBottom: 10 }}>
             Marca en cada pregunta a qué certificado(s) aplica (Forbes, LHW, Meliá, etc.). Con una sola
             auditoría se calculará el resultado de cumplimiento de forma independiente para cada certificado.
-            El catálogo se gestiona en{" "}
-            <Link href="/superadmin/certifications" style={{ fontWeight: 950, textDecoration: "underline" }}>
-              /superadmin/certifications
+            Los certificados disponibles son los asignados al pack de esta plantilla en{" "}
+            <Link href="/superadmin/global-audits" style={{ fontWeight: 950, textDecoration: "underline" }}>
+              /superadmin/global-audits
             </Link>
             .
           </div>
@@ -892,9 +919,10 @@ export default function SuperadminGlobalTemplateBuilderPage() {
             ))}
             {certifications.length === 0 ? (
               <div style={{ opacity: 0.7, fontSize: 13 }}>
-                Todavía no hay certificados en el catálogo. Crea uno en{" "}
-                <Link href="/superadmin/certifications" style={{ fontWeight: 900, textDecoration: "underline" }}>
-                  /superadmin/certifications
+                Esta plantilla no tiene certificados disponibles: no está en ningún pack con
+                certificados asignados. Gestiónalo desde{" "}
+                <Link href="/superadmin/global-audits" style={{ fontWeight: 900, textDecoration: "underline" }}>
+                  /superadmin/global-audits
                 </Link>
                 .
               </div>

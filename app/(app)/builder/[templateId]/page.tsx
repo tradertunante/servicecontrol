@@ -44,7 +44,6 @@ export default function BuilderTemplatePage() {
   const [sections, setSections] = useState<SectionRow[]>([]);
   const [rows, setRows] = useState<UiRow[]>([]);
 
-  const [hotelId, setHotelId] = useState<string | null>(null);
   const [certifications, setCertifications] = useState<CertificationStandardRow[]>([]);
   const [certificationsAvailable, setCertificationsAvailable] = useState(true);
 
@@ -95,7 +94,7 @@ export default function BuilderTemplatePage() {
           const { data: tData, error: tErr } = await supabase
             .from("audit_templates")
             .select(
-              "id,name,active,area_id,hotel_id,created_at,require_room_number,require_audited_employee"
+              "id,name,active,area_id,hotel_id,pack_id,created_at,require_room_number,require_audited_employee"
             )
             .eq("id", templateId)
             .single();
@@ -108,7 +107,7 @@ export default function BuilderTemplatePage() {
             ) {
               const { data: fallbackData, error: fallbackErr } = await supabase
                 .from("audit_templates")
-                .select("id,name,active,area_id,hotel_id,created_at")
+                .select("id,name,active,area_id,hotel_id,pack_id,created_at")
                 .eq("id", templateId)
                 .single();
 
@@ -172,8 +171,6 @@ export default function BuilderTemplatePage() {
           setArea(null);
           setHotelAreas([]);
         }
-        setHotelId(resolvedHotelId);
-
         // Sections
         const { data: sData, error: sErr } = await supabase
           .from("audit_sections")
@@ -230,23 +227,40 @@ export default function BuilderTemplatePage() {
           }
         }
 
-        // Certificaciones del hotel (Forbes / LHW / Meliá, etc.) y sus
-        // etiquetas por pregunta. Defensivo: si la migración aún no está
-        // desplegada en este entorno, se oculta la funcionalidad en vez de
-        // romper el editor.
+        // Certificaciones disponibles según el PACK de origen de la plantilla
+        // (Forbes / LHW / Meliá, etc.) y sus etiquetas por pregunta. Una
+        // plantilla que no proviene de ningún pack no tiene certificados para
+        // elegir — evita mezclar certificados de packs distintos (ej. una
+        // plantilla "Forbes Chile" no debe poder marcar preguntas como
+        // Meliá). Defensivo: si la migración aún no está desplegada en este
+        // entorno, se oculta la funcionalidad en vez de romper el editor.
         const questionIds = qList.map((q) => q.id);
         const certByQuestion = new Map<string, string[]>();
         try {
-          const certQuery = supabase
-            .from("certification_standards")
-            .select("id,hotel_id,name,active")
-            .eq("active", true)
-            .order("name", { ascending: true });
-          const { data: certData, error: certErr } = resolvedHotelId
-            ? await certQuery.or(`hotel_id.is.null,hotel_id.eq.${resolvedHotelId}`)
-            : await certQuery.is("hotel_id", null);
-          if (certErr) throw certErr;
-          setCertifications((certData ?? []) as CertificationStandardRow[]);
+          let certData: CertificationStandardRow[] = [];
+          if (tpl.pack_id) {
+            const { data: packCertLinks, error: packCertErr } = await supabase
+              .from("global_audit_pack_certifications")
+              .select("certification_standard_id")
+              .eq("pack_id", tpl.pack_id);
+            if (packCertErr) throw packCertErr;
+
+            const certIds = Array.from(
+              new Set((packCertLinks ?? []).map((l) => l.certification_standard_id))
+            );
+
+            if (certIds.length) {
+              const { data: certRows, error: certErr } = await supabase
+                .from("certification_standards")
+                .select("id,hotel_id,name,active")
+                .in("id", certIds)
+                .eq("active", true)
+                .order("name", { ascending: true });
+              if (certErr) throw certErr;
+              certData = (certRows ?? []) as CertificationStandardRow[];
+            }
+          }
+          setCertifications(certData);
 
           if (questionIds.length) {
             const { data: linkData, error: linkErr } = await supabase

@@ -700,9 +700,11 @@ export type Database = {
           area_id: string
           assigned_department: string
           assigned_department_id: string | null
+          assigned_to: string | null
           audit_run_id: string
           blocks_reaudit: boolean
           description: string | null
+          due_date: string | null
           evidence_note: string | null
           evidence_photo_path: string | null
           hotel_id: string
@@ -720,9 +722,11 @@ export type Database = {
           area_id: string
           assigned_department: string
           assigned_department_id?: string | null
+          assigned_to?: string | null
           audit_run_id: string
           blocks_reaudit?: boolean
           description?: string | null
+          due_date?: string | null
           evidence_note?: string | null
           evidence_photo_path?: string | null
           hotel_id: string
@@ -740,9 +744,11 @@ export type Database = {
           area_id?: string
           assigned_department?: string
           assigned_department_id?: string | null
+          assigned_to?: string | null
           audit_run_id?: string
           blocks_reaudit?: boolean
           description?: string | null
+          due_date?: string | null
           evidence_note?: string | null
           evidence_photo_path?: string | null
           hotel_id?: string
@@ -769,6 +775,20 @@ export type Database = {
             columns: ["assigned_department_id"]
             isOneToOne: false
             referencedRelation: "hotel_departments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "audit_corrective_actions_assigned_to_fkey"
+            columns: ["assigned_to"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "audit_corrective_actions_assigned_to_fkey"
+            columns: ["assigned_to"]
+            isOneToOne: false
+            referencedRelation: "users_with_hotel"
             referencedColumns: ["id"]
           },
           {
@@ -1819,6 +1839,39 @@ export type Database = {
             columns: ["hotel_id"]
             isOneToOne: false
             referencedRelation: "hotels"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      global_audit_pack_certifications: {
+        Row: {
+          certification_standard_id: string
+          created_at: string
+          pack_id: string
+        }
+        Insert: {
+          certification_standard_id: string
+          created_at?: string
+          pack_id: string
+        }
+        Update: {
+          certification_standard_id?: string
+          created_at?: string
+          pack_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "global_audit_pack_certifications_certification_standard_id_fkey"
+            columns: ["certification_standard_id"]
+            isOneToOne: false
+            referencedRelation: "certification_standards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "global_audit_pack_certifications_pack_id_fkey"
+            columns: ["pack_id"]
+            isOneToOne: false
+            referencedRelation: "global_audit_packs"
             referencedColumns: ["id"]
           },
         ]
@@ -4117,6 +4170,10 @@ export type Database = {
         Returns: string
       }
       gamification_level: { Args: { p_points: number }; Returns: number }
+      get_audit_run_certification_breakdown: {
+        Args: { p_actor_user_id: string; p_run_id: string }
+        Returns: Json
+      }
       get_audit_run_full: {
         Args: { p_actor_user_id: string; p_run_id: string }
         Returns: Json

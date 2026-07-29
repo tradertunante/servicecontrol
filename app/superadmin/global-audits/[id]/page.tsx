@@ -31,6 +31,12 @@ type PackTemplateRow = {
   position: number;
 };
 
+type CertificationRow = {
+  id: string;
+  name: string;
+  active: boolean;
+};
+
 export default function PackDetailPage() {
   const router = useRouter();
   const params = useParams();
@@ -53,6 +59,10 @@ export default function PackDetailPage() {
   const [packTemplates, setPackTemplates] = useState<PackTemplateRow[]>([]);
   const [search, setSearch] = useState("");
   const [filterLanguage, setFilterLanguage] = useState("");
+  const [filterCategory, setFilterCategory] = useState("");
+
+  const [allCertifications, setAllCertifications] = useState<CertificationRow[]>([]);
+  const [packCertificationIds, setPackCertificationIds] = useState<string[]>([]);
 
   // edición pack
   const [bt, setBt] = useState("hotel");
@@ -127,17 +137,44 @@ export default function PackDetailPage() {
       .sort((a: any, b: any) => a.name.localeCompare(b.name));
   }, [globalTemplates, packTemplates]);
 
+  const availableCategories = useMemo(() => {
+    const set = new Set<string>();
+    for (const t of globalTemplates) {
+      if (t.category) set.add(t.category);
+    }
+    return Array.from(set).sort((a, b) => a.localeCompare(b, "es"));
+  }, [globalTemplates]);
+
   const templatesNotInPack = useMemo(() => {
-    const set = new Set(packTemplates.map((x) => x.audit_template_id));
     const q = search.trim().toLowerCase();
+    // Sin búsqueda ni categoría elegida no se muestra nada: el catálogo
+    // global crece rápido y volcarlo entero es imposible de trabajar.
+    if (!q && !filterCategory) return [];
+
+    const set = new Set(packTemplates.map((x) => x.audit_template_id));
     return globalTemplates
       .filter((t) =>
         !set.has(t.id) &&
         (!q || t.name.toLowerCase().includes(q)) &&
-        (!filterLanguage || t.language === filterLanguage)
+        (!filterLanguage || t.language === filterLanguage) &&
+        (!filterCategory || t.category === filterCategory)
       )
       .sort((a, b) => a.name.localeCompare(b.name));
-  }, [globalTemplates, packTemplates, search, filterLanguage]);
+  }, [globalTemplates, packTemplates, search, filterLanguage, filterCategory]);
+
+  const certificationsInPack = useMemo(() => {
+    const set = new Set(packCertificationIds);
+    return allCertifications
+      .filter((c) => set.has(c.id))
+      .sort((a, b) => a.name.localeCompare(b.name, "es"));
+  }, [allCertifications, packCertificationIds]);
+
+  const certificationsNotInPack = useMemo(() => {
+    const set = new Set(packCertificationIds);
+    return allCertifications
+      .filter((c) => !set.has(c.id))
+      .sort((a, b) => a.name.localeCompare(b.name, "es"));
+  }, [allCertifications, packCertificationIds]);
 
   async function load() {
     setLoading(true);
@@ -199,6 +236,31 @@ export default function PackDetailPage() {
       return;
     }
     setPackTemplates((mData ?? []) as PackTemplateRow[]);
+
+    // catálogo de certificados + certificados ya asignados a este pack
+    const { data: certData, error: certErr } = await supabase
+      .from("certification_standards")
+      .select("id,name,active")
+      .order("name", { ascending: true });
+
+    if (certErr) {
+      setError(certErr.message);
+      setLoading(false);
+      return;
+    }
+    setAllCertifications((certData ?? []) as CertificationRow[]);
+
+    const { data: pcData, error: pcErr } = await supabase
+      .from("global_audit_pack_certifications")
+      .select("certification_standard_id")
+      .eq("pack_id", packId);
+
+    if (pcErr) {
+      setError(pcErr.message);
+      setLoading(false);
+      return;
+    }
+    setPackCertificationIds((pcData ?? []).map((r) => r.certification_standard_id));
 
     setLoading(false);
   }
@@ -299,6 +361,41 @@ export default function PackDetailPage() {
       });
     } catch (e: any) {
       setError(e?.message ?? "No se pudo actualizar la posicion.");
+    }
+    await load();
+    setSaving(false);
+  }
+
+  async function addCertification(certificationStandardId: string) {
+    if (!packId) return;
+
+    setSaving(true);
+    setError(null);
+
+    try {
+      await fetchJsonOrThrow(`/api/superadmin/packs/${packId}/certifications`, {
+        method: "POST",
+        body: JSON.stringify({ certification_standard_id: certificationStandardId }),
+      });
+    } catch (e: any) {
+      setError(e?.message ?? "No se pudo añadir el certificado.");
+    }
+    await load();
+    setSaving(false);
+  }
+
+  async function removeCertification(certificationStandardId: string) {
+    if (!packId) return;
+
+    setSaving(true);
+    setError(null);
+
+    try {
+      await fetchJsonOrThrow(`/api/superadmin/packs/${packId}/certifications/${certificationStandardId}`, {
+        method: "DELETE",
+      });
+    } catch (e: any) {
+      setError(e?.message ?? "No se pudo quitar el certificado.");
     }
     await load();
     setSaving(false);
@@ -494,10 +591,27 @@ export default function PackDetailPage() {
               <option value="zh">🇨🇳 中文</option>
               <option value="ar">🇸🇦 العربية</option>
             </select>
+            <select
+              value={filterCategory}
+              onChange={(e) => setFilterCategory(e.target.value)}
+              style={{ ...styles.input, width: 180 }}
+            >
+              <option value="">Elige una categoría…</option>
+              {availableCategories.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+            </select>
           </div>
 
-          {templatesNotInPack.length === 0 ? (
-            <div style={{ opacity: 0.75 }}>No hay más plantillas globales para añadir.</div>
+          {!search.trim() && !filterCategory ? (
+            <div style={{ opacity: 0.75 }}>
+              Busca por nombre o elige una categoría para ver plantillas — el catálogo
+              global es demasiado grande para mostrarlo entero.
+            </div>
+          ) : templatesNotInPack.length === 0 ? (
+            <div style={{ opacity: 0.75 }}>No hay más plantillas globales para añadir con ese filtro.</div>
           ) : (
             <div style={{ display: "grid", gap: 10 }}>
               {templatesNotInPack.map((t) => (
@@ -530,6 +644,86 @@ export default function PackDetailPage() {
                     </button>
                   </div>
                 </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginTop: 16 }}>
+        <div style={styles.card}>
+          <div style={{ fontSize: 18, fontWeight: 950, marginBottom: 4 }}>Certificados del Pack</div>
+          <div style={{ opacity: 0.75, fontSize: 13, marginBottom: 10 }}>
+            Solo estos certificados estarán disponibles para etiquetar preguntas en las
+            plantillas de este pack.
+          </div>
+
+          {certificationsInPack.length === 0 ? (
+            <div style={{ opacity: 0.75 }}>Este pack no tiene certificados asignados aún.</div>
+          ) : (
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
+              {certificationsInPack.map((c) => (
+                <div
+                  key={c.id}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 8,
+                    padding: "6px 8px 6px 14px",
+                    borderRadius: 999,
+                    border: "1px solid rgba(0,0,0,0.15)",
+                    background: "rgba(0,0,0,0.03)",
+                    fontWeight: 900,
+                  }}
+                >
+                  {c.name}
+                  <button
+                    onClick={() => removeCertification(c.id)}
+                    disabled={saving}
+                    title="Quitar del pack"
+                    style={{
+                      border: "none",
+                      background: "transparent",
+                      cursor: saving ? "not-allowed" : "pointer",
+                      fontWeight: 900,
+                      opacity: 0.7,
+                    }}
+                  >
+                    ✕
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div style={styles.card}>
+          <div style={{ fontSize: 18, fontWeight: 950, marginBottom: 10 }}>Certificados disponibles</div>
+
+          {certificationsNotInPack.length === 0 ? (
+            <div style={{ opacity: 0.75 }}>
+              {allCertifications.length === 0
+                ? "Todavía no hay certificados en el catálogo global (/superadmin/certifications)."
+                : "Ya están todos los certificados del catálogo en este pack."}
+            </div>
+          ) : (
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
+              {certificationsNotInPack.map((c) => (
+                <button
+                  key={c.id}
+                  onClick={() => addCertification(c.id)}
+                  disabled={saving}
+                  style={{
+                    padding: "6px 14px",
+                    borderRadius: 999,
+                    border: "1px solid rgba(0,0,0,0.2)",
+                    background: "#fff",
+                    fontWeight: 900,
+                    cursor: saving ? "not-allowed" : "pointer",
+                  }}
+                >
+                  + {c.name}
+                </button>
               ))}
             </div>
           )}
