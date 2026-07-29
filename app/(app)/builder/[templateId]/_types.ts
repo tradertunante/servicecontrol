@@ -6,6 +6,7 @@ export type TemplateRow = {
   active: boolean | null;
   area_id: string | null;
   hotel_id: string | null;
+  pack_id: string | null;
   created_at: string | null;
   require_room_number: boolean;
   require_audited_employee: boolean;
