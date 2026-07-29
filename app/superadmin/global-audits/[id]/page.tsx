@@ -145,12 +145,10 @@ export default function PackDetailPage() {
     return Array.from(set).sort((a, b) => a.localeCompare(b, "es"));
   }, [globalTemplates]);
 
-  const templatesNotInPack = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    // Sin búsqueda ni categoría elegida no se muestra nada: el catálogo
-    // global crece rápido y volcarlo entero es imposible de trabajar.
-    if (!q && !filterCategory) return [];
+  const DEFAULT_TEMPLATE_LIST_LIMIT = 30;
 
+  const templatesNotInPackFiltered = useMemo(() => {
+    const q = search.trim().toLowerCase();
     const set = new Set(packTemplates.map((x) => x.audit_template_id));
     return globalTemplates
       .filter((t) =>
@@ -161,6 +159,15 @@ export default function PackDetailPage() {
       )
       .sort((a, b) => a.name.localeCompare(b.name));
   }, [globalTemplates, packTemplates, search, filterLanguage, filterCategory]);
+
+  const isTemplateListFiltered = Boolean(search.trim() || filterCategory);
+
+  // Sin filtro se muestran igualmente las primeras N (orden alfabético) en
+  // vez de ocultarlas del todo: si el catálogo no tiene `category` asignado
+  // (como aquí), exigir un filtro dejaría la lista inutilizable.
+  const templatesNotInPack = isTemplateListFiltered
+    ? templatesNotInPackFiltered
+    : templatesNotInPackFiltered.slice(0, DEFAULT_TEMPLATE_LIST_LIMIT);
 
   const certificationsInPack = useMemo(() => {
     const set = new Set(packCertificationIds);
@@ -605,13 +612,12 @@ export default function PackDetailPage() {
             </select>
           </div>
 
-          {!search.trim() && !filterCategory ? (
+          {templatesNotInPack.length === 0 ? (
             <div style={{ opacity: 0.75 }}>
-              Busca por nombre o elige una categoría para ver plantillas — el catálogo
-              global es demasiado grande para mostrarlo entero.
+              {isTemplateListFiltered
+                ? "No hay más plantillas globales para añadir con ese filtro."
+                : "No hay más plantillas globales para añadir."}
             </div>
-          ) : templatesNotInPack.length === 0 ? (
-            <div style={{ opacity: 0.75 }}>No hay más plantillas globales para añadir con ese filtro.</div>
           ) : (
             <div style={{ display: "grid", gap: 10 }}>
               {templatesNotInPack.map((t) => (
@@ -647,6 +653,13 @@ export default function PackDetailPage() {
               ))}
             </div>
           )}
+
+          {!isTemplateListFiltered && templatesNotInPackFiltered.length > DEFAULT_TEMPLATE_LIST_LIMIT ? (
+            <div style={{ marginTop: 10, opacity: 0.7, fontSize: 12 }}>
+              Mostrando {DEFAULT_TEMPLATE_LIST_LIMIT} de {templatesNotInPackFiltered.length} — busca por
+              nombre o categoría para ver el resto.
+            </div>
+          ) : null}
         </div>
       </div>
 
