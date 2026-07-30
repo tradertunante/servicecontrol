@@ -37,6 +37,16 @@ type CertificationRow = {
   active: boolean;
 };
 
+type OtherPackRow = {
+  id: string;
+  name: string;
+};
+
+type PackTemplateLinkRow = {
+  pack_id: string;
+  audit_template_id: string;
+};
+
 export default function PackDetailPage() {
   const router = useRouter();
   const params = useParams();
@@ -63,6 +73,16 @@ export default function PackDetailPage() {
 
   const [allCertifications, setAllCertifications] = useState<CertificationRow[]>([]);
   const [packCertificationIds, setPackCertificationIds] = useState<string[]>([]);
+
+  // Links pack↔plantilla de TODOS los packs (no solo el actual), para saber
+  // qué plantillas ya son exclusivas de otro pack y para el importador.
+  const [allPackTemplateLinks, setAllPackTemplateLinks] = useState<PackTemplateLinkRow[]>([]);
+
+  // Importar (duplicar) una plantilla desde otro pack
+  const [importOpen, setImportOpen] = useState(false);
+  const [otherPacks, setOtherPacks] = useState<OtherPackRow[]>([]);
+  const [importSourcePackId, setImportSourcePackId] = useState("");
+  const [importingTemplateId, setImportingTemplateId] = useState<string | null>(null);
 
   // edición pack
   const [bt, setBt] = useState("hotel");
@@ -137,6 +157,23 @@ export default function PackDetailPage() {
       .sort((a: any, b: any) => a.name.localeCompare(b.name));
   }, [globalTemplates, packTemplates]);
 
+  const templateIdsInAnyPack = useMemo(
+    () => new Set(allPackTemplateLinks.map((l) => l.audit_template_id)),
+    [allPackTemplateLinks]
+  );
+
+  const importSourceTemplates = useMemo(() => {
+    if (!importSourcePackId) return [];
+    const ids = new Set(
+      allPackTemplateLinks
+        .filter((l) => l.pack_id === importSourcePackId)
+        .map((l) => l.audit_template_id)
+    );
+    return globalTemplates
+      .filter((t) => ids.has(t.id))
+      .sort((a, b) => a.name.localeCompare(b.name, "es"));
+  }, [allPackTemplateLinks, globalTemplates, importSourcePackId]);
+
   const availableCategories = useMemo(() => {
     const set = new Set<string>();
     for (const t of globalTemplates) {
@@ -153,12 +190,13 @@ export default function PackDetailPage() {
     return globalTemplates
       .filter((t) =>
         !set.has(t.id) &&
+        !templateIdsInAnyPack.has(t.id) &&
         (!q || t.name.toLowerCase().includes(q)) &&
         (!filterLanguage || t.language === filterLanguage) &&
         (!filterCategory || t.category === filterCategory)
       )
       .sort((a, b) => a.name.localeCompare(b.name));
-  }, [globalTemplates, packTemplates, search, filterLanguage, filterCategory]);
+  }, [globalTemplates, packTemplates, templateIdsInAnyPack, search, filterLanguage, filterCategory]);
 
   const isTemplateListFiltered = Boolean(search.trim() || filterCategory);
 
@@ -243,6 +281,33 @@ export default function PackDetailPage() {
       return;
     }
     setPackTemplates((mData ?? []) as PackTemplateRow[]);
+
+    // plantillas ya asignadas a CUALQUIER pack (para excluirlas de
+    // "disponibles" — una plantilla es exclusiva de un pack) + catálogo de
+    // otros packs (para el importador)
+    const { data: allLinksData, error: allLinksErr } = await supabase
+      .from("global_audit_pack_templates")
+      .select("pack_id, audit_template_id");
+
+    if (allLinksErr) {
+      setError(allLinksErr.message);
+      setLoading(false);
+      return;
+    }
+    setAllPackTemplateLinks((allLinksData ?? []) as PackTemplateLinkRow[]);
+
+    const { data: packsData, error: packsErr } = await supabase
+      .from("global_audit_packs")
+      .select("id, name")
+      .neq("id", packId)
+      .order("name", { ascending: true });
+
+    if (packsErr) {
+      setError(packsErr.message);
+      setLoading(false);
+      return;
+    }
+    setOtherPacks((packsData ?? []) as OtherPackRow[]);
 
     // catálogo de certificados + certificados ya asignados a este pack
     const { data: certData, error: certErr } = await supabase
@@ -336,6 +401,32 @@ export default function PackDetailPage() {
     }
     await load();
     setSaving(false);
+  }
+
+  async function importTemplateFromOtherPack(templateId: string) {
+    if (!packId) return;
+
+    setImportingTemplateId(templateId);
+    setError(null);
+
+    try {
+      // Duplica la plantilla (con sus secciones/preguntas) en vez de
+      // compartir el mismo id entre packs — cada pack necesita su propia
+      // copia editable, independiente de la plantilla de origen.
+      const duplicated = await fetchJsonOrThrow<{ template_id: string }>(
+        `/api/superadmin/templates/${templateId}/duplicate`,
+        { method: "POST" }
+      );
+
+      await fetchJsonOrThrow(`/api/superadmin/packs/${packId}/templates`, {
+        method: "POST",
+        body: JSON.stringify({ template_id: duplicated.template_id }),
+      });
+    } catch (e: any) {
+      setError(e?.message ?? "No se pudo importar la plantilla.");
+    }
+    await load();
+    setImportingTemplateId(null);
   }
 
   async function removeTemplate(templateId: string) {
@@ -573,10 +664,77 @@ export default function PackDetailPage() {
         <div style={styles.card}>
           <div style={{ fontSize: 18, fontWeight: 950, marginBottom: 10 }}>Plantillas globales disponibles</div>
 
+          <div style={{ opacity: 0.75, fontSize: 13, marginBottom: 10 }}>
+            Cada plantilla pertenece a un solo pack: en cuanto la añades aquí, deja de estar
+            disponible para otros packs. Si necesitas reutilizar una ya existente en otro pack,
+            usa "Importar de otro pack" — crea una copia independiente en este pack.
+          </div>
+
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 10 }}>
             <button style={styles.btnDark} disabled={saving} onClick={createGlobalTemplateAndOpenEditor}>
               + Crear plantilla global
             </button>
+            <button
+              style={styles.btnWhite}
+              disabled={saving || otherPacks.length === 0}
+              onClick={() => setImportOpen((v) => !v)}
+            >
+              {importOpen ? "Cerrar importador" : "Importar de otro pack"}
+            </button>
+          </div>
+
+          {importOpen ? (
+            <div style={{ ...styles.row, flexDirection: "column", alignItems: "stretch", marginBottom: 10 }}>
+              <div style={styles.label}>Pack de origen</div>
+              <select
+                value={importSourcePackId}
+                onChange={(e) => setImportSourcePackId(e.target.value)}
+                style={{ ...styles.input, marginTop: 6 }}
+              >
+                <option value="">Elige un pack…</option>
+                {otherPacks.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
+                ))}
+              </select>
+
+              {importSourcePackId ? (
+                <div style={{ marginTop: 10, display: "grid", gap: 8 }}>
+                  {importSourceTemplates.length === 0 ? (
+                    <div style={{ opacity: 0.75, fontSize: 13 }}>Ese pack no tiene plantillas.</div>
+                  ) : (
+                    importSourceTemplates.map((t) => (
+                      <div
+                        key={t.id}
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "center",
+                          gap: 10,
+                          padding: "8px 10px",
+                          borderRadius: 10,
+                          background: "#fff",
+                          border: "1px solid rgba(0,0,0,0.08)",
+                        }}
+                      >
+                        <div style={{ fontWeight: 900 }}>{t.name}</div>
+                        <button
+                          style={styles.btnDark}
+                          disabled={importingTemplateId === t.id}
+                          onClick={() => importTemplateFromOtherPack(t.id)}
+                        >
+                          {importingTemplateId === t.id ? "Importando…" : "Importar copia"}
+                        </button>
+                      </div>
+                    ))
+                  )}
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 10 }}>
             <input
               style={{ ...styles.input, flex: 1, minWidth: 160 }}
               placeholder="Buscar por nombre…"
