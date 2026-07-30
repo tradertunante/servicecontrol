@@ -189,9 +189,9 @@ export default function BuilderTemplatePage() {
 
         if (secIds.length) {
           const ownerDepartmentSelect =
-            "id,audit_section_id,text,tag,owner_department,order,active,comment_requirement,photo_requirement,signature_requirement,created_at";
+            "id,audit_section_id,text,text_en,tag,owner_department,order,active,comment_requirement,photo_requirement,signature_requirement,created_at";
           const baseQuestionSelect =
-            "id,audit_section_id,text,tag,order,active,comment_requirement,photo_requirement,signature_requirement,created_at";
+            "id,audit_section_id,text,text_en,tag,order,active,comment_requirement,photo_requirement,signature_requirement,created_at";
 
           const { data: qData, error: qErr } = await supabase
             .from("audit_questions")
@@ -298,6 +298,7 @@ export default function BuilderTemplatePage() {
               secNameById.get(q.audit_section_id) ?? "Sin sección",
             tag: safeStr(q.tag),
             standard: safeStr(q.text),
+            standardEn: safeStr(q.text_en),
             owner_department: toResponsibleDepartment(q.owner_department),
             comment_requirement: toRequirement(q.comment_requirement),
             photo_requirement: toRequirement(q.photo_requirement),
@@ -641,6 +642,18 @@ export default function BuilderTemplatePage() {
     updateQuestion(questionId, { text: value });
   }
 
+  function handleStandardEnChange(questionId: string, value: string) {
+    setRows((prev) =>
+      prev.map((x) =>
+        x.questionId === questionId ? { ...x, standardEn: value } : x
+      )
+    );
+  }
+
+  function handleStandardEnBlur(questionId: string, value: string) {
+    updateQuestion(questionId, { text_en: value || null });
+  }
+
   function handleOwnerChange(questionId: string, value: string | null) {
     setRows((prev) =>
       prev.map((x) =>
@@ -791,6 +804,8 @@ export default function BuilderTemplatePage() {
         onTagBlur={handleTagBlur}
         onStandardChange={handleStandardChange}
         onStandardBlur={handleStandardBlur}
+        onStandardEnChange={handleStandardEnChange}
+        onStandardEnBlur={handleStandardEnBlur}
         onOwnerChange={handleOwnerChange}
         onRequirementChange={handleRequirementChange}
         onRequirementSave={handleRequirementSave}

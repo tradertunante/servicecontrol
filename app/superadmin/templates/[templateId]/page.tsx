@@ -42,6 +42,7 @@ type QuestionRow = {
   id: string;
   audit_section_id: string;
   text: string;
+  text_en: string | null;
   tag: string | null;
   order: number | null;
   active: boolean;
@@ -57,6 +58,7 @@ type UiRow = {
   classification: string;
   tag: string;
   standard: string;
+  standardEn: string;
   certificationIds: string[];
   comment_requirement: RequirementType;
   photo_requirement: RequirementType;
@@ -227,7 +229,7 @@ export default function SuperadminGlobalTemplateBuilderPage() {
         if (secIds.length) {
           const { data: qData, error: qErr } = await supabase
             .from("audit_questions")
-            .select("id,audit_section_id,text,tag,order,active,comment_requirement,photo_requirement,signature_requirement,created_at")
+            .select("id,audit_section_id,text,text_en,tag,order,active,comment_requirement,photo_requirement,signature_requirement,created_at")
             .in("audit_section_id", secIds)
             .order("order", { ascending: true })
             .order("created_at", { ascending: true })
@@ -315,6 +317,7 @@ export default function SuperadminGlobalTemplateBuilderPage() {
             classification: secNameById.get(q.audit_section_id) ?? "Sin sección",
             tag: safeStr(q.tag),
             standard: safeStr(q.text),
+            standardEn: safeStr(q.text_en),
             certificationIds: certByQuestion.get(q.id) ?? [],
             comment_requirement: toRequirement(q.comment_requirement),
             photo_requirement: toRequirement(q.photo_requirement),
@@ -362,6 +365,7 @@ export default function SuperadminGlobalTemplateBuilderPage() {
           if (r.questionId !== questionId) return r;
           const next = { ...r };
           if (patch.text !== undefined) next.standard = safeStr(patch.text);
+          if (patch.text_en !== undefined) next.standardEn = safeStr(patch.text_en);
           if (patch.tag !== undefined) next.tag = safeStr(patch.tag);
           if (patch.comment_requirement !== undefined) next.comment_requirement = toRequirement(patch.comment_requirement);
           if (patch.photo_requirement !== undefined) next.photo_requirement = toRequirement(patch.photo_requirement);
@@ -950,6 +954,7 @@ export default function SuperadminGlobalTemplateBuilderPage() {
                   <th style={{ padding: "9px 10px", textAlign: "left", fontWeight: 950, width: 110 }}>Clasificación</th>
                   <th style={{ padding: "9px 10px", textAlign: "left", fontWeight: 950, width: 80 }}>Tag</th>
                   <th style={{ padding: "9px 10px", textAlign: "left", fontWeight: 950 }}>Estándar</th>
+                  <th style={{ padding: "9px 10px", textAlign: "left", fontWeight: 950 }}>Estándar (EN)</th>
                   {certifications.map((cert) => (
                     <th key={cert.id} style={{ padding: "9px 10px", textAlign: "center", fontWeight: 950, width: 70 }} title={cert.name}>
                       {cert.name}
@@ -1000,6 +1005,14 @@ export default function SuperadminGlobalTemplateBuilderPage() {
                       <input
                         defaultValue={row.standard}
                         onBlur={(e) => { if (e.target.value !== row.standard) updateQuestion(row.questionId, { text: e.target.value }); }}
+                        style={{ width: "100%", padding: "5px 8px", borderRadius: 8, border: "1px solid rgba(0,0,0,0.15)", fontWeight: 700, fontSize: 13 }}
+                      />
+                    </td>
+                    <td style={{ padding: "6px 10px" }}>
+                      <input
+                        defaultValue={row.standardEn}
+                        placeholder="English (opcional)"
+                        onBlur={(e) => { if (e.target.value !== row.standardEn) updateQuestion(row.questionId, { text_en: e.target.value || null }); }}
                         style={{ width: "100%", padding: "5px 8px", borderRadius: 8, border: "1px solid rgba(0,0,0,0.15)", fontWeight: 700, fontSize: 13 }}
                       />
                     </td>

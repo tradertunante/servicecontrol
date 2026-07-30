@@ -13,6 +13,7 @@ import {
 
 type ImportRow = {
   standard: string;
+  standardEn: string | null;
   tag: string | null;
   classification: string;
 };
@@ -50,11 +51,12 @@ export async function POST(request: NextRequest, props: { params: Promise<{ temp
   const rows: ImportRow[] = [];
   for (const rawRow of rawRows) {
     const standard = cleanCell((rawRow as Record<string, unknown>)?.standard);
+    const standardEn = cleanCell((rawRow as Record<string, unknown>)?.standardEn) || null;
     const classification = cleanCell((rawRow as Record<string, unknown>)?.classification);
     const tag = cleanCell((rawRow as Record<string, unknown>)?.tag) || null;
 
     if (!standard || !classification) continue;
-    rows.push({ standard, tag, classification });
+    rows.push({ standard, standardEn, tag, classification });
   }
 
   if (rows.length === 0) {
@@ -122,6 +124,7 @@ export async function POST(request: NextRequest, props: { params: Promise<{ temp
     return {
       audit_section_id: section.id,
       text: row.standard,
+      text_en: row.standardEn,
       tag: row.tag,
       order: nextOrder,
       active: true,

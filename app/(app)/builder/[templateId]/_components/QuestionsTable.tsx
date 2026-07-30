@@ -24,6 +24,8 @@ type Props = {
   onTagBlur: (questionId: string, value: string) => void;
   onStandardChange: (questionId: string, value: string) => void;
   onStandardBlur: (questionId: string, value: string) => void;
+  onStandardEnChange: (questionId: string, value: string) => void;
+  onStandardEnBlur: (questionId: string, value: string) => void;
   onOwnerChange: (questionId: string, value: string | null) => void;
   onRequirementChange: (questionId: string, field: string, value: RequirementType) => void;
   onRequirementSave: (questionId: string, patch: Record<string, RequirementType>) => void;
@@ -55,6 +57,8 @@ export default function QuestionsTable({
   onTagBlur,
   onStandardChange,
   onStandardBlur,
+  onStandardEnChange,
+  onStandardEnBlur,
   onOwnerChange,
   onRequirementChange,
   onRequirementSave,
@@ -116,7 +120,7 @@ export default function QuestionsTable({
           style={{
             width: "100%",
             borderCollapse: "collapse",
-            minWidth: 1560 + certifications.length * 90,
+            minWidth: 1560 + 420 + certifications.length * 90,
           }}
         >
           <colgroup>
@@ -124,6 +128,7 @@ export default function QuestionsTable({
             <col style={{ width: 260 }} />
             <col style={{ width: 240 }} />
             <col style={{ width: 660 }} />
+            <col style={{ width: 420 }} />
             {certifications.map((cert) => (
               <col key={cert.id} style={{ width: 90 }} />
             ))}
@@ -141,6 +146,7 @@ export default function QuestionsTable({
               <th style={thStyle}>CLASSIFICATION</th>
               <th style={thStyle}>TAG</th>
               <th style={thStyle}>STANDARD</th>
+              <th style={thStyle}>STANDARD (EN)</th>
               {certifications.map((cert) => (
                 <th
                   key={cert.id}
@@ -194,6 +200,8 @@ export default function QuestionsTable({
                   onTagBlur={onTagBlur}
                   onStandardChange={onStandardChange}
                   onStandardBlur={onStandardBlur}
+                  onStandardEnChange={onStandardEnChange}
+                  onStandardEnBlur={onStandardEnBlur}
                   onOwnerChange={onOwnerChange}
                   onRequirementChange={onRequirementChange}
                   onRequirementSave={onRequirementSave}
@@ -205,7 +213,7 @@ export default function QuestionsTable({
 
             {rows.length === 0 ? (
               <tr>
-                <td colSpan={10 + certifications.length} style={{ padding: 14, opacity: 0.8 }}>
+                <td colSpan={11 + certifications.length} style={{ padding: 14, opacity: 0.8 }}>
                   No hay preguntas. Importa desde Excel o crea preguntas.
                 </td>
               </tr>
