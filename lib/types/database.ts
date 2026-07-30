@@ -1048,6 +1048,7 @@ export type Database = {
           signature_requirement: string | null
           tag: string | null
           text: string
+          text_en: string | null
           weight: number
         }
         Insert: {
@@ -1069,6 +1070,7 @@ export type Database = {
           signature_requirement?: string | null
           tag?: string | null
           text: string
+          text_en?: string | null
           weight?: number
         }
         Update: {
@@ -1090,6 +1092,7 @@ export type Database = {
           signature_requirement?: string | null
           tag?: string | null
           text?: string
+          text_en?: string | null
           weight?: number
         }
         Relationships: [

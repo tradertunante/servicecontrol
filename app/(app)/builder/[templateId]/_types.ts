@@ -41,6 +41,7 @@ export type QuestionRow = {
   id: string;
   audit_section_id: string;
   text: string;
+  text_en: string | null;
   tag: string | null;
   owner_department?: ResponsibleDepartment;
   order: number | null;
@@ -57,6 +58,7 @@ export type UiRow = {
   classification: string;
   tag: string;
   standard: string;
+  standardEn: string;
   certificationIds: string[];
   owner_department: ResponsibleDepartment;
   comment_requirement: RequirementType;

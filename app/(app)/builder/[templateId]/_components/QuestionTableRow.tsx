@@ -80,6 +80,8 @@ type Props = {
   onTagBlur: (questionId: string, value: string) => void;
   onStandardChange: (questionId: string, value: string) => void;
   onStandardBlur: (questionId: string, value: string) => void;
+  onStandardEnChange: (questionId: string, value: string) => void;
+  onStandardEnBlur: (questionId: string, value: string) => void;
   onOwnerChange: (questionId: string, value: string | null) => void;
   onRequirementChange: (questionId: string, field: string, value: RequirementType) => void;
   onRequirementSave: (questionId: string, patch: Record<string, RequirementType>) => void;
@@ -103,6 +105,8 @@ export default function QuestionTableRow({
   onTagBlur,
   onStandardChange,
   onStandardBlur,
+  onStandardEnChange,
+  onStandardEnBlur,
   onOwnerChange,
   onRequirementChange,
   onRequirementSave,
@@ -176,6 +180,21 @@ export default function QuestionTableRow({
           value={row.standard}
           onChange={(e) => onStandardChange(row.questionId, e.target.value)}
           onBlur={() => onStandardBlur(row.questionId, row.standard.trim())}
+          style={{
+            ...inputStyle,
+            minHeight: 64,
+            resize: "vertical",
+          }}
+        />
+      </td>
+
+      {/* Standard (English, opcional) */}
+      <td style={{ padding: "10px 8px", verticalAlign: "top" }}>
+        <textarea
+          value={row.standardEn}
+          onChange={(e) => onStandardEnChange(row.questionId, e.target.value)}
+          onBlur={() => onStandardEnBlur(row.questionId, row.standardEn.trim())}
+          placeholder="English (opcional)"
           style={{
             ...inputStyle,
             minHeight: 64,

@@ -1,9 +1,12 @@
 "use client";
 
 import { useState } from "react";
+import { useLocale } from "next-intl";
 import { useAuditSessionContext } from "../_context/AuditSessionContext";
+import { pickQuestionText } from "@/lib/i18n/questionText";
 
 export default function AuditReviewScreen({ onClose }: { onClose: () => void }) {
+  const locale = useLocale();
   const {
     sections,
     groupedQuestions,
@@ -109,7 +112,7 @@ export default function AuditReviewScreen({ onClose }: { onClose: () => void }) 
                     </div>
 
                     <p className="text-sm font-semibold text-slate-900">
-                      {question.text}
+                      {pickQuestionText(question.text, question.text_en, locale)}
                     </p>
 
                     {answer?.comment ? (

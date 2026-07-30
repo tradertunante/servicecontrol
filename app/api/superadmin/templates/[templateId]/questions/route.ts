@@ -53,6 +53,11 @@ export async function PATCH(request: NextRequest, props: { params: Promise<{ tem
     patch.text = text;
   }
 
+  if (Object.prototype.hasOwnProperty.call(rawPatch, "text_en")) {
+    const textEnRaw = (rawPatch as Record<string, unknown>).text_en;
+    patch.text_en = textEnRaw == null ? null : String(textEnRaw).trim() || null;
+  }
+
   if (Object.prototype.hasOwnProperty.call(rawPatch, "tag")) {
     const tagRaw = (rawPatch as Record<string, unknown>).tag;
     patch.tag = tagRaw == null ? null : String(tagRaw).trim() || null;

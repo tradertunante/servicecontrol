@@ -7,7 +7,7 @@ import { supabase } from "@/lib/supabaseClient";
 import HotelHeader from "@/app/components/HotelHeader";
 import { fetchJsonOrThrow } from "@/lib/superadmin/clientApi";
 
-type ParsedRow = { standard: string; tag: string; classification: string };
+type ParsedRow = { standard: string; standardEn: string; tag: string; classification: string };
 
 function normHeader(s: string) {
   return (s ?? "").trim().toUpperCase();
@@ -103,11 +103,12 @@ export default function GlobalTemplateImportPage() {
 
     const header = splitRowSmart(lines[0]).map(normHeader);
     const idxStandard = header.findIndex((h) => h === "STANDARD");
+    const idxStandardEn = header.findIndex((h) => h === "STANDARD_EN" || h === "STANDARD (EN)");
     const idxTag = header.findIndex((h) => h === "TAG");
     const idxClass = header.findIndex((h) => h === "CLASSIFICATION");
 
     if (idxStandard === -1 || idxTag === -1 || idxClass === -1) {
-      return { rows: [], sectionsCount: 0, questionsCount: 0, parseError: "Debe incluir encabezados exactos: STANDARD, TAG, CLASSIFICATION" };
+      return { rows: [], sectionsCount: 0, questionsCount: 0, parseError: "Debe incluir encabezados exactos: STANDARD, TAG, CLASSIFICATION (STANDARD_EN es opcional)" };
     }
 
     const rows: ParsedRow[] = [];
@@ -116,14 +117,16 @@ export default function GlobalTemplateImportPage() {
       if (!cols.length) continue;
 
       const standardRaw = cols[idxStandard] ?? "";
+      const standardEnRaw = idxStandardEn === -1 ? "" : cols[idxStandardEn] ?? "";
       const tagRaw = cols[idxTag] ?? "";
       const classificationRaw = cols[idxClass] ?? "";
 
       const { standard, tag } = normalizeStdAndTag(standardRaw, tagRaw);
+      const standardEn = cleanCell(standardEnRaw ?? "");
       const classification = cleanCell(classificationRaw ?? "");
 
       if (!standard || !classification) continue;
-      rows.push({ standard, tag, classification });
+      rows.push({ standard, standardEn, tag, classification });
     }
 
     const uniqSections = new Set(rows.map((r) => normKey(r.classification)));
@@ -199,7 +202,9 @@ export default function GlobalTemplateImportPage() {
         Esta pantalla es solo para importar preguntas/estándares del catálogo global. No se usa para auditorías históricas.
       </div>
       <div style={{ opacity: 0.8, marginBottom: 16 }}>
-        Debe incluir encabezados: <b>STANDARD</b>, <b>TAG</b>, <b>CLASSIFICATION</b>.
+        Debe incluir encabezados: <b>STANDARD</b>, <b>TAG</b>, <b>CLASSIFICATION</b>. Opcional:{" "}
+        <b>STANDARD_EN</b> (el auditor lo verá en vez de STANDARD cuando tenga el idioma de
+        interfaz en inglés).
       </div>
 
       {error ? <div style={{ color: "crimson", fontWeight: 900, marginBottom: 12, whiteSpace: "pre-wrap" }}>{error}</div> : null}
@@ -216,7 +221,7 @@ export default function GlobalTemplateImportPage() {
             setInfo(null);
             setDone(false);
           }}
-          placeholder={"STANDARD\tTAG\tCLASSIFICATION\nTelephone conversation is calm and clear\tService\tGuest Comfort & Convenience"}
+          placeholder={"STANDARD\tSTANDARD_EN\tTAG\tCLASSIFICATION\nLa conversación telefónica es tranquila y clara\tTelephone conversation is calm and clear\tService\tGuest Comfort & Convenience"}
           style={{
             width: "100%",
             minHeight: 220,
@@ -268,6 +273,7 @@ export default function GlobalTemplateImportPage() {
                 <th style={{ padding: 8 }}>CLASSIFICATION</th>
                 <th style={{ padding: 8 }}>TAG</th>
                 <th style={{ padding: 8 }}>STANDARD</th>
+                <th style={{ padding: 8 }}>STANDARD_EN</th>
               </tr>
             </thead>
             <tbody>
@@ -276,11 +282,12 @@ export default function GlobalTemplateImportPage() {
                   <td style={{ padding: 8, fontWeight: 900 }}>{r.classification}</td>
                   <td style={{ padding: 8 }}>{r.tag || "—"}</td>
                   <td style={{ padding: 8 }}>{r.standard}</td>
+                  <td style={{ padding: 8, opacity: r.standardEn ? 1 : 0.5 }}>{r.standardEn || "—"}</td>
                 </tr>
               ))}
               {parsed.rows.length > 12 ? (
                 <tr>
-                  <td colSpan={3} style={{ padding: 8, opacity: 0.7 }}>
+                  <td colSpan={4} style={{ padding: 8, opacity: 0.7 }}>
                     …y {parsed.rows.length - 12} más
                   </td>
                 </tr>

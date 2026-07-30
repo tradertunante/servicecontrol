@@ -57,6 +57,7 @@ export type QuestionRow = {
   id: string;
   audit_section_id: string;
   text: string;
+  text_en?: string | null;
   weight: number | null;
   photo_requirement: RequirementType;
   comment_requirement: RequirementType;

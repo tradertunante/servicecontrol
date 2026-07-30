@@ -1,9 +1,12 @@
 "use client";
 
+import { useLocale } from "next-intl";
+
 import AuditCommentBox from "./AuditCommentBox";
 import AuditPhotoField from "./AuditPhotoField";
 import AuditResponseButtons from "./AuditResponseButtons";
 import type { AnswerRow, AnswerValue, QuestionRow } from "../_hooks/useAuditSession";
+import { pickQuestionText } from "@/lib/i18n/questionText";
 
 export default function AuditQuestionCard({
   question,
@@ -26,6 +29,8 @@ export default function AuditQuestionCard({
   onPhotoUpload: (file: File) => void;
   onPhotoDelete: (index: number) => void;
 }) {
+  const locale = useLocale();
+  const displayText = pickQuestionText(question.text, question.text_en, locale);
   const selected = ((answer?.answer ?? answer?.result) ?? "PASS") as AnswerValue;
   const isFail = selected === "FAIL";
   const showComment =
@@ -52,7 +57,7 @@ export default function AuditQuestionCard({
       <div className="flex flex-col gap-3">
         <div className="flex flex-wrap items-start justify-between gap-2.5">
           <div className="min-w-0 flex-1">
-            <div className="text-sm font-extrabold leading-snug text-slate-900">{question.text}</div>
+            <div className="text-sm font-extrabold leading-snug text-slate-900">{displayText}</div>
           </div>
 
           <div className="flex flex-wrap gap-1.5">
