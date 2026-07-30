@@ -158,7 +158,7 @@ export default function SuperadminGlobalTemplateBuilderPage() {
       });
       const payload = await res.json().catch(() => null);
       if (!res.ok) throw new Error(payload?.error ?? "No se pudo eliminar.");
-      router.push("/superadmin/templates");
+      router.push("/superadmin/global-audits");
     } catch (e: any) {
       setError(e?.message ?? "Error al eliminar.");
     } finally {
@@ -621,7 +621,7 @@ export default function SuperadminGlobalTemplateBuilderPage() {
 
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexWrap: "wrap" }}>
         <div>
-          <button onClick={() => router.push("/superadmin/templates")} style={btnWhite}>
+          <button onClick={() => router.push("/superadmin/global-audits")} style={btnWhite}>
             ← Atrás
           </button>
 

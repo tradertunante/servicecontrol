@@ -67,9 +67,6 @@ export default function PackDetailPage() {
 
   const [globalTemplates, setGlobalTemplates] = useState<TemplateRow[]>([]);
   const [packTemplates, setPackTemplates] = useState<PackTemplateRow[]>([]);
-  const [search, setSearch] = useState("");
-  const [filterLanguage, setFilterLanguage] = useState("");
-  const [filterCategory, setFilterCategory] = useState("");
 
   const [allCertifications, setAllCertifications] = useState<CertificationRow[]>([]);
   const [packCertificationIds, setPackCertificationIds] = useState<string[]>([]);
@@ -157,11 +154,6 @@ export default function PackDetailPage() {
       .sort((a: any, b: any) => a.name.localeCompare(b.name));
   }, [globalTemplates, packTemplates]);
 
-  const templateIdsInAnyPack = useMemo(
-    () => new Set(allPackTemplateLinks.map((l) => l.audit_template_id)),
-    [allPackTemplateLinks]
-  );
-
   const importSourceTemplates = useMemo(() => {
     if (!importSourcePackId) return [];
     const ids = new Set(
@@ -173,39 +165,6 @@ export default function PackDetailPage() {
       .filter((t) => ids.has(t.id))
       .sort((a, b) => a.name.localeCompare(b.name, "es"));
   }, [allPackTemplateLinks, globalTemplates, importSourcePackId]);
-
-  const availableCategories = useMemo(() => {
-    const set = new Set<string>();
-    for (const t of globalTemplates) {
-      if (t.category) set.add(t.category);
-    }
-    return Array.from(set).sort((a, b) => a.localeCompare(b, "es"));
-  }, [globalTemplates]);
-
-  const DEFAULT_TEMPLATE_LIST_LIMIT = 30;
-
-  const templatesNotInPackFiltered = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    const set = new Set(packTemplates.map((x) => x.audit_template_id));
-    return globalTemplates
-      .filter((t) =>
-        !set.has(t.id) &&
-        !templateIdsInAnyPack.has(t.id) &&
-        (!q || t.name.toLowerCase().includes(q)) &&
-        (!filterLanguage || t.language === filterLanguage) &&
-        (!filterCategory || t.category === filterCategory)
-      )
-      .sort((a, b) => a.name.localeCompare(b.name));
-  }, [globalTemplates, packTemplates, templateIdsInAnyPack, search, filterLanguage, filterCategory]);
-
-  const isTemplateListFiltered = Boolean(search.trim() || filterCategory);
-
-  // Sin filtro se muestran igualmente las primeras N (orden alfabético) en
-  // vez de ocultarlas del todo: si el catálogo no tiene `category` asignado
-  // (como aquí), exigir un filtro dejaría la lista inutilizable.
-  const templatesNotInPack = isTemplateListFiltered
-    ? templatesNotInPackFiltered
-    : templatesNotInPackFiltered.slice(0, DEFAULT_TEMPLATE_LIST_LIMIT);
 
   const certificationsInPack = useMemo(() => {
     const set = new Set(packCertificationIds);
@@ -378,26 +337,6 @@ export default function PackDetailPage() {
       });
     } catch (e: any) {
       setError(e?.message ?? "No se pudo guardar el pack.");
-    }
-    await load();
-    setSaving(false);
-  }
-
-  async function addTemplate(templateId: string) {
-    if (!packId) return;
-
-    setSaving(true);
-    setError(null);
-
-    try {
-      await fetchJsonOrThrow(`/api/superadmin/packs/${packId}/templates`, {
-        method: "POST",
-        body: JSON.stringify({
-          template_id: templateId,
-        }),
-      });
-    } catch (e: any) {
-      setError(e?.message ?? "No se pudo agregar la plantilla.");
     }
     await load();
     setSaving(false);
@@ -611,68 +550,17 @@ export default function PackDetailPage() {
         </div>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginTop: 16 }}>
+      <div style={{ marginTop: 16 }}>
         <div style={styles.card}>
-          <div style={{ fontSize: 18, fontWeight: 950, marginBottom: 10 }}>Plantillas en el Pack</div>
-
-          {templatesInPack.length === 0 ? (
-            <div style={{ opacity: 0.75 }}>Este pack no tiene plantillas aún.</div>
-          ) : (
-            <div style={{ display: "grid", gap: 10 }}>
-              {templatesInPack.map((t: any) => (
-                <div key={t.id} style={styles.row}>
-                  <div style={{ minWidth: 240 }}>
-                    <div style={{ fontWeight: 950 }}>{t.name}</div>
-                    <div style={{ display: "flex", gap: 6, marginTop: 4, flexWrap: "wrap" }}>
-                      {t.category && (
-                        <span style={{ fontSize: 11, fontWeight: 900, padding: "2px 8px", borderRadius: 999, background: "rgba(0,0,0,0.06)", border: "1px solid rgba(0,0,0,0.1)" }}>
-                          {t.category}
-                        </span>
-                      )}
-                      <span style={{ fontSize: 11, fontWeight: 900, padding: "2px 8px", borderRadius: 999, background: "rgba(0,0,0,0.04)", border: "1px solid rgba(0,0,0,0.08)", opacity: 0.7 }}>
-                        {t.language ?? "es"}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
-                    <button style={styles.btnWhite} onClick={() => router.push(`/superadmin/templates/${t.id}`)}>
-                      Editar
-                    </button>
-
-                    <button style={styles.btnWhite} onClick={() => router.push(`/superadmin/templates/${t.id}/import`)}>
-                      Importar
-                    </button>
-
-                    <input
-                      type="number"
-                      value={Number(t.position ?? 0)}
-                      onChange={(e) => setPosition(t.id, Number(e.target.value || 0))}
-                      style={{ ...styles.input, width: 120 }}
-                    />
-
-                    <button style={styles.btnWhite} disabled={saving} onClick={() => removeTemplate(t.id)}>
-                      Quitar
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        <div style={styles.card}>
-          <div style={{ fontSize: 18, fontWeight: 950, marginBottom: 10 }}>Plantillas globales disponibles</div>
-
+          <div style={{ fontSize: 18, fontWeight: 950, marginBottom: 4 }}>Plantillas en el Pack</div>
           <div style={{ opacity: 0.75, fontSize: 13, marginBottom: 10 }}>
-            Cada plantilla pertenece a un solo pack: en cuanto la añades aquí, deja de estar
-            disponible para otros packs. Si necesitas reutilizar una ya existente en otro pack,
-            usa &ldquo;Importar de otro pack&rdquo; — crea una copia independiente en este pack.
+            Cada plantilla pertenece a un solo pack. Créala directamente aquí, o si ya existe en
+            otro pack, usa &ldquo;Importar de otro pack&rdquo; para traer una copia independiente.
           </div>
 
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 10 }}>
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 14 }}>
             <button style={styles.btnDark} disabled={saving} onClick={createGlobalTemplateAndOpenEditor}>
-              + Crear plantilla global
+              + Crear plantilla
             </button>
             <button
               style={styles.btnWhite}
@@ -684,7 +572,7 @@ export default function PackDetailPage() {
           </div>
 
           {importOpen ? (
-            <div style={{ ...styles.row, flexDirection: "column", alignItems: "stretch", marginBottom: 10 }}>
+            <div style={{ ...styles.row, flexDirection: "column", alignItems: "stretch", marginBottom: 14 }}>
               <div style={styles.label}>Pack de origen</div>
               <select
                 value={importSourcePackId}
@@ -734,51 +622,11 @@ export default function PackDetailPage() {
             </div>
           ) : null}
 
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 10 }}>
-            <input
-              style={{ ...styles.input, flex: 1, minWidth: 160 }}
-              placeholder="Buscar por nombre…"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
-            <select
-              value={filterLanguage}
-              onChange={(e) => setFilterLanguage(e.target.value)}
-              style={{ ...styles.input, width: 140 }}
-            >
-              <option value="">Todos los idiomas</option>
-              <option value="es">🇪🇸 Español</option>
-              <option value="en">🇬🇧 English</option>
-              <option value="fr">🇫🇷 Français</option>
-              <option value="de">🇩🇪 Deutsch</option>
-              <option value="it">🇮🇹 Italiano</option>
-              <option value="pt">🇵🇹 Português</option>
-              <option value="zh">🇨🇳 中文</option>
-              <option value="ar">🇸🇦 العربية</option>
-            </select>
-            <select
-              value={filterCategory}
-              onChange={(e) => setFilterCategory(e.target.value)}
-              style={{ ...styles.input, width: 180 }}
-            >
-              <option value="">Elige una categoría…</option>
-              {availableCategories.map((c) => (
-                <option key={c} value={c}>
-                  {c}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {templatesNotInPack.length === 0 ? (
-            <div style={{ opacity: 0.75 }}>
-              {isTemplateListFiltered
-                ? "No hay más plantillas globales para añadir con ese filtro."
-                : "No hay más plantillas globales para añadir."}
-            </div>
+          {templatesInPack.length === 0 ? (
+            <div style={{ opacity: 0.75 }}>Este pack no tiene plantillas aún.</div>
           ) : (
             <div style={{ display: "grid", gap: 10 }}>
-              {templatesNotInPack.map((t) => (
+              {templatesInPack.map((t: any) => (
                 <div key={t.id} style={styles.row}>
                   <div style={{ minWidth: 240 }}>
                     <div style={{ fontWeight: 950 }}>{t.name}</div>
@@ -803,21 +651,21 @@ export default function PackDetailPage() {
                       Importar
                     </button>
 
-                    <button style={styles.btnDark} disabled={saving} onClick={() => addTemplate(t.id)}>
-                      Añadir
+                    <input
+                      type="number"
+                      value={Number(t.position ?? 0)}
+                      onChange={(e) => setPosition(t.id, Number(e.target.value || 0))}
+                      style={{ ...styles.input, width: 120 }}
+                    />
+
+                    <button style={styles.btnWhite} disabled={saving} onClick={() => removeTemplate(t.id)}>
+                      Quitar
                     </button>
                   </div>
                 </div>
               ))}
             </div>
           )}
-
-          {!isTemplateListFiltered && templatesNotInPackFiltered.length > DEFAULT_TEMPLATE_LIST_LIMIT ? (
-            <div style={{ marginTop: 10, opacity: 0.7, fontSize: 12 }}>
-              Mostrando {DEFAULT_TEMPLATE_LIST_LIMIT} de {templatesNotInPackFiltered.length} — busca por
-              nombre o categoría para ver el resto.
-            </div>
-          ) : null}
         </div>
       </div>
 
