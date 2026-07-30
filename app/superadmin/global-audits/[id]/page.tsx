@@ -667,7 +667,7 @@ export default function PackDetailPage() {
           <div style={{ opacity: 0.75, fontSize: 13, marginBottom: 10 }}>
             Cada plantilla pertenece a un solo pack: en cuanto la añades aquí, deja de estar
             disponible para otros packs. Si necesitas reutilizar una ya existente en otro pack,
-            usa "Importar de otro pack" — crea una copia independiente en este pack.
+            usa &ldquo;Importar de otro pack&rdquo; — crea una copia independiente en este pack.
           </div>
 
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 10 }}>
