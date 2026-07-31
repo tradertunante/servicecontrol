@@ -16,6 +16,8 @@ type ImportRow = {
   standardEn: string | null;
   tag: string | null;
   classification: string;
+  certificationIds: string[];
+  order: number | null;
 };
 
 function cleanCell(value: unknown) {
@@ -54,9 +56,16 @@ export async function POST(request: NextRequest, props: { params: Promise<{ temp
     const standardEn = cleanCell((rawRow as Record<string, unknown>)?.standardEn) || null;
     const classification = cleanCell((rawRow as Record<string, unknown>)?.classification);
     const tag = cleanCell((rawRow as Record<string, unknown>)?.tag) || null;
+    const certificationIdsRaw = (rawRow as Record<string, unknown>)?.certificationIds;
+    const certificationIds = Array.isArray(certificationIdsRaw)
+      ? Array.from(new Set(certificationIdsRaw.map((id) => cleanCell(id)).filter(Boolean)))
+      : [];
+    const orderRaw = (rawRow as Record<string, unknown>)?.order;
+    const orderNum = typeof orderRaw === "number" ? orderRaw : Number(cleanCell(orderRaw));
+    const order = Number.isFinite(orderNum) && orderRaw !== null && orderRaw !== undefined && cleanCell(orderRaw) !== "" ? orderNum : null;
 
     if (!standard || !classification) continue;
-    rows.push({ standard, standardEn, tag, classification });
+    rows.push({ standard, standardEn, tag, classification, certificationIds, order });
   }
 
   if (rows.length === 0) {
@@ -64,6 +73,19 @@ export async function POST(request: NextRequest, props: { params: Promise<{ temp
   }
 
   const admin = supabaseAdmin();
+
+  const allCertificationIds = Array.from(new Set(rows.flatMap((row) => row.certificationIds)));
+  let validCertificationIds = new Set<string>();
+  if (allCertificationIds.length) {
+    const { data: certRows, error: certError } = await admin
+      .from("certification_standards")
+      .select("id")
+      .in("id", allCertificationIds)
+      .eq("active", true);
+
+    if (certError) return jsonDbError(certError);
+    validCertificationIds = new Set((certRows ?? []).map((c) => String(c.id)));
+  }
   const { data: existingSections, error: sectionsError } = await admin
     .from("audit_sections")
     .select("id, name")
@@ -117,16 +139,19 @@ export async function POST(request: NextRequest, props: { params: Promise<{ temp
       throw new Error(`No se pudo resolver la seccion para "${row.classification}".`);
     }
 
-    const currentOrder = orderCounters.get(section.id) ?? 0;
-    const nextOrder = currentOrder + 1;
-    orderCounters.set(section.id, nextOrder);
+    let order = row.order;
+    if (order === null) {
+      const currentOrder = orderCounters.get(section.id) ?? 0;
+      order = currentOrder + 1;
+    }
+    orderCounters.set(section.id, Math.max(orderCounters.get(section.id) ?? 0, order));
 
     return {
       audit_section_id: section.id,
       text: row.standard,
       text_en: row.standardEn,
       tag: row.tag,
-      order: nextOrder,
+      order,
       active: true,
       comment_requirement: "optional",
       photo_requirement: "optional",
@@ -134,12 +159,30 @@ export async function POST(request: NextRequest, props: { params: Promise<{ temp
     };
   });
 
-  const { error: insertQuestionsError } = await admin
+  const { data: insertedQuestions, error: insertQuestionsError } = await admin
     .from("audit_questions")
-    .insert(inserts);
+    .insert(inserts)
+    .select("id");
 
   if (insertQuestionsError) {
     return jsonDbError(insertQuestionsError);
+  }
+
+  const certificationLinks = (insertedQuestions ?? []).flatMap((question, index) => {
+    const row = rows[index];
+    const certificationIds = (row?.certificationIds ?? []).filter((id) => validCertificationIds.has(id));
+    return certificationIds.map((certificationId) => ({
+      question_id: question.id,
+      certification_standard_id: certificationId,
+    }));
+  });
+
+  if (certificationLinks.length) {
+    const { error: insertCertLinksError } = await admin
+      .from("audit_question_certifications")
+      .insert(certificationLinks);
+
+    if (insertCertLinksError) return jsonDbError(insertCertLinksError);
   }
 
   try {
@@ -152,6 +195,7 @@ export async function POST(request: NextRequest, props: { params: Promise<{ temp
     template_id: template.templateId,
     sections_count: sectionMap.size,
     imported_questions: inserts.length,
+    imported_certification_links: certificationLinks.length,
     imported_by: caller.profile.id,
   });
 }
