@@ -26,6 +26,13 @@ async function checkSupabase(): Promise<{ ok: boolean; latency_ms: number }> {
   }
 }
 
+function rateLimiterMode(): "distributed" | "in-memory" {
+  const hasUpstash = Boolean(
+    process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN,
+  );
+  return hasUpstash ? "distributed" : "in-memory";
+}
+
 export async function GET() {
   const supabase = await checkSupabase();
   const healthy = supabase.ok;
@@ -37,6 +44,9 @@ export async function GET() {
       commit: process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 7) ?? "local",
       checks: {
         supabase: { ok: supabase.ok, latency_ms: supabase.latency_ms },
+        // "in-memory" en producción multi-instancia significa que el rate
+        // limit no es efectivo entre instancias — ver lib/api/rateLimitDistributed.ts
+        rate_limiter: { mode: rateLimiterMode() },
       },
     },
     {

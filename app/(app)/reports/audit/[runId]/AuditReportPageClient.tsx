@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { CSSProperties } from "react";
 import { useRouter } from "next/navigation";
 import type { AuditReportData } from "@/lib/reports/auditReportTypes";
@@ -151,6 +151,23 @@ function pct(value: number): string {
   return `${value.toFixed(1)}%`;
 }
 
+type CertificationBreakdown = {
+  certification_standard_id: string;
+  name: string;
+  total_questions: number;
+  na_count: number;
+  fail_count: number;
+  pass_count: number;
+  score: number | null;
+};
+
+function scoreTone(score: number | null): "good" | "warning" | "critical" {
+  if (score === null) return "warning";
+  if (score >= SUCCESS_SCORE_MIN) return "good";
+  if (score >= WARNING_SCORE_MIN) return "warning";
+  return "critical";
+}
+
 export default function AuditReportPageClient({
   report,
 }: {
@@ -162,6 +179,31 @@ export default function AuditReportPageClient({
   const [trainingDate, setTrainingDate] = useState("");
   const [employeeName, setEmployeeName] = useState("");
   const [trainerName, setTrainerName] = useState("");
+
+  // Desglose por certificado (Forbes/LHW/Meliá...) — solo aparece si la
+  // plantilla tiene preguntas etiquetadas; si la migración no está
+  // desplegada o no hay certificados, la sección se oculta sola.
+  const [certifications, setCertifications] = useState<CertificationBreakdown[] | null>(null);
+
+  useEffect(() => {
+    const runId = report?.run?.id;
+    if (!runId) return;
+    let alive = true;
+
+    fetch(`/api/audits/${runId}/certifications`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((json) => {
+        if (!alive) return;
+        setCertifications(Array.isArray(json?.data) ? json.data : []);
+      })
+      .catch(() => {
+        if (alive) setCertifications([]);
+      });
+
+    return () => {
+      alive = false;
+    };
+  }, [report?.run?.id]);
 
   const failedItems = useMemo(() => {
     return (report?.sections ?? []).flatMap((section) =>
@@ -665,6 +707,40 @@ export default function AuditReportPageClient({
               </div>
             </div>
           </section>
+
+          {certifications && certifications.length > 0 ? (
+            <section className="report-break-avoid report-mt-24" style={{ marginTop: 24 }}>
+              <div style={{ fontSize: 13, fontWeight: 900, opacity: 0.6, marginBottom: 10 }}>
+                Cumplimiento por certificado
+              </div>
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+                  gap: 12,
+                }}
+              >
+                {certifications.map((cert) => {
+                  const tone = scoreTone(cert.score);
+                  const label = cert.score === null ? "N/A" : pct(cert.score);
+                  return (
+                    <div
+                      key={cert.certification_standard_id}
+                      className="report-card"
+                      style={{ ...sectionCardStyle(), ...summaryToneStyle(tone) }}
+                    >
+                      <div style={{ fontSize: 13, fontWeight: 900 }}>{cert.name}</div>
+                      <div style={{ fontSize: 28, fontWeight: 900, marginTop: 6 }}>{label}</div>
+                      <div style={{ fontSize: 12, opacity: 0.75, marginTop: 4 }}>
+                        {cert.pass_count} OK · {cert.fail_count} FAIL · {cert.na_count} NA de{" "}
+                        {cert.total_questions}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </section>
+          ) : null}
 
           <section className="report-break-avoid report-mt-24" style={{ marginTop: 24 }}>
             <div
