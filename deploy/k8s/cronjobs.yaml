@@ -87,3 +87,32 @@ spec:
                     secretKeyRef:
                       name: servicecontrol-env
                       key: CRON_SECRET
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: sc-corrective-actions-overdue
+spec:
+  schedule: "0 8 * * 1"
+  concurrencyPolicy: Forbid
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      template:
+        spec:
+          restartPolicy: Never
+          containers:
+            - name: curl
+              image: curlimages/curl:8.10.1
+              command: ["/bin/sh", "-c"]
+              args:
+                - >
+                  curl -fsS --max-time 300
+                  -H "Authorization: Bearer ${CRON_SECRET}"
+                  http://servicecontrol/api/corrective-actions/check-overdue
+              env:
+                - name: CRON_SECRET
+                  valueFrom:
+                    secretKeyRef:
+                      name: servicecontrol-env
+                      key: CRON_SECRET

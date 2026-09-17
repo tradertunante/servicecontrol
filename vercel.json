@@ -11,6 +11,10 @@
     {
       "path": "/api/trainings/generate-suggestions",
       "schedule": "0 9 * * 1"
+    },
+    {
+      "path": "/api/corrective-actions/check-overdue",
+      "schedule": "0 8 * * 1"
     }
   ]
 }

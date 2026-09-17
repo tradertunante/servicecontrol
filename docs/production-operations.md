@@ -189,13 +189,13 @@ supabase/postgres, fuera de alcance) y el rate limiting seguiría en Upstash.
 
 Setup único (verificar/activar una vez):
 
-- [ ] GitHub: branch protection en `main` con check `CI` requerido
+- [x] GitHub: branch protection en `main` con checks `quality`+`Build` requeridos (2026-09-17)
 - [ ] GitHub: environment `production` con required reviewers + secrets de Supabase
 - [ ] GitHub: secrets de repo para CI e integration tests
 - [ ] Vercel: todas las env vars de `.env.example` en Production (y las públicas también en Preview)
 - [ ] Vercel: `SENTRY_AUTH_TOKEN` para sourcemaps; `SALES_NOTIFICATION_EMAIL` (pendiente de la revisión 2026-07-04)
 - [ ] Vercel: Skew Protection + Deployment Protection activados
-- [ ] Vercel: verificar ejecución real de los 3 crons (logs del lunes 08:00)
+- [ ] Vercel: verificar ejecución real de los 4 crons (logs del lunes 08:00-09:00)
 - [ ] Supabase: PITR activado; alertas de recursos con destinatario correcto
 - [ ] Stripe: webhook apuntando al dominio de producción, en modo live, con `STRIPE_WEBHOOK_SECRET` live
 - [ ] Better Stack: monitor de uptime sobre `https://<dominio>/api/health`
