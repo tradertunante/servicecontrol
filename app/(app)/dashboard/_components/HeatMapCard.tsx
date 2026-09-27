@@ -195,6 +195,7 @@ export default function HeatMapCard({
           .controls { justify-content: flex-start; }
           .card { padding: 10px 6px !important; }
           .heatWrap { margin-left: -6px; margin-right: -6px; width: calc(100% + 12px); }
+          .sectionTitle { font-size: 17px; line-height: 1.25; margin-bottom: 6px; }
         }
       `}</style>
     </div>
