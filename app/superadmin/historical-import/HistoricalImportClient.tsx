@@ -465,7 +465,7 @@ export default function HistoricalImportClient({
       {result ? (
         <div style={cardStyle()}>
           <div style={{ fontSize: 18, fontWeight: 800 }}>
-            Resultado: {result.imported_count} importadas, {result.failed_count} fallidas
+            Resultado: {result.imported_count} importadas, {result.skipped_count} duplicadas (omitidas), {result.failed_count} fallidas
           </div>
           <div style={{ color: "#4b5563" }}>
             Total de filas procesadas: {result.total_rows}
@@ -484,7 +484,13 @@ export default function HistoricalImportClient({
                 {result.row_results.map((row) => (
                   <tr key={`${row.row_number}-${row.run_id ?? row.message}`} style={{ borderTop: "1px solid #e5e7eb" }}>
                     <td style={{ padding: 10 }}>{row.row_number}</td>
-                    <td style={{ padding: 10 }}>{row.success ? "Importada" : "Error"}</td>
+                    <td style={{ padding: 10 }}>
+                      {row.status === "created"
+                        ? "Importada"
+                        : row.status === "skipped_duplicate"
+                          ? "Duplicada (omitida)"
+                          : "Error"}
+                    </td>
                     <td style={{ padding: 10 }}>{row.run_id || "—"}</td>
                     <td style={{ padding: 10 }}>{row.message}</td>
                   </tr>

@@ -44,7 +44,7 @@ export type HistoricalImportWorkbookQuestion = {
 export type HistoricalImportRowResult = {
   row_number: number;
   success: boolean;
-  status: "created" | "error";
+  status: "created" | "skipped_duplicate" | "error";
   message: string;
   run_id: string | null;
 };
@@ -52,6 +52,7 @@ export type HistoricalImportRowResult = {
 export type HistoricalImportResult = {
   total_rows: number;
   imported_count: number;
+  skipped_count: number;
   failed_count: number;
   failures: Array<HistoricalImportRowResult & { success: false; status: "error" }>;
   row_results: HistoricalImportRowResult[];

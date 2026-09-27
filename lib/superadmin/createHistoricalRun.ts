@@ -79,6 +79,8 @@ export async function createHistoricalRun({
       notes: historicalNotes,
       audit_channel: "internal",
       origin_type: "historical_import",
+      auditor_email: auditor_email?.trim() || null,
+      employee_number: employee_number?.trim() || null,
     })
     .select()
     .single();
