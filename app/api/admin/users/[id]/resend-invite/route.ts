@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { authorizeRouteRequest } from "@/lib/auth/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import {
+  buildRecoveryActivationLink,
   canManageExistingUser,
   loadManagedUser,
   resolveManagedHotelId,
@@ -41,7 +42,7 @@ export async function POST(request: NextRequest, props: { params: Promise<{ id: 
     });
     if (linkError) return jsonDbError(linkError);
 
-    const activationUrl = linkData?.properties?.action_link ?? null;
+    const activationUrl = buildRecoveryActivationLink(linkData, appUrl);
 
     const { data: hotel } = await admin
       .from("hotels")
