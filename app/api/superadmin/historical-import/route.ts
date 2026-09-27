@@ -228,7 +228,7 @@ export async function POST(request: NextRequest) {
   const rowResults: Array<{
     row_number: number;
     success: boolean;
-    status: "created" | "error";
+    status: "created" | "skipped_duplicate" | "error";
     message: string;
     run_id: string | null;
   }> = [];
@@ -313,7 +313,41 @@ export async function POST(request: NextRequest) {
     });
   }
 
+  const { data: existingRuns, error: existingRunsError } = await supabaseAdmin()
+    .from("audit_runs")
+    .select("id, executed_at, auditor_email, notes")
+    .eq("hotel_id", hotel.hotel.id)
+    .eq("audit_template_id", template.template.id)
+    .eq("origin_type", "historical_import");
+
+  if (existingRunsError) return jsonDbError(existingRunsError);
+
+  const importedKeys = new Set<string>();
+  for (const existingRun of existingRuns ?? []) {
+    const executedAtMs = new Date(String(existingRun.executed_at ?? "")).getTime();
+    if (Number.isNaN(executedAtMs)) continue;
+
+    const notesMatch = /Historical auditor email:\s*(.+)/i.exec(String(existingRun.notes ?? ""));
+    const auditorEmail = cleanCell(existingRun.auditor_email ?? notesMatch?.[1] ?? "").toLowerCase();
+    if (!auditorEmail) continue;
+
+    importedKeys.add(`${executedAtMs}|${auditorEmail}`);
+  }
+
   for (const row of validatedRows) {
+    const rowKey = `${new Date(row.executed_at).getTime()}|${row.auditor_email.toLowerCase()}`;
+
+    if (importedKeys.has(rowKey)) {
+      rowResults.push({
+        row_number: row.row_number,
+        success: true,
+        status: "skipped_duplicate",
+        message: "Ya existía una auditoría histórica con este auditor y fecha para este hotel/template; se omitió para evitar duplicados.",
+        run_id: null,
+      });
+      continue;
+    }
+
     try {
       await logger.info("historical_import_row", {
         executed_at: row.executed_at,
@@ -340,6 +374,7 @@ export async function POST(request: NextRequest) {
         answers: row.answers_by_code,
       });
 
+      importedKeys.add(rowKey);
       rowResults.push({ row_number: row.row_number, success: true, status: "created", message: "Auditoría histórica importada.", run_id: String(created.id) });
     } catch (err) {
       rowResults.push({
@@ -354,7 +389,8 @@ export async function POST(request: NextRequest) {
   }
 
   const failures = rowResults.filter((row) => row.success === false);
-  const importedCount = rowResults.filter((row) => row.success).length;
+  const importedCount = rowResults.filter((row) => row.status === "created").length;
+  const skippedCount = rowResults.filter((row) => row.status === "skipped_duplicate").length;
 
   return NextResponse.json({
     ok: true,
@@ -362,6 +398,7 @@ export async function POST(request: NextRequest) {
     template_id: template.template.id,
     total_rows: dataRows.length,
     imported_count: importedCount,
+    skipped_count: skippedCount,
     failed_count: failures.length,
     failures,
     row_results: rowResults,

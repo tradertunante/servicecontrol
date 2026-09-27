@@ -626,7 +626,8 @@ export async function createHistoricalImport(formData: FormData): Promise<Histor
 
   return {
     total_rows: dataRows.length,
-    imported_count: rowResults.filter((row) => row.success).length,
+    imported_count: rowResults.filter((row) => row.status === "created").length,
+    skipped_count: rowResults.filter((row) => row.status === "skipped_duplicate").length,
     failed_count: failures.length,
     failures,
     row_results: rowResults,
