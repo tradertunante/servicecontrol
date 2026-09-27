@@ -355,6 +355,8 @@
       "year": "Year",
       "noData": "Not enough data.",
       "trend3m": "3-month trend:",
+      "trendSelectAll": "All",
+      "trendSelectNone": "None",
       "score": "Score",
       "auditsRegistered": "{count} audits recorded",
       "topBest": "Top 3 best-performing departments ({year})",

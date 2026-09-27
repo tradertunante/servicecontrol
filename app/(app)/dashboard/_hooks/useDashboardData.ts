@@ -35,22 +35,22 @@ export function useDashboardData({
   } = useDashboardFetch({ profile, activeHotelId, setActiveHotelId, heatMode, selectedYear, hasPackIt, hasPackEngineering });
 
   const {
+    heatMapData, heatMapDataInternal, heatMapDataQuality, monthLabels,
+    internalRuns, internalRunsByArea, templateById,
+  } = useDashboardHeatMap({ areas, templates, runs, heatMode, selectedYear });
+
+  const {
     monthScore, quarterScore, yearScore,
     prevMonthScore, prevQuarterScore, prevYearScore,
     availableYears,
-  } = useDashboardScores(runs);
-
-  const {
-    heatMapData, heatMapDataInternal, heatMapDataQuality, monthLabels,
-    runsByArea, templateById,
-  } = useDashboardHeatMap({ areas, templates, runs, heatMode, selectedYear });
+  } = useDashboardScores(internalRuns);
 
   const { top3Areas, worst3Areas, worst3Audits } = useDashboardRankings({
-    areas, runs, runsByArea, templateById, selectedYear,
+    areas, runs: internalRuns, runsByArea: internalRunsByArea, templateById, selectedYear,
   });
 
   return {
-    loading, error, hotels, areas, runs,
+    loading, error, hotels, areas, runs, internalRuns,
     monthScore, quarterScore, yearScore,
     prevMonthScore, prevQuarterScore, prevYearScore,
     heatMapData, heatMapDataInternal, heatMapDataQuality,

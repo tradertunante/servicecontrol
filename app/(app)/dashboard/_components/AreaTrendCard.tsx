@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
+import type { HeatMode } from "../_lib/dashboardUtils";
 
 const MONTH_LABELS_EN = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const MONTH_LABELS_ES = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
@@ -20,35 +21,53 @@ function clamp(n: number, min: number, max: number) {
   return Math.max(min, Math.min(max, n));
 }
 
-export default function AreaTrendCard({ runs, areas }: { runs: AuditRun[]; areas: Area[] }) {
+export default function AreaTrendCard({
+  runs,
+  areas,
+  heatMode,
+  selectedYear,
+}: {
+  runs: AuditRun[];
+  areas: Area[];
+  heatMode: HeatMode;
+  selectedYear: number;
+}) {
   const locale = useLocale();
   const t = useTranslations("app.dashboard");
   const MONTH_LABELS = locale === "es" ? MONTH_LABELS_ES : MONTH_LABELS_EN;
 
-  const [months] = useState(6);
   const [hover, setHover] = useState<{ x: number; y: number; score: number; area: string } | null>(null);
+  const [hiddenAreaIds, setHiddenAreaIds] = useState<Set<string>>(new Set());
 
-  const series = useMemo(() => {
-    const now = new Date();
-    const cutoff = new Date(now.getFullYear(), now.getMonth() - months + 1, 1);
+  const monthKeys = useMemo(() => {
+    const keys: string[] = [];
+    if (heatMode === "YEAR") {
+      for (let m = 0; m < 12; m++) {
+        keys.push(`${selectedYear}-${String(m + 1).padStart(2, "0")}`);
+      }
+    } else {
+      const now = new Date();
+      for (let i = 11; i >= 0; i--) {
+        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        keys.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`);
+      }
+    }
+    return keys;
+  }, [heatMode, selectedYear]);
+
+  const allSeries = useMemo(() => {
+    const monthKeySet = new Set(monthKeys);
     const grouped = new Map<string, Map<string, number[]>>();
 
     for (const run of runs) {
       if (!run.area_id || run.score == null || !run.executed_at) continue;
       const d = new Date(run.executed_at);
-      if (d < cutoff) continue;
       const monthKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+      if (!monthKeySet.has(monthKey)) continue;
       if (!grouped.has(run.area_id)) grouped.set(run.area_id, new Map());
       const areaMap = grouped.get(run.area_id)!;
       if (!areaMap.has(monthKey)) areaMap.set(monthKey, []);
       areaMap.get(monthKey)!.push(run.score);
-    }
-
-    const monthKeys: string[] = [];
-    for (let i = 0; i < months; i++) {
-      const d = new Date(now.getFullYear(), now.getMonth() - months + 1 + i, 1);
-      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-      monthKeys.push(key);
     }
 
     const areaNameById = new Map(areas.map((a) => [a.id, a.name]));
@@ -74,9 +93,23 @@ export default function AreaTrendCard({ runs, areas }: { runs: AuditRun[]; areas
 
     result.sort((a, b) => a.areaName.localeCompare(b.areaName));
     return result;
-  }, [runs, areas, months, MONTH_LABELS]);
+  }, [runs, areas, monthKeys, MONTH_LABELS]);
 
-  if (series.length === 0) {
+  const series = useMemo(
+    () => allSeries.filter((s) => !hiddenAreaIds.has(s.areaId)),
+    [allSeries, hiddenAreaIds]
+  );
+
+  const toggleArea = (areaId: string) => {
+    setHiddenAreaIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(areaId)) next.delete(areaId);
+      else next.add(areaId);
+      return next;
+    });
+  };
+
+  if (allSeries.length === 0) {
     return (
       <div className="rounded-2xl border bg-white p-5">
         <h3 className="text-sm font-extrabold text-gray-900">{t("trend")}</h3>
@@ -104,8 +137,9 @@ export default function AreaTrendCard({ runs, areas }: { runs: AuditRun[]; areas
   };
 
   const allScores = series.flatMap((s) => s.points.map((p) => p.score));
-  const dataMin = Math.min(...allScores);
-  const dataMax = Math.max(...allScores);
+  const hasScores = allScores.length > 0;
+  const dataMin = hasScores ? Math.min(...allScores) : 0;
+  const dataMax = hasScores ? Math.max(...allScores) : 100;
   const yMin = Math.max(0, Math.floor((dataMin - 5) / 10) * 10);
   const yMax = Math.min(100, Math.ceil((dataMax + 5) / 10) * 10);
   const yRange = yMax - yMin < 20 ? 20 : yMax - yMin;
@@ -113,8 +147,8 @@ export default function AreaTrendCard({ runs, areas }: { runs: AuditRun[]; areas
   const yTop = yMin + yRange;
 
   const yFor = (score: number) => {
-    const t = (clamp(score, yBottom, yTop) - yBottom) / yRange;
-    return padT + (1 - t) * innerH;
+    const tt = (clamp(score, yBottom, yTop) - yBottom) / yRange;
+    return padT + (1 - tt) * innerH;
   };
 
   const gridStep = yRange <= 20 ? 5 : 10;
@@ -125,59 +159,92 @@ export default function AreaTrendCard({ runs, areas }: { runs: AuditRun[]; areas
     <div className="rounded-2xl border bg-white p-5" data-onboarding="area-trend">
       <h3 className="text-sm font-extrabold text-gray-900 mb-3">{t("trend")}</h3>
 
-      <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-auto">
-        {gridLines.map((v) => (
-          <g key={v}>
-            <line x1={padL} y1={yFor(v)} x2={width - padR} y2={yFor(v)} stroke="rgba(0,0,0,0.06)" strokeWidth="1" />
-            <text x={padL - 8} y={yFor(v) + 4} textAnchor="end" fontSize="14" fontWeight="700" fill="rgba(0,0,0,0.35)">{v}%</text>
-          </g>
-        ))}
-        {allMonths.map((mk, i) => (
-          <text key={mk} x={xFor(mk)} y={height - 8} textAnchor="middle" fontSize="14" fontWeight="700" fill="rgba(0,0,0,0.45)">
-            {monthLabels[i]}
-          </text>
-        ))}
-        {series.map((s, si) => {
-          const color = COLORS[si % COLORS.length];
-          const coords = s.points.map((p) => ({ x: xFor(p.month), y: yFor(p.score), score: p.score }));
-          const lineD = coords.length <= 1 ? "" :
-            `M ${coords[0].x.toFixed(1)} ${coords[0].y.toFixed(1)} ` +
-            coords.slice(1).map((c) => `L ${c.x.toFixed(1)} ${c.y.toFixed(1)}`).join(" ");
-
-          return (
-            <g key={s.areaId}>
-              {coords.length > 1 && <path d={lineD} fill="none" stroke={color} strokeWidth="3" strokeLinejoin="round" opacity={0.85} />}
-              {coords.map((c, ci) => (
-                <g key={ci} onMouseEnter={() => setHover({ x: c.x, y: c.y, score: c.score, area: s.areaName })} onMouseLeave={() => setHover(null)} style={{ cursor: "pointer" }}>
-                  <circle cx={c.x} cy={c.y} r={14} fill="transparent" />
-                  <circle cx={c.x} cy={c.y} r={5} fill="white" stroke={color} strokeWidth="2.5" />
-                </g>
-              ))}
+      {series.length === 0 ? (
+        <p className="text-xs text-gray-400">{t("trendInsufficient")}</p>
+      ) : (
+        <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-auto">
+          {gridLines.map((v) => (
+            <g key={v}>
+              <line x1={padL} y1={yFor(v)} x2={width - padR} y2={yFor(v)} stroke="rgba(0,0,0,0.06)" strokeWidth="1" />
+              <text x={padL - 8} y={yFor(v) + 4} textAnchor="end" fontSize="14" fontWeight="700" fill="rgba(0,0,0,0.35)">{v}%</text>
             </g>
+          ))}
+          {allMonths.map((mk, i) => (
+            <text key={mk} x={xFor(mk)} y={height - 8} textAnchor="middle" fontSize="14" fontWeight="700" fill="rgba(0,0,0,0.45)">
+              {monthLabels[i]}
+            </text>
+          ))}
+          {series.map((s) => {
+            const colorIdx = allSeries.findIndex((a) => a.areaId === s.areaId);
+            const color = COLORS[colorIdx % COLORS.length];
+            const coords = s.points.map((p) => ({ x: xFor(p.month), y: yFor(p.score), score: p.score }));
+            const lineD = coords.length <= 1 ? "" :
+              `M ${coords[0].x.toFixed(1)} ${coords[0].y.toFixed(1)} ` +
+              coords.slice(1).map((c) => `L ${c.x.toFixed(1)} ${c.y.toFixed(1)}`).join(" ");
+
+            return (
+              <g key={s.areaId}>
+                {coords.length > 1 && <path d={lineD} fill="none" stroke={color} strokeWidth="3" strokeLinejoin="round" opacity={0.85} />}
+                {coords.map((c, ci) => (
+                  <g key={ci} onMouseEnter={() => setHover({ x: c.x, y: c.y, score: c.score, area: s.areaName })} onMouseLeave={() => setHover(null)} style={{ cursor: "pointer" }}>
+                    <circle cx={c.x} cy={c.y} r={14} fill="transparent" />
+                    <circle cx={c.x} cy={c.y} r={5} fill="white" stroke={color} strokeWidth="2.5" />
+                  </g>
+                ))}
+              </g>
+            );
+          })}
+          {hover && (() => {
+            const label = `${hover.score}% ${hover.area}`;
+            const tw = label.length * 8.5 + 20;
+            const th = 30;
+            const tx = hover.x + tw / 2 > width - padR ? hover.x - tw / 2 : hover.x - tw / 2 < padL ? padL : hover.x - tw / 2;
+            const ty = hover.y - th - 10;
+            return (
+              <g style={{ pointerEvents: "none" }}>
+                <rect x={tx} y={ty} width={tw} height={th} rx={8} fill="#0f172a" opacity={0.92} />
+                <text x={tx + tw / 2} y={ty + th / 2 + 5} textAnchor="middle" fontSize="13" fontWeight="800" fill="white">{label}</text>
+              </g>
+            );
+          })()}
+        </svg>
+      )}
+
+      <div className="flex flex-wrap items-center gap-3 mt-3">
+        {allSeries.map((s, si) => {
+          const active = !hiddenAreaIds.has(s.areaId);
+          return (
+            <button
+              key={s.areaId}
+              type="button"
+              onClick={() => toggleArea(s.areaId)}
+              className="flex items-center gap-1.5 rounded-full border px-2 py-1 transition-opacity"
+              style={{
+                borderColor: active ? "transparent" : "var(--input-border, rgba(0,0,0,0.12))",
+                opacity: active ? 1 : 0.4,
+                background: "transparent",
+                cursor: "pointer",
+              }}
+            >
+              <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: COLORS[si % COLORS.length] }} />
+              <span className="text-xs font-semibold text-gray-600">{s.areaName}</span>
+            </button>
           );
         })}
-        {hover && (() => {
-          const label = `${hover.score}% ${hover.area}`;
-          const tw = label.length * 8.5 + 20;
-          const th = 30;
-          const tx = hover.x + tw / 2 > width - padR ? hover.x - tw / 2 : hover.x - tw / 2 < padL ? padL : hover.x - tw / 2;
-          const ty = hover.y - th - 10;
-          return (
-            <g style={{ pointerEvents: "none" }}>
-              <rect x={tx} y={ty} width={tw} height={th} rx={8} fill="#0f172a" opacity={0.92} />
-              <text x={tx + tw / 2} y={ty + th / 2 + 5} textAnchor="middle" fontSize="13" fontWeight="800" fill="white">{label}</text>
-            </g>
-          );
-        })()}
-      </svg>
-
-      <div className="flex flex-wrap gap-3 mt-3">
-        {series.map((s, si) => (
-          <div key={s.areaId} className="flex items-center gap-1.5">
-            <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: COLORS[si % COLORS.length] }} />
-            <span className="text-xs font-semibold text-gray-600">{s.areaName}</span>
-          </div>
-        ))}
+        {allSeries.length > 1 && (
+          <span className="flex items-center gap-2 ml-1">
+            <button type="button" className="text-xs font-semibold text-gray-400 underline" onClick={() => setHiddenAreaIds(new Set())}>
+              {t("trendSelectAll")}
+            </button>
+            <button
+              type="button"
+              className="text-xs font-semibold text-gray-400 underline"
+              onClick={() => setHiddenAreaIds(new Set(allSeries.map((s) => s.areaId)))}
+            >
+              {t("trendSelectNone")}
+            </button>
+          </span>
+        )}
       </div>
     </div>
   );
