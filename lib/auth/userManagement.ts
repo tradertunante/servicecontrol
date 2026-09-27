@@ -38,6 +38,25 @@ export function resolveManagedHotelId(profile: Profile) {
   return resolveRouteHotelScope(profile, null);
 }
 
+// Supabase's admin.generateLink() sometimes returns an `action_link` whose
+// `redirect_to` param is truncated to the site's root, dropping the path we
+// asked for. Rebuilding the verify URL from `hashed_token` sidesteps that and
+// guarantees the link lands on `${appUrl}/reset-password`.
+export function buildRecoveryActivationLink(
+  linkData:
+    | { properties?: { hashed_token?: string | null; action_link?: string | null } | null }
+    | null
+    | undefined,
+  appUrl: string
+): string | null {
+  const hashedToken = linkData?.properties?.hashed_token;
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  if (!hashedToken || !supabaseUrl) return linkData?.properties?.action_link ?? null;
+
+  const redirectTo = encodeURIComponent(`${appUrl}/reset-password`);
+  return `${supabaseUrl}/auth/v1/verify?token=${hashedToken}&type=recovery&redirect_to=${redirectTo}`;
+}
+
 export function assertRoleAssignable(actorRole: Role, requestedRole: unknown) {
   const rawRole = String(requestedRole ?? "").trim().toLowerCase();
   if (!KNOWN_ROLES.includes(rawRole as Role)) {
@@ -299,7 +318,7 @@ export async function createManagedUser(
           email,
           options: { redirectTo: `${appUrl}/reset-password` },
         });
-        activationUrl = linkData?.properties?.action_link ?? null;
+        activationUrl = buildRecoveryActivationLink(linkData, appUrl);
       }
 
       await sendWelcomeEmail({
