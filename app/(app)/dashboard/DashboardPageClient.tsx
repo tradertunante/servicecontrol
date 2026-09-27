@@ -66,7 +66,7 @@ export default function DashboardPageClient({
   const hasPackItOrEngineering = hasPackIt || hasPackEngineering;
 
   const {
-    loading, error, hotels, areas, runs,
+    loading, error, hotels, areas, runs, internalRuns,
     monthScore, quarterScore, yearScore,
     prevMonthScore, prevQuarterScore, prevYearScore,
     heatMapData, heatMapDataInternal, heatMapDataQuality,
@@ -164,7 +164,7 @@ export default function DashboardPageClient({
         availableYears={availableYears}
       />
 
-      <AreaTrendCard runs={runs} areas={areas} />
+      <AreaTrendCard runs={internalRuns} areas={areas} heatMode={heatMode} selectedYear={selectedYear} />
 
       <AreaRankings
         card={card}

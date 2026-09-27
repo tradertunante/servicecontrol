@@ -355,6 +355,8 @@
       "year": "Año",
       "noData": "No hay datos suficientes.",
       "trend3m": "Tendencia 3 meses:",
+      "trendSelectAll": "Todas",
+      "trendSelectNone": "Ninguna",
       "score": "Score",
       "auditsRegistered": "{count} auditorías registradas",
       "topBest": "Top 3 departamentos con mejor performance ({year})",

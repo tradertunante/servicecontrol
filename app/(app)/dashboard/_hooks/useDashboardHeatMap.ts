@@ -148,6 +148,10 @@ export function useDashboardHeatMap({
 
   return {
     heatMapData, heatMapDataInternal, heatMapDataQuality, monthLabels,
-    runsByArea, templateById,
+    // Métricas principales (gauges, rankings, trend) usan solo "internal":
+    // mystery shopper y quality corren en canal "quality" y no deben
+    // pesar en el promedio del auditor — sí generan acción correctiva
+    // (eso pasa en submit_audit_run, no depende de este filtro).
+    internalRuns, internalRunsByArea, templateById,
   };
 }
