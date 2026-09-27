@@ -109,7 +109,14 @@ export default function AreasPageClient({
     return areas.filter((a) => `${a.name ?? ""} ${a.type ?? ""} ${a.id ?? ""}`.toLowerCase().includes(q));
   }, [areas, query]);
 
-  const goArea = (areaId: string) => router.push(`/team/general?area=${areaId}`);
+  const goArea = (areaId: string) => {
+    // auditor no tiene acceso al módulo team: debe ir a la pantalla de auditorías del área
+    if (profile.role === "auditor") {
+      router.push(`/areas/${areaId}`);
+    } else {
+      router.push(`/team/general?area=${areaId}`);
+    }
+  };
   const canManage = profile?.role === "admin" || profile?.role === "superadmin";
 
   return (
