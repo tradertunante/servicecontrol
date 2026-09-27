@@ -24,7 +24,8 @@ function pillStyle(): React.CSSProperties {
     padding: "6px 10px",
     fontSize: 12,
     fontWeight: 950,
-    whiteSpace: "nowrap",
+    maxWidth: "100%",
+    overflowWrap: "anywhere",
   };
 }
 
