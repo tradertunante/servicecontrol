@@ -55,23 +55,23 @@ export default function AuditQuestionCard({
       }`}
     >
       <div className="flex flex-col gap-3">
-        <div className="flex flex-wrap items-start justify-between gap-2.5">
-          <div className="min-w-0 flex-1">
-            <div className="text-sm font-extrabold leading-snug text-slate-900">{displayText}</div>
-          </div>
+        <div className="flex flex-col gap-2">
+          <div className="text-sm font-extrabold leading-snug text-slate-900">{displayText}</div>
 
-          <div className="flex flex-wrap gap-1.5">
-            {question.comment_requirement !== "never" ? (
-              <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wide text-slate-600">
-                Comentario
-              </span>
-            ) : null}
-            {question.photo_requirement !== "never" ? (
-              <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wide text-slate-600">
-                Foto
-              </span>
-            ) : null}
-          </div>
+          {question.comment_requirement !== "never" || question.photo_requirement !== "never" ? (
+            <div className="flex flex-wrap gap-1.5">
+              {question.comment_requirement !== "never" ? (
+                <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wide text-slate-600">
+                  Comentario
+                </span>
+              ) : null}
+              {question.photo_requirement !== "never" ? (
+                <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wide text-slate-600">
+                  Foto
+                </span>
+              ) : null}
+            </div>
+          ) : null}
         </div>
 
         <AuditResponseButtons value={selected} disabled={disabled} onChange={onAnswerChange} />
