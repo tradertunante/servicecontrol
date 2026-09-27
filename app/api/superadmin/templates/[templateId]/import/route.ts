@@ -132,12 +132,36 @@ export async function POST(request: NextRequest, props: { params: Promise<{ temp
     });
   }
 
+  const sectionIds = Array.from(new Set(Array.from(sectionMap.values()).map((s) => s.id)));
+  const { data: existingQuestions, error: existingQuestionsError } = sectionIds.length
+    ? await admin
+        .from("audit_questions")
+        .select("audit_section_id, text")
+        .in("audit_section_id", sectionIds)
+    : { data: [], error: null };
+
+  if (existingQuestionsError) return jsonDbError(existingQuestionsError);
+
+  const existingQuestionKeys = new Set(
+    (existingQuestions ?? []).map((q) => `${q.audit_section_id}::${normKey(String(q.text ?? ""))}`)
+  );
+
   const orderCounters = new Map<string, number>();
-  const inserts = rows.map((row) => {
+  const skippedDuplicates: string[] = [];
+  const insertableRows: ImportRow[] = [];
+  const seenInBatch = new Set<string>();
+  const inserts = rows.flatMap((row) => {
     const section = sectionMap.get(normKey(row.classification));
     if (!section) {
       throw new Error(`No se pudo resolver la seccion para "${row.classification}".`);
     }
+
+    const dedupeKey = `${section.id}::${normKey(row.standard)}`;
+    if (existingQuestionKeys.has(dedupeKey) || seenInBatch.has(dedupeKey)) {
+      skippedDuplicates.push(row.standard);
+      return [];
+    }
+    seenInBatch.add(dedupeKey);
 
     let order = row.order;
     if (order === null) {
@@ -146,7 +170,8 @@ export async function POST(request: NextRequest, props: { params: Promise<{ temp
     }
     orderCounters.set(section.id, Math.max(orderCounters.get(section.id) ?? 0, order));
 
-    return {
+    insertableRows.push(row);
+    return [{
       audit_section_id: section.id,
       text: row.standard,
       text_en: row.standardEn,
@@ -156,20 +181,22 @@ export async function POST(request: NextRequest, props: { params: Promise<{ temp
       comment_requirement: "optional",
       photo_requirement: "optional",
       signature_requirement: "never",
-    };
+    }];
   });
 
-  const { data: insertedQuestions, error: insertQuestionsError } = await admin
-    .from("audit_questions")
-    .insert(inserts)
-    .select("id");
+  const { data: insertedQuestionsResult, error: insertQuestionsError } = inserts.length
+    ? await admin
+        .from("audit_questions")
+        .insert(inserts)
+        .select("id")
+    : { data: [], error: null };
 
   if (insertQuestionsError) {
     return jsonDbError(insertQuestionsError);
   }
 
-  const certificationLinks = (insertedQuestions ?? []).flatMap((question, index) => {
-    const row = rows[index];
+  const certificationLinks = (insertedQuestionsResult ?? []).flatMap((question, index) => {
+    const row = insertableRows[index];
     const certificationIds = (row?.certificationIds ?? []).filter((id) => validCertificationIds.has(id));
     return certificationIds.map((certificationId) => ({
       question_id: question.id,
@@ -195,6 +222,8 @@ export async function POST(request: NextRequest, props: { params: Promise<{ temp
     template_id: template.templateId,
     sections_count: sectionMap.size,
     imported_questions: inserts.length,
+    skipped_duplicate_questions: skippedDuplicates.length,
+    skipped_duplicate_texts: skippedDuplicates,
     imported_certification_links: certificationLinks.length,
     imported_by: caller.profile.id,
   });
