@@ -221,6 +221,8 @@ const dashCss = `
   .gridGauges { display:grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap:16px; }
   @media (max-width: 720px) {
     .dash { padding: 6px 4px; }
+    .sectionTitle { font-size: 17px; line-height: 1.25; margin-bottom: 12px; }
+    .card { padding: 12px 14px !important; }
   }
   @media print {
     @page { size: A4 landscape; margin: 10mm; }
