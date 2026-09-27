@@ -205,7 +205,7 @@ export function getDefaultHotelRouteByRole(
 
 export function canStartAudits(role: Role | string | null | undefined): boolean {
   const r = norm(role);
-  return ["superadmin", "admin", "manager", "auditor", "quality", "mystery_shopper"].includes(r);
+  return ["superadmin", "admin", "general_manager", "manager", "auditor", "quality", "mystery_shopper"].includes(r);
 }
 
 export function canRunAudits(role: Role | string | null | undefined): boolean {
