@@ -5,6 +5,7 @@ import HelpButton from "@/app/components/HelpButton";
 import OnboardingProvider from "@/app/providers/OnboardingProvider";
 import OnboardingTour from "@/app/components/OnboardingTour";
 import TrialBanner from "@/app/components/TrialBanner";
+import HotelPickerGate from "@/app/components/HotelPickerGate";
 import { requireAuthenticatedUser } from "@/lib/auth/server";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
@@ -21,6 +22,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <div className="min-h-screen bg-[var(--bg)]">
         <TrialBanner />
         <HotelHeader />
+        <HotelPickerGate />
         <OnboardingProvider>
           <OnboardingTour />
           <main className="pt-16 px-6 max-w-[1400px] mx-auto">{children}</main>

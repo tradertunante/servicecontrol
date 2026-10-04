@@ -9,6 +9,7 @@ export type ActiveHotelPayload = {
   profile_hotel_id?: string | null;
   is_trial?: boolean;
   trial_expires_at?: string | null;
+  available_hotels?: { id: string; name: string; role: string }[];
 };
 
 async function parseJson(response: Response) {
@@ -45,4 +46,24 @@ export async function setActiveHotel(hotelId: string | null) {
   }
 
   return payload;
+}
+
+// Sincroniza el hotel activo entre pestañas del mismo navegador: al cambiar de
+// hotel en una pestaña, las demás reciben el nuevo hotel y se recargan.
+const ACTIVE_HOTEL_CHANNEL = "sc-active-hotel";
+
+export function notifyActiveHotelChanged(hotelId: string) {
+  if (typeof BroadcastChannel === "undefined") return;
+  const channel = new BroadcastChannel(ACTIVE_HOTEL_CHANNEL);
+  channel.postMessage({ hotelId });
+  channel.close();
+}
+
+export function onActiveHotelChanged(listener: (hotelId: string) => void) {
+  if (typeof BroadcastChannel === "undefined") return () => {};
+  const channel = new BroadcastChannel(ACTIVE_HOTEL_CHANNEL);
+  channel.onmessage = (event: MessageEvent<{ hotelId?: string }>) => {
+    if (event.data?.hotelId) listener(event.data.hotelId);
+  };
+  return () => channel.close();
 }

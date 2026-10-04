@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/app/providers/ToastProvider";
 import BackButton from "@/app/components/BackButton";
+import AddExistingUserDialog from "./AddExistingUserDialog";
 import { supabase } from "@/lib/supabaseClient";
 import { getAssignableRoles, ROLE_LABELS } from "@/lib/auth/permissions";
 import type { Profile, Role } from "@/lib/types";
@@ -204,6 +205,7 @@ export default function UsersPageClient({
 
   // Delete modal
   const [deleteTarget, setDeleteTarget] = useState<UserRow | null>(null);
+  const [addExistingOpen, setAddExistingOpen] = useState(false);
   const [deleteInput, setDeleteInput]   = useState("");
   const [deleting, setDeleting]         = useState(false);
 
@@ -595,12 +597,24 @@ export default function UsersPageClient({
             </button>
           )}
           <button
+            onClick={() => setAddExistingOpen(true)}
+            className="px-4 py-3 rounded-xl border border-black/20 bg-white text-black font-[950] cursor-pointer h-11 whitespace-nowrap"
+          >
+            + Añadir existente
+          </button>
+          <button
             onClick={() => router.push("/users/new")}
             className="px-4 py-3 rounded-xl border border-black/20 bg-black text-white font-[950] cursor-pointer h-11 whitespace-nowrap"
           >
             + Crear usuario
           </button>
         </div>
+        {addExistingOpen && (
+          <AddExistingUserDialog
+            onClose={() => setAddExistingOpen(false)}
+            onAdded={() => { void load(); }}
+          />
+        )}
       </div>
 
       {/* Filters */}

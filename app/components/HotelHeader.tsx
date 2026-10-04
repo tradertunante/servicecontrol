@@ -10,8 +10,11 @@ import { goBackOrFallback } from "@/lib/navigation/clientBack";
 import { useProfile } from "@/hooks/useProfile";
 import NotificationBell from "./NotificationBell";
 import SupportButton from "./SupportButton";
+import HotelSwitcher from "./HotelSwitcher";
 import AppLocaleSwitcher from "./AppLocaleSwitcher";
 import { useHotelId } from "@/hooks/useHotelId";
+import { onActiveHotelChanged } from "@/lib/auth/activeHotelClient";
+import { markHotelPickedForCurrentUser } from "@/lib/auth/hotelPickedSession";
 import { ServiceControlIcon } from "./ServiceControlLogo";
 
 function usePageTitle(pathname: string | null): string {
@@ -83,6 +86,16 @@ export default function HotelHeader() {
   const { data: sessionData, isLoading: sessionLoading } = useHotelId();
   const role = sessionData?.role ?? null;
   const hotelName = sessionData?.hotelName ?? null;
+  const availableHotels = sessionData?.availableHotels ?? [];
+  const currentHotelIdRef = useRef<string | null>(null);
+  currentHotelIdRef.current = sessionData?.hotelId ?? null;
+
+  // Otra pestaña cambió de hotel: esta pestaña también recarga para usar el nuevo.
+  useEffect(() => onActiveHotelChanged((hotelId) => {
+    if (hotelId === currentHotelIdRef.current) return;
+    // La otra pestaña ya eligió hotel: esta no debe volver a preguntar.
+    void markHotelPickedForCurrentUser().finally(() => window.location.reload());
+  }), []);
 
   const { data: profile } = useProfile();
 
@@ -152,14 +165,22 @@ export default function HotelHeader() {
 
           {/* Hotel name + page */}
           <div className="flex items-baseline gap-2 min-w-0">
-            <button
-              onClick={() => navTo(hotelHomeTarget)}
-              disabled={loading}
-              title={displayHotel}
-              className="text-[13.5px] font-semibold text-white hover:text-white/80 bg-transparent border-none cursor-pointer truncate max-w-[min(48vw,320px)] max-[720px]:max-w-[38vw] transition-colors disabled:opacity-50"
-            >
-              {displayHotel}
-            </button>
+            {availableHotels.length > 1 ? (
+              <HotelSwitcher
+                hotels={availableHotels}
+                activeHotelId={sessionData?.hotelId ?? null}
+                label={displayHotel}
+              />
+            ) : (
+              <button
+                onClick={() => navTo(hotelHomeTarget)}
+                disabled={loading}
+                title={displayHotel}
+                className="text-[13.5px] font-semibold text-white hover:text-white/80 bg-transparent border-none cursor-pointer truncate max-w-[min(48vw,320px)] max-[720px]:max-w-[38vw] transition-colors disabled:opacity-50"
+              >
+                {displayHotel}
+              </button>
+            )}
             {pageTitle && (
               <>
                 <span className="flex-shrink-0 text-white/30 text-[13px] select-none">/</span>

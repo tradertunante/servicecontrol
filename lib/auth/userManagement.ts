@@ -5,6 +5,7 @@ import { canAssignRole, normalizeRole, type Role } from "@/lib/auth/permissions"
 import { resolveRouteHotelScope } from "@/lib/auth/server";
 import { sendWelcomeEmail } from "@/lib/email/sendWelcomeEmail";
 import { shouldSendNotification } from "@/lib/notifications/notificationSettings";
+import { canAddUser } from "@/lib/billing/enforcement";
 import type { Profile } from "@/lib/types";
 
 export type ManagedUserRow = {
@@ -85,27 +86,74 @@ export function canManageExistingUser(actorRole: Role, targetRole: Role) {
   return false;
 }
 
+export type HotelMembershipState = { role: string; active: boolean };
+
+// Membresía de un usuario en un hotel concreto (null si no tiene acceso a ese hotel).
+export async function findHotelMembership(userId: string, hotelId: string): Promise<HotelMembershipState | null> {
+  const { data, error } = await supabaseAdmin()
+    .from("hotel_memberships")
+    .select("role, active")
+    .eq("user_id", userId)
+    .eq("hotel_id", hotelId)
+    .maybeSingle();
+  if (error) throw error;
+  return data ? { role: data.role, active: data.active } : null;
+}
+
+async function countOtherMemberships(userId: string, hotelId: string) {
+  const { count, error } = await supabaseAdmin()
+    .from("hotel_memberships")
+    .select("hotel_id", { count: "exact", head: true })
+    .eq("user_id", userId)
+    .neq("hotel_id", hotelId);
+  if (error) throw error;
+  return count ?? 0;
+}
+
+async function countOtherActiveMemberships(userId: string, hotelId: string) {
+  const { count, error } = await supabaseAdmin()
+    .from("hotel_memberships")
+    .select("hotel_id", { count: "exact", head: true })
+    .eq("user_id", userId)
+    .eq("active", true)
+    .neq("hotel_id", hotelId);
+  if (error) throw error;
+  return count ?? 0;
+}
+
+// Con hotelId, rol y estado son los de la membresía de ESE hotel. Sin membresía
+// se acepta el perfil sólo si su hotel activo es ese (superadmin / datos legacy).
 export async function loadManagedUser(userId: string, hotelId?: string | null) {
   const admin = supabaseAdmin();
-  let query = admin
+  const { data, error } = await admin
     .from("profiles")
     .select("id, hotel_id, role, active, full_name, email")
     .eq("id", userId)
-    .limit(1);
-
-  if (hotelId) {
-    query = query.eq("hotel_id", hotelId);
-  }
-
-  const { data, error } = await query.maybeSingle();
+    .limit(1)
+    .maybeSingle();
   if (error) throw error;
   if (!data) return null;
 
+  let role: string | null = data.role;
+  let hotelIdOut: string | null = data.hotel_id ?? null;
+  let active = data.active ?? true;
+
+  if (hotelId) {
+    const membership = await findHotelMembership(userId, hotelId);
+    if (membership) {
+      role = membership.role;
+      hotelIdOut = hotelId;
+      active = (data.active ?? true) && membership.active;
+    } else if (data.hotel_id !== hotelId) {
+      return null;
+    }
+  }
+
   return {
     id: String(data.id),
-    hotel_id: (data.hotel_id as string | null) ?? null,
-    role: normalizeRole(data.role),
-    active: data.active ?? true,
+    hotel_id: hotelIdOut,
+    role: normalizeRole(role),
+    active,
     full_name: (data.full_name as string | null) ?? null,
     email: (data.email as string | null) ?? null,
     last_sign_in_at: null,
@@ -114,6 +162,47 @@ export async function loadManagedUser(userId: string, hotelId?: string | null) {
     areas: [],
     audit_run_count: 0,
   } satisfies ManagedUserRow;
+}
+
+// Cambia rol y activo del usuario en un hotel. profiles.role/hotel_id se
+// sincronizan por trigger cuando ese hotel es el activo.
+export async function applyMembershipChange(
+  userId: string,
+  hotelId: string,
+  changes: { role: string; active: boolean }
+): Promise<{ ok: true } | { ok: false; error: string; status: number }> {
+  const admin = supabaseAdmin();
+
+  const { error: memberErr } = await admin
+    .from("hotel_memberships")
+    .update({ role: changes.role, active: changes.active })
+    .eq("user_id", userId)
+    .eq("hotel_id", hotelId);
+  if (memberErr) return { ok: false, error: memberErr.message, status: 500 };
+
+  if (!changes.active) {
+    // Sin otros hoteles activos, el usuario queda desactivado globalmente (como antes).
+    if ((await countOtherActiveMemberships(userId, hotelId)) === 0) {
+      const { error } = await admin.from("profiles").update({ active: false }).eq("id", userId);
+      if (error) return { ok: false, error: error.message, status: 500 };
+    }
+    return { ok: true };
+  }
+
+  const { data: profile, error: profileErr } = await admin
+    .from("profiles")
+    .select("hotel_id")
+    .eq("id", userId)
+    .maybeSingle();
+  if (profileErr) return { ok: false, error: profileErr.message, status: 500 };
+
+  // Reactivar: el usuario vuelve a estar activo y, si había perdido su hotel, este pasa a ser el activo.
+  const profileUpdate = profile?.hotel_id
+    ? { active: true }
+    : { active: true, hotel_id: hotelId, role: changes.role };
+  const { error } = await admin.from("profiles").update(profileUpdate).eq("id", userId);
+  if (error) return { ok: false, error: error.message, status: 500 };
+  return { ok: true };
 }
 
 export async function resolveManagedUserAccess(actorProfile: Profile, userId: string) {
@@ -363,7 +452,21 @@ export async function deleteManagedUser(actorProfile: Profile, userId: string) {
   }
 
   const admin = supabaseAdmin();
+  const hotelId = targetScope.hotelId;
 
+  // Usuario con acceso a otros hoteles: se quita sólo de este hotel.
+  const membership = await findHotelMembership(targetUserId, hotelId);
+  if (membership && (await countOtherMemberships(targetUserId, hotelId)) > 0) {
+    const { error: unlinkErr } = await admin
+      .from("hotel_memberships")
+      .delete()
+      .eq("user_id", targetUserId)
+      .eq("hotel_id", hotelId);
+    if (unlinkErr) {
+      return { ok: false as const, error: unlinkErr.message, status: 500 };
+    }
+    return { ok: true as const, scope: "membership" as const };
+  }
 
   const { error: delAuthErr } = await admin.auth.admin.deleteUser(targetUserId);
   if (delAuthErr) {
@@ -374,5 +477,74 @@ export async function deleteManagedUser(actorProfile: Profile, userId: string) {
     };
   }
 
-  return { ok: true as const };
+  return { ok: true as const, scope: "user" as const };
+}
+
+// Añade a un usuario que ya existe a tu hotel con un rol. No crea cuentas.
+export async function addExistingUserToHotel(
+  actorProfile: Profile,
+  payload: { email?: unknown; role?: unknown }
+) {
+  const hotelResult = await resolveManagedHotelId(actorProfile);
+  if (!hotelResult.ok) {
+    return { ok: false as const, error: hotelResult.error, status: hotelResult.status };
+  }
+  const hotelId = hotelResult.hotelId;
+
+  const email = String(payload.email ?? "").trim().toLowerCase();
+  if (!email) return { ok: false as const, error: "El email es obligatorio.", status: 400 };
+
+  const roleResult = assertRoleAssignable(actorProfile.role, payload.role);
+  if (!roleResult.ok) return { ok: false as const, error: roleResult.error, status: roleResult.status };
+
+  const admin = supabaseAdmin();
+  // Escapa los comodines de ILIKE para que el email se compare literal.
+  const { data: target, error: targetErr } = await admin
+    .from("profiles")
+    .select("id, role, hotel_id, full_name, email")
+    .ilike("email", email.replace(/[\\%_]/g, "\\$&"))
+    .maybeSingle();
+  if (targetErr) return { ok: false as const, error: targetErr.message, status: 500 };
+  if (!target) {
+    return {
+      ok: false as const,
+      error: "No existe ningún usuario con ese email. Créalo primero desde «Crear usuario».",
+      status: 404,
+    };
+  }
+  if (normalizeRole(target.role) === "superadmin") {
+    return { ok: false as const, error: "No se puede añadir un superadmin a un hotel.", status: 403 };
+  }
+
+  const existing = await findHotelMembership(target.id, hotelId);
+  if (existing) {
+    return { ok: false as const, error: "Ese usuario ya pertenece a este hotel.", status: 409 };
+  }
+
+  const userCheck = await canAddUser(hotelId);
+  if (!userCheck.allowed) return { ok: false as const, error: userCheck.reason, status: 403 };
+
+  const { error: insertErr } = await admin
+    .from("hotel_memberships")
+    .insert({ user_id: target.id, hotel_id: hotelId, role: roleResult.role, active: true });
+  if (insertErr) return { ok: false as const, error: insertErr.message, status: 500 };
+
+  // Si el usuario no tenía hotel activo, este pasa a serlo.
+  if (!target.hotel_id) {
+    const { error: profileErr } = await admin
+      .from("profiles")
+      .update({ hotel_id: hotelId, role: roleResult.role })
+      .eq("id", target.id);
+    if (profileErr) return { ok: false as const, error: profileErr.message, status: 500 };
+  }
+
+  return {
+    ok: true as const,
+    user: {
+      id: target.id,
+      full_name: target.full_name ?? null,
+      email: target.email ?? email,
+      role: roleResult.role,
+    },
+  };
 }
