@@ -4,6 +4,26 @@ import { jsonDbError } from "@/lib/api/response";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { jsonError, jsonOk, requireSuperadminRoute } from "@/lib/superadmin/server";
 
+export async function GET(request: NextRequest) {
+  const caller = await requireSuperadminRoute(request);
+  if (!caller) return jsonError("No autorizado.", 401);
+
+  const { data, error } = await supabaseAdmin()
+    .from("hotels")
+    .select("id, name, active")
+    .order("name", { ascending: true });
+
+  if (error) return jsonDbError(error);
+
+  return jsonOk({
+    hotels: (data ?? []).map((row) => ({
+      id: String(row.id),
+      name: String(row.name ?? ""),
+      active: row.active ?? null,
+    })),
+  });
+}
+
 export async function POST(request: NextRequest) {
   const caller = await requireSuperadminRoute(request);
   if (!caller) return jsonError("No autorizado.", 401);
