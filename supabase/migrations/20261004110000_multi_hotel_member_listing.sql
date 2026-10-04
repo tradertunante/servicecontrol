@@ -5,7 +5,10 @@
 -- active: el usuario debe estar activo globalmente (profiles.active) y activo en
 -- este hotel (hotel_memberships.active).
 
-create or replace function public.list_hotel_users_with_meta(p_hotel_id uuid)
+-- DROP necesario: el tipo de retorno (OUT) remoto difiere y CREATE OR REPLACE no lo permite.
+drop function if exists public.list_hotel_users_with_meta(uuid);
+
+create function public.list_hotel_users_with_meta(p_hotel_id uuid)
 returns table (
   id                 uuid,
   full_name          text,
