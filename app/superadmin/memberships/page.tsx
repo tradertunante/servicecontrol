@@ -2,6 +2,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { fetchJsonOrThrow } from "@/lib/superadmin/clientApi";
 import { MEMBERSHIP_ROLES } from "@/lib/auth/hotelMemberships";
 
@@ -23,6 +24,7 @@ type UserInfo = {
 };
 
 export default function SuperadminMembershipsPage() {
+  const router = useRouter();
   const [email, setEmail] = useState("");
   const [user, setUser] = useState<UserInfo | null>(null);
   const [memberships, setMemberships] = useState<Membership[]>([]);
@@ -117,11 +119,20 @@ export default function SuperadminMembershipsPage() {
 
   return (
     <div className="p-6 space-y-6">
-      <header>
-        <h1 className="text-3xl font-black tracking-tight">Accesos multi-hotel</h1>
+      <header className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-3xl font-black tracking-tight">Accesos multi-hotel</h1>
         <p className="opacity-75 mt-2 text-sm">
           Asigna a un usuario los hoteles a los que puede acceder y su rol en cada uno.
-        </p>
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => router.push("/superadmin")}
+          className="rounded-lg border border-black/20 bg-white px-4 py-2 text-sm font-semibold"
+        >
+          ← Volver a Superadmin
+        </button>
       </header>
 
       <form onSubmit={loadUser} className="flex flex-wrap gap-2 items-end">
