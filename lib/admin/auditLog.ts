@@ -7,6 +7,8 @@ export type AdminAction =
   | "role_changed"
   | "active_changed"
   | "user_deleted"
+  | "membership_removed"
+  | "membership_added"
   | "mystery_shopper_created"
   | "mystery_shopper_extended"
   | "mystery_shopper_deleted";

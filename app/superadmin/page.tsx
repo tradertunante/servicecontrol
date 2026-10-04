@@ -80,6 +80,12 @@ export default function SuperadminHomePage() {
       icon: "🏨",
     },
     {
+      title: "Accesos multi-hotel",
+      subtitle: "Asigna a un usuario varios hoteles y su rol en cada uno.",
+      href: "/superadmin/memberships",
+      icon: "🔀",
+    },
+    {
       title: "Certificaciones",
       subtitle: "Catálogo global de certificados (Forbes, LHW, Meliá, etc.).",
       href: "/superadmin/certifications",

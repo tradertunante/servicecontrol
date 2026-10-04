@@ -3,9 +3,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { authorizeRouteRequest } from "@/lib/auth/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import {
+  applyMembershipChange,
   assertRoleAssignable,
   canManageExistingUser,
   deleteManagedUser,
+  findHotelMembership,
   loadManagedUser,
   resolveManagedHotelId,
 } from "@/lib/auth/userManagement";
@@ -85,18 +87,35 @@ export async function PATCH(request: NextRequest, props: { params: Promise<{ id:
         : null;
 
     const admin = supabaseAdmin();
-    const { error } = await admin
-      .from("profiles")
-      .update({
-        full_name: fullName,
+    const membership = await findHotelMembership(userId, hotelResult.hotelId);
+
+    if (membership) {
+      // Rol y activo son por hotel: se escriben en la membresía de este hotel.
+      const change = await applyMembershipChange(userId, hotelResult.hotelId, {
         role: roleResult.role,
         active,
-        ...(newEmail ? { email: newEmail } : {}),
-      })
-      .eq("id", userId)
-      .eq("hotel_id", hotelResult.hotelId);
+      });
+      if (!change.ok) return jsonError(change.error, change.status);
 
-    if (error) return jsonDbError(error);
+      const { error } = await admin
+        .from("profiles")
+        .update({ full_name: fullName, ...(newEmail ? { email: newEmail } : {}) })
+        .eq("id", userId);
+      if (error) return jsonDbError(error);
+    } else {
+      // Sin membresía (superadmin / datos legacy): se mantiene el camino anterior.
+      const { error } = await admin
+        .from("profiles")
+        .update({
+          full_name: fullName,
+          role: roleResult.role,
+          active,
+          ...(newEmail ? { email: newEmail } : {}),
+        })
+        .eq("id", userId)
+        .eq("hotel_id", hotelResult.hotelId);
+      if (error) return jsonDbError(error);
+    }
 
     if (newPassword || newEmail) {
       const authUpdates: Parameters<typeof admin.auth.admin.updateUserById>[1] = {};
@@ -187,7 +206,7 @@ export async function DELETE(request: NextRequest, props: { params: Promise<{ id
         actorName: caller.profile.full_name ?? caller.profile.id,
         targetId: userId,
         targetName: targetSnap.full_name ?? targetSnap.email ?? userId,
-        action: "user_deleted",
+        action: result.scope === "membership" ? "membership_removed" : "user_deleted",
       });
     }
 
