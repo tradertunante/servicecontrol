@@ -11,6 +11,8 @@ export default function UpgradeClient() {
   const [interval, setInterval] = useState<Interval>("month");
   const [loading, setLoading] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [showFounderCode, setShowFounderCode] = useState(false);
+  const [founderCode, setFounderCode] = useState("");
 
   const handleCheckout = async (planCode: string) => {
     setLoading(planCode);
@@ -20,7 +22,11 @@ export default function UpgradeClient() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ plan_code: planCode, interval }),
+        body: JSON.stringify({
+          plan_code: planCode,
+          interval,
+          ...(founderCode.trim() ? { founder_code: founderCode.trim() } : {}),
+        }),
       });
       const data = await res.json();
       if (data.ok && data.url) {
@@ -84,6 +90,27 @@ export default function UpgradeClient() {
             {error}
           </div>
         )}
+
+        {/* Código del programa fundador: oculto por defecto, no es autoservicio general */}
+        <div className="flex justify-center mb-8">
+          {showFounderCode ? (
+            <input
+              type="text"
+              value={founderCode}
+              onChange={(e) => setFounderCode(e.target.value)}
+              placeholder="Código de fundador"
+              className="w-56 rounded-lg border border-gray-200 px-3 py-2 text-sm text-center uppercase outline-none focus:border-[#185FA5]"
+            />
+          ) : (
+            <button
+              type="button"
+              onClick={() => setShowFounderCode(true)}
+              className="text-xs text-gray-400 underline-offset-2 hover:underline"
+            >
+              ¿Tienes un código de fundador?
+            </button>
+          )}
+        </div>
 
         {/* Plan cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-5">

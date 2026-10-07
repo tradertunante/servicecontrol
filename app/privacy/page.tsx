@@ -100,6 +100,27 @@ export default function PrivacyPage() {
               <strong>Vercel</strong> — despliegue de la aplicación. Puede procesar metadatos de red (IPs) en servidores fuera de la UE amparado en Cláusulas Contractuales Tipo. Consulta su{" "}
               <a href="https://vercel.com/legal/privacy-policy" target="_blank" rel="noopener noreferrer" style={{ color: "#000" }}>política de privacidad</a>.
             </li>
+            <li>
+              <strong>Stripe</strong> — procesamiento de pagos y facturación de suscripciones. Consulta su{" "}
+              <a href="https://stripe.com/privacy" target="_blank" rel="noopener noreferrer" style={{ color: "#000" }}>política de privacidad</a>.
+            </li>
+            <li>
+              <strong>Resend</strong> — envío de emails transaccionales (acceso, avisos e informes). Consulta su{" "}
+              <a href="https://resend.com/legal/privacy-policy" target="_blank" rel="noopener noreferrer" style={{ color: "#000" }}>política de privacidad</a>.
+            </li>
+            <li>
+              <strong>Brevo</strong> — gestión de contactos y comunicaciones comerciales para leads de demo y prueba. Consulta su{" "}
+              <a href="https://www.brevo.com/legal/privacypolicy/" target="_blank" rel="noopener noreferrer" style={{ color: "#000" }}>política de privacidad</a>.
+            </li>
+            <li>
+              <strong>Notion</strong> — registro interno de leads de prueba y demo. Consulta su{" "}
+              <a href="https://www.notion.com/privacy" target="_blank" rel="noopener noreferrer" style={{ color: "#000" }}>política de privacidad</a>.
+            </li>
+            <li>
+              <strong>Better Stack (Logtail)</strong> y <strong>Sentry</strong> — registro técnico de errores y diagnóstico. Consulta sus políticas de privacidad:{" "}
+              <a href="https://betterstack.com/legal/privacy-policy" target="_blank" rel="noopener noreferrer" style={{ color: "#000" }}>Better Stack</a> y{" "}
+              <a href="https://sentry.io/privacy/" target="_blank" rel="noopener noreferrer" style={{ color: "#000" }}>Sentry</a>.
+            </li>
           </ul>
         </Section>
 

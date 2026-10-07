@@ -107,7 +107,7 @@ function RankingRow({
       <div className="text-right">
         <div className="text-[20px] font-black leading-none text-[var(--text)]">{score}</div>
         <div className="mt-1">
-          <StatusPill label={tone === "danger" ? "Atencion" : "Estable"} tone={tone} />
+          <StatusPill label={tone === "danger" ? "Atención" : "Estable"} tone={tone} />
         </div>
       </div>
     </div>
@@ -171,7 +171,7 @@ function GaugeRing({ score, label, count }: { score: number; label: string; coun
           {score}%
         </text>
         <text x={48} y={57} textAnchor="middle" dominantBaseline="middle" style={{ fontSize: '8.5px', fontWeight: 700 }} fill="var(--text-secondary)">
-          ({count} auditorias)
+          ({count} auditorías)
         </text>
       </svg>
     </div>
@@ -440,7 +440,7 @@ export function ProductDashboardMock() {
 
       {/* Worst audits */}
       <Card radius={18} padding={14} className="mt-3">
-        <div className="text-[12px] font-black text-[var(--text)]">Top 3 peores auditorias</div>
+        <div className="text-[12px] font-black text-[var(--text)]">Top 3 peores auditorías</div>
         <div className="mt-2 space-y-2">
           {[
             { name: "Housekeeping — Evening Service", score: "43.8%" },
@@ -482,12 +482,12 @@ export function ProductOperationsMock() {
               Equipo
             </div>
             <div className="mt-1 text-[20px] font-black leading-none text-[var(--text)]">
-              Recuperacion y seguimiento
+              Recuperación y seguimiento
             </div>
           </div>
           <div className="flex flex-wrap gap-2">
             <StatusPill label="General" />
-            <StatusPill label="Recuperacion" tone="warn" />
+            <StatusPill label="Recuperación" tone="warn" />
             <StatusPill label="Formaciones" />
           </div>
         </div>
@@ -504,7 +504,7 @@ export function ProductOperationsMock() {
         <Card radius={18} padding={16}>
           <div className="flex items-center justify-between gap-3">
             <div className="text-[13px] font-extrabold text-[var(--text-secondary)]">
-              Reauditorias activas
+              Reauditorías activas
             </div>
             <StatusPill label="Programadas hoy" tone="warn" />
           </div>
@@ -514,11 +514,11 @@ export function ProductOperationsMock() {
               {
                 title: "Guest Room Deluxe",
                 area: "Housekeeping",
-                status: "Formacion pendiente",
+                status: "Formación pendiente",
                 tone: "warn" as Tone,
               },
               {
-                title: "Front Desk Opening",
+                title: "Apertura de recepción",
                 area: "Recepcion",
                 status: "Lista",
                 tone: "ok" as Tone,
@@ -556,13 +556,13 @@ export function ProductOperationsMock() {
           <Card radius={18} padding={16}>
             <div className="flex items-center justify-between gap-3">
               <div className="text-[13px] font-extrabold text-[var(--text-secondary)]">
-                Formacion vinculada
+                Formación vinculada
               </div>
               <StatusPill label="2 sesiones" tone="quality" />
             </div>
             <div className="mt-4 space-y-3">
               {[
-                "Liberacion de habitacion y evidencia fotografica",
+                "Liberación de habitación y evidencia fotografica",
                 "Checklist de apertura Front Desk",
               ].map((item) => (
                 <div
@@ -586,11 +586,11 @@ export function ProductOperationsMock() {
             <div className="mt-4 space-y-3">
               <div className="flex items-center justify-between rounded-2xl px-4 py-3" style={{ background: "var(--row-bg)" }}>
                 <span className="text-[13px] font-black text-[var(--text)]">IT · Sensor minibar</span>
-                <StatusPill label="Open" tone="danger" />
+                <StatusPill label="Abierta" tone="danger" />
               </div>
               <div className="flex items-center justify-between rounded-2xl px-4 py-3" style={{ background: "var(--row-bg)" }}>
                 <span className="text-[13px] font-black text-[var(--text)]">Engineering · Puerta 301</span>
-                <StatusPill label="In Progress" tone="warn" />
+                <StatusPill label="En curso" tone="warn" />
               </div>
             </div>
           </Card>

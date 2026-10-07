@@ -6,7 +6,8 @@
     "demo": "Solicitar demo",
     "login": "Acceder",
     "requestDemo": "Solicitar demo",
-    "trial": "Probar gratis"
+    "trial": "Probar gratis",
+    "founders": "Programa fundador"
   },
   "header": {
     "tagline": "Calidad y operación hotelera"
@@ -20,7 +21,7 @@
     "subtitleBold": "con datos, no con sensaciones.",
     "ctaPrimary": "Ver ServiceControl en 30 min",
     "ctaTrial": "Probar gratis",
-    "ctaReassurance": "Sin tarjeta de crédito · Operativo en menos de 1 día · Demo sin compromiso",
+    "ctaReassurance": "Sin tarjeta de crédito · Demo sin compromiso",
     "card1Title": "Visibilidad real",
     "card1Body": "Score por área, backlog correctivo y focos rojos visibles para operaciones.",
     "card2Title": "Ejecución diaria",
@@ -123,11 +124,11 @@
     "items": [
       {
         "title": "Compatible con tus estándares de inspección",
-        "body": "Configura tus plantillas sobre los criterios de Forbes Travel Guide, LHW o tu propio manual de marca. El estándar que te inspeccionan es el estándar que auditas a diario."
+        "body": "Configura tus plantillas con tus propios criterios o con los de certificaciones como Forbes Travel Guide o LHW. El estándar que te inspeccionan es el estándar que auditas a diario."
       },
       {
         "title": "Tus datos, protegidos como tu reputación",
-        "body": "Datos alojados en la Unión Europea, cifrado en tránsito y en reposo, acceso por roles y cumplimiento RGPD. La información de tu operación nunca se comparte entre propiedades."
+        "body": "Cifrado en tránsito, acceso por roles y política de privacidad clara. Los datos de tu hotel no se mezclan con los de otras propiedades."
       },
       {
         "title": "Hecho por y para operadores hoteleros",
@@ -135,20 +136,21 @@
       },
       {
         "title": "Implementación guiada, en tu idioma",
-        "body": "Configuración de áreas, estándares y equipos acompañada por nuestro equipo, en español, sobre tu operación real. Operativo en días, no en meses."
+        "body": "Configuración de áreas, estándares y equipos acompañada por nuestro equipo, en español, sobre tu operación real."
       }
     ],
     "facts": [
-      "100% de hallazgos con responsable y fecha límite",
-      "Reauditoría automática en cada corrección",
-      "Sandbox operativo en menos de 1 minuto",
-      "Informe ejecutivo en tiempo real, no a fin de mes"
+      "Cada hallazgo se asigna a un departamento responsable",
+      "Reauditoría automática o manual según tus reglas",
+      "Sandbox con datos ficticios y acceso por email",
+      "Dashboard en vivo y resúmenes semanales y mensuales por email"
     ]
   },
   "scenarios": {
     "eyebrow": "Para quién está diseñado",
     "title": "Tres direcciones, el mismo problema: saber si el estándar se cumple hoy.",
     "description": "Escenarios ilustrativos de cómo trabaja un hotel con ServiceControl en el día a día.",
+    "illustrativeLabel": "Escenario ilustrativo · no es un cliente",
     "items": [
       {
         "role": "Dirección General · Hotel urbano 5★ · Madrid",
@@ -168,7 +170,7 @@
     ],
     "foundersBadge": "Programa de hoteles fundadores",
     "foundersTitle": "Trabajamos con un grupo reducido de propiedades en España y México durante 2026.",
-    "foundersBody": "Implementación guiada por el equipo fundador, configuración de tus estándares incluida y condiciones de socio fundador permanentes.",
+    "foundersBody": "Implementación guiada por el equipo fundador, configuración de tus estándares incluida y condiciones de socio fundador.",
     "foundersCta": "Solicitar plaza"
   },
   "demoShowcase": {
@@ -466,8 +468,8 @@
         "noPermissionReassign": "No tienes permiso para reasignar el auditor o la re-auditoría ya fue cerrada."
       },
       "corrective": {
-        "statOpen": "Open",
-        "statInProgress": "In Progress",
+        "statOpen": "Abiertas",
+        "statInProgress": "En curso",
         "statResolved": "Resolved",
         "statBlocking": "Blocking Re-audits",
         "searchPlaceholder": "Buscar título, área, colaborador, nota…",
@@ -482,15 +484,15 @@
         "empty": "No hay acciones correctivas",
         "emptyDesc": "No hay registros para los filtros actuales.",
         "blocksReaudit": "BLOCKS RE-AUDIT",
-        "openDays": "Open {days} {days, plural, one {día} other {días}}",
+        "openDays": "Abierta {days} {days, plural, one {día} other {días}}",
         "fieldDescription": "Description",
         "fieldEvidenceNote": "Evidence note",
         "fieldCollaborator": "Colaborador",
         "fieldOpened": "Opened",
         "fieldResolvedAt": "Resolved at",
         "fieldResolvedBy": "Resolved by",
-        "reopen": "Reopen",
-        "markInProgress": "Mark In Progress",
+        "reopen": "Reabrir",
+        "markInProgress": "Marcar en curso",
         "saving": "Guardando…",
         "markResolved": "Mark Resolved",
         "msgResolved": "Acción marcada como resuelta.",
@@ -917,13 +919,13 @@
       "config_q": "¿El precio incluye la configuración inicial?",
       "config_a": "La primera configuración (áreas, plantillas, usuarios) se realiza en una sesión guiada incluida en todos los planes. Una implantación más extensa o una migración de datos se acuerda aparte.",
       "multihotel_q": "¿Qué pasa si tenemos más de un hotel?",
-      "multihotel_a": "Cualquier plan se amplía con propiedades adicionales a tarifa preferente. Disponemos de un panel multihotel para comparar resultados entre propiedades.",
+      "multihotel_a": "Si gestionas más de un hotel, cuéntanos cuántas propiedades son y te preparamos una propuesta a medida.",
       "cambio_q": "¿Puedo cambiar de plan después?",
       "cambio_a": "Sí. Puedes subir o bajar de plan en cualquier momento. Al cambiar a anual, el tiempo restante del mes en curso se prorratea.",
       "instalar_q": "¿Necesito instalar algo?",
       "instalar_a": "No. ServiceControl es 100% web y funciona desde cualquier dispositivo — el equipo puede auditar desde el móvil y dirección ver los dashboards desde el ordenador.",
       "datos_q": "¿Están seguros mis datos?",
-      "datos_a": "Sí. Los datos se almacenan en servidores europeos (EU-West), con backups diarios, cifrado en tránsito y en reposo, y acceso por roles. Podemos firmar un DPA si tu organización lo requiere."
+      "datos_a": "Sí. Los datos se almacenan en la infraestructura de Supabase, con cifrado en tránsito y en reposo, y acceso por roles. Consulta la política de privacidad para ver qué proveedores tratan datos."
     }
   },
   "foundersPage": {

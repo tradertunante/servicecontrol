@@ -33,6 +33,7 @@ export default function ScenariosSection() {
               <div className="text-[11px] font-normal uppercase tracking-[2.5px] text-[#888780]">
                 {item.role}
               </div>
+              <div className="mt-2 text-xs italic text-[var(--text-secondary)]">{t("illustrativeLabel")}</div>
               <h3 className="mt-4 text-[var(--text)]">{item.title}</h3>
               <p className="mt-4 text-base leading-7 text-[var(--text-secondary)]">{item.body}</p>
             </div>
@@ -58,8 +59,8 @@ export default function ScenariosSection() {
             <p className="mt-3 text-base leading-7 text-[var(--text-secondary)]">{t("foundersBody")}</p>
           </div>
           <Link
-            href="/demo"
-            onClick={() => capture('cta_clicked', { cta_location: 'founders_banner', cta_destination: 'demo' }, { send_instantly: true })}
+            href="/founders"
+            onClick={() => capture('cta_clicked', { cta_location: 'founders_banner', cta_destination: 'founders' }, { send_instantly: true })}
             className="rounded-[6px] bg-[#185FA5] px-7 py-4 text-center text-base font-medium text-white transition hover:bg-[#378ADD]"
           >
             {t("foundersCta")}

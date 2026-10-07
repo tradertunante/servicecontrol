@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { waitUntil } from "@vercel/functions";
 
 import { stripe } from "@/lib/billing/stripe";
 import { authorizeRouteRequest, resolveRouteHotelScope } from "@/lib/auth/server";
@@ -7,6 +8,7 @@ import { logger } from "@/lib/logger";
 import { billingAdmin, type BillingAccountRow } from "@/lib/billing/db";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { PLAN_CODES } from "@/lib/billing/plans";
+import { captureServer } from "@/lib/analytics/serverCapture";
 
 const VALID_INTERVALS = ["month", "year"];
 
@@ -29,12 +31,28 @@ export async function POST(request: NextRequest) {
   const body = await request.json().catch(() => null);
   const planCode = typeof body?.plan_code === "string" ? body.plan_code.trim() : "";
   const interval = typeof body?.interval === "string" ? body.interval.trim() : "month";
+  const founderCode = typeof body?.founder_code === "string" ? body.founder_code.trim() : "";
 
   if (!(PLAN_CODES as string[]).includes(planCode)) {
     return jsonError(`Plan inválido. Opciones: ${PLAN_CODES.join(", ")}`);
   }
   if (!VALID_INTERVALS.includes(interval)) {
     return jsonError("Intervalo inválido. Usa 'month' o 'year'.");
+  }
+
+  // Código del programa fundador (mes 1 gratis + 50% × 6 meses): opcional,
+  // validado contra un Promotion Code real de Stripe. Ver
+  // scripts/stripe-sync-founder-coupon.ts para crear el cupón/código.
+  // Si el código no es válido, se rechaza explícitamente en vez de ignorarlo
+  // en silencio (evita que alguien crea que lo ha aplicado cuando no es así).
+  let founderPromotionCodeId: string | null = null;
+  if (founderCode) {
+    const promos = await stripe.promotionCodes.list({ code: founderCode, active: true, limit: 1 });
+    const promo = promos.data[0];
+    if (!promo) {
+      return jsonError("Código de fundador no válido o sin plazas disponibles.", 400);
+    }
+    founderPromotionCodeId = promo.id;
   }
 
   // Find or create billing account
@@ -133,9 +151,28 @@ export async function POST(request: NextRequest) {
     sessionParams.customer_email = account.email;
   }
 
-  const session = await stripe.checkout.sessions.create(
-    sessionParams as Parameters<typeof stripe.checkout.sessions.create>[0],
-  );
+  if (founderPromotionCodeId) {
+    sessionParams.discounts = [{ promotion_code: founderPromotionCodeId }];
+    (sessionParams.subscription_data as Record<string, unknown>).trial_period_days = 30;
+  }
+
+  let session;
+  try {
+    session = await stripe.checkout.sessions.create(
+      sessionParams as Parameters<typeof stripe.checkout.sessions.create>[0],
+    );
+  } catch (err) {
+    if (founderPromotionCodeId) {
+      // Causa más probable: el código ya agotó sus plazas (max_redemptions)
+      // entre la validación de arriba y este punto.
+      logger.warn("billing_checkout_founder_code_redeem_failed", {
+        founderCode,
+        error: err instanceof Error ? err.message : String(err),
+      });
+      return jsonError("Ese código de fundador ya no está disponible.", 409);
+    }
+    throw err;
+  }
 
   logger.info("billing_checkout_created", {
     userId: caller.profile.id,
@@ -143,7 +180,16 @@ export async function POST(request: NextRequest) {
     planCode,
     interval,
     sessionId: session.id,
+    founder: Boolean(founderPromotionCodeId),
   });
+
+  waitUntil(
+    captureServer("billing_checkout_started", caller.profile.id, {
+      plan_code: planCode,
+      interval,
+      founder: Boolean(founderPromotionCodeId),
+    }),
+  );
 
   return NextResponse.json({ ok: true, url: session.url });
 }

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { waitUntil } from "@vercel/functions";
 import Stripe from "stripe";
 
 import { stripe, normalizeInterval, normalizeStatus } from "@/lib/billing/stripe";
@@ -8,6 +9,7 @@ import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { sendCheckoutNotificationEmail } from "@/lib/email/sendCheckoutNotificationEmail";
 import { provisionAccountAccess } from "@/lib/billing/provisioning";
 import { getPlan } from "@/lib/billing/plans";
+import { captureServer } from "@/lib/analytics/serverCapture";
 
 const WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET;
 
@@ -181,6 +183,19 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
     hotelId: provisioning.hotelId,
     hotelCreated: provisioning.created,
   });
+
+  // Analítica: best-effort, no debe afectar al procesado del webhook ni a su
+  // idempotencia. distinct_id = owner_user_id para enlazar con los eventos
+  // de cliente (mismo ID que usa PostHog.identify en la app).
+  if (account?.owner_user_id) {
+    waitUntil(
+      captureServer("billing_checkout_completed", account.owner_user_id, {
+        plan_code: planCode,
+        billing_account_id: billingAccountId,
+        hotel_created: provisioning.created,
+      }),
+    );
+  }
 
   // Aviso a ventas (informativo — el alta ya es automática)
   try {

@@ -35,6 +35,9 @@ export default function MarketingFooter() {
           <Link href="/trial" className="transition hover:text-white">
             {tNav("trial")}
           </Link>
+          <Link href="/founders" className="transition hover:text-white">
+            {tNav("founders")}
+          </Link>
           <Link href="/login" className="transition hover:text-white">
             {tNav("login")}
           </Link>

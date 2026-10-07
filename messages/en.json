@@ -6,7 +6,8 @@
     "demo": "Request a demo",
     "login": "Log in",
     "requestDemo": "Request a demo",
-    "trial": "Try free"
+    "trial": "Try free",
+    "founders": "Founding hotels program"
   },
   "header": {
     "tagline": "Hotel quality & operations"
@@ -20,7 +21,7 @@
     "subtitleBold": "with data, not impressions.",
     "ctaPrimary": "See ServiceControl in 30 min",
     "ctaTrial": "Try for free",
-    "ctaReassurance": "No credit card required · Up and running in under a day · No-commitment demo",
+    "ctaReassurance": "No credit card required · No-commitment demo",
     "card1Title": "Real visibility",
     "card1Body": "Score by area, corrective backlog and red flags visible to operations.",
     "card2Title": "Daily execution",
@@ -123,11 +124,11 @@
     "items": [
       {
         "title": "Compatible with your inspection standards",
-        "body": "Configure your templates on Forbes Travel Guide criteria, LHW standards or your own brand manual. The standard you are inspected against is the standard you audit every day."
+        "body": "Configure your templates with your own criteria or with certification standards such as Forbes Travel Guide or LHW. The standard you are inspected against is the standard you audit every day."
       },
       {
         "title": "Your data, protected like your reputation",
-        "body": "Data hosted in the European Union, encryption in transit and at rest, role-based access and GDPR compliance. Your operation's information is never shared between properties."
+        "body": "Encryption in transit, role-based access and a clear privacy policy. Your hotel's data is not mixed with other properties' data."
       },
       {
         "title": "Made by and for hotel operators",
@@ -135,20 +136,21 @@
       },
       {
         "title": "Guided implementation, in your language",
-        "body": "Areas, standards and teams configured together with our team, in Spanish or English, on your real operation. Up and running in days, not months."
+        "body": "Areas, standards and teams configured together with our team, in Spanish or English, on your real operation."
       }
     ],
     "facts": [
-      "100% of findings with an owner and a due date",
-      "Automatic re-audit on every correction",
-      "Sandbox up and running in under 1 minute",
-      "Executive report in real time, not at month-end"
+      "Every finding is assigned to a responsible department",
+      "Automatic or manual re-audit according to your rules",
+      "Sandbox with fictitious data and email access",
+      "Live dashboard and weekly and monthly summaries by email"
     ]
   },
   "scenarios": {
     "eyebrow": "Who it's designed for",
     "title": "Three management roles, the same problem: knowing if the standard is being met today.",
     "description": "Illustrative scenarios of how a hotel works with ServiceControl day to day.",
+    "illustrativeLabel": "Illustrative scenario · not a customer",
     "items": [
       {
         "role": "General Management · 5-star city hotel · Madrid",
@@ -168,7 +170,7 @@
     ],
     "foundersBadge": "Founding hotels program",
     "foundersTitle": "We work with a small group of properties in Spain and Mexico during 2026.",
-    "foundersBody": "Implementation guided by the founding team, configuration of your standards included and permanent founding-partner terms.",
+    "foundersBody": "Implementation guided by the founding team, configuration of your standards included.",
     "foundersCta": "Request a spot"
   },
   "demoShowcase": {
@@ -917,7 +919,7 @@
       "config_q": "Does the price include initial setup?",
       "config_a": "The first configuration (areas, templates, users) is done in a guided session included in all plans. A more extensive implementation or data migration is agreed separately.",
       "multihotel_q": "What if we have more than one hotel?",
-      "multihotel_a": "Any plan can be extended with additional properties at a preferential rate. We also have a multi-property panel to compare results across properties.",
+      "multihotel_a": "If you manage more than one hotel, tell us how many properties you have and we will prepare a tailored proposal.",
       "cambio_q": "Can I change plans later?",
       "cambio_a": "Yes. You can upgrade or downgrade at any time. When switching to annual, the remaining time on the current month is prorated.",
       "instalar_q": "Do I need to install anything?",

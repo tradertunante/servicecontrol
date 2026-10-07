@@ -1085,3 +1085,30 @@ Eso generaba historial roto, menús inconsistentes por rol y rutas que terminaba
 - historial más predecible
 - navegación por módulos más coherente entre roles altos y manager
 - menos duplicación funcional entre `/areas` y `/team`
+
+## Decisión 19
+
+### Fecha
+2026-10-07
+
+### Decisión
+El programa "hoteles fundadores" (mes 1 gratis + 50% × 6 meses, 5 plazas) se implementa con primitivas nativas de Stripe en vez de una tabla y un contador propios.
+
+### Contexto
+La auditoría de la landing (ver conversación) encontró que el programa se publicaba sin ningún soporte técnico: `/api/billing/checkout` no aceptaba cupón ni periodo de prueba condicional, y no existía contador de plazas.
+
+### Decisión final
+- Cupón de Stripe `founder-50-6m` (50% off, `repeating`, 6 meses) + Promotion Code `FUNDADOR50` con `max_redemptions: 5` — las "5 plazas" las aplica Stripe, no una tabla nueva (`scripts/stripe-sync-founder-coupon.ts`, sin ejecutar todavía: requiere `STRIPE_SECRET_KEY` real y se corre manualmente).
+- `/api/billing/checkout` acepta un `founder_code` opcional, lo valida contra Stripe (`promotionCodes.list`) y, si es válido, añade `trial_period_days: 30` (mes 1 gratis) y el descuento vía `discounts: [{ promotion_code }]`. Si el código no es válido, se rechaza explícitamente (400) en vez de ignorarlo.
+- Campo de código oculto por defecto en `/upgrade` (`UpgradeClient.tsx`): no es autoservicio general, solo para quien ya tiene el código.
+- Analítica de checkout (`billing_checkout_started` / `billing_checkout_completed`) vía `lib/analytics/serverCapture.ts`: HTTP directo al endpoint de captura de PostHog con la clave pública existente, sin añadir `posthog-node` como dependencia nueva. Es best-effort (nunca bloquea ni rompe el webhook).
+
+### Impacto esperado
+- El programa fundador deja de ser una promesa sin backend: si un prospecto recibe el código, el descuento y el mes gratis se aplican solos en Stripe Checkout.
+- El límite de 5 usos lo impone Stripe (`max_redemptions`), no hay que construir ni mantener un contador.
+- Primera visibilidad de embudo de pago en PostHog (inicio y fin de checkout).
+
+### Riesgos / pendiente
+- El script de Stripe no se ha ejecutado: el cupón y el código `FUNDADOR50` no existen todavía en la cuenta real de Stripe. Hay que correr `npx tsx scripts/stripe-sync-founder-coupon.ts` con las credenciales de producción/test antes de repartir el código a nadie.
+- No hay página pública que muestre el código; se entrega a mano (llamada de ventas) y se introduce en `/upgrade`.
+- Si se agotan las 5 plazas, Stripe rechaza el canje en el momento de crear la sesión de checkout; el usuario ve "Ese código de fundador ya no está disponible." (`app/api/billing/checkout/route.ts`).
